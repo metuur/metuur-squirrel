@@ -1,7 +1,8 @@
 # Squirrel — top-level dev workflow.
 #
-# Tauri desktop (Phase 1):
-#   make dev               → pnpm tauri dev
+# Tauri desktop:
+#   make dev               → pnpm tauri dev (assumes backend already running)
+#   make dev-all           → preflight check + dev (warns if backend offline)
 #   make build             → pnpm tauri build
 #
 # CLI (apps/cli, Python stdlib, no deps):
@@ -12,10 +13,16 @@
 #   make backend-start     → python3 apps/backend/server.py --port 3939
 #   make backend-build     → pnpm -F squirrel-web-ui build
 #   make backend-dev-ui    → pnpm -F squirrel-web-ui dev
+#
+# Phase 2 dev workflow:
+#   1. Backend runs separately. The user's launchd plist may already serve
+#      port 3939 (org.squirrel.web-ui); if so, `make dev` Just Works.
+#      Otherwise: `make backend-start` in a second terminal.
+#   2. `make dev` (or `make dev-all`) launches the Tauri popup against it.
 
 ROOT := $(CURDIR)
 
-.PHONY: help dev build test-cli sq backend-start backend-build backend-dev-ui
+.PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui
 
 help:
 	@awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' $(MAKEFILE_LIST)
@@ -23,6 +30,18 @@ help:
 # ─── Desktop ────────────────────────────────────────────────────────────────
 
 dev:
+	pnpm tauri dev
+
+# Preflight: warn (don't block) if the backend isn't reachable. The popup
+# itself shows the offline banner; this is just a nicer dev experience.
+dev-all:
+	@if curl -sf -o /dev/null --max-time 1 http://127.0.0.1:3939/api/me; then \
+		echo "✓ backend reachable on http://127.0.0.1:3939"; \
+	else \
+		echo "⚠ backend NOT reachable on http://127.0.0.1:3939"; \
+		echo "  Start it in another terminal:  make backend-start"; \
+		echo "  Popup will show the offline banner until then."; \
+	fi
 	pnpm tauri dev
 
 build:
