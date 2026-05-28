@@ -33,7 +33,7 @@
 | R-3.1 | THE CaptureButton SHALL be visible at all times the popup is mounted. |
 | R-3.2 | WHILE backend status is `offline`, THE CaptureButton SHALL be disabled and SHALL show a tooltip "Backend offline — capture will fail". |
 | R-3.3 | WHEN the user clicks CaptureButton AND backend status is `online`, THE SYSTEM SHALL open a modal with a single multi-line text input and Save / Cancel buttons. |
-| R-3.4 | WHEN the user clicks Save in the capture modal, THE SYSTEM SHALL `POST /api/notes` with body `{ text: <input value>, project_slug: null }`. |
+| R-3.4 | WHEN the user clicks Save in the capture modal, THE SYSTEM SHALL `POST /api/notes` with body `{ text: <input value>, project_slug: <user's ProjectSelector choice; null = Inbox> }`. **Amended 2026-05-28**: the original wording hard-coded `project_slug: null`. A chip-row selector now lets the user route the capture to any project from `/api/home.projects[]`, with the focus project highlighted as a suggested target. |
 | R-3.5 | IF the POST returns 2xx, THE SYSTEM SHALL close the modal AND display a toast "Captured to inbox". |
 | R-3.6 | IF the POST returns non-2xx, THE SYSTEM SHALL keep the modal open, display the server error message inline, and SHALL NOT clear the input. |
 | R-3.7 | THE SYSTEM SHALL NOT add `/api/capture` or any new write endpoint in Phase 2. The capture path reuses `/api/notes`. |

@@ -44,7 +44,11 @@ export default function App() {
       <div className="flex-1" />
 
       <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
-        <CaptureButton online={status.online} />
+        <CaptureButton
+          online={status.online}
+          projects={home.data?.projects ?? []}
+          focusSlug={home.data?.focus?.slug ?? null}
+        />
         <OpenWebUIButton />
       </div>
     </main>

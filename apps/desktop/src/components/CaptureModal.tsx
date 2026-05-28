@@ -1,30 +1,40 @@
-// Phase 2 CaptureModal — multi-line textarea + Save / Cancel. Style mirrors
-// the web UI's Modal: white rounded surface, header strip, footer bar, dark
-// overlay with backdrop blur.
-// EARS R-3.4, R-3.5, R-3.6.
+// Phase 2 CaptureModal — multi-line textarea + project chip selector +
+// Save / Cancel. EARS R-3.4 (POST /api/notes), R-3.5 (close+toast on 2xx),
+// R-3.6 (keep open + inline error + preserve input on non-2xx).
+//
+// Supersedes original R-3.4 wording: project_slug is now whatever the user
+// picked in the ProjectSelector (defaults to null = Inbox).
 
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api/client";
+import { api, type ProjectListItem } from "../api/client";
 import { useToast } from "./Toast";
+import { ProjectSelector } from "./ProjectSelector";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  projects: ProjectListItem[];
+  focusSlug: string | null;
+  /** Pre-selected project when the modal opens (e.g. user clicked a project
+   *  shortcut). null = Inbox. */
+  initialSlug?: string | null;
 }
 
-export function CaptureModal({ open, onClose }: Props) {
+export function CaptureModal({ open, onClose, projects, focusSlug, initialSlug }: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(initialSlug ?? null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toast = useToast();
 
   useEffect(() => {
     if (open) {
       setError(null);
+      setSelectedSlug(initialSlug ?? null);
       requestAnimationFrame(() => textareaRef.current?.focus());
     }
-  }, [open]);
+  }, [open, initialSlug]);
 
   if (!open) return null;
 
@@ -34,11 +44,13 @@ export function CaptureModal({ open, onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await api.noteCreate(trimmed, null);
+      await api.noteCreate(trimmed, selectedSlug);
       setText("");
       setSaving(false);
       onClose();
-      toast.show("Captured to inbox");
+      toast.show(
+        selectedSlug ? `Captured to ${selectedSlug}` : "Captured to inbox",
+      );
     } catch (err) {
       setSaving(false);
       const msg = err instanceof Error ? err.message : String(err);
@@ -66,12 +78,18 @@ export function CaptureModal({ open, onClose }: Props) {
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Capture</h2>
         </div>
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-3 flex flex-col gap-3">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-900/50 px-2.5 py-1.5 rounded text-[11px]">
               {error}
             </div>
           )}
+          <ProjectSelector
+            projects={projects}
+            focusSlug={focusSlug}
+            selectedSlug={selectedSlug}
+            onSelect={setSelectedSlug}
+          />
           <textarea
             ref={textareaRef}
             value={text}

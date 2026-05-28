@@ -1,15 +1,19 @@
-// Phase 2 CaptureButton — primary "+ Add a note" affordance. Style mirrors
-// the web UI top-bar button (bg-primary, white text, rounded, font-semibold).
+// Phase 2 CaptureButton — primary "+ Add a note" affordance.
 // EARS R-3.1 (visible), R-3.2 (offline-disable), R-3.3 (click → modal).
+// Now also forwards the project list + focus slug to the modal so the
+// user can route the note to a specific project.
 
 import { useState } from "react";
 import { CaptureModal } from "./CaptureModal";
+import type { ProjectListItem } from "../api/client";
 
 interface Props {
   online: boolean;
+  projects: ProjectListItem[];
+  focusSlug: string | null;
 }
 
-export function CaptureButton({ online }: Props) {
+export function CaptureButton({ online, projects, focusSlug }: Props) {
   const [open, setOpen] = useState(false);
   const disabled = !online;
 
@@ -29,7 +33,12 @@ export function CaptureButton({ online }: Props) {
         <span aria-hidden className="text-base leading-none">+</span>
         Add a note
       </button>
-      <CaptureModal open={open} onClose={() => setOpen(false)} />
+      <CaptureModal
+        open={open}
+        onClose={() => setOpen(false)}
+        projects={projects}
+        focusSlug={focusSlug}
+      />
     </>
   );
 }
