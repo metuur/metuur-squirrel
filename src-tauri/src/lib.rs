@@ -1,3 +1,5 @@
+mod logging;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -6,6 +8,12 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let _log_guard = logging::init();
+    tracing::info!(
+        version = env!("CARGO_PKG_VERSION"),
+        "squirrel starting"
+    );
+
     let mut builder = tauri::Builder::default();
 
     #[cfg(desktop)]

@@ -21,7 +21,7 @@ Conventions:
   - acceptance: All four plugins compile, are registered in `lib.rs` / `main.rs`, and their JS bindings install cleanly into the React app.
   - verify: `pnpm tauri dev` still boots; calling each plugin's smallest no-op JS API from the React console returns without error.
 
-- [ ] 0.3 Set up structured logging to `~/.squirrel/logs/squirrel.log` using `tracing` + `tracing-appender` (deps: 0.1, est: ~30m)
+- [x] 0.3 Set up structured logging to `~/.squirrel/logs/squirrel.log` using `tracing` + `tracing-appender` (deps: 0.1, est: ~30m)
   - acceptance: Rust `info!`, `warn!`, `error!` macros append to `~/.squirrel/logs/squirrel.log` at INFO level; file is created on first write; existing log is appended to on subsequent runs.
   - verify: Start the app, observe log file exists, contains a startup line with ISO-8601 timestamp; restart and confirm the line is appended, not overwritten.
 
