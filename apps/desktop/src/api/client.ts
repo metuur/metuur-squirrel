@@ -87,6 +87,9 @@ export interface PressingItem {
   is_overdue: boolean;
   hours_left: number | null;
   days_overdue: number | null;
+  /** Unix epoch seconds of the note file's last modification. Added in
+   *  Phase 2; may be `null` if the file wasn't found at scan time. */
+  mtime?: number | null;
 }
 
 export interface ProjectListItem {

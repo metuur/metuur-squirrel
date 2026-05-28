@@ -447,6 +447,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pressing = []
         for lvl in ("overdue", "critical", "urgent"):
             for item in deadlines.get("by_urgency", {}).get(lvl, []):
+                # mtime = last filesystem modification of the note's .md file.
+                # Used by the desktop popup to render "Updated Xd ago" without
+                # a per-item /api/notes/<id> round trip.
+                mtime: Optional[float] = None
+                path_str = item.get("path") or ""
+                if path_str:
+                    try:
+                        mtime = os.path.getmtime(path_str)
+                    except (OSError, FileNotFoundError):
+                        mtime = None
                 pressing.append({
                     "id": item.get("id", ""),
                     "title": item.get("title", item.get("id", "")),
@@ -456,6 +466,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "is_overdue": bool(item.get("is_overdue")),
                     "hours_left": item.get("hours_left"),
                     "days_overdue": item.get("days_overdue"),
+                    "mtime": mtime,
                 })
 
         projects = []
