@@ -1,6 +1,6 @@
-// Phase 2 minimal toast primitive. Single-toast queue, 3s auto-dismiss,
-// manual dismiss button. Used by CaptureButton on save success (R-3.5).
-// Provider mounts once at the App root; consumers call useToast().
+// Phase 2 minimal toast primitive. Style mirrors the v0.5 web UI's Toast
+// pill (slate-900 background, white text, rounded-full, drop shadow).
+// Single-toast queue, 3s auto-dismiss, manual dismiss. R-3.5.
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -40,37 +40,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast && (
         <div
           role="status"
-          style={{
-            position: "fixed",
-            bottom: 16,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "#1f2937",
-            color: "#f1f5f9",
-            padding: "8px 14px",
-            borderRadius: 6,
-            fontSize: 13,
-            fontFamily: "system-ui, sans-serif",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-            zIndex: 100,
-          }}
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium shadow-xl border border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-200"
         >
           <span>{toast.message}</span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#94a3b8",
-              cursor: "pointer",
-              fontSize: 16,
-              padding: 0,
-              lineHeight: 1,
-            }}
+            className="text-slate-400 dark:text-slate-500 hover:text-white dark:hover:text-slate-900 leading-none text-base"
             aria-label="Dismiss"
           >
             ×

@@ -1,5 +1,7 @@
 // Phase 2 ParakeetWidget — renders /api/parakeet message verbatim.
-// EARS R-2.7 (render), R-2.8 (empty → 0px), R-2.9 (dimmed when offline).
+// Style: small italic callout in amber/yellow surface to match the web
+// UI's tone-of-voice for the parakeet line.
+// EARS R-2.7, R-2.8, R-2.9.
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
@@ -21,7 +23,7 @@ export function ParakeetWidget({ triggerKey, online }: Props) {
         if (mountedRef.current) setMessage(p.message);
       })
       .catch(() => {
-        // Keep last-good on error (R-2.9). Do not clear.
+        // R-2.9: keep last-good on transient error.
       });
     return () => {
       mountedRef.current = false;
@@ -32,18 +34,12 @@ export function ParakeetWidget({ triggerKey, online }: Props) {
   if (!message || message.trim() === "") return null;
 
   return (
-    <section
-      style={{
-        padding: "10px 14px",
-        borderBottom: "1px solid #1f2937",
-        opacity: online ? 1 : 0.5,
-        fontFamily: "system-ui, sans-serif",
-        fontSize: 12,
-        color: "#fde68a",
-        fontStyle: "italic",
-      }}
+    <div
+      className={`mx-4 mt-3 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 ${
+        online ? "" : "opacity-50"
+      }`}
     >
-      {message}
-    </section>
+      <p className="text-[11px] italic text-amber-800 dark:text-amber-200 leading-snug">{message}</p>
+    </div>
   );
 }

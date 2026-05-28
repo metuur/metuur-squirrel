@@ -1,5 +1,6 @@
-// Phase 2: top banner that becomes visible whenever the backend is
-// unreachable. Renders nothing when online. EARS R-1.5.
+// Phase 2: top banner shown whenever the backend is unreachable. Style
+// matches the v0.5 web UI's error chip vocabulary (red surface, mono
+// code chip). EARS R-1.5.
 
 import type { BackendStatus } from "../hooks/useBackend";
 
@@ -12,18 +13,16 @@ export function BackendStatusBanner({ status }: Props) {
   return (
     <div
       role="status"
-      style={{
-        background: "#7f1d1d",
-        color: "white",
-        padding: "8px 12px",
-        fontSize: 13,
-        fontFamily: "system-ui, sans-serif",
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-      }}
+      className="sticky top-0 z-10 flex items-center gap-2 bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-100 px-4 py-2 text-xs"
     >
-      Backend offline — run <code style={{ background: "rgba(0,0,0,0.25)", padding: "1px 4px", borderRadius: 3 }}>make backend-start</code> in the squirrel monorepo
+      <span aria-hidden className="material-icons-fallback text-red-500 dark:text-red-300">⚠</span>
+      <span>
+        Backend offline — run{" "}
+        <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/50 text-red-900 dark:text-red-100">
+          make backend-start
+        </code>{" "}
+        in the squirrel monorepo
+      </span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
-// Phase 2 OpenWebUIButton — launches the browser SPA via tauri-plugin-opener.
-// EARS R-4.2 (in popup), R-4.3 (uses plugin-opener),
-// R-4.4 (no pre-flight backend check).
+// Phase 2 OpenWebUIButton — secondary, ghost-style button at the bottom
+// of the popup. Click launches the v0.5 browser SPA via tauri-plugin-opener.
+// EARS R-4.2 (in popup), R-4.3 (uses plugin-opener), R-4.4 (no pre-flight).
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { BACKEND_ORIGIN } from "../api/client";
@@ -15,19 +15,9 @@ export function OpenWebUIButton() {
     <button
       type="button"
       onClick={handleClick}
-      style={{
-        background: "transparent",
-        border: "1px solid #334155",
-        color: "#cbd5e1",
-        padding: "8px 14px",
-        fontSize: 12,
-        cursor: "pointer",
-        margin: "10px 14px",
-        borderRadius: 4,
-        fontFamily: "system-ui, sans-serif",
-      }}
+      className="mx-4 mt-2 mb-3 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
     >
-      Open Web UI ↗
+      Open Web UI <span aria-hidden>↗</span>
     </button>
   );
 }

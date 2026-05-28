@@ -1,5 +1,8 @@
-// Phase 2 FocusWidget — renders /api/home.focus.
-// EARS R-2.2 (render), R-2.3 (null focus), R-2.9 (dimmed when offline).
+// Phase 2 FocusWidget — renders /api/home.focus inside a card that mirrors
+// the web UI's "Today's focus" panel (apps/backend/app/src/pages/HomePage.tsx
+// Header component): white surface, rounded-2xl, subtle shadow + border, an
+// uppercase tracking-wider label, then a bold title and a muted next action.
+// EARS R-2.2, R-2.3, R-2.9.
 
 import type { HomeState } from "../hooks/useHome";
 
@@ -13,29 +16,30 @@ export function FocusWidget({ home, online }: Props) {
   const dimmed = !online;
 
   return (
-    <section
-      style={{
-        padding: "12px 14px",
-        borderBottom: "1px solid #1f2937",
-        opacity: dimmed ? 0.5 : 1,
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      <h2 style={{ margin: 0, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8" }}>
-        Today's focus
-      </h2>
-      {focus ? (
-        <>
-          <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{focus.title}</div>
-          <div style={{ marginTop: 2, fontSize: 12, color: "#cbd5e1" }}>{focus.next_action}</div>
-        </>
-      ) : home.data ? (
-        <div style={{ marginTop: 6, fontSize: 13, color: "#94a3b8" }}>
-          No active focus — capture a thought or start a project.
+    <section className={`px-4 pt-4 ${dimmed ? "opacity-50" : ""}`}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-4">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+          Today's focus
         </div>
-      ) : (
-        <div style={{ marginTop: 6, fontSize: 13, color: "#94a3b8" }}>—</div>
-      )}
+        {focus ? (
+          <>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+              {focus.title}
+            </h2>
+            {focus.next_action && (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                {focus.next_action}
+              </p>
+            )}
+          </>
+        ) : home.data ? (
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            No active focus — capture a thought or start a project.
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 dark:text-slate-500">—</div>
+        )}
+      </div>
     </section>
   );
 }

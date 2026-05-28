@@ -1,6 +1,7 @@
-// Phase 2 CaptureModal — multi-line textarea + Save / Cancel.
-// EARS R-3.4 (POST /api/notes), R-3.5 (close+toast on 2xx),
-// R-3.6 (keep open + inline error + preserve input on non-2xx).
+// Phase 2 CaptureModal — multi-line textarea + Save / Cancel. Style mirrors
+// the web UI's Modal: white rounded surface, header strip, footer bar, dark
+// overlay with backdrop blur.
+// EARS R-3.4, R-3.5, R-3.6.
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
@@ -21,7 +22,6 @@ export function CaptureModal({ open, onClose }: Props) {
   useEffect(() => {
     if (open) {
       setError(null);
-      // Defer focus until the textarea is mounted in the DOM.
       requestAnimationFrame(() => textareaRef.current?.focus());
     }
   }, [open]);
@@ -43,7 +43,6 @@ export function CaptureModal({ open, onClose }: Props) {
       setSaving(false);
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
-      // R-3.6: do not clear input.
     }
   };
 
@@ -58,79 +57,37 @@ export function CaptureModal({ open, onClose }: Props) {
     <div
       role="dialog"
       aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 50,
-        fontFamily: "system-ui, sans-serif",
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleCancel();
       }}
     >
-      <div
-        style={{
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: 8,
-          padding: 16,
-          width: "min(420px, calc(100% - 32px))",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>Capture</h2>
-        {error && (
-          <div
-            style={{
-              background: "#7f1d1d",
-              color: "#fee2e2",
-              padding: "6px 10px",
-              borderRadius: 4,
-              fontSize: 12,
-            }}
-          >
-            {error}
-          </div>
-        )}
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="What's on your mind?"
-          rows={5}
-          disabled={saving}
-          style={{
-            background: "#0f172a",
-            color: "#f1f5f9",
-            border: "1px solid #334155",
-            borderRadius: 4,
-            padding: 8,
-            fontSize: 13,
-            fontFamily: "inherit",
-            resize: "vertical",
-            outline: "none",
-          }}
-        />
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+      <div className="w-full max-w-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Capture</h2>
+        </div>
+        <div className="px-4 py-3 flex flex-col gap-2">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-900/50 px-2.5 py-1.5 rounded text-[11px]">
+              {error}
+            </div>
+          )}
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="What's on your mind?"
+            rows={5}
+            disabled={saving}
+            className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-sans resize-y outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
+          />
+        </div>
+        <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={handleCancel}
             disabled={saving}
-            style={{
-              background: "transparent",
-              border: "1px solid #475569",
-              color: "#cbd5e1",
-              padding: "6px 14px",
-              borderRadius: 4,
-              fontSize: 13,
-              cursor: saving ? "not-allowed" : "pointer",
-            }}
+            className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-md transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -138,16 +95,7 @@ export function CaptureModal({ open, onClose }: Props) {
             type="button"
             onClick={handleSave}
             disabled={saving || text.trim() === ""}
-            style={{
-              background: "#2563eb",
-              border: "1px solid #2563eb",
-              color: "white",
-              padding: "6px 14px",
-              borderRadius: 4,
-              fontSize: 13,
-              cursor: saving || text.trim() === "" ? "not-allowed" : "pointer",
-              opacity: saving || text.trim() === "" ? 0.6 : 1,
-            }}
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-dark disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-500 rounded-md transition-colors"
           >
             {saving ? "Saving…" : "Save"}
           </button>
