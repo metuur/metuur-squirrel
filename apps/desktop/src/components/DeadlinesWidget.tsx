@@ -44,8 +44,8 @@ export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
   const dimmed = !online;
 
   return (
-    <section className={`px-4 pt-4 ${dimmed ? "opacity-50" : ""}`}>
-      <div className="flex items-center justify-between border-b-2 border-red-300 dark:border-red-700/50 pb-1.5 mb-2 px-0.5">
+    <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
+      <div className="flex items-center justify-between border-b-2 border-red-300 dark:border-red-700/50 pb-1 mb-1.5 px-0.5">
         <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
           Pressing
         </h3>
@@ -62,59 +62,59 @@ export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
             return (
               <li
                 key={item.id}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm px-3 py-2"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm px-3 py-1.5"
               >
                 <div className="text-[10px] font-mono text-slate-400 truncate">{item.id}</div>
                 <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-snug mt-0.5 line-clamp-2">
                   {item.title}
                 </h4>
 
-                {/* meta row: urgency · last updated */}
-                <div className="mt-1.5 flex items-center gap-2 text-[11px] font-medium">
-                  <span
-                    className={`inline-flex items-center gap-1 ${
-                      item.is_overdue ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"
-                    }`}
-                  >
-                    <span aria-hidden>⏰</span>
-                    {tail(item)}
-                  </span>
-                  {lastWorked && (
-                    <>
-                      <span className="text-slate-300 dark:text-slate-600">·</span>
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px]">
-                        Last worked {lastWorked}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* action row */}
-                <div className="mt-2 flex items-center justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => online && onAddNote(projectForTask(item.id, projects))}
-                    disabled={!online}
-                    title={
-                      online
-                        ? `Add a note to ${projectForTask(item.id, projects) ?? "Inbox"}`
-                        : "Backend offline"
-                    }
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <span aria-hidden>+</span>
-                    note
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openTaskDetails(item.id)}
-                    title="Open task in web UI"
-                    aria-label="Open task in web UI"
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    <span aria-hidden>↗</span>
-                    open
-                  </button>
+                {/* meta + actions on one row */}
+                <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium min-w-0">
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        item.is_overdue ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"
+                      }`}
+                    >
+                      <span aria-hidden>⏰</span>
+                      {tail(item)}
+                    </span>
+                    {lastWorked && (
+                      <>
+                        <span className="text-slate-300 dark:text-slate-600">·</span>
+                        <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">
+                          Last worked {lastWorked}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => online && onAddNote(projectForTask(item.id, projects))}
+                      disabled={!online}
+                      title={
+                        online
+                          ? `Add a note to ${projectForTask(item.id, projects) ?? "Inbox"}`
+                          : "Backend offline"
+                      }
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <span aria-hidden>+</span>
+                      note
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openTaskDetails(item.id)}
+                      title="Open task in web UI"
+                      aria-label="Open task in web UI"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <span aria-hidden>↗</span>
+                      open
+                    </button>
+                  </div>
                 </div>
               </li>
             );

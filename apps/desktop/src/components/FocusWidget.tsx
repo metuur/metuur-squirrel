@@ -16,9 +16,9 @@ export function FocusWidget({ home, online }: Props) {
   const dimmed = !online;
 
   return (
-    <section className={`px-4 pt-4 ${dimmed ? "opacity-50" : ""}`}>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+    <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
           Today's focus
         </div>
         {focus ? (

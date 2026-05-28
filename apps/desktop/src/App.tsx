@@ -47,7 +47,7 @@ export default function App() {
       <BackendStatusBanner status={status} />
 
       {/* Sticky header — never scrolls out of view */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shrink-0">
+      <header className="flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span aria-hidden className="text-lg">🐿️</span>
           <span className="font-bold text-sm text-slate-900 dark:text-slate-100">Squirrel</span>
@@ -76,7 +76,7 @@ export default function App() {
       </div>
 
       {/* Sticky footer — never scrolls out of view */}
-      <footer className="flex items-center justify-between gap-2 flex-wrap px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 shrink-0">
+      <footer className="flex items-center justify-between gap-2 flex-wrap px-4 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 shrink-0">
         <CaptureButton online={status.online} onClick={() => openCapture(null)} />
         <div className="flex items-center gap-2">
           <OpenWebUIButton />

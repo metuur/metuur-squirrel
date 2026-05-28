@@ -35,7 +35,7 @@ export function ParakeetWidget({ triggerKey, online }: Props) {
 
   return (
     <div
-      className={`mx-4 mt-3 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 ${
+      className={`mx-4 mt-2 mb-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 ${
         online ? "" : "opacity-50"
       }`}
     >
