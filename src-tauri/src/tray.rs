@@ -9,7 +9,7 @@
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 pub const TRAY_ID: &str = "main";
 
@@ -84,14 +84,17 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .icon_as_template(true) // macOS template image — system tints per appearance
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {
+            ids::OPEN => {
+                // Story 2.5: show + focus main window, reset icon to Normal.
+                show_main_window(app);
+            }
             ids::QUIT => {
                 tracing::info!("tray: quit requested");
                 app.exit(0);
             }
             other => {
-                // Other handlers land in later stories (1.4 quit polish, 2.5
-                // open, 2.6 logs, 2.7-2.9 watcher toggle). For Story 2.2 they
-                // just log so we can see clicks in the log file.
+                // Remaining handlers land in later stories (2.6 logs,
+                // 2.7-2.9 watcher toggle, 2.10 settings stays no-op).
                 tracing::info!(menu_item = other, "tray menu clicked (handler pending)");
             }
         })
@@ -111,6 +114,26 @@ pub fn set_state<R: Runtime>(app: &AppHandle<R>, state: IconState) -> tauri::Res
         tracing::info!(?state, "tray icon state changed");
     }
     Ok(())
+}
+
+/// Story 2.5 + R-4.5: bring the main window back from a hidden state, focus
+/// it, and clear the tray's notification badge. Shared between the "Open
+/// Squirrel" menu item and the notification-click handler (Story 4.5).
+pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.show() {
+            tracing::warn!(error = %e, "failed to show main window");
+        }
+        if let Err(e) = window.set_focus() {
+            tracing::warn!(error = %e, "failed to focus main window");
+        }
+        if let Err(e) = set_state(app, IconState::Normal) {
+            tracing::warn!(error = %e, "failed to reset tray icon");
+        }
+        tracing::info!("main window shown via tray/open");
+    } else {
+        tracing::warn!("show_main_window called but no 'main' window exists");
+    }
 }
 
 #[cfg(test)]

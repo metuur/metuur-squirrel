@@ -42,6 +42,20 @@ pub fn run() {
             tray::setup(app.handle())?;
             Ok(())
         })
+        // R-1.4 / Story 1.2: closing the main window must hide it, not quit
+        // the app. The tray menu's Quit item is the only normal exit path.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    if let Err(e) = window.hide() {
+                        tracing::warn!(error = %e, "failed to hide main window");
+                    } else {
+                        tracing::info!("main window close intercepted; hidden");
+                    }
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

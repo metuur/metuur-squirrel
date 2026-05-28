@@ -37,7 +37,7 @@ Conventions:
   - acceptance: R-1.3 — IF a Squirrel process is already running and the user launches Squirrel again, THE SYSTEM SHALL focus the existing main window and SHALL NOT spawn a second tray icon or process.
   - verify: Launch the app twice from Finder; observe only one tray icon, and the existing window receives focus on the second launch.
 
-- [ ] 1.2 Intercept window close → hide window without quitting (deps: 0.1, est: ~20m)
+- [x] 1.2 Intercept window close → hide window without quitting (deps: 0.1, est: ~20m)
   - acceptance: R-1.4 — WHEN the user clicks the main window's close button, THE SYSTEM SHALL hide the window and SHALL NOT terminate the process. R-1.5 — WHILE the main window is hidden, THE SYSTEM SHALL keep the SQ menu bar icon visible and the fake watcher running.
   - verify: Open dashboard, click red close button, confirm window disappears, process is still alive in Activity Monitor, log file still receives entries.
 
@@ -73,7 +73,7 @@ Conventions:
   - acceptance: R-2.9 — THE SYSTEM SHALL provide a developer-only command to force any of the four icon states for verification purposes, callable from the dashboard.
   - verify: From React devtools or hidden dashboard control, invoke command with each of the four states; observe icon swap each time.
 
-- [ ] 2.5 Wire tray "Open Squirrel" → show + focus main window; reset icon to Normal (deps: 2.2, 2.4, 1.2, est: ~15m)
+- [x] 2.5 Wire tray "Open Squirrel" → show + focus main window; reset icon to Normal (deps: 2.2, 2.4, 1.2, est: ~15m)
   - acceptance: R-2.4 (part 1) — WHEN the user opens the main window via the tray menu's "Open Squirrel" item, THE SYSTEM SHALL reset the SQ icon to the Normal state.
   - verify: Force icon to Notification state via 2.4's dev command; click "Open Squirrel"; window appears and icon returns to Normal.
 
