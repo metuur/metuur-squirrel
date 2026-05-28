@@ -11,6 +11,7 @@ import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
+import { SizeToggle } from "./components/SizeToggle";
 
 export default function App() {
   const status = useBackend();
@@ -28,9 +29,12 @@ export default function App() {
           <span aria-hidden className="text-lg">🐿️</span>
           <span className="font-bold text-sm text-slate-900 dark:text-slate-100">Squirrel</span>
         </div>
-        <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Today
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Today
+          </span>
+          <SizeToggle />
+        </div>
       </header>
 
       <FocusWidget home={home} online={status.online} />
