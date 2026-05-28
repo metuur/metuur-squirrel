@@ -14,8 +14,8 @@ Conventions:
 ## Unit 0: Project bootstrap (prerequisite — not in EARS)
 
 - [x] 0.1 Scaffold Tauri v2 + React + TypeScript project at repo root (est: ~45m)
-  - acceptance: `pnpm tauri dev` (or chosen package manager) launches an empty Tauri v2 window on macOS; `cargo` builds cleanly; `src-tauri/tauri.conf.json` sets `productName="Squirrel"` and bundle identifier `com.metuur.squirrel`.
-  - verify: `pnpm tauri dev` shows a blank window titled "Squirrel"; `pnpm tauri build` produces an unsigned `.app` bundle under `src-tauri/target/release/bundle/macos/`.
+  - acceptance: `pnpm tauri dev` (or chosen package manager) launches an empty Tauri v2 window on macOS; `cargo` builds cleanly; `apps/desktop/src-tauri/tauri.conf.json` sets `productName="Squirrel"` and bundle identifier `com.metuur.squirrel`.
+  - verify: `pnpm tauri dev` shows a blank window titled "Squirrel"; `pnpm tauri build` produces an unsigned `.app` bundle under `target/release/bundle/macos/` (Cargo workspace root).
 
 - [x] 0.2 Wire `tauri-plugin-notification`, `tauri-plugin-single-instance`, `tauri-plugin-store`, and `tauri-plugin-autostart` into `Cargo.toml` and `tauri.conf.json` (deps: 0.1, est: ~20m)
   - acceptance: All four plugins compile, are registered in `lib.rs` / `main.rs`, and their JS bindings install cleanly into the React app.
@@ -200,7 +200,7 @@ Conventions:
 
 - [ ] 7.2 Produce `Squirrel.dmg` artefact via Tauri build pipeline (deps: 7.1, all Unit 1-6 stories complete, est: ~30m)
   - acceptance: R-7.1 — distributable as a single `Squirrel.dmg`.
-  - verify: `pnpm tauri build` produces `Squirrel.dmg` under `src-tauri/target/release/bundle/dmg/`; mounting and dragging to /Applications results in a runnable app.
+  - verify: `pnpm tauri build` produces `Squirrel.dmg` under `target/release/bundle/dmg/` (Cargo workspace root); mounting and dragging to /Applications results in a runnable app.
 
 - [ ] 7.3 Verify Windows MSI build configuration remains intact (compile-only check, not a release artefact) (deps: 0.1, est: ~15m)
   - acceptance: R-7.4 — Tauri project configuration SHALL remain capable of producing an `.msi` build.

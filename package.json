@@ -1,0 +1,12 @@
+{
+  "name": "squirrel",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Squirrel — local-first ADHD productivity companion (monorepo root)",
+  "scripts": {
+    "dev": "pnpm -F @squirrel/desktop dev",
+    "build": "pnpm -F @squirrel/desktop build",
+    "tauri": "pnpm -F @squirrel/desktop tauri"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

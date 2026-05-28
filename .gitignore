@@ -24,8 +24,8 @@ build/
 
 # Rust / Tauri
 target/
-src-tauri/target/
-src-tauri/gen/schemas/
+**/src-tauri/target/
+**/src-tauri/gen/schemas/
 
 # Tauri build artifacts
 *.app
