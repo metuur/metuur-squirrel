@@ -14,7 +14,7 @@ Conventions:
 ## Unit 0: Project bootstrap (prerequisite — not in EARS)
 
 - [x] 0.1 Scaffold Tauri v2 + React + TypeScript project at repo root (est: ~45m)
-  - acceptance: `pnpm tauri dev` (or chosen package manager) launches an empty Tauri v2 window on macOS; `cargo` builds cleanly; `src-tauri/tauri.conf.json` sets `productName="Squirrel"` and bundle identifier `com.squirrel.app`.
+  - acceptance: `pnpm tauri dev` (or chosen package manager) launches an empty Tauri v2 window on macOS; `cargo` builds cleanly; `src-tauri/tauri.conf.json` sets `productName="Squirrel"` and bundle identifier `com.metuur.squirrel`.
   - verify: `pnpm tauri dev` shows a blank window titled "Squirrel"; `pnpm tauri build` produces an unsigned `.app` bundle under `src-tauri/target/release/bundle/macos/`.
 
 - [x] 0.2 Wire `tauri-plugin-notification`, `tauri-plugin-single-instance`, `tauri-plugin-store`, and `tauri-plugin-autostart` into `Cargo.toml` and `tauri.conf.json` (deps: 0.1, est: ~20m)
@@ -41,9 +41,10 @@ Conventions:
   - acceptance: R-1.4 — WHEN the user clicks the main window's close button, THE SYSTEM SHALL hide the window and SHALL NOT terminate the process. R-1.5 — WHILE the main window is hidden, THE SYSTEM SHALL keep the SQ menu bar icon visible and the fake watcher running.
   - verify: Open dashboard, click red close button, confirm window disappears, process is still alive in Activity Monitor, log file still receives entries.
 
-- [ ] 1.3 Configure macOS as accessory/agent app (no persistent Dock icon while window hidden) (deps: 0.1, est: ~15m)
-  - acceptance: R-1.7 — WHERE the host operating system is macOS, THE SYSTEM SHALL behave as a menu bar / accessory app (no persistent Dock icon while the window is hidden).
-  - verify: Hide window; observe Dock has no Squirrel entry; re-open window via tray; observe behaviour matches a standard menu bar app.
+- [ ] 1.3 Configure macOS as pure accessory app — no Dock icon, no app menu, no Cmd+Tab entry, at any time (deps: 0.1, est: ~15m)
+  - implementation: In `lib.rs` Tauri `setup` closure, call `app.set_activation_policy(tauri::ActivationPolicy::Accessory)` gated by `#[cfg(target_os = "macos")]`. Do not toggle it back to `Regular` anywhere. (Runtime equivalent of `LSUIElement=true`; see LLD D9.)
+  - acceptance: R-1.7 — WHERE the host operating system is macOS, THE SYSTEM SHALL behave as a pure menu bar accessory app at all times: no Dock icon, no application menu in the macOS top menu bar, no Cmd+Tab entry — regardless of whether the main window is hidden or visible.
+  - verify: (a) Launch app. Dock has no Squirrel entry. Top menu bar shows the previous-app menu (no "Squirrel" app menu). Cmd+Tab does not list Squirrel. (b) Open the dashboard via tray's "Open Squirrel" — re-verify all three points still hold while the window is visible and focused. (c) Hide the window — re-verify all three points still hold. (d) Quit via tray's Quit Squirrel; tray icon disappears.
 
 - [ ] 1.4 Implement explicit quit path (deps: 1.2, 2.2, est: ~15m)
   - acceptance: R-1.6 — WHEN the user selects "Quit Squirrel" from the tray menu, THE SYSTEM SHALL terminate the process, remove the SQ icon from the menu bar, and stop the fake watcher.
@@ -193,9 +194,9 @@ Conventions:
 
 ## Unit 7: Packaging and install
 
-- [ ] 7.1 Confirm Tauri v2 bundle config: `productName="Squirrel"`, `identifier="com.squirrel.app"`, app icon set, minimum macOS 12 (deps: 0.1, est: ~30m)
+- [ ] 7.1 Confirm Tauri v2 bundle config: `productName="Squirrel"`, `identifier="com.metuur.squirrel"`, app icon set, minimum macOS 12 (deps: 0.1, est: ~30m)
   - acceptance: R-7.3 — bundle identifier and app name. R-7.2 (part) — macOS 12 floor declared in config.
-  - verify: `pnpm tauri build` emits `.app` whose Info.plist shows `CFBundleIdentifier=com.squirrel.app`, `CFBundleName=Squirrel`, `LSMinimumSystemVersion=12.0`.
+  - verify: `pnpm tauri build` emits `.app` whose Info.plist shows `CFBundleIdentifier=com.metuur.squirrel`, `CFBundleName=Squirrel`, `LSMinimumSystemVersion=12.0`. No bundler warning about the identifier ending in `.app`.
 
 - [ ] 7.2 Produce `Squirrel.dmg` artefact via Tauri build pipeline (deps: 7.1, all Unit 1-6 stories complete, est: ~30m)
   - acceptance: R-7.1 — distributable as a single `Squirrel.dmg`.

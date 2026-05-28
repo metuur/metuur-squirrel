@@ -92,9 +92,9 @@ The single boolean `auto_start_enabled` is the only setting persisted in Phase 1
 **Rejected**: Python sidecar — adds packaging complexity, IPC, and a second runtime for zero Phase 1 value.
 
 ### D2. Hide-on-close vs. minimise-to-tray
-**Decision**: Hide-on-close (window vanishes, no taskbar/Dock entry while hidden on macOS).
-**Rationale**: User input says "Close window → app hides → tray icon remains active." A hidden window with the menu bar icon as the sole UI affordance matches the "menu bar app" UX convention on macOS.
-**Rejected**: Minimise — leaves a Dock icon, conflicts with the "tray-only background" model.
+**Decision**: Hide-on-close (window vanishes; the menu bar icon remains the sole always-visible affordance).
+**Rationale**: User input says "Close window → app hides → tray icon remains active." A hidden window with the menu bar icon as the sole UI affordance matches the "menu bar app" UX convention on macOS. Dock presence is governed independently by D9.
+**Rejected**: Minimise — leaves a Dock-minimised window, conflicts with the "tray-only background" model.
 
 ### D3. Notification-click target
 **Decision**: Notification click always focuses the dashboard window (showing it if hidden) and resets the icon to Normal.
@@ -121,6 +121,13 @@ The single boolean `auto_start_enabled` is the only setting persisted in Phase 1
 ### D8. First-run notification permission flow
 **Decision**: On first launch, immediately request notification permission. If denied, log a warning, show a non-blocking dashboard banner ("Notifications disabled — enable in System Settings to receive alerts"), and continue running. Do not block startup, do not nag.
 **Rationale**: macOS gives one shot at the system prompt; missing it forces users into System Settings. But hard-blocking on denial would make the app useless for users who simply want to see the dashboard.
+
+### D9. macOS activation policy — pure accessory (no Dock icon, no app menu, ever)
+**Decision**: Force activation policy to `Accessory` for the lifetime of the process. The app never has a Dock icon, never has an application menu in the macOS top menu bar, and never appears in the Cmd+Tab switcher — even while the main window is visible. This is the same UX model as Ollama, Bartender, Rectangle, Hidden Bar.
+**Implementation**: Call `app.set_activation_policy(tauri::ActivationPolicy::Accessory)` once in Tauri's `setup` callback, gated by `#[cfg(target_os = "macos")]`. Do **not** toggle the policy to `Regular` on window show; leaving it as `Accessory` is what guarantees the absence of the app menu and Dock icon. This is the runtime equivalent of `LSUIElement=true` in Info.plist; using the Tauri API avoids forking the bundler-generated Info.plist.
+**Rationale**: The product is a tray-resident background companion with the dashboard as an occasional inspection window. A Dock icon and app menu that flash in and out as the window is shown/hidden are visual noise that contradicts the "always-on background" mental model. Locking the policy to `Accessory` also simplifies window show/hide logic — no policy transitions to coordinate.
+**Trade-off**: We lose the standard macOS app menu (Squirrel / File / Edit / View / Window / Help). Cmd+Q on a focused window will NOT terminate the process; the explicit Quit affordance is the tray menu's "Quit Squirrel" item (R-1.6) and the dashboard's Quit button (R-5.10). This is acceptable and matches user expectations for menu bar apps.
+**Rejected**: (a) Dynamic toggle between `Regular` and `Accessory` — leaks a Dock icon and app menu every time the window is visible, defeating the "background companion" UX. (b) Static `LSUIElement=true` via custom Info.plist override — equivalent behaviour but requires intercepting Tauri's Info.plist generation; the runtime API is cleaner and version-agnostic.
 
 ## Out of Scope
 

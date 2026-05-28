@@ -10,7 +10,7 @@
 | R-1.4 | WHEN the user clicks the main window's close button, THE SYSTEM SHALL hide the window and SHALL NOT terminate the process. |
 | R-1.5 | WHILE the main window is hidden, THE SYSTEM SHALL keep the SQ menu bar icon visible and the fake watcher running. |
 | R-1.6 | WHEN the user selects "Quit Squirrel" from the tray menu, THE SYSTEM SHALL terminate the process, remove the SQ icon from the menu bar, and stop the fake watcher. |
-| R-1.7 | WHERE the host operating system is macOS, THE SYSTEM SHALL behave as a menu bar / accessory app (no persistent Dock icon while the window is hidden). |
+| R-1.7 | WHERE the host operating system is macOS, THE SYSTEM SHALL behave as a pure menu bar accessory app at all times: THE SYSTEM SHALL NOT display a Dock icon, SHALL NOT display an application menu in the macOS top menu bar, AND SHALL NOT appear in the Cmd+Tab application switcher — regardless of whether the main window is hidden or visible. |
 | R-1.8 | THE SYSTEM SHALL write log entries to `~/.squirrel/logs/squirrel.log` at INFO level for every lifecycle event (start, window-hide, window-show, watcher-on, watcher-off, notification-fired, notification-clicked, quit). |
 
 ## Unit 2: Tray icon and tray menu
@@ -78,7 +78,7 @@
 |-------|----------------|
 | R-7.1 | THE SYSTEM SHALL be distributable as a single `Squirrel.dmg` artefact built from the Tauri v2 toolchain. |
 | R-7.2 | WHEN the user installs Squirrel from the `.dmg`, THE SYSTEM SHALL be runnable on macOS 12 or later without requiring the user to install any additional runtime. |
-| R-7.3 | THE bundled application identifier SHALL be `com.squirrel.app` (or a project-agreed equivalent under a single namespace) and the visible application name SHALL be "Squirrel". |
+| R-7.3 | THE bundled application identifier SHALL be `com.metuur.squirrel` (reverse-DNS form under the `metuur` org namespace; MUST NOT end with the reserved `.app` extension) and the visible application name SHALL be "Squirrel". |
 | R-7.4 | WHERE the host operating system is Windows, THE Tauri project configuration SHALL remain capable of producing an `.msi` build, but Phase 1 SHALL NOT require a tested Windows release artefact. |
 
 ## Unit 8: Out-of-scope guards (negative requirements)

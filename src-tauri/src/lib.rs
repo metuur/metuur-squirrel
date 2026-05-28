@@ -38,6 +38,13 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
+            // R-1.7 / LLD D9: lock macOS activation policy to Accessory so the app
+            // never gets a Dock icon, never gets an app menu in the top menu bar,
+            // and never appears in Cmd+Tab — regardless of window visibility.
+            // Runtime equivalent of Info.plist LSUIElement=true.
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
             #[cfg(desktop)]
             tray::setup(app.handle())?;
             Ok(())
