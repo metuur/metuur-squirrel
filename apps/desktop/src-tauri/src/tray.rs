@@ -1,16 +1,30 @@
-//! Tray icon and menu. Implements R-1.2, R-2.1, R-2.2, R-2.5.
+//! Tray icon and menu. Implements R-1.2, R-2.1, R-2.2 (icon state machine
+//! kept from Phase 1) and Phase 2 R-4.1 ("Open Web UI" item).
 //!
-//! The four state PNGs are embedded at compile time via `include_bytes!` so the
-//! tray works without runtime path resolution and without an extra Tauri
-//! resource-dir setup step. Production loads `@2x.png` (32x32) and lets macOS
-//! downscale for the 1x menu bar; using the larger asset keeps the silhouette
-//! crisp at Retina densities.
+//! Phase 2 supersedes Phase 1 R-2.5: the original menu had Background
+//! Watcher / Settings / View Logs placeholders. With the real backend in
+//! place those vestigial controls are gone; the menu is now action-only:
+//!   Open Squirrel
+//!   Open Web UI
+//!   ─────────
+//!   PRESSING NOW            (disabled header)
+//!   <alert 1>               (dynamic, links to /notes/<id>)
+//!   <alert 2>
+//!   <alert 3>
+//!   ─────────
+//!   Quit Squirrel
+//!
+//! Alerts are populated by `tray_alerts::start_polling`. When the backend is
+//! offline / has no pressing items, the section degrades to a single
+//! disabled "No pressing items" entry.
 
 use tauri::image::Image;
-use tauri::menu::{CheckMenuItem, Menu, MenuItem};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_opener::OpenerExt;
+
+use crate::tray_alerts::Alert;
 
 pub const TRAY_ID: &str = "main";
 
@@ -18,19 +32,19 @@ pub const TRAY_ID: &str = "main";
 /// vite proxy all agree on this single backend origin.
 pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 
-/// Menu item IDs. Kept here so menu-event handlers can match without stringly-
-/// typed magic scattered across modules.
+/// Menu item IDs. The alert items use the `ALERT_PREFIX` so the menu-event
+/// handler can detect them and extract the task id.
 pub mod ids {
     pub const OPEN: &str = "open";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
-    pub const WATCHER: &str = "watcher";
-    pub const SETTINGS: &str = "settings";
-    pub const LOGS: &str = "logs";
     pub const QUIT: &str = "quit";
+    pub const ALERT_PREFIX: &str = "alert:";
+    pub const PRESSING_HEADER: &str = "pressing_header";
+    pub const NO_PRESSING: &str = "no_pressing";
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[allow(dead_code)] // Notification/Processing/Error are exercised by Stories 2.4-2.9, 3.2, 4.5
+#[allow(dead_code)] // Notification/Processing/Error retained for Phase 3+
 pub enum IconState {
     Normal,
     Notification,
@@ -56,73 +70,115 @@ fn load_image(state: IconState) -> tauri::Result<Image<'static>> {
     Image::from_bytes(icon_bytes(state))
 }
 
-pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+/// Build the menu from current alert state. Called from both `setup` (empty
+/// alerts on startup) and `update_alerts` (after a poll).
+fn build_menu<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
-    // Phase 2 R-4.1: "Open Web UI" sits between Open Squirrel and Background Watcher.
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
-    let watcher_item = CheckMenuItem::with_id(
+    let sep_top = PredefinedMenuItem::separator(app)?;
+    let pressing_header = MenuItem::with_id(
         app,
-        ids::WATCHER,
-        "Background Watcher",
-        true,
-        true, // checked by default — R-3.5 defaults watcher On
+        ids::PRESSING_HEADER,
+        "PRESSING NOW",
+        false, // disabled — used as a section label
         None::<&str>,
     )?;
-    // Settings is enabled but its handler is intentionally a no-op in Phase 1
-    // (R-2.10). Keeping it enabled — rather than disabled/grayed — matches the
-    // story's verify ("click does nothing, no crash").
-    let settings_item = MenuItem::with_id(app, ids::SETTINGS, "Settings", true, None::<&str>)?;
-    let logs_item = MenuItem::with_id(app, ids::LOGS, "View Logs", true, None::<&str>)?;
+    let sep_bot = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, ids::QUIT, "Quit Squirrel", true, None::<&str>)?;
 
-    // Order matters: Phase 2 R-4.1 supersedes Phase 1 R-2.5 — six items now,
-    // Open Web UI between Open Squirrel and Background Watcher.
-    let menu = Menu::with_items(
-        app,
-        &[
-            &open_item,
-            &open_web_ui_item,
-            &watcher_item,
-            &settings_item,
-            &logs_item,
-            &quit_item,
-        ],
-    )?;
+    let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
+        &open_item,
+        &open_web_ui_item,
+        &sep_top,
+        &pressing_header,
+    ];
+
+    let alert_items: Vec<MenuItem<R>> = alerts
+        .iter()
+        .map(|a| {
+            let id = format!("{}{}", ids::ALERT_PREFIX, a.id);
+            MenuItem::with_id(app, id, a.menu_label(), true, None::<&str>)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+
+    let no_pressing = if alert_items.is_empty() {
+        Some(MenuItem::with_id(
+            app,
+            ids::NO_PRESSING,
+            "No pressing items",
+            false,
+            None::<&str>,
+        )?)
+    } else {
+        None
+    };
+
+    if let Some(np) = no_pressing.as_ref() {
+        items.push(np);
+    } else {
+        for ai in alert_items.iter() {
+            items.push(ai);
+        }
+    }
+
+    items.push(&sep_bot);
+    items.push(&quit_item);
+
+    Menu::with_items(app, &items)
+}
+
+pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let menu = build_menu(app, &[])?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_image(IconState::Normal)?)
         .icon_as_template(true) // macOS template image — system tints per appearance
         .menu(&menu)
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            ids::OPEN => {
-                // Story 2.5: show + focus main window, reset icon to Normal.
-                show_main_window(app);
-            }
-            ids::OPEN_WEB_UI => {
-                // Phase 2 R-4.3 / R-4.4: open BACKEND_ORIGIN in the user's
-                // default browser. Do NOT pre-check reachability — the browser
-                // will surface its own connection error if the backend is down.
-                if let Err(e) = app.opener().open_url(BACKEND_ORIGIN, None::<&str>) {
-                    tracing::warn!(error = %e, "failed to open web UI");
-                } else {
-                    tracing::info!(url = BACKEND_ORIGIN, "tray: open web ui");
+        .on_menu_event(|app, event| {
+            let id = event.id().as_ref();
+            match id {
+                ids::OPEN => show_main_window(app),
+                ids::OPEN_WEB_UI => open_url(app, BACKEND_ORIGIN),
+                ids::QUIT => {
+                    tracing::info!("tray: quit requested");
+                    app.exit(0);
                 }
-            }
-            ids::QUIT => {
-                tracing::info!("tray: quit requested");
-                app.exit(0);
-            }
-            other => {
-                // Remaining handlers land in later stories (2.6 logs,
-                // 2.7-2.9 watcher toggle, 2.10 settings stays no-op).
-                tracing::info!(menu_item = other, "tray menu clicked (handler pending)");
+                ids::PRESSING_HEADER | ids::NO_PRESSING => {
+                    // Disabled items; menu-event still fires on some platforms.
+                }
+                other if other.starts_with(ids::ALERT_PREFIX) => {
+                    let task_id = &other[ids::ALERT_PREFIX.len()..];
+                    let url = format!("{}/notes/{}", BACKEND_ORIGIN, task_id);
+                    open_url(app, &url);
+                }
+                other => {
+                    tracing::info!(menu_item = other, "tray menu clicked (unhandled)");
+                }
             }
         })
         .build(app)?;
 
     tracing::info!("tray icon installed");
     Ok(())
+}
+
+/// Rebuild the menu with a fresh set of alert items. Called by the
+/// `tray_alerts` background poller every 30 seconds.
+pub fn update_alerts<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) -> tauri::Result<()> {
+    let menu = build_menu(app, alerts)?;
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        tray.set_menu(Some(menu))?;
+    }
+    Ok(())
+}
+
+fn open_url<R: Runtime>(app: &AppHandle<R>, url: &str) {
+    if let Err(e) = app.opener().open_url(url, None::<&str>) {
+        tracing::warn!(error = %e, url, "tray: failed to open url");
+    } else {
+        tracing::info!(url, "tray: opened url");
+    }
 }
 
 /// Switch the tray icon to a different state. Story 2.4 exposes this through
@@ -137,9 +193,9 @@ pub fn set_state<R: Runtime>(app: &AppHandle<R>, state: IconState) -> tauri::Res
     Ok(())
 }
 
-/// Story 2.5 + R-4.5: bring the main window back from a hidden state, focus
-/// it, and clear the tray's notification badge. Shared between the "Open
-/// Squirrel" menu item and the notification-click handler (Story 4.5).
+/// Bring the main window back from a hidden state, focus it, and clear the
+/// tray's notification badge. Shared between the "Open Squirrel" menu item
+/// and the notification-click handler.
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(e) = window.show() {
@@ -171,7 +227,6 @@ mod tests {
         ] {
             let bytes = icon_bytes(s);
             assert!(!bytes.is_empty(), "{s:?} bytes must be non-empty");
-            // PNG magic: 89 50 4E 47 0D 0A 1A 0A
             assert_eq!(
                 &bytes[..8],
                 &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
@@ -182,9 +237,6 @@ mod tests {
 
     #[test]
     fn each_state_has_distinct_bytes() {
-        // Mirror of the integration test, but checked against the embedded
-        // bytes — guarantees we did not accidentally include the same file
-        // four times.
         let states = [
             IconState::Normal,
             IconState::Notification,
@@ -202,5 +254,31 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn alert_label_overdue() {
+        let a = Alert {
+            id: "FOO-001".into(),
+            title: "FOO-001 — Something".into(),
+            is_overdue: true,
+            hours_left: None,
+            days_overdue: Some(43),
+            urgency_label: None,
+        };
+        assert_eq!(a.menu_label(), "43d overdue · FOO-001");
+    }
+
+    #[test]
+    fn alert_label_hours_left() {
+        let a = Alert {
+            id: "BAR-002".into(),
+            title: "BAR-002 — Soon".into(),
+            is_overdue: false,
+            hours_left: Some(5.4),
+            days_overdue: None,
+            urgency_label: None,
+        };
+        assert_eq!(a.menu_label(), "5h left · BAR-002");
     }
 }

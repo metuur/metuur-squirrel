@@ -1,5 +1,6 @@
 mod logging;
 mod tray;
+mod tray_alerts;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -47,6 +48,13 @@ pub fn run() {
 
             #[cfg(desktop)]
             tray::setup(app.handle())?;
+
+            // Phase 2: start the tray-alerts background poller. Every 30s
+            // it fetches /api/home and rebuilds the tray's PRESSING NOW
+            // section. Backend offline → menu shows "No pressing items".
+            #[cfg(desktop)]
+            tray_alerts::start_polling(app.handle().clone());
+
             Ok(())
         })
         // R-1.4 / Story 1.2: closing the main window must hide it, not quit
