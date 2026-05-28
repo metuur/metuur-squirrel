@@ -10,13 +10,19 @@ use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, Runtime};
+use tauri_plugin_opener::OpenerExt;
 
 pub const TRAY_ID: &str = "main";
+
+/// Phase 2 (LLD D6, EARS R-1.1, R-4.3): the popup, the tray menu, and the
+/// vite proxy all agree on this single backend origin.
+pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 
 /// Menu item IDs. Kept here so menu-event handlers can match without stringly-
 /// typed magic scattered across modules.
 pub mod ids {
     pub const OPEN: &str = "open";
+    pub const OPEN_WEB_UI: &str = "open_web_ui";
     pub const WATCHER: &str = "watcher";
     pub const SETTINGS: &str = "settings";
     pub const LOGS: &str = "logs";
@@ -52,6 +58,9 @@ fn load_image(state: IconState) -> tauri::Result<Image<'static>> {
 
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
+    // Phase 2 R-4.1: "Open Web UI" sits between Open Squirrel and Background Watcher.
+    let open_web_ui_item =
+        MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
     let watcher_item = CheckMenuItem::with_id(
         app,
         ids::WATCHER,
@@ -67,11 +76,13 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let logs_item = MenuItem::with_id(app, ids::LOGS, "View Logs", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, ids::QUIT, "Quit Squirrel", true, None::<&str>)?;
 
-    // Order matters: R-2.5 fixes the menu item sequence.
+    // Order matters: Phase 2 R-4.1 supersedes Phase 1 R-2.5 — six items now,
+    // Open Web UI between Open Squirrel and Background Watcher.
     let menu = Menu::with_items(
         app,
         &[
             &open_item,
+            &open_web_ui_item,
             &watcher_item,
             &settings_item,
             &logs_item,
@@ -87,6 +98,16 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             ids::OPEN => {
                 // Story 2.5: show + focus main window, reset icon to Normal.
                 show_main_window(app);
+            }
+            ids::OPEN_WEB_UI => {
+                // Phase 2 R-4.3 / R-4.4: open BACKEND_ORIGIN in the user's
+                // default browser. Do NOT pre-check reachability — the browser
+                // will surface its own connection error if the backend is down.
+                if let Err(e) = app.opener().open_url(BACKEND_ORIGIN, None::<&str>) {
+                    tracing::warn!(error = %e, "failed to open web UI");
+                } else {
+                    tracing::info!(url = BACKEND_ORIGIN, "tray: open web ui");
+                }
             }
             ids::QUIT => {
                 tracing::info!("tray: quit requested");
