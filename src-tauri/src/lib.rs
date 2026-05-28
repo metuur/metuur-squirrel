@@ -8,6 +8,8 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // R-1.1: create ~/.squirrel/ before anything else writes inside it.
+    logging::ensure_squirrel_dir().expect("create ~/.squirrel/");
     let _log_guard = logging::init();
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),

@@ -25,7 +25,7 @@ Conventions:
   - acceptance: Rust `info!`, `warn!`, `error!` macros append to `~/.squirrel/logs/squirrel.log` at INFO level; file is created on first write; existing log is appended to on subsequent runs.
   - verify: Start the app, observe log file exists, contains a startup line with ISO-8601 timestamp; restart and confirm the line is appended, not overwritten.
 
-- [ ] 0.4 Ensure `~/.squirrel/` is created on first launch (deps: 0.3, est: ~10m)
+- [x] 0.4 Ensure `~/.squirrel/` is created on first launch (deps: 0.3, est: ~10m)
   - acceptance: R-1.1 — WHEN the user launches Squirrel for the first time, THE SYSTEM SHALL create the directory `~/.squirrel/` if it does not exist.
   - verify: Delete `~/.squirrel/`, launch app, confirm the directory and `logs/` subdirectory now exist.
 

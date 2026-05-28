@@ -14,6 +14,18 @@ pub fn log_dir() -> PathBuf {
     squirrel_dir().join("logs")
 }
 
+/// Satisfies R-1.1: create `~/.squirrel/` if it does not exist. Called from
+/// `lib::run()` before logging init so the rest of startup can assume the
+/// config root exists. Idempotent.
+pub fn ensure_squirrel_dir() -> std::io::Result<PathBuf> {
+    ensure_dir_at(&squirrel_dir())
+}
+
+fn ensure_dir_at(dir: &Path) -> std::io::Result<PathBuf> {
+    std::fs::create_dir_all(dir)?;
+    Ok(dir.to_path_buf())
+}
+
 pub fn init() -> WorkerGuard {
     init_with_dir(&log_dir())
 }
@@ -131,5 +143,27 @@ mod tests {
         assert!(!nested.exists());
         let (_writer, _guard) = file_writer(&nested);
         assert!(nested.exists(), "init must create the full path");
+    }
+
+    #[test]
+    fn ensure_dir_at_creates_when_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("fake-home/.squirrel");
+        assert!(!target.exists());
+        let result = ensure_dir_at(&target).expect("must succeed");
+        assert_eq!(result, target);
+        assert!(target.exists(), "directory must be created");
+        assert!(target.is_dir(), "result must be a directory");
+    }
+
+    #[test]
+    fn ensure_dir_at_is_idempotent_when_already_present() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("already-exists");
+        std::fs::create_dir_all(&target).unwrap();
+        // Calling twice in a row must not error.
+        ensure_dir_at(&target).expect("first call");
+        ensure_dir_at(&target).expect("second call must not error on existing dir");
+        assert!(target.exists());
     }
 }
