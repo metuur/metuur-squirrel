@@ -46,7 +46,7 @@ export function SizeToggle() {
       onClick={toggle}
       title={isCompact ? "Expand to full size" : "Shrink to compact"}
       aria-label={isCompact ? "Expand" : "Compact"}
-      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200 transition-colors text-sm"
+      className="inline-flex items-center justify-center w-9 h-9 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200 transition-colors text-xl leading-none"
     >
       {isCompact ? "⊞" : "⊟"}
     </button>

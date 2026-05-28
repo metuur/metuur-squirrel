@@ -14,6 +14,16 @@ import { CaptureModal } from "./components/CaptureModal";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { SizeToggle } from "./components/SizeToggle";
 
+// Computed once per render — popup is short-lived, so a midnight tick across
+// open sessions isn't worth a setInterval.
+function formatToday(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function App() {
   const status = useBackend();
   // R-1.6: re-fetch widgets each time backend transitions to online.
@@ -37,16 +47,17 @@ export default function App() {
 
       {/* Top chrome — mirrors the web UI's brand row */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span aria-hidden className="text-lg">🐿️</span>
           <span className="font-bold text-sm text-slate-900 dark:text-slate-100">Squirrel</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 ml-2">
             Today
           </span>
-          <SizeToggle />
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+            · {formatToday()}
+          </span>
         </div>
+        <SizeToggle />
       </header>
 
       <FocusWidget home={home} online={status.online} />
