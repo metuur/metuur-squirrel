@@ -16,11 +16,19 @@ yarn-error.log*
 pnpm-debug.log*
 .pnpm-store/
 
-# Frontend build
+# Frontend build output (recursive — covers apps/*/dist, apps/*/app/dist, etc.)
 dist/
 dist-ssr/
 build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
 .vite/
+.turbo/
+.cache/
+coverage/
+*.tsbuildinfo
 
 # Python
 __pycache__/

@@ -1,9 +1,8 @@
+# dist/ is built output — ignored by the root .gitignore. The v0.5 model
+# of committing the precompiled bundle is replaced in the monorepo by
+# either `agent-pack/install.sh` rebuilding on install, or the Tauri
+# bundle shipping its own assets (see LLD Phase 2 § D9).
 node_modules/
 *.log
 .DS_Store
 .vite/
-
-# dist/ IS committed — it's the precompiled bundle the Python server serves.
-# Users who install the plugin should never need to run npm install + build.
-# Rebuild + commit dist/ whenever you change anything under src/.
-!dist/
