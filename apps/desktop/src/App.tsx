@@ -1,51 +1,34 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+// Phase 2 popup root. Partial mount — banner + 3 widgets.
+// CaptureButton (story 3.1) and OpenWebUIButton (story 4.2) land separately.
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+import { useBackend } from "./hooks/useBackend";
+import { useHome } from "./hooks/useHome";
+import { BackendStatusBanner } from "./components/BackendStatusBanner";
+import { FocusWidget } from "./components/FocusWidget";
+import { DeadlinesWidget } from "./components/DeadlinesWidget";
+import { ParakeetWidget } from "./components/ParakeetWidget";
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+export default function App() {
+  const status = useBackend();
+  // R-1.6: re-fetch widgets each time backend transitions to online.
+  // lastOnlineAt changes on every successful probe; widgets re-render
+  // on that, but only re-fetch when the key actually changes.
+  const triggerKey = status.lastOnlineAt ?? 0;
+  const home = useHome(triggerKey);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#0f172a",
+        color: "#f1f5f9",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <BackendStatusBanner status={status} />
+      <FocusWidget home={home} online={status.online} />
+      <DeadlinesWidget home={home} online={status.online} />
+      <ParakeetWidget triggerKey={triggerKey} online={status.online} />
     </main>
   );
 }
-
-export default App;
