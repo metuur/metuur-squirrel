@@ -1,8 +1,8 @@
-// Phase 2 popup root. Full mount per EARS R-2.1:
-// BackendStatusBanner, FocusWidget, DeadlinesWidget, ParakeetWidget,
-// CaptureButton, OpenWebUIButton — wrapped in a chrome that echoes the
-// web UI's top-bar (squirrel logo word + dashboard label).
+// Phase 2 popup root. Owns the capture-modal state so both the main
+// "+ Add a note" button and the per-task "+ note" buttons in
+// DeadlinesWidget can open it with the right project pre-selected.
 
+import { useState } from "react";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
@@ -10,6 +10,7 @@ import { FocusWidget } from "./components/FocusWidget";
 import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
+import { CaptureModal } from "./components/CaptureModal";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { SizeToggle } from "./components/SizeToggle";
 
@@ -18,6 +19,17 @@ export default function App() {
   // R-1.6: re-fetch widgets each time backend transitions to online.
   const triggerKey = status.lastOnlineAt ?? 0;
   const home = useHome(triggerKey);
+
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
+
+  const openCapture = (initialSlug: string | null) => {
+    setCaptureInitialSlug(initialSlug);
+    setCaptureOpen(true);
+  };
+
+  const projects = home.data?.projects ?? [];
+  const focusSlug = home.data?.focus?.slug ?? null;
 
   return (
     <main className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 flex flex-col">
@@ -38,19 +50,28 @@ export default function App() {
       </header>
 
       <FocusWidget home={home} online={status.online} />
-      <DeadlinesWidget home={home} online={status.online} />
+      <DeadlinesWidget
+        home={home}
+        online={status.online}
+        projects={projects}
+        onAddNote={openCapture}
+      />
       <ParakeetWidget triggerKey={triggerKey} online={status.online} />
 
       <div className="flex-1" />
 
       <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
-        <CaptureButton
-          online={status.online}
-          projects={home.data?.projects ?? []}
-          focusSlug={home.data?.focus?.slug ?? null}
-        />
+        <CaptureButton online={status.online} onClick={() => openCapture(null)} />
         <OpenWebUIButton />
       </div>
+
+      <CaptureModal
+        open={captureOpen}
+        onClose={() => setCaptureOpen(false)}
+        projects={projects}
+        focusSlug={focusSlug}
+        initialSlug={captureInitialSlug}
+      />
     </main>
   );
 }

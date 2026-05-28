@@ -2,13 +2,20 @@
 // styled like the web UI's PressingCard column header (red accent rule
 // above PRESSING items, white surface cards, mono id, red overdue chip).
 // EARS R-2.4, R-2.5, R-2.6, R-2.9.
+//
+// Each card has a "+ note" button that opens the capture modal pre-set
+// to the task's owning project (derived via prefix match against
+// /api/home.projects[]).
 
 import type { HomeState } from "../hooks/useHome";
-import type { PressingItem } from "../api/client";
+import type { PressingItem, ProjectListItem } from "../api/client";
+import { projectForTask } from "../lib/projectForTask";
 
 interface Props {
   home: HomeState;
   online: boolean;
+  projects: ProjectListItem[];
+  onAddNote: (initialSlug: string | null) => void;
 }
 
 function tail(item: PressingItem): string {
@@ -21,7 +28,7 @@ function tail(item: PressingItem): string {
   return item.urgency_label;
 }
 
-export function DeadlinesWidget({ home, online }: Props) {
+export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
   const pressing = home.data?.pressing ?? [];
   const top = pressing.slice(0, 3);
   const dimmed = !online;
@@ -49,13 +56,29 @@ export function DeadlinesWidget({ home, online }: Props) {
               <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-snug mt-0.5 line-clamp-2">
                 {item.title}
               </h4>
-              <div
-                className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium ${
-                  item.is_overdue ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"
-                }`}
-              >
-                <span aria-hidden>⏰</span>
-                {tail(item)}
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <span
+                  className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+                    item.is_overdue ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"
+                  }`}
+                >
+                  <span aria-hidden>⏰</span>
+                  {tail(item)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => online && onAddNote(projectForTask(item.id, projects))}
+                  disabled={!online}
+                  title={
+                    online
+                      ? `Add a note to ${projectForTask(item.id, projects) ?? "Inbox"}`
+                      : "Backend offline"
+                  }
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span aria-hidden>+</span>
+                  note
+                </button>
               </div>
             </li>
           ))}
