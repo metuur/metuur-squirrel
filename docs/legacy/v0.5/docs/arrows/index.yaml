@@ -1,0 +1,111 @@
+# docs/arrows/index.yaml — segment registry for the spec graph
+#
+# Each entry is a product-behavior segment owned by one LLD.
+# The prefix marks the segment boundary in @spec annotations.
+#
+# Status values:
+#   PROPOSED  — segment exists in HLD/LLD but no specs/code yet
+#   MAPPED    — specs exist; code/tests being added
+#   AUDITED   — full coherence audit passed; graph is clean
+#   DRIFT     — coherence audit failed; see drift field for details
+
+schema_version: 1
+last_updated: 2026-05-24
+
+arrows:
+  capture:
+    status: PROPOSED
+    prefix: CAPTURE-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy:
+      - vault
+    detail: capture.md
+    next: "Annotate skills/capture/ and skills/decision/ with @spec CAPTURE-* ids."
+    drift: null
+
+  session:
+    status: PROPOSED
+    prefix: SESSION-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy:
+      - vault
+      - integrations
+    detail: session.md
+    next: "Annotate skills/session-start/ and skills/session-end/ with @spec SESSION-* ids; wire tests."
+    drift: null
+
+  brief:
+    status: PROPOSED
+    prefix: BRIEF-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy:
+      - vault
+      - attention
+    detail: brief.md
+    next: "Close BRIEF-003 gap: switch /sq-status to consume lib/status_aggregator.py JSON."
+    drift: null
+
+  sync:
+    status: PROPOSED
+    prefix: SYNC-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy:
+      - vault
+    detail: sync.md
+    next: "Annotate lib/package_protocol.py and sync-out/sync-in skills with @spec SYNC-* ids."
+    drift: null
+
+  attention:
+    status: PROPOSED
+    prefix: ATTN-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks: []
+    blockedBy:
+      - vault
+    detail: attention.md
+    next: "Annotate lib/deadline_scanner.py, switch_tracker.py, estimate_buffer.py, chunk_helper.py and tests/test_foundation.py with @spec ATTN-* ids."
+    drift: null
+
+  vault:
+    status: PROPOSED
+    prefix: VAULT-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks:
+      - capture
+      - session
+      - brief
+      - sync
+      - attention
+    blockedBy: []
+    detail: vault.md
+    next: "Annotate lib/intent_parser.py, status_aggregator.py and tests/test_foundation.py with @spec VAULT-* ids; ship lib/tag_parser.py."
+    drift: null
+
+  integrations:
+    status: PROPOSED
+    prefix: INT-*
+    sampled: null
+    audited: null
+    audited_sha: null
+    blocks:
+      - session
+    blockedBy: []
+    detail: integrations.md
+    next: "Annotate .claude-plugin/plugin.json, hooks/hooks.json, commands/*.md with @spec INT-* ids; ship cb CLI (INT-008)."
+    drift: null

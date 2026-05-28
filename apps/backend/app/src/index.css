@@ -1,0 +1,28 @@
+/* All visual styles come from Tailwind via CDN (index.html).
+   This file holds the few app-wide tokens that aren't expressible in pure
+   utility classes — primarily reusable keyframes for modal animations. */
+
+:root {
+  color-scheme: light dark;
+}
+
+html, body, #root { height: 100%; }
+
+@keyframes sq-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sq-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sq-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.sq-fade-in   { animation: sq-fade-in 120ms ease-out; }
+.sq-pop       { animation: sq-pop 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+.sq-slide-in  { animation: sq-slide-in-right 200ms cubic-bezier(0.22, 1, 0.36, 1); }

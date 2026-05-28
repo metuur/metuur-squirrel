@@ -1,0 +1,2558 @@
+{
+  "edges": [
+    {
+      "from": "hld:segments",
+      "to": "lld:capture",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "hld:segments",
+      "to": "lld:session",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "hld:segments",
+      "to": "lld:brief",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "hld:segments",
+      "to": "lld:sync",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "hld:segments",
+      "to": "lld:attention",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "hld:segments",
+      "to": "lld:vault",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "hld:segments",
+      "to": "lld:integrations",
+      "type": "decomposes_to"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-001",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:282",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:288",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:296",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:307",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:313",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:319",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:327",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:335",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:343",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:351",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "test:tests/test_foundation.py:360",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-001",
+      "to": "code:lib/deadline_scanner.py:36",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-002",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-002",
+      "to": "test:tests/test_foundation.py:216",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-002",
+      "to": "test:tests/test_foundation.py:232",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-002",
+      "to": "test:tests/test_foundation.py:239",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-002",
+      "to": "test:tests/test_foundation.py:257",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-002",
+      "to": "code:lib/switch_tracker.py:36",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-003",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-003",
+      "to": "test:tests/test_attn_estimate.py:12",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-003",
+      "to": "test:tests/test_attn_estimate.py:20",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-003",
+      "to": "test:tests/test_attn_estimate.py:31",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-003",
+      "to": "test:tests/test_attn_estimate.py:56",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-003",
+      "to": "code:lib/estimate_buffer.py:68",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-004",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:13",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:21",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:30",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:36",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:44",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:51",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:58",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:71",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:84",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "test:tests/test_attn_chunk.py:92",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-004",
+      "to": "code:lib/chunk_helper.py:56",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-005",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-005",
+      "to": "test:tests/test_attn_focus.py:42",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-005",
+      "to": "test:tests/test_attn_focus.py:52",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-005",
+      "to": "test:tests/test_attn_focus.py:76",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-005",
+      "to": "test:tests/test_attn_focus.py:91",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-005",
+      "to": "test:tests/test_attn_focus.py:100",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-005",
+      "to": "code:lib/switch_tracker.py:103",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-006",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-006",
+      "to": "test:tests/test_attn_estimate.py:12",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-006",
+      "to": "test:tests/test_attn_estimate.py:20",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-006",
+      "to": "test:tests/test_attn_estimate.py:40",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-006",
+      "to": "test:tests/test_attn_estimate.py:47",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-006",
+      "to": "test:tests/test_attn_estimate.py:56",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-006",
+      "to": "code:lib/estimate_buffer.py:68",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-007",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-007",
+      "to": "code:lib/deadline_scanner.py:162",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-008",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-008",
+      "to": "test:tests/test_attn_focus.py:115",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-008",
+      "to": "test:tests/test_attn_focus.py:126",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-008",
+      "to": "test:tests/test_attn_focus.py:140",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-008",
+      "to": "test:tests/test_attn_focus.py:165",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-008",
+      "to": "test:tests/test_foundation.py:239",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-008",
+      "to": "code:lib/switch_tracker.py:36",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-009",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-010",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-011",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-012",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-012",
+      "to": "test:tests/test_attn_chunk.py:13",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-012",
+      "to": "test:tests/test_attn_chunk.py:58",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-012",
+      "to": "test:tests/test_attn_chunk.py:84",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:ATTN-012",
+      "to": "code:lib/chunk_helper.py:56",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:attention",
+      "to": "spec:ATTN-013",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:ATTN-013",
+      "to": "code:lib/estimate_buffer.py:68",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:brief",
+      "to": "spec:BRIEF-001",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:brief",
+      "to": "spec:BRIEF-002",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:brief",
+      "to": "spec:BRIEF-003",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:brief",
+      "to": "spec:BRIEF-004",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:brief",
+      "to": "spec:BRIEF-005",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:brief",
+      "to": "spec:BRIEF-006",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:capture",
+      "to": "spec:CAPTURE-001",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:capture",
+      "to": "spec:CAPTURE-002",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:capture",
+      "to": "spec:CAPTURE-003",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:capture",
+      "to": "spec:CAPTURE-004",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:capture",
+      "to": "spec:CAPTURE-005",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-001",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-002",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-003",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-004",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-005",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-006",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-007",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-008",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-009",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-010",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:integrations",
+      "to": "spec:INT-011",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-001",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-002",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-003",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-004",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-005",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-006",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-007",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SESSION-007",
+      "to": "code:lib/session_scanner.py:223",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-008",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SESSION-008",
+      "to": "code:lib/session_scanner.py:190",
+      "type": "implemented_by"
+    },
+    {
+      "from": "spec:SESSION-008",
+      "to": "code:lib/session_scanner.py:223",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-009",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-010",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-011",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SESSION-011",
+      "to": "code:lib/manifest_writer.py:30",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:session",
+      "to": "spec:SESSION-012",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-001",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "test:tests/test_sync_specs.py:49",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "test:tests/test_sync_specs.py:53",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "test:tests/test_sync_specs.py:57",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "test:tests/test_sync_specs.py:63",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "test:tests/test_sync_specs.py:71",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "test:tests/test_sync_specs.py:78",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-001",
+      "to": "code:lib/package_protocol.py:177",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-002",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-002",
+      "to": "test:tests/test_sync_specs.py:92",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-002",
+      "to": "test:tests/test_sync_specs.py:103",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-002",
+      "to": "test:tests/test_sync_specs.py:114",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-002",
+      "to": "code:lib/package_protocol.py:83",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-003",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-003",
+      "to": "test:tests/test_sync_specs.py:131",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-003",
+      "to": "test:tests/test_sync_specs.py:138",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-003",
+      "to": "test:tests/test_sync_specs.py:149",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-003",
+      "to": "test:tests/test_sync_specs.py:157",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-003",
+      "to": "test:tests/test_sync_specs.py:169",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-003",
+      "to": "code:lib/package_protocol.py:315",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-004",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-005",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-005",
+      "to": "test:tests/test_sync_specs.py:178",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-005",
+      "to": "test:tests/test_sync_specs.py:194",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-005",
+      "to": "code:lib/package_protocol.py:359",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-006",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-006",
+      "to": "test:tests/test_sync_specs.py:208",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-006",
+      "to": "test:tests/test_sync_specs.py:224",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-006",
+      "to": "code:lib/package_protocol.py:359",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-007",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-007",
+      "to": "test:tests/test_sync_specs.py:242",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-007",
+      "to": "code:lib/package_protocol.py:30",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:sync",
+      "to": "spec:SYNC-008",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:SYNC-008",
+      "to": "test:tests/test_sync_specs.py:256",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:SYNC-008",
+      "to": "code:lib/package_protocol.py:359",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-001",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:VAULT-001",
+      "to": "code:lib/status_aggregator.py:257",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-002",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-003",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:33",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:39",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:45",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:51",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:56",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:62",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:67",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:72",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:78",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:83",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:89",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:97",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:103",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:109",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "test:tests/test_vault_specs.py:117",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "code:lib/tag_parser.py:28",
+      "type": "implemented_by"
+    },
+    {
+      "from": "spec:VAULT-003",
+      "to": "code:lib/tag_parser.py:56",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-004",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-005",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "test:tests/test_vault_specs.py:134",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "test:tests/test_vault_specs.py:139",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "test:tests/test_vault_specs.py:146",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "test:tests/test_vault_specs.py:153",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "test:tests/test_vault_specs.py:158",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "code:lib/status_aggregator.py:257",
+      "type": "implemented_by"
+    },
+    {
+      "from": "spec:VAULT-005",
+      "to": "code:lib/intent_parser.py:366",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-006",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:VAULT-006",
+      "to": "code:lib/manifest_writer.py:30",
+      "type": "implemented_by"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-007",
+      "type": "specifies"
+    },
+    {
+      "from": "lld:vault",
+      "to": "spec:VAULT-008",
+      "type": "specifies"
+    },
+    {
+      "from": "spec:VAULT-008",
+      "to": "test:tests/test_vault_specs.py:199",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-008",
+      "to": "test:tests/test_vault_specs.py:238",
+      "type": "verified_by"
+    },
+    {
+      "from": "spec:VAULT-008",
+      "to": "code:lib/status_aggregator.py:27",
+      "type": "implemented_by"
+    },
+    {
+      "from": "spec:VAULT-008",
+      "to": "code:lib/intent_parser.py:25",
+      "type": "implemented_by"
+    },
+    {
+      "from": "spec:VAULT-008",
+      "to": "code:lib/manifest_writer.py:15",
+      "type": "implemented_by"
+    },
+    {
+      "from": "spec:VAULT-008",
+      "to": "code:lib/tag_parser.py:23",
+      "type": "implemented_by"
+    }
+  ],
+  "generated_at": "2026-05-25T14:42:54Z",
+  "metadata": {
+    "hld_topic_count": 5,
+    "orphan_count": 0,
+    "scanner_summary": {
+      "helper_annotations": 4,
+      "malformed_ids": 0,
+      "missing_code": 0,
+      "missing_tests": 7,
+      "orphans": 0,
+      "specs_defined": 63,
+      "specs_with_code": 25,
+      "specs_with_test": 18
+    },
+    "segment_count": 7,
+    "spec_count": 63
+  },
+  "nodes": [
+    {
+      "anchor": "vision",
+      "id": "hld:vision",
+      "line": 7,
+      "source": "/Users/javierbenavides/others/ai-agents/adhd-context-bridge/docs/high-level-design.md#vision",
+      "title": "Vision",
+      "type": "hld"
+    },
+    {
+      "anchor": "principles",
+      "id": "hld:principles",
+      "line": 11,
+      "source": "/Users/javierbenavides/others/ai-agents/adhd-context-bridge/docs/high-level-design.md#principles",
+      "title": "Principles",
+      "type": "hld"
+    },
+    {
+      "anchor": "segments",
+      "id": "hld:segments",
+      "line": 23,
+      "source": "/Users/javierbenavides/others/ai-agents/adhd-context-bridge/docs/high-level-design.md#segments",
+      "title": "Segments",
+      "type": "hld"
+    },
+    {
+      "anchor": "cross-segment-invariants",
+      "id": "hld:cross-segment-invariants",
+      "line": 37,
+      "source": "/Users/javierbenavides/others/ai-agents/adhd-context-bridge/docs/high-level-design.md#cross-segment-invariants",
+      "title": "Cross-Segment Invariants",
+      "type": "hld"
+    },
+    {
+      "anchor": "out-of-scope",
+      "id": "hld:out-of-scope",
+      "line": 49,
+      "source": "/Users/javierbenavides/others/ai-agents/adhd-context-bridge/docs/high-level-design.md#out-of-scope",
+      "title": "Out of Scope",
+      "type": "hld"
+    },
+    {
+      "id": "lld:capture",
+      "prefix": "CAPTURE-*",
+      "segment": "capture",
+      "source": "docs/llds/capture.md",
+      "title": "LLD: capture",
+      "type": "lld"
+    },
+    {
+      "id": "lld:session",
+      "prefix": "SESSION-*",
+      "segment": "session",
+      "source": "docs/llds/session.md",
+      "title": "LLD: session",
+      "type": "lld"
+    },
+    {
+      "id": "lld:brief",
+      "prefix": "BRIEF-*",
+      "segment": "brief",
+      "source": "docs/llds/brief.md",
+      "title": "LLD: brief",
+      "type": "lld"
+    },
+    {
+      "id": "lld:sync",
+      "prefix": "SYNC-*",
+      "segment": "sync",
+      "source": "docs/llds/sync.md",
+      "title": "LLD: sync",
+      "type": "lld"
+    },
+    {
+      "id": "lld:attention",
+      "prefix": "ATTN-*",
+      "segment": "attention",
+      "source": "docs/llds/attention.md",
+      "title": "LLD: attention",
+      "type": "lld"
+    },
+    {
+      "id": "lld:vault",
+      "prefix": "VAULT-*",
+      "segment": "vault",
+      "source": "docs/llds/vault.md",
+      "title": "LLD: vault",
+      "type": "lld"
+    },
+    {
+      "id": "lld:integrations",
+      "prefix": "INT-*",
+      "segment": "integrations",
+      "source": "docs/llds/integrations.md",
+      "title": "LLD: integrations",
+      "type": "lld"
+    },
+    {
+      "id": "spec:ATTN-001",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:11",
+      "status": "implemented",
+      "title": "When deadlines are scanned, the system SHALL classify each item into exactly one of six parakeet levels: `critical`, `urgent`, `soon`, `upcoming`, `eventual`, `distant`. Classification SHALL be computed by `lib/deadline_scanner.py` from intent `due_date` and the current date, not inferred by the LLM.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_foundation.py:282",
+      "owner_kind": "test",
+      "owner_name": "test_urgency_levels_constant_matches_spec",
+      "source": "tests/test_foundation.py:282",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:288",
+      "owner_kind": "test",
+      "owner_name": "test_overdue_classified_as_critical",
+      "source": "tests/test_foundation.py:288",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:296",
+      "owner_kind": "test",
+      "owner_name": "test_critical_imminent",
+      "source": "tests/test_foundation.py:296",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:307",
+      "owner_kind": "test",
+      "owner_name": "test_urgent_today_many_hours",
+      "source": "tests/test_foundation.py:307",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:313",
+      "owner_kind": "test",
+      "owner_name": "test_urgent_tomorrow",
+      "source": "tests/test_foundation.py:313",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:319",
+      "owner_kind": "test",
+      "owner_name": "test_soon",
+      "source": "tests/test_foundation.py:319",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:327",
+      "owner_kind": "test",
+      "owner_name": "test_upcoming",
+      "source": "tests/test_foundation.py:327",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:335",
+      "owner_kind": "test",
+      "owner_name": "test_eventual",
+      "source": "tests/test_foundation.py:335",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:343",
+      "owner_kind": "test",
+      "owner_name": "test_distant",
+      "source": "tests/test_foundation.py:343",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:351",
+      "owner_kind": "test",
+      "owner_name": "test_deterministic",
+      "source": "tests/test_foundation.py:351",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:360",
+      "owner_kind": "test",
+      "owner_name": "test_each_result_is_canonical",
+      "source": "tests/test_foundation.py:360",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/deadline_scanner.py:36",
+      "owner_kind": "function",
+      "owner_name": "classify_urgency",
+      "source": "lib/deadline_scanner.py:36",
+      "type": "code"
+    },
+    {
+      "id": "spec:ATTN-002",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:12",
+      "status": "implemented",
+      "title": "When the active project changes (via `/sq-start PROYECTO-B` while project A is active), the system SHALL append a single JSON line to `vault/.squirrel/switches.jsonl` containing `from`, `to`, `timestamp`, and optional `reason`.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_foundation.py:216",
+      "owner_kind": "test",
+      "owner_name": "test_attn002_required_fields",
+      "source": "tests/test_foundation.py:216",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:232",
+      "owner_kind": "test",
+      "owner_name": "test_attn002_from_is_optional",
+      "source": "tests/test_foundation.py:232",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:239",
+      "owner_kind": "test",
+      "owner_name": "test_attn002_append_only",
+      "source": "tests/test_foundation.py:239",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_foundation.py:257",
+      "owner_kind": "test",
+      "owner_name": "test_attn002_jsonl_is_valid_json_per_line",
+      "source": "tests/test_foundation.py:257",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/switch_tracker.py:36",
+      "owner_kind": "function",
+      "owner_name": "record_switch",
+      "source": "lib/switch_tracker.py:36",
+      "type": "code"
+    },
+    {
+      "id": "spec:ATTN-003",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:13",
+      "status": "implemented",
+      "title": "When the user supplies a raw time estimate, the system SHALL return both the raw estimate and an ADHD-buffered estimate (multiplier \u00d72\u20133 via `lib/estimate_buffer.py`), and SHALL surface the multiplier used.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_attn_estimate.py:12",
+      "owner_kind": "test",
+      "owner_name": "test_adjust_estimate_has_required_keys",
+      "source": "tests/test_attn_estimate.py:12",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_estimate.py:20",
+      "owner_kind": "test",
+      "owner_name": "test_adjust_estimate_keys_present_for_all_ranges",
+      "source": "tests/test_attn_estimate.py:20",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_estimate.py:31",
+      "owner_kind": "test",
+      "owner_name": "test_multiplier_within_spec_bounds",
+      "source": "tests/test_attn_estimate.py:31",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_estimate.py:56",
+      "owner_kind": "test",
+      "owner_name": "test_adjusted_matches_raw_times_multiplier",
+      "source": "tests/test_attn_estimate.py:56",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/estimate_buffer.py:68",
+      "owner_kind": "function",
+      "owner_name": "adjust_estimate",
+      "source": "lib/estimate_buffer.py:68",
+      "type": "code"
+    },
+    {
+      "id": "spec:ATTN-004",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:14",
+      "status": "implemented",
+      "title": "When a task's estimated duration exceeds a configurable chunk threshold (default 2 hours), the system SHALL propose a decomposition into ADHD-friendly chunks via `lib/chunk_helper.py`, with one stated \"physical next action\" per chunk.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:13",
+      "owner_kind": "test",
+      "owner_name": "test_above_threshold_returns_phases_and_chunks",
+      "source": "tests/test_attn_chunk.py:13",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:21",
+      "owner_kind": "test",
+      "owner_name": "test_each_chunk_has_next_physical_action",
+      "source": "tests/test_attn_chunk.py:21",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:30",
+      "owner_kind": "test",
+      "owner_name": "test_at_threshold_returns_below_threshold",
+      "source": "tests/test_attn_chunk.py:30",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:36",
+      "owner_kind": "test",
+      "owner_name": "test_below_threshold_returns_below_threshold",
+      "source": "tests/test_attn_chunk.py:36",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:44",
+      "owner_kind": "test",
+      "owner_name": "test_custom_threshold_respected_above",
+      "source": "tests/test_attn_chunk.py:44",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:51",
+      "owner_kind": "test",
+      "owner_name": "test_custom_threshold_respected_below",
+      "source": "tests/test_attn_chunk.py:51",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:58",
+      "owner_kind": "test",
+      "owner_name": "test_custom_phases_with_threshold_above",
+      "source": "tests/test_attn_chunk.py:58",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:71",
+      "owner_kind": "test",
+      "owner_name": "test_custom_phases_with_threshold_below",
+      "source": "tests/test_attn_chunk.py:71",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:84",
+      "owner_kind": "test",
+      "owner_name": "test_cli_hours_4_returns_valid_json",
+      "source": "tests/test_attn_chunk.py:84",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_chunk.py:92",
+      "owner_kind": "test",
+      "owner_name": "test_cli_hours_1_returns_below_threshold",
+      "source": "tests/test_attn_chunk.py:92",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/chunk_helper.py:56",
+      "owner_kind": "function",
+      "owner_name": "chunk_task",
+      "source": "lib/chunk_helper.py:56",
+      "type": "code"
+    },
+    {
+      "id": "spec:ATTN-005",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:15",
+      "status": "implemented",
+      "title": "When focus score for a window W is requested, the system SHALL compute it from `switches.jsonl` over W, and the same input data and window SHALL yield the same score (deterministic).",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:42",
+      "owner_kind": "none",
+      "owner_name": "",
+      "source": "tests/test_attn_focus.py:42",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:52",
+      "owner_kind": "test",
+      "owner_name": "test_window_spanning_two_days",
+      "source": "tests/test_attn_focus.py:52",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:76",
+      "owner_kind": "test",
+      "owner_name": "test_empty_window_returns_100",
+      "source": "tests/test_attn_focus.py:76",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:91",
+      "owner_kind": "test",
+      "owner_name": "test_session_start_only_returns_100",
+      "source": "tests/test_attn_focus.py:91",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:100",
+      "owner_kind": "test",
+      "owner_name": "test_window_result_contains_required_keys",
+      "source": "tests/test_attn_focus.py:100",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/switch_tracker.py:103",
+      "owner_kind": "function",
+      "owner_name": "compute_focus_score_for_window",
+      "source": "lib/switch_tracker.py:103",
+      "type": "code"
+    },
+    {
+      "id": "spec:ATTN-006",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:16",
+      "status": "implemented",
+      "title": "The system SHALL NOT silently apply the ADHD buffer; if a buffered estimate is reported, the raw value and multiplier SHALL also be reported.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_attn_estimate.py:40",
+      "owner_kind": "test",
+      "owner_name": "test_raw_estimate_matches_input",
+      "source": "tests/test_attn_estimate.py:40",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_estimate.py:47",
+      "owner_kind": "test",
+      "owner_name": "test_raw_estimate_hours",
+      "source": "tests/test_attn_estimate.py:47",
+      "type": "test"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:ATTN-007",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:17",
+      "status": "implemented",
+      "title": "When `/sq-where-am-i` or `/sq-status` runs, the attention segment SHALL surface only `critical` and `urgent` deadlines by default; lower levels SHALL be suppressed unless explicitly requested.",
+      "type": "spec"
+    },
+    {
+      "id": "code:lib/deadline_scanner.py:162",
+      "owner_kind": "function",
+      "owner_name": "main",
+      "source": "lib/deadline_scanner.py:162",
+      "type": "code"
+    },
+    {
+      "id": "spec:ATTN-008",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:18",
+      "status": "implemented",
+      "title": "The `switches.jsonl` ledger SHALL be append-only; the system SHALL NOT rewrite, reorder, or truncate prior entries.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:115",
+      "owner_kind": "none",
+      "owner_name": "",
+      "source": "tests/test_attn_focus.py:115",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:126",
+      "owner_kind": "test",
+      "owner_name": "test_first_line_unchanged_after_subsequent_write",
+      "source": "tests/test_attn_focus.py:126",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:140",
+      "owner_kind": "test",
+      "owner_name": "test_concurrent_write_preserves_existing_lines",
+      "source": "tests/test_attn_focus.py:140",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_attn_focus.py:165",
+      "owner_kind": "test",
+      "owner_name": "test_no_truncation_across_multiple_sessions",
+      "source": "tests/test_attn_focus.py:165",
+      "type": "test"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:ATTN-009",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:19",
+      "status": "implemented",
+      "title": "When `deadline_scanner.py` returns items at `critical` or `urgent` level, the system SHALL display a macOS notification via `companions/macos-reminders/reminder-daemon.sh` with \"Focus now\", \"Snooze\", and \"Dismiss\" buttons. *(Unit 2 \u2014 R-2.1)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:ATTN-010",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:20",
+      "status": "implemented",
+      "title": "While the macOS reminder daemon is running, the system SHALL suppress notifications outside the configured workday window; if the per-window dialog cap is reached, the system SHALL suppress further notifications until the next window opens. *(Unit 2 \u2014 R-2.2, R-2.3)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:ATTN-011",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:21",
+      "status": "implemented",
+      "title": "Where the host OS is not macOS, the system SHALL skip companion installation and log a no-op message rather than failing. *(Unit 2 \u2014 R-2.6)*",
+      "type": "spec"
+    },
+    {
+      "id": "spec:ATTN-012",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:22",
+      "status": "implemented",
+      "title": "When the user invokes `/sq-chunk`, the system SHALL execute `python3 lib/chunk_helper.py` and display the resulting task breakdown as a slash command response. *(Unit 3 \u2014 R-3.1)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:ATTN-013",
+      "segment": "attention",
+      "source": "docs/specs/attention-specs.md:23",
+      "status": "implemented",
+      "title": "When the user invokes `/sq-estimate`, the system SHALL execute `python3 lib/estimate_buffer.py` and display the buffered estimates (including raw value and multiplier) as a slash command response. *(Unit 3 \u2014 R-3.2)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:BRIEF-001",
+      "segment": "brief",
+      "source": "docs/specs/brief-specs.md:11",
+      "status": "implemented",
+      "title": "When `/sq-brief PROYECTO` is invoked, the system SHALL emit a Markdown brief with six sections in this stable order: `now`, `done`, `next`, `decisions`, `steps`, `context`.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:BRIEF-002",
+      "segment": "brief",
+      "source": "docs/specs/brief-specs.md:12",
+      "status": "implemented",
+      "title": "When `/sq-where-am-i` is invoked, the system SHALL produce a per-project WIP summary including last activity timestamp and next action, AND SHALL recommend exactly one project as the next focus with a stated rationale.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:BRIEF-003",
+      "segment": "brief",
+      "source": "docs/specs/brief-specs.md:13",
+      "status": "implemented",
+      "title": "When `/sq-status` is invoked, the system SHALL source its data from `lib/status_aggregator.py` JSON output rather than re-parsing vault files in the LLM. (*Current gap: command is LLM-only; see research note 2026-05-24.*)",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:BRIEF-004",
+      "segment": "brief",
+      "source": "docs/specs/brief-specs.md:14",
+      "status": "implemented",
+      "title": "The system SHALL NOT mutate any vault file during a brief operation; brief operations are strictly read-only.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:BRIEF-005",
+      "segment": "brief",
+      "source": "docs/specs/brief-specs.md:15",
+      "status": "implemented",
+      "title": "When the rendered brief would exceed the per-command token budget (per README), the system SHALL truncate sections with an explicit `[truncated: N items]` marker rather than silently dropping content.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:BRIEF-006",
+      "segment": "brief",
+      "source": "docs/specs/brief-specs.md:16",
+      "status": "implemented",
+      "title": "When `status_aggregator.py` exits with a non-zero code, the system SHALL surface the error message to the user and exit without crashing the `/sq-status` command. *(Unit 1 \u2014 R-1.2)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:CAPTURE-001",
+      "segment": "capture",
+      "source": "docs/specs/capture-specs.md:11",
+      "status": "implemented",
+      "title": "When the user invokes `/sq-capture` or expresses an intent to save a note (e.g. \"anot\u00e1 esto\", \"guarda esto\"), the system SHALL create a Markdown file in the vault with a single valid semantic tag, the user's content verbatim, and an ISO-8601 `creado` timestamp.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:CAPTURE-002",
+      "segment": "capture",
+      "source": "docs/specs/capture-specs.md:12",
+      "status": "implemented",
+      "title": "When the user expresses an architectural decision (matched by `UserPromptSubmit` patterns such as \"voy a usar X\", \"decid\u00ed Y\", \"eleg\u00ed Z porque\"), the system SHALL propose an ADR-ligero note containing context, alternatives, decision, and consequences, and SHALL request confirmation before writing.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:CAPTURE-003",
+      "segment": "capture",
+      "source": "docs/specs/capture-specs.md:13",
+      "status": "implemented",
+      "title": "The system SHALL NOT write any capture note to the vault without a tag that validates against the schema owned by `vault` (`VAULT-003`).",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:CAPTURE-004",
+      "segment": "capture",
+      "source": "docs/specs/capture-specs.md:14",
+      "status": "implemented",
+      "title": "When two captures with identical content target the same project within a configurable dedup window (default 60s), the system SHALL update the existing note rather than create a duplicate.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:CAPTURE-005",
+      "segment": "capture",
+      "source": "docs/specs/capture-specs.md:15",
+      "status": "implemented",
+      "title": "The system SHALL preserve the user's original wording in the note body and SHALL NOT summarize or rephrase captured content at capture time.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-001",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:11",
+      "status": "implemented",
+      "title": "The plugin SHALL be loadable in Claude Code by placement under `~/.claude/plugins/squirrel/` plus a valid `.claude-plugin/plugin.json`, without requiring modification of any global Claude Code configuration.",
+      "type": "spec"
+    },
+    {
+      "id": "spec:INT-002",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:12",
+      "status": "gap",
+      "title": "The plugin SHALL be loadable in Codex CLI via a `codex-plugin.toml` manifest using the same `skills/`, `commands/`, and `lib/` directories unchanged. (*Planned; not yet shipped.*)",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-003",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:13",
+      "status": "implemented",
+      "title": "The system SHALL register host-side hooks for `SessionStart`, `UserPromptSubmit` (with at least 3 matchers for capture / decision / inactivity), and `Stop`, dispatching each to the appropriate skill in the owning behavior segment.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-004",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:14",
+      "status": "implemented",
+      "title": "Skill body files (`SKILL.md`) SHALL remain byte-identical across hosts; host-specific glue SHALL live only in the `integrations` segment (manifests, hook formats, command paths).",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-005",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:15",
+      "status": "implemented",
+      "title": "When `/sq-init` runs, the system SHALL create the user configuration file at `~/.squirrel/config.toml` from `config/squirrel.toml.example` if it does not already exist, and SHALL NOT overwrite an existing config.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-006",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:16",
+      "status": "implemented",
+      "title": "The system SHALL NOT branch on host identity inside skill bodies; any host-dependent behavior SHALL be delegated to an adapter in `integrations`.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-007",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:17",
+      "status": "implemented",
+      "title": "All host hooks SHALL deliver a normalized payload to the invoked skill containing at least `event`, `project` (if resolvable), and `timestamp`.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-008",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:18",
+      "status": "implemented",
+      "title": "The system SHALL expose a standalone `cb` CLI that invokes skill functionality without requiring an agent host; any LLM-judgment step inside the CLI SHALL be delegated to `claude -p` (one-shot) rather than a persistent runtime.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-009",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:19",
+      "status": "implemented",
+      "title": "The system SHALL NOT ship an MCP server; an MCP-based invocation path is out of scope per HLD.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-010",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:20",
+      "status": "implemented",
+      "title": "When the user runs `/sq-reminders-install`, the system SHALL register the launchd plist under `companions/macos-reminders/` and start the daemon via `launchctl bootstrap`. *(Unit 2 \u2014 R-2.4)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:INT-011",
+      "segment": "integrations",
+      "source": "docs/specs/integrations-specs.md:21",
+      "status": "implemented",
+      "title": "When the user runs `/sq-reminders-uninstall`, the system SHALL unload the launchd service and remove the plist from the LaunchAgents directory. *(Unit 2 \u2014 R-2.5)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-001",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:11",
+      "status": "implemented",
+      "title": "When a session starts (via the `SessionStart` hook or `/sq-start PROYECTO`), the system SHALL locate the most recent shutdown note for the active project and present a 5\u20137 line loading summary covering: what is being worked on, what was last done, what is next, key decisions, and the next physical action.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-002",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:12",
+      "status": "implemented",
+      "title": "When a session ends (via the `Stop` hook or `/sq-end`), the system SHALL produce a shutdown note containing the required fields \u2014 `estado`, `next_physical_action`, `hip\u00f3tesis_activa`, `bloqueado_por`, `decisiones_hoy` \u2014 and SHALL append it to the active intent file.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-003",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:13",
+      "status": "implemented",
+      "title": "When `/sq-end` is invoked, the system SHALL offer the user the option to leave one item deliberately incomplete (Hemingway trick) to ease re-entry.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-004",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:14",
+      "status": "implemented",
+      "title": "When `/sq-start` cannot unambiguously resolve a single active project, the system SHALL ask the user to select one before producing any loading summary.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-005",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:15",
+      "status": "implemented",
+      "title": "The system SHALL NOT overwrite or remove prior shutdown notes when writing a new one; shutdown notes are append-only within the intent file.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-006",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:16",
+      "status": "implemented",
+      "title": "When `/sq-start PROYECTO` is invoked twice within the same calendar day without intervening session activity, the system SHALL produce an identical loading summary (re-entry idempotency).",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:SESSION-007",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:17",
+      "status": "implemented",
+      "title": "When the user runs `/sq-recover`, the system SHALL read `vault/.squirrel/session-manifest.jsonl` as the primary source, falling back to `~/.claude/projects/*.jsonl` for sessions within the last 72 h. *(Unit 4 \u2014 R-4.1)*",
+      "type": "spec"
+    },
+    {
+      "id": "code:lib/session_scanner.py:223",
+      "owner_kind": "function",
+      "owner_name": "scan_sessions",
+      "source": "lib/session_scanner.py:223",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:SESSION-008",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:18",
+      "status": "implemented",
+      "title": "When recovering a session, the system SHALL exclude any session whose source environment is not listed in `allowed_inbound_environments`. *(Unit 4 \u2014 R-4.2)*",
+      "type": "spec"
+    },
+    {
+      "id": "code:lib/session_scanner.py:190",
+      "owner_kind": "function",
+      "owner_name": "_filter_by_environment",
+      "source": "lib/session_scanner.py:190",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-009",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:19",
+      "status": "implemented",
+      "title": "When generating a session summary via `/sq-recover`, the system SHALL shell out to `claude -p` and cache the result at `vault/.squirrel/llm-cache/{hash}.md`, keyed by JSONL content hash. *(Unit 4 \u2014 R-4.3)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-010",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:20",
+      "status": "implemented",
+      "title": "Where `compliance_mode` is enabled, the system SHALL redact corporate-environment data before passing session content to `claude -p`. *(Unit 4 \u2014 R-4.4)*",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:SESSION-011",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:21",
+      "status": "implemented",
+      "title": "When a `PostToolUse:Edit` hook fires during a session, the system SHALL append a structured manifest entry to `vault/.squirrel/session-manifest.jsonl`. *(Unit 4 \u2014 R-4.5)*",
+      "type": "spec"
+    },
+    {
+      "id": "code:lib/manifest_writer.py:30",
+      "owner_kind": "function",
+      "owner_name": "main",
+      "source": "lib/manifest_writer.py:30",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SESSION-012",
+      "segment": "session",
+      "source": "docs/specs/session-specs.md:22",
+      "status": "implemented",
+      "title": "When `/sq-recover` completes, the system SHALL present exactly these disposition options: append-to-shutdown / inbox / project / raw / discard. *(Unit 4 \u2014 R-4.6)*",
+      "type": "spec"
+    },
+    {
+      "id": "spec:SYNC-001",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:11",
+      "status": "implemented",
+      "title": "When `/sq-sync-out --scope=<scope>` is invoked, the system SHALL emit a `SQUIRREL-PACKAGE` block containing the header (from, to, generated_at, scope, intent), a SHA-256 hash over the canonicalized payload, and one note section per included artifact.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:49",
+      "owner_kind": "test",
+      "owner_name": "test_start_marker_is_squirrel_package",
+      "source": "tests/test_sync_specs.py:49",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:53",
+      "owner_kind": "test",
+      "owner_name": "test_end_marker_is_squirrel_package",
+      "source": "tests/test_sync_specs.py:53",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:57",
+      "owner_kind": "test",
+      "owner_name": "test_generate_contains_start_and_end_markers",
+      "source": "tests/test_sync_specs.py:57",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:63",
+      "owner_kind": "test",
+      "owner_name": "test_generate_contains_required_header_fields",
+      "source": "tests/test_sync_specs.py:63",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:71",
+      "owner_kind": "test",
+      "owner_name": "test_generate_includes_sha256",
+      "source": "tests/test_sync_specs.py:71",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:78",
+      "owner_kind": "test",
+      "owner_name": "test_generate_one_section_per_file",
+      "source": "tests/test_sync_specs.py:78",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/package_protocol.py:177",
+      "owner_kind": "function",
+      "owner_name": "generate_package",
+      "source": "lib/package_protocol.py:177",
+      "type": "code"
+    },
+    {
+      "id": "spec:SYNC-002",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:12",
+      "status": "implemented",
+      "title": "Every emitted package SHALL declare its scope explicitly; the system SHALL NOT support implicit \"everything I touched\" packages.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:92",
+      "owner_kind": "test",
+      "owner_name": "test_single_tag_scope",
+      "source": "tests/test_sync_specs.py:92",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:103",
+      "owner_kind": "test",
+      "owner_name": "test_project_wildcard_scope",
+      "source": "tests/test_sync_specs.py:103",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:114",
+      "owner_kind": "test",
+      "owner_name": "test_empty_scope_returns_empty",
+      "source": "tests/test_sync_specs.py:114",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/package_protocol.py:83",
+      "owner_kind": "function",
+      "owner_name": "collect_files_by_scope",
+      "source": "lib/package_protocol.py:83",
+      "type": "code"
+    },
+    {
+      "id": "spec:SYNC-003",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:13",
+      "status": "implemented",
+      "title": "When a pasted block beginning with `<!-- SQUIRREL-PACKAGE` is detected, the system SHALL verify the declared SHA-256 against the canonicalized payload before any vault mutation. On mismatch, the system SHALL refuse to apply and SHALL surface the discrepancy.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:131",
+      "owner_kind": "test",
+      "owner_name": "test_valid_package_passes",
+      "source": "tests/test_sync_specs.py:131",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:138",
+      "owner_kind": "test",
+      "owner_name": "test_tampered_content_fails_hash_check",
+      "source": "tests/test_sync_specs.py:138",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:149",
+      "owner_kind": "test",
+      "owner_name": "test_missing_header_field_fails",
+      "source": "tests/test_sync_specs.py:149",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:157",
+      "owner_kind": "test",
+      "owner_name": "test_unsafe_path_fails",
+      "source": "tests/test_sync_specs.py:157",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:169",
+      "owner_kind": "test",
+      "owner_name": "test_missing_start_marker_raises",
+      "source": "tests/test_sync_specs.py:169",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/package_protocol.py:315",
+      "owner_kind": "function",
+      "owner_name": "validate_package",
+      "source": "lib/package_protocol.py:315",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:SYNC-004",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:14",
+      "status": "implemented",
+      "title": "Before applying any verified package, the system SHALL present a unified diff of intended vault changes and SHALL require explicit user confirmation.",
+      "type": "spec"
+    },
+    {
+      "id": "spec:SYNC-005",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:15",
+      "status": "implemented",
+      "title": "When a package is successfully applied, the system SHALL write exactly one audit record at `.squirrel/applied/YYYY-MM-DD-<hash>.json` containing the package hash, source, scope, applied operations, and timestamp.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:178",
+      "owner_kind": "test",
+      "owner_name": "test_audit_record_created",
+      "source": "tests/test_sync_specs.py:178",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:194",
+      "owner_kind": "test",
+      "owner_name": "test_dry_run_no_audit_record",
+      "source": "tests/test_sync_specs.py:194",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/package_protocol.py:359",
+      "owner_kind": "function",
+      "owner_name": "apply_package",
+      "source": "lib/package_protocol.py:359",
+      "type": "code"
+    },
+    {
+      "id": "spec:SYNC-006",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:16",
+      "status": "implemented",
+      "title": "Applying the same package twice SHALL produce identical vault state (idempotency); a second apply SHALL be a no-op with respect to file contents.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:208",
+      "owner_kind": "test",
+      "owner_name": "test_second_apply_is_noop",
+      "source": "tests/test_sync_specs.py:208",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:224",
+      "owner_kind": "test",
+      "owner_name": "test_different_package_is_not_noop",
+      "source": "tests/test_sync_specs.py:224",
+      "type": "test"
+    },
+    {
+      "id": "spec:SYNC-007",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:17",
+      "status": "implemented",
+      "title": "The system SHALL NOT initiate any network request to transport packages between environments; the only handoffs SHALL be OS-level (clipboard, `mailto:` draft) initiated by the user.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:242",
+      "owner_kind": "test",
+      "owner_name": "test_generate_does_not_import_network_modules",
+      "source": "tests/test_sync_specs.py:242",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/package_protocol.py:30",
+      "owner_kind": "none",
+      "owner_name": "",
+      "source": "lib/package_protocol.py:30",
+      "type": "code"
+    },
+    {
+      "id": "spec:SYNC-008",
+      "segment": "sync",
+      "source": "docs/specs/sync-specs.md:18",
+      "status": "implemented",
+      "title": "When a single note within a package fails to apply, the system SHALL leave the vault unchanged for that note (atomic per-note apply) and SHALL report the failure to the user.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_sync_specs.py:256",
+      "owner_kind": "test",
+      "owner_name": "test_path_traversal_fails_single_note_only",
+      "source": "tests/test_sync_specs.py:256",
+      "type": "test"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:VAULT-001",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:11",
+      "status": "implemented",
+      "title": "The vault SHALL be organized in a PARA-style layout with top-level folders `01-Proyectos-Activos/`, `02-Areas/`, `03-Recursos/`, `04-Archivo/`, rooted at a user-configured path.",
+      "type": "spec"
+    },
+    {
+      "id": "code:lib/status_aggregator.py:257",
+      "owner_kind": "function",
+      "owner_name": "aggregate_status",
+      "source": "lib/status_aggregator.py:257",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:VAULT-002",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:13",
+      "status": "implemented",
+      "title": "Every intent file SHALL carry a YAML frontmatter block with the required fields `id`, `proyecto`, `estado`, `creado`, `tags`. Optional fields SHALL be documented in `templates/intent.md`.",
+      "type": "spec"
+    },
+    {
+      "id": "spec:VAULT-003",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:15",
+      "status": "implemented",
+      "title": "The system SHALL accept only tags that match the schema `PROYECTO-SUB\u00c1REA-COMPONENTE-NNN` (uppercase ASCII segments joined by `-`, terminating in a zero-padded numeric suffix). `lib/tag_parser.py` SHALL be the sole authority for validation.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:33",
+      "owner_kind": "test",
+      "owner_name": "test_valid_tag_returns_true_and_none",
+      "source": "tests/test_vault_specs.py:33",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:39",
+      "owner_kind": "test",
+      "owner_name": "test_valid_tag_full_length",
+      "source": "tests/test_vault_specs.py:39",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:45",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_no_leading_zeros",
+      "source": "tests/test_vault_specs.py:45",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:51",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_lowercase",
+      "source": "tests/test_vault_specs.py:51",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:56",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_only_two_named_segments",
+      "source": "tests/test_vault_specs.py:56",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:62",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_none",
+      "source": "tests/test_vault_specs.py:62",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:67",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_empty_string",
+      "source": "tests/test_vault_specs.py:67",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:72",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_four_digit_suffix",
+      "source": "tests/test_vault_specs.py:72",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:78",
+      "owner_kind": "test",
+      "owner_name": "test_invalid_two_digit_suffix",
+      "source": "tests/test_vault_specs.py:78",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:83",
+      "owner_kind": "test",
+      "owner_name": "test_parse_returns_correct_keys",
+      "source": "tests/test_vault_specs.py:83",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:89",
+      "owner_kind": "test",
+      "owner_name": "test_parse_values_are_correct",
+      "source": "tests/test_vault_specs.py:89",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:97",
+      "owner_kind": "test",
+      "owner_name": "test_parse_invalid_returns_none",
+      "source": "tests/test_vault_specs.py:97",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:103",
+      "owner_kind": "test",
+      "owner_name": "test_parse_numero_is_integer",
+      "source": "tests/test_vault_specs.py:103",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:109",
+      "owner_kind": "test",
+      "owner_name": "test_validate_suggestion_for_recoverable_tag",
+      "source": "tests/test_vault_specs.py:109",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:117",
+      "owner_kind": "test",
+      "owner_name": "test_zero_padded_suffix_zero_zero_one",
+      "source": "tests/test_vault_specs.py:117",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/tag_parser.py:28",
+      "owner_kind": "function",
+      "owner_name": "validate",
+      "source": "lib/tag_parser.py:28",
+      "type": "code"
+    },
+    {
+      "id": "code:lib/tag_parser.py:56",
+      "owner_kind": "function",
+      "owner_name": "parse",
+      "source": "lib/tag_parser.py:56",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:VAULT-004",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:17",
+      "status": "implemented",
+      "title": "When any segment needs intent state, it SHALL obtain it via `lib/intent_parser.py` and/or `lib/status_aggregator.py`; ad-hoc YAML or regex parsing SHALL NOT be used in skills.",
+      "type": "spec"
+    },
+    {
+      "id": "spec:VAULT-005",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:19",
+      "status": "implemented",
+      "title": "The JSON contract emitted by `lib/status_aggregator.py --json` SHALL carry a `schema_version` field; breaking changes to the shape SHALL bump the version.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:134",
+      "owner_kind": "test",
+      "owner_name": "test_schema_version_present_in_top_level",
+      "source": "tests/test_vault_specs.py:134",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:139",
+      "owner_kind": "test",
+      "owner_name": "test_schema_version_is_nonempty_string",
+      "source": "tests/test_vault_specs.py:139",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:146",
+      "owner_kind": "test",
+      "owner_name": "test_schema_version_not_nested",
+      "source": "tests/test_vault_specs.py:146",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:153",
+      "owner_kind": "test",
+      "owner_name": "test_result_is_dict",
+      "source": "tests/test_vault_specs.py:153",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:158",
+      "owner_kind": "test",
+      "owner_name": "test_schema_version_serializes_to_json",
+      "source": "tests/test_vault_specs.py:158",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/intent_parser.py:366",
+      "owner_kind": "function",
+      "owner_name": "parse_intent",
+      "source": "lib/intent_parser.py:366",
+      "type": "code"
+    },
+    {
+      "gaps": [
+        "test"
+      ],
+      "id": "spec:VAULT-006",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:21",
+      "status": "implemented",
+      "title": "When `/sq-init` runs, the system SHALL create the PARA skeleton, seed `.squirrel/` for audit logs and the switches ledger, and write one sample intent and project page from `templates/`.",
+      "type": "spec"
+    },
+    {
+      "gaps": [
+        "test",
+        "code"
+      ],
+      "id": "spec:VAULT-007",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:23",
+      "status": "implemented",
+      "title": "The system SHALL NOT permit vault writes from segments other than `capture`, `session`, and `sync`; `brief`, `attention`, and `integrations` SHALL be read-only consumers of the vault.",
+      "type": "spec"
+    },
+    {
+      "id": "spec:VAULT-008",
+      "segment": "vault",
+      "source": "docs/specs/vault-specs.md:25",
+      "status": "implemented",
+      "title": "The system SHALL operate without third-party Python dependencies; all parsing and aggregation SHALL use Python stdlib only.",
+      "type": "spec"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:199",
+      "owner_kind": "test",
+      "owner_name": "test_lib_modules_importable_without_third_party",
+      "source": "tests/test_vault_specs.py:199",
+      "type": "test"
+    },
+    {
+      "id": "test:tests/test_vault_specs.py:238",
+      "owner_kind": "test",
+      "owner_name": "test_single_module_importable",
+      "source": "tests/test_vault_specs.py:238",
+      "type": "test"
+    },
+    {
+      "id": "code:lib/status_aggregator.py:27",
+      "owner_kind": "function",
+      "owner_name": "find_projects",
+      "source": "lib/status_aggregator.py:27",
+      "type": "code"
+    },
+    {
+      "id": "code:lib/intent_parser.py:25",
+      "owner_kind": "function",
+      "owner_name": "parse_frontmatter",
+      "source": "lib/intent_parser.py:25",
+      "type": "code"
+    },
+    {
+      "id": "code:lib/manifest_writer.py:15",
+      "owner_kind": "function",
+      "owner_name": "_read_vault_path",
+      "source": "lib/manifest_writer.py:15",
+      "type": "code"
+    },
+    {
+      "id": "code:lib/tag_parser.py:23",
+      "owner_kind": "none",
+      "owner_name": "",
+      "source": "lib/tag_parser.py:23",
+      "type": "code"
+    }
+  ],
+  "orphans": [],
+  "schema_version": 1,
+  "segments": {
+    "attention": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": null,
+      "blocks": "[]",
+      "detail": "attention.md",
+      "drift": null,
+      "next": "Annotate lib/deadline_scanner.py, switch_tracker.py, estimate_buffer.py, chunk_helper.py and tests/test_foundation.py with @spec ATTN-* ids.",
+      "prefix": "ATTN-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    },
+    "brief": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": null,
+      "blocks": "[]",
+      "detail": "brief.md",
+      "drift": null,
+      "next": "Close BRIEF-003 gap: switch /sq-status to consume lib/status_aggregator.py JSON.",
+      "prefix": "BRIEF-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    },
+    "capture": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": null,
+      "blocks": "[]",
+      "detail": "capture.md",
+      "drift": null,
+      "next": "Annotate skills/capture/ and skills/decision/ with @spec CAPTURE-* ids.",
+      "prefix": "CAPTURE-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    },
+    "integrations": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": "[]",
+      "blocks": null,
+      "detail": "integrations.md",
+      "drift": null,
+      "next": "Annotate .claude-plugin/plugin.json, hooks/hooks.json, commands/*.md with @spec INT-* ids; ship cb CLI (INT-008).",
+      "prefix": "INT-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    },
+    "session": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": null,
+      "blocks": "[]",
+      "detail": "session.md",
+      "drift": null,
+      "next": "Annotate skills/session-start/ and skills/session-end/ with @spec SESSION-* ids; wire tests.",
+      "prefix": "SESSION-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    },
+    "sync": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": null,
+      "blocks": "[]",
+      "detail": "sync.md",
+      "drift": null,
+      "next": "Annotate lib/package_protocol.py and sync-out/sync-in skills with @spec SYNC-* ids.",
+      "prefix": "SYNC-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    },
+    "vault": {
+      "audited": null,
+      "audited_sha": null,
+      "blockedBy": "[]",
+      "blocks": null,
+      "detail": "vault.md",
+      "drift": null,
+      "next": "Annotate lib/intent_parser.py, status_aggregator.py and tests/test_foundation.py with @spec VAULT-* ids; ship lib/tag_parser.py.",
+      "prefix": "VAULT-*",
+      "sampled": null,
+      "status": "PROPOSED"
+    }
+  }
+}

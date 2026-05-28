@@ -1,0 +1,27 @@
+
+
+<!-- uncle-dev -->
+## uncle-dev
+
+This project uses uncle-dev engineering skills for structured AI-assisted development.
+
+### SDD mode: openspec
+This project uses **OpenSpec** for spec-driven development.
+- Run `/uncle-dev-spec` before any non-trivial feature — it will scaffold an OpenSpec change
+- Specs tracked in `openspec/changes/<change-id>/` (proposal, design, tasks, execution, handoff)
+- Run `/uncle-dev-plan` after spec, before coding
+
+### Skills by Phase
+**Define:** uncle-dev-research, uncle-dev-spec-driven-development, uncle-dev-design-architecture-docs, uncle-dev-acknowledge
+**Plan:** uncle-dev-planning-and-task-breakdown
+**Build:** uncle-dev-incremental-implementation, uncle-dev-test-driven-development, uncle-dev-spec-annotations, uncle-dev-context-engineering, uncle-dev-frontend-ui-engineering, uncle-dev-api-and-interface-design
+**Verify:** uncle-dev-browser-testing-with-devtools, uncle-dev-debug-error
+**Review:** uncle-dev-code-review-and-quality, uncle-dev-security-and-hardening, uncle-dev-performance-optimization
+**Ship:** uncle-dev-git-workflow-and-versioning, uncle-dev-shipping-and-launch, uncle-dev-documentation-and-adrs
+**Capture:** uncle-dev-knowledge-capture
+**Maintain:** uncle-dev-knowledge-maintenance
+
+### Conventions
+- Personal scratchpad in `.devlocal/<user>/` (gitignored, not shared)
+- Team learnings captured in `.uncle-dev/learns/`
+<!-- /uncle-dev -->

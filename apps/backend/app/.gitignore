@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+.vite/
+
+# dist/ IS committed — it's the precompiled bundle the Python server serves.
+# Users who install the plugin should never need to run npm install + build.
+# Rebuild + commit dist/ whenever you change anything under src/.
+!dist/

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "squirrel-cli"
+version = "0.5.0"
+description = "Squirrel CLI — Markdown-first ADHD productivity vault toolkit"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Javier Benavides", email = "javierhbr@gmail.com" }]
+keywords = ["adhd", "productivity", "markdown", "vault", "cli"]
+dependencies = []
+
+[project.urls]
+Source = "https://github.com/javierbenavides/squirrel"
+
+[tool.setuptools]
+package-dir = { "" = "lib" }
+py-modules = [
+  "capture_writer",
+  "chunk_helper",
+  "config_loader",
+  "dashboard_generator",
+  "deadline_scanner",
+  "estimate_buffer",
+  "intent_parser",
+  "manifest_writer",
+  "new_project_writer",
+  "package_protocol",
+  "session_scanner",
+  "status_aggregator",
+  "switch_tracker",
+  "tag_parser",
+  "vocabulary",
+  "where_am_i_formatter",
+]
+
+# The `squirrel` executable in this directory is a single-file script and is
+# invoked directly as `python3 apps/cli/squirrel ...`. A real console_script
+# entry point will be added once the script is split into a proper package.

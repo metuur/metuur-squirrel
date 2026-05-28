@@ -1,0 +1,76 @@
+# Squirrel configuration template.
+#
+# Multi-vault schema. List one or more vaults under [[vaults]]; exactly one
+# must have default = true. The default vault is used whenever a command is
+# run without an explicit --vault flag.
+#
+# Legacy single-vault configs (with top-level `vault_path` and
+# `environment_name`) auto-migrate to this schema on first load. If you are
+# upgrading, you don't need to edit this file — it will be rewritten in place
+# the next time any Squirrel tool reads it.
+
+default_email = "user@example.com"
+
+# This machine's environment label. Used by the sync-out / sync-in flow to
+# tag outgoing packages and validate incoming ones. Not related to which
+# vault is active. Common values: "personal", "work", "client-a".
+machine_environment = "personal"
+
+# ──────────────────────────────────────────────────────────────────────────
+# Vaults
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Each entry below is one vault (a folder of Markdown notes on disk).
+# Required fields per entry: name (string), path (string), default (bool).
+# Tilde (~) in `path` is expanded to the current user's home directory.
+# Exactly one entry must have default = true.
+
+[[vaults]]
+name = "personal"
+path = "~/vault-tdah"
+default = true
+
+# Add more vaults like this:
+#
+# [[vaults]]
+# name = "work"
+# path = "~/work-vault"
+# default = false
+#
+# [[vaults]]
+# name = "client-a"
+# path = "~/clients/acme/vault"
+# default = false
+
+# ──────────────────────────────────────────────────────────────────────────
+# Active project tags (applies to the default vault)
+# ──────────────────────────────────────────────────────────────────────────
+
+[projects]
+active = ["TRABAJO-PROYECTO-A", "SIDEPROJECT-FOYER-FAMILY", "VISA-FAMILIA"]
+
+# ──────────────────────────────────────────────────────────────────────────
+# Compliance — applies to sync-out and sync-in flows
+# ──────────────────────────────────────────────────────────────────────────
+
+[compliance]
+strict = false
+corporate_domains = []
+allowed_inbound_tags = ["*"]
+allowed_inbound_environments = ["personal", "work"]
+
+# ──────────────────────────────────────────────────────────────────────────
+# Encryption (sync packages)
+# ──────────────────────────────────────────────────────────────────────────
+
+[encryption]
+enabled = false
+gpg_recipient = ""
+
+# ──────────────────────────────────────────────────────────────────────────
+# Capture defaults
+# ──────────────────────────────────────────────────────────────────────────
+
+[capture]
+default_folder = "99-Resources/Captures"
+auto_link_project_page = true

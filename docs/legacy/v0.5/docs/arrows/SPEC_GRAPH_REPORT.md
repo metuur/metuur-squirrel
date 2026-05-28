@@ -1,0 +1,463 @@
+# Spec Graph Report
+
+_Generated: 2026-05-25T14:42:54Z_
+
+## Summary
+
+- Segments: **7**
+- HLD topics: **5**
+- EARS specs: **63**
+- Orphan @spec citations: **0**
+- Specs with code annotations: **25** / 63
+- Specs with test annotations: **18** / 63
+
+## Segments
+
+### `attention` — prefix `ATTN-*`
+
+- Status: `PROPOSED`
+- Specs: 13 total (13 implemented, 0 gap, 0 deferred)
+- Coverage: 10 with code, 8 with test
+- Next: Annotate lib/deadline_scanner.py, switch_tracker.py, estimate_buffer.py, chunk_helper.py and tests/test_foundation.py with @spec ATTN-* ids.
+
+### `brief` — prefix `BRIEF-*`
+
+- Status: `PROPOSED`
+- Specs: 6 total (6 implemented, 0 gap, 0 deferred)
+- Coverage: 0 with code, 0 with test
+- Next: Close BRIEF-003 gap: switch /sq-status to consume lib/status_aggregator.py JSON.
+
+### `capture` — prefix `CAPTURE-*`
+
+- Status: `PROPOSED`
+- Specs: 5 total (5 implemented, 0 gap, 0 deferred)
+- Coverage: 0 with code, 0 with test
+- Next: Annotate skills/capture/ and skills/decision/ with @spec CAPTURE-* ids.
+
+### `integrations` — prefix `INT-*`
+
+- Status: `PROPOSED`
+- Specs: 11 total (10 implemented, 1 gap, 0 deferred)
+- Coverage: 0 with code, 0 with test
+- Next: Annotate .claude-plugin/plugin.json, hooks/hooks.json, commands/*.md with @spec INT-* ids; ship cb CLI (INT-008).
+
+### `session` — prefix `SESSION-*`
+
+- Status: `PROPOSED`
+- Specs: 12 total (12 implemented, 0 gap, 0 deferred)
+- Coverage: 3 with code, 0 with test
+- Next: Annotate skills/session-start/ and skills/session-end/ with @spec SESSION-* ids; wire tests.
+
+### `sync` — prefix `SYNC-*`
+
+- Status: `PROPOSED`
+- Specs: 8 total (8 implemented, 0 gap, 0 deferred)
+- Coverage: 7 with code, 7 with test
+- Next: Annotate lib/package_protocol.py and sync-out/sync-in skills with @spec SYNC-* ids.
+
+### `vault` — prefix `VAULT-*`
+
+- Status: `PROPOSED`
+- Specs: 8 total (8 implemented, 0 gap, 0 deferred)
+- Coverage: 5 with code, 3 with test
+- Next: Annotate lib/intent_parser.py, status_aggregator.py and tests/test_foundation.py with @spec VAULT-* ids; ship lib/tag_parser.py.
+
+## Cascade Impact
+
+If an LLD changes, every listed spec downstream may need to change too.
+
+- **`attention` LLD** → 13 spec(s): ATTN-001, ATTN-002, ATTN-003, ATTN-004, ATTN-005, ATTN-006, ATTN-007, ATTN-008, ATTN-009, ATTN-010, ATTN-011, ATTN-012, ATTN-013
+- **`brief` LLD** → 6 spec(s): BRIEF-001, BRIEF-002, BRIEF-003, BRIEF-004, BRIEF-005, BRIEF-006
+- **`capture` LLD** → 5 spec(s): CAPTURE-001, CAPTURE-002, CAPTURE-003, CAPTURE-004, CAPTURE-005
+- **`integrations` LLD** → 11 spec(s): INT-001, INT-002, INT-003, INT-004, INT-005, INT-006, INT-007, INT-008, INT-009, INT-010, INT-011
+- **`session` LLD** → 12 spec(s): SESSION-001, SESSION-002, SESSION-003, SESSION-004, SESSION-005, SESSION-006, SESSION-007, SESSION-008, SESSION-009, SESSION-010, SESSION-011, SESSION-012
+- **`sync` LLD** → 8 spec(s): SYNC-001, SYNC-002, SYNC-003, SYNC-004, SYNC-005, SYNC-006, SYNC-007, SYNC-008
+- **`vault` LLD** → 8 spec(s): VAULT-001, VAULT-002, VAULT-003, VAULT-004, VAULT-005, VAULT-006, VAULT-007, VAULT-008
+
+## Graph
+
+```mermaid
+graph TD
+  hld_vision["HLD: Vision"]
+  hld_principles["HLD: Principles"]
+  hld_segments["HLD: Segments"]
+  hld_cross_segment_invariants["HLD: Cross-Segment Invariants"]
+  hld_out_of_scope["HLD: Out of Scope"]
+  lld_capture["LLD: capture"]
+  lld_session["LLD: session"]
+  lld_brief["LLD: brief"]
+  lld_sync["LLD: sync"]
+  lld_attention["LLD: attention"]
+  lld_vault["LLD: vault"]
+  lld_integrations["LLD: integrations"]
+  spec_ATTN_001["✓ ATTN-001"]
+  test_tests_test_foundation_py_282[/"test: tests/test_foundation.py:282"/]
+  test_tests_test_foundation_py_288[/"test: tests/test_foundation.py:288"/]
+  test_tests_test_foundation_py_296[/"test: tests/test_foundation.py:296"/]
+  test_tests_test_foundation_py_307[/"test: tests/test_foundation.py:307"/]
+  test_tests_test_foundation_py_313[/"test: tests/test_foundation.py:313"/]
+  test_tests_test_foundation_py_319[/"test: tests/test_foundation.py:319"/]
+  test_tests_test_foundation_py_327[/"test: tests/test_foundation.py:327"/]
+  test_tests_test_foundation_py_335[/"test: tests/test_foundation.py:335"/]
+  test_tests_test_foundation_py_343[/"test: tests/test_foundation.py:343"/]
+  test_tests_test_foundation_py_351[/"test: tests/test_foundation.py:351"/]
+  test_tests_test_foundation_py_360[/"test: tests/test_foundation.py:360"/]
+  code_lib_deadline_scanner_py_36["code: classify_urgency"]
+  spec_ATTN_002["✓ ATTN-002"]
+  test_tests_test_foundation_py_216[/"test: tests/test_foundation.py:216"/]
+  test_tests_test_foundation_py_232[/"test: tests/test_foundation.py:232"/]
+  test_tests_test_foundation_py_239[/"test: tests/test_foundation.py:239"/]
+  test_tests_test_foundation_py_257[/"test: tests/test_foundation.py:257"/]
+  code_lib_switch_tracker_py_36["code: record_switch"]
+  spec_ATTN_003["✓ ATTN-003"]
+  test_tests_test_attn_estimate_py_12[/"test: tests/test_attn_estimate.py:12"/]
+  test_tests_test_attn_estimate_py_20[/"test: tests/test_attn_estimate.py:20"/]
+  test_tests_test_attn_estimate_py_31[/"test: tests/test_attn_estimate.py:31"/]
+  test_tests_test_attn_estimate_py_56[/"test: tests/test_attn_estimate.py:56"/]
+  code_lib_estimate_buffer_py_68["code: adjust_estimate"]
+  spec_ATTN_004["✓ ATTN-004"]
+  test_tests_test_attn_chunk_py_13[/"test: tests/test_attn_chunk.py:13"/]
+  test_tests_test_attn_chunk_py_21[/"test: tests/test_attn_chunk.py:21"/]
+  test_tests_test_attn_chunk_py_30[/"test: tests/test_attn_chunk.py:30"/]
+  test_tests_test_attn_chunk_py_36[/"test: tests/test_attn_chunk.py:36"/]
+  test_tests_test_attn_chunk_py_44[/"test: tests/test_attn_chunk.py:44"/]
+  test_tests_test_attn_chunk_py_51[/"test: tests/test_attn_chunk.py:51"/]
+  test_tests_test_attn_chunk_py_58[/"test: tests/test_attn_chunk.py:58"/]
+  test_tests_test_attn_chunk_py_71[/"test: tests/test_attn_chunk.py:71"/]
+  test_tests_test_attn_chunk_py_84[/"test: tests/test_attn_chunk.py:84"/]
+  test_tests_test_attn_chunk_py_92[/"test: tests/test_attn_chunk.py:92"/]
+  code_lib_chunk_helper_py_56["code: chunk_task"]
+  spec_ATTN_005["✓ ATTN-005"]
+  test_tests_test_attn_focus_py_42[/"test: tests/test_attn_focus.py:42"/]
+  test_tests_test_attn_focus_py_52[/"test: tests/test_attn_focus.py:52"/]
+  test_tests_test_attn_focus_py_76[/"test: tests/test_attn_focus.py:76"/]
+  test_tests_test_attn_focus_py_91[/"test: tests/test_attn_focus.py:91"/]
+  test_tests_test_attn_focus_py_100[/"test: tests/test_attn_focus.py:100"/]
+  code_lib_switch_tracker_py_103["code: compute_focus_score_for_window"]
+  spec_ATTN_006["✓ ATTN-006"]
+  test_tests_test_attn_estimate_py_40[/"test: tests/test_attn_estimate.py:40"/]
+  test_tests_test_attn_estimate_py_47[/"test: tests/test_attn_estimate.py:47"/]
+  spec_ATTN_007["✓ ATTN-007 (gap: test)"]
+  code_lib_deadline_scanner_py_162["code: main"]
+  spec_ATTN_008["✓ ATTN-008"]
+  test_tests_test_attn_focus_py_115[/"test: tests/test_attn_focus.py:115"/]
+  test_tests_test_attn_focus_py_126[/"test: tests/test_attn_focus.py:126"/]
+  test_tests_test_attn_focus_py_140[/"test: tests/test_attn_focus.py:140"/]
+  test_tests_test_attn_focus_py_165[/"test: tests/test_attn_focus.py:165"/]
+  spec_ATTN_009["✓ ATTN-009 (gap: test,code)"]
+  spec_ATTN_010["✓ ATTN-010 (gap: test,code)"]
+  spec_ATTN_011["✓ ATTN-011 (gap: test,code)"]
+  spec_ATTN_012["✓ ATTN-012"]
+  spec_ATTN_013["✓ ATTN-013 (gap: test)"]
+  spec_BRIEF_001["✓ BRIEF-001 (gap: test,code)"]
+  spec_BRIEF_002["✓ BRIEF-002 (gap: test,code)"]
+  spec_BRIEF_003["✓ BRIEF-003 (gap: test,code)"]
+  spec_BRIEF_004["✓ BRIEF-004 (gap: test,code)"]
+  spec_BRIEF_005["✓ BRIEF-005 (gap: test,code)"]
+  spec_BRIEF_006["✓ BRIEF-006 (gap: test,code)"]
+  spec_CAPTURE_001["✓ CAPTURE-001 (gap: test,code)"]
+  spec_CAPTURE_002["✓ CAPTURE-002 (gap: test,code)"]
+  spec_CAPTURE_003["✓ CAPTURE-003 (gap: test,code)"]
+  spec_CAPTURE_004["✓ CAPTURE-004 (gap: test,code)"]
+  spec_CAPTURE_005["✓ CAPTURE-005 (gap: test,code)"]
+  spec_INT_001["✓ INT-001 (gap: test,code)"]
+  spec_INT_002["○ INT-002"]
+  spec_INT_003["✓ INT-003 (gap: test,code)"]
+  spec_INT_004["✓ INT-004 (gap: test,code)"]
+  spec_INT_005["✓ INT-005 (gap: test,code)"]
+  spec_INT_006["✓ INT-006 (gap: test,code)"]
+  spec_INT_007["✓ INT-007 (gap: test,code)"]
+  spec_INT_008["✓ INT-008 (gap: test,code)"]
+  spec_INT_009["✓ INT-009 (gap: test,code)"]
+  spec_INT_010["✓ INT-010 (gap: test,code)"]
+  spec_INT_011["✓ INT-011 (gap: test,code)"]
+  spec_SESSION_001["✓ SESSION-001 (gap: test,code)"]
+  spec_SESSION_002["✓ SESSION-002 (gap: test,code)"]
+  spec_SESSION_003["✓ SESSION-003 (gap: test,code)"]
+  spec_SESSION_004["✓ SESSION-004 (gap: test,code)"]
+  spec_SESSION_005["✓ SESSION-005 (gap: test,code)"]
+  spec_SESSION_006["✓ SESSION-006 (gap: test,code)"]
+  spec_SESSION_007["✓ SESSION-007 (gap: test)"]
+  code_lib_session_scanner_py_223["code: scan_sessions"]
+  spec_SESSION_008["✓ SESSION-008 (gap: test)"]
+  code_lib_session_scanner_py_190["code: _filter_by_environment"]
+  spec_SESSION_009["✓ SESSION-009 (gap: test,code)"]
+  spec_SESSION_010["✓ SESSION-010 (gap: test,code)"]
+  spec_SESSION_011["✓ SESSION-011 (gap: test)"]
+  code_lib_manifest_writer_py_30["code: main"]
+  spec_SESSION_012["✓ SESSION-012 (gap: test,code)"]
+  spec_SYNC_001["✓ SYNC-001"]
+  test_tests_test_sync_specs_py_49[/"test: tests/test_sync_specs.py:49"/]
+  test_tests_test_sync_specs_py_53[/"test: tests/test_sync_specs.py:53"/]
+  test_tests_test_sync_specs_py_57[/"test: tests/test_sync_specs.py:57"/]
+  test_tests_test_sync_specs_py_63[/"test: tests/test_sync_specs.py:63"/]
+  test_tests_test_sync_specs_py_71[/"test: tests/test_sync_specs.py:71"/]
+  test_tests_test_sync_specs_py_78[/"test: tests/test_sync_specs.py:78"/]
+  code_lib_package_protocol_py_177["code: generate_package"]
+  spec_SYNC_002["✓ SYNC-002"]
+  test_tests_test_sync_specs_py_92[/"test: tests/test_sync_specs.py:92"/]
+  test_tests_test_sync_specs_py_103[/"test: tests/test_sync_specs.py:103"/]
+  test_tests_test_sync_specs_py_114[/"test: tests/test_sync_specs.py:114"/]
+  code_lib_package_protocol_py_83["code: collect_files_by_scope"]
+  spec_SYNC_003["✓ SYNC-003"]
+  test_tests_test_sync_specs_py_131[/"test: tests/test_sync_specs.py:131"/]
+  test_tests_test_sync_specs_py_138[/"test: tests/test_sync_specs.py:138"/]
+  test_tests_test_sync_specs_py_149[/"test: tests/test_sync_specs.py:149"/]
+  test_tests_test_sync_specs_py_157[/"test: tests/test_sync_specs.py:157"/]
+  test_tests_test_sync_specs_py_169[/"test: tests/test_sync_specs.py:169"/]
+  code_lib_package_protocol_py_315["code: validate_package"]
+  spec_SYNC_004["✓ SYNC-004 (gap: test,code)"]
+  spec_SYNC_005["✓ SYNC-005"]
+  test_tests_test_sync_specs_py_178[/"test: tests/test_sync_specs.py:178"/]
+  test_tests_test_sync_specs_py_194[/"test: tests/test_sync_specs.py:194"/]
+  code_lib_package_protocol_py_359["code: apply_package"]
+  spec_SYNC_006["✓ SYNC-006"]
+  test_tests_test_sync_specs_py_208[/"test: tests/test_sync_specs.py:208"/]
+  test_tests_test_sync_specs_py_224[/"test: tests/test_sync_specs.py:224"/]
+  spec_SYNC_007["✓ SYNC-007"]
+  test_tests_test_sync_specs_py_242[/"test: tests/test_sync_specs.py:242"/]
+  code_lib_package_protocol_py_30["code: lib/package_protocol.py:30"]
+  spec_SYNC_008["✓ SYNC-008"]
+  test_tests_test_sync_specs_py_256[/"test: tests/test_sync_specs.py:256"/]
+  spec_VAULT_001["✓ VAULT-001 (gap: test)"]
+  code_lib_status_aggregator_py_257["code: aggregate_status"]
+  spec_VAULT_002["✓ VAULT-002 (gap: test,code)"]
+  spec_VAULT_003["✓ VAULT-003"]
+  test_tests_test_vault_specs_py_33[/"test: tests/test_vault_specs.py:33"/]
+  test_tests_test_vault_specs_py_39[/"test: tests/test_vault_specs.py:39"/]
+  test_tests_test_vault_specs_py_45[/"test: tests/test_vault_specs.py:45"/]
+  test_tests_test_vault_specs_py_51[/"test: tests/test_vault_specs.py:51"/]
+  test_tests_test_vault_specs_py_56[/"test: tests/test_vault_specs.py:56"/]
+  test_tests_test_vault_specs_py_62[/"test: tests/test_vault_specs.py:62"/]
+  test_tests_test_vault_specs_py_67[/"test: tests/test_vault_specs.py:67"/]
+  test_tests_test_vault_specs_py_72[/"test: tests/test_vault_specs.py:72"/]
+  test_tests_test_vault_specs_py_78[/"test: tests/test_vault_specs.py:78"/]
+  test_tests_test_vault_specs_py_83[/"test: tests/test_vault_specs.py:83"/]
+  test_tests_test_vault_specs_py_89[/"test: tests/test_vault_specs.py:89"/]
+  test_tests_test_vault_specs_py_97[/"test: tests/test_vault_specs.py:97"/]
+  test_tests_test_vault_specs_py_103[/"test: tests/test_vault_specs.py:103"/]
+  test_tests_test_vault_specs_py_109[/"test: tests/test_vault_specs.py:109"/]
+  test_tests_test_vault_specs_py_117[/"test: tests/test_vault_specs.py:117"/]
+  code_lib_tag_parser_py_28["code: validate"]
+  code_lib_tag_parser_py_56["code: parse"]
+  spec_VAULT_004["✓ VAULT-004 (gap: test,code)"]
+  spec_VAULT_005["✓ VAULT-005"]
+  test_tests_test_vault_specs_py_134[/"test: tests/test_vault_specs.py:134"/]
+  test_tests_test_vault_specs_py_139[/"test: tests/test_vault_specs.py:139"/]
+  test_tests_test_vault_specs_py_146[/"test: tests/test_vault_specs.py:146"/]
+  test_tests_test_vault_specs_py_153[/"test: tests/test_vault_specs.py:153"/]
+  test_tests_test_vault_specs_py_158[/"test: tests/test_vault_specs.py:158"/]
+  code_lib_intent_parser_py_366["code: parse_intent"]
+  spec_VAULT_006["✓ VAULT-006 (gap: test)"]
+  spec_VAULT_007["✓ VAULT-007 (gap: test,code)"]
+  spec_VAULT_008["✓ VAULT-008"]
+  test_tests_test_vault_specs_py_199[/"test: tests/test_vault_specs.py:199"/]
+  test_tests_test_vault_specs_py_238[/"test: tests/test_vault_specs.py:238"/]
+  code_lib_status_aggregator_py_27["code: find_projects"]
+  code_lib_intent_parser_py_25["code: parse_frontmatter"]
+  code_lib_manifest_writer_py_15["code: _read_vault_path"]
+  code_lib_tag_parser_py_23["code: lib/tag_parser.py:23"]
+  hld_segments -->|decomposes_to| lld_capture
+  hld_segments -->|decomposes_to| lld_session
+  hld_segments -->|decomposes_to| lld_brief
+  hld_segments -->|decomposes_to| lld_sync
+  hld_segments -->|decomposes_to| lld_attention
+  hld_segments -->|decomposes_to| lld_vault
+  hld_segments -->|decomposes_to| lld_integrations
+  lld_attention -->|specifies| spec_ATTN_001
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_282
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_288
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_296
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_307
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_313
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_319
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_327
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_335
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_343
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_351
+  spec_ATTN_001 -.->|verified_by| test_tests_test_foundation_py_360
+  spec_ATTN_001 ==>|implemented_by| code_lib_deadline_scanner_py_36
+  lld_attention -->|specifies| spec_ATTN_002
+  spec_ATTN_002 -.->|verified_by| test_tests_test_foundation_py_216
+  spec_ATTN_002 -.->|verified_by| test_tests_test_foundation_py_232
+  spec_ATTN_002 -.->|verified_by| test_tests_test_foundation_py_239
+  spec_ATTN_002 -.->|verified_by| test_tests_test_foundation_py_257
+  spec_ATTN_002 ==>|implemented_by| code_lib_switch_tracker_py_36
+  lld_attention -->|specifies| spec_ATTN_003
+  spec_ATTN_003 -.->|verified_by| test_tests_test_attn_estimate_py_12
+  spec_ATTN_003 -.->|verified_by| test_tests_test_attn_estimate_py_20
+  spec_ATTN_003 -.->|verified_by| test_tests_test_attn_estimate_py_31
+  spec_ATTN_003 -.->|verified_by| test_tests_test_attn_estimate_py_56
+  spec_ATTN_003 ==>|implemented_by| code_lib_estimate_buffer_py_68
+  lld_attention -->|specifies| spec_ATTN_004
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_13
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_21
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_30
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_36
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_44
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_51
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_58
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_71
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_84
+  spec_ATTN_004 -.->|verified_by| test_tests_test_attn_chunk_py_92
+  spec_ATTN_004 ==>|implemented_by| code_lib_chunk_helper_py_56
+  lld_attention -->|specifies| spec_ATTN_005
+  spec_ATTN_005 -.->|verified_by| test_tests_test_attn_focus_py_42
+  spec_ATTN_005 -.->|verified_by| test_tests_test_attn_focus_py_52
+  spec_ATTN_005 -.->|verified_by| test_tests_test_attn_focus_py_76
+  spec_ATTN_005 -.->|verified_by| test_tests_test_attn_focus_py_91
+  spec_ATTN_005 -.->|verified_by| test_tests_test_attn_focus_py_100
+  spec_ATTN_005 ==>|implemented_by| code_lib_switch_tracker_py_103
+  lld_attention -->|specifies| spec_ATTN_006
+  spec_ATTN_006 -.->|verified_by| test_tests_test_attn_estimate_py_12
+  spec_ATTN_006 -.->|verified_by| test_tests_test_attn_estimate_py_20
+  spec_ATTN_006 -.->|verified_by| test_tests_test_attn_estimate_py_40
+  spec_ATTN_006 -.->|verified_by| test_tests_test_attn_estimate_py_47
+  spec_ATTN_006 -.->|verified_by| test_tests_test_attn_estimate_py_56
+  spec_ATTN_006 ==>|implemented_by| code_lib_estimate_buffer_py_68
+  lld_attention -->|specifies| spec_ATTN_007
+  spec_ATTN_007 ==>|implemented_by| code_lib_deadline_scanner_py_162
+  lld_attention -->|specifies| spec_ATTN_008
+  spec_ATTN_008 -.->|verified_by| test_tests_test_attn_focus_py_115
+  spec_ATTN_008 -.->|verified_by| test_tests_test_attn_focus_py_126
+  spec_ATTN_008 -.->|verified_by| test_tests_test_attn_focus_py_140
+  spec_ATTN_008 -.->|verified_by| test_tests_test_attn_focus_py_165
+  spec_ATTN_008 -.->|verified_by| test_tests_test_foundation_py_239
+  spec_ATTN_008 ==>|implemented_by| code_lib_switch_tracker_py_36
+  lld_attention -->|specifies| spec_ATTN_009
+  lld_attention -->|specifies| spec_ATTN_010
+  lld_attention -->|specifies| spec_ATTN_011
+  lld_attention -->|specifies| spec_ATTN_012
+  spec_ATTN_012 -.->|verified_by| test_tests_test_attn_chunk_py_13
+  spec_ATTN_012 -.->|verified_by| test_tests_test_attn_chunk_py_58
+  spec_ATTN_012 -.->|verified_by| test_tests_test_attn_chunk_py_84
+  spec_ATTN_012 ==>|implemented_by| code_lib_chunk_helper_py_56
+  lld_attention -->|specifies| spec_ATTN_013
+  spec_ATTN_013 ==>|implemented_by| code_lib_estimate_buffer_py_68
+  lld_brief -->|specifies| spec_BRIEF_001
+  lld_brief -->|specifies| spec_BRIEF_002
+  lld_brief -->|specifies| spec_BRIEF_003
+  lld_brief -->|specifies| spec_BRIEF_004
+  lld_brief -->|specifies| spec_BRIEF_005
+  lld_brief -->|specifies| spec_BRIEF_006
+  lld_capture -->|specifies| spec_CAPTURE_001
+  lld_capture -->|specifies| spec_CAPTURE_002
+  lld_capture -->|specifies| spec_CAPTURE_003
+  lld_capture -->|specifies| spec_CAPTURE_004
+  lld_capture -->|specifies| spec_CAPTURE_005
+  lld_integrations -->|specifies| spec_INT_001
+  lld_integrations -->|specifies| spec_INT_002
+  lld_integrations -->|specifies| spec_INT_003
+  lld_integrations -->|specifies| spec_INT_004
+  lld_integrations -->|specifies| spec_INT_005
+  lld_integrations -->|specifies| spec_INT_006
+  lld_integrations -->|specifies| spec_INT_007
+  lld_integrations -->|specifies| spec_INT_008
+  lld_integrations -->|specifies| spec_INT_009
+  lld_integrations -->|specifies| spec_INT_010
+  lld_integrations -->|specifies| spec_INT_011
+  lld_session -->|specifies| spec_SESSION_001
+  lld_session -->|specifies| spec_SESSION_002
+  lld_session -->|specifies| spec_SESSION_003
+  lld_session -->|specifies| spec_SESSION_004
+  lld_session -->|specifies| spec_SESSION_005
+  lld_session -->|specifies| spec_SESSION_006
+  lld_session -->|specifies| spec_SESSION_007
+  spec_SESSION_007 ==>|implemented_by| code_lib_session_scanner_py_223
+  lld_session -->|specifies| spec_SESSION_008
+  spec_SESSION_008 ==>|implemented_by| code_lib_session_scanner_py_190
+  spec_SESSION_008 ==>|implemented_by| code_lib_session_scanner_py_223
+  lld_session -->|specifies| spec_SESSION_009
+  lld_session -->|specifies| spec_SESSION_010
+  lld_session -->|specifies| spec_SESSION_011
+  spec_SESSION_011 ==>|implemented_by| code_lib_manifest_writer_py_30
+  lld_session -->|specifies| spec_SESSION_012
+  lld_sync -->|specifies| spec_SYNC_001
+  spec_SYNC_001 -.->|verified_by| test_tests_test_sync_specs_py_49
+  spec_SYNC_001 -.->|verified_by| test_tests_test_sync_specs_py_53
+  spec_SYNC_001 -.->|verified_by| test_tests_test_sync_specs_py_57
+  spec_SYNC_001 -.->|verified_by| test_tests_test_sync_specs_py_63
+  spec_SYNC_001 -.->|verified_by| test_tests_test_sync_specs_py_71
+  spec_SYNC_001 -.->|verified_by| test_tests_test_sync_specs_py_78
+  spec_SYNC_001 ==>|implemented_by| code_lib_package_protocol_py_177
+  lld_sync -->|specifies| spec_SYNC_002
+  spec_SYNC_002 -.->|verified_by| test_tests_test_sync_specs_py_92
+  spec_SYNC_002 -.->|verified_by| test_tests_test_sync_specs_py_103
+  spec_SYNC_002 -.->|verified_by| test_tests_test_sync_specs_py_114
+  spec_SYNC_002 ==>|implemented_by| code_lib_package_protocol_py_83
+  lld_sync -->|specifies| spec_SYNC_003
+  spec_SYNC_003 -.->|verified_by| test_tests_test_sync_specs_py_131
+  spec_SYNC_003 -.->|verified_by| test_tests_test_sync_specs_py_138
+  spec_SYNC_003 -.->|verified_by| test_tests_test_sync_specs_py_149
+  spec_SYNC_003 -.->|verified_by| test_tests_test_sync_specs_py_157
+  spec_SYNC_003 -.->|verified_by| test_tests_test_sync_specs_py_169
+  spec_SYNC_003 ==>|implemented_by| code_lib_package_protocol_py_315
+  lld_sync -->|specifies| spec_SYNC_004
+  lld_sync -->|specifies| spec_SYNC_005
+  spec_SYNC_005 -.->|verified_by| test_tests_test_sync_specs_py_178
+  spec_SYNC_005 -.->|verified_by| test_tests_test_sync_specs_py_194
+  spec_SYNC_005 ==>|implemented_by| code_lib_package_protocol_py_359
+  lld_sync -->|specifies| spec_SYNC_006
+  spec_SYNC_006 -.->|verified_by| test_tests_test_sync_specs_py_208
+  spec_SYNC_006 -.->|verified_by| test_tests_test_sync_specs_py_224
+  spec_SYNC_006 ==>|implemented_by| code_lib_package_protocol_py_359
+  lld_sync -->|specifies| spec_SYNC_007
+  spec_SYNC_007 -.->|verified_by| test_tests_test_sync_specs_py_242
+  spec_SYNC_007 ==>|implemented_by| code_lib_package_protocol_py_30
+  lld_sync -->|specifies| spec_SYNC_008
+  spec_SYNC_008 -.->|verified_by| test_tests_test_sync_specs_py_256
+  spec_SYNC_008 ==>|implemented_by| code_lib_package_protocol_py_359
+  lld_vault -->|specifies| spec_VAULT_001
+  spec_VAULT_001 ==>|implemented_by| code_lib_status_aggregator_py_257
+  lld_vault -->|specifies| spec_VAULT_002
+  lld_vault -->|specifies| spec_VAULT_003
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_33
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_39
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_45
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_51
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_56
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_62
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_67
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_72
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_78
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_83
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_89
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_97
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_103
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_109
+  spec_VAULT_003 -.->|verified_by| test_tests_test_vault_specs_py_117
+  spec_VAULT_003 ==>|implemented_by| code_lib_tag_parser_py_28
+  spec_VAULT_003 ==>|implemented_by| code_lib_tag_parser_py_56
+  lld_vault -->|specifies| spec_VAULT_004
+  lld_vault -->|specifies| spec_VAULT_005
+  spec_VAULT_005 -.->|verified_by| test_tests_test_vault_specs_py_134
+  spec_VAULT_005 -.->|verified_by| test_tests_test_vault_specs_py_139
+  spec_VAULT_005 -.->|verified_by| test_tests_test_vault_specs_py_146
+  spec_VAULT_005 -.->|verified_by| test_tests_test_vault_specs_py_153
+  spec_VAULT_005 -.->|verified_by| test_tests_test_vault_specs_py_158
+  spec_VAULT_005 ==>|implemented_by| code_lib_status_aggregator_py_257
+  spec_VAULT_005 ==>|implemented_by| code_lib_intent_parser_py_366
+  lld_vault -->|specifies| spec_VAULT_006
+  spec_VAULT_006 ==>|implemented_by| code_lib_manifest_writer_py_30
+  lld_vault -->|specifies| spec_VAULT_007
+  lld_vault -->|specifies| spec_VAULT_008
+  spec_VAULT_008 -.->|verified_by| test_tests_test_vault_specs_py_199
+  spec_VAULT_008 -.->|verified_by| test_tests_test_vault_specs_py_238
+  spec_VAULT_008 ==>|implemented_by| code_lib_status_aggregator_py_27
+  spec_VAULT_008 ==>|implemented_by| code_lib_intent_parser_py_25
+  spec_VAULT_008 ==>|implemented_by| code_lib_manifest_writer_py_15
+  spec_VAULT_008 ==>|implemented_by| code_lib_tag_parser_py_23
+
+  classDef hldNode fill:#dbeafe,stroke:#1e40af,color:#1e3a8a
+  classDef lldNode fill:#dcfce7,stroke:#15803d,color:#14532d
+  classDef specNode fill:#fef3c7,stroke:#b45309,color:#78350f
+  classDef testNode fill:#f3e8ff,stroke:#7c3aed,color:#581c87
+  classDef codeNode fill:#fee2e2,stroke:#b91c1c,color:#7f1d1d
+  class hld_vision,hld_principles,hld_segments,hld_cross_segment_invariants,hld_out_of_scope hldNode
+  class lld_capture,lld_session,lld_brief,lld_sync,lld_attention,lld_vault,lld_integrations lldNode
+  class spec_ATTN_001,spec_ATTN_002,spec_ATTN_003,spec_ATTN_004,spec_ATTN_005,spec_ATTN_006,spec_ATTN_007,spec_ATTN_008,spec_ATTN_009,spec_ATTN_010,spec_ATTN_011,spec_ATTN_012,spec_ATTN_013,spec_BRIEF_001,spec_BRIEF_002,spec_BRIEF_003,spec_BRIEF_004,spec_BRIEF_005,spec_BRIEF_006,spec_CAPTURE_001,spec_CAPTURE_002,spec_CAPTURE_003,spec_CAPTURE_004,spec_CAPTURE_005,spec_INT_001,spec_INT_002,spec_INT_003,spec_INT_004,spec_INT_005,spec_INT_006,spec_INT_007,spec_INT_008,spec_INT_009,spec_INT_010,spec_INT_011,spec_SESSION_001,spec_SESSION_002,spec_SESSION_003,spec_SESSION_004,spec_SESSION_005,spec_SESSION_006,spec_SESSION_007,spec_SESSION_008,spec_SESSION_009,spec_SESSION_010,spec_SESSION_011,spec_SESSION_012,spec_SYNC_001,spec_SYNC_002,spec_SYNC_003,spec_SYNC_004,spec_SYNC_005,spec_SYNC_006,spec_SYNC_007,spec_SYNC_008,spec_VAULT_001,spec_VAULT_002,spec_VAULT_003,spec_VAULT_004,spec_VAULT_005,spec_VAULT_006,spec_VAULT_007,spec_VAULT_008 specNode
+  class test_tests_test_foundation_py_282,test_tests_test_foundation_py_288,test_tests_test_foundation_py_296,test_tests_test_foundation_py_307,test_tests_test_foundation_py_313,test_tests_test_foundation_py_319,test_tests_test_foundation_py_327,test_tests_test_foundation_py_335,test_tests_test_foundation_py_343,test_tests_test_foundation_py_351,test_tests_test_foundation_py_360,test_tests_test_foundation_py_216,test_tests_test_foundation_py_232,test_tests_test_foundation_py_239,test_tests_test_foundation_py_257,test_tests_test_attn_estimate_py_12,test_tests_test_attn_estimate_py_20,test_tests_test_attn_estimate_py_31,test_tests_test_attn_estimate_py_56,test_tests_test_attn_chunk_py_13,test_tests_test_attn_chunk_py_21,test_tests_test_attn_chunk_py_30,test_tests_test_attn_chunk_py_36,test_tests_test_attn_chunk_py_44,test_tests_test_attn_chunk_py_51,test_tests_test_attn_chunk_py_58,test_tests_test_attn_chunk_py_71,test_tests_test_attn_chunk_py_84,test_tests_test_attn_chunk_py_92,test_tests_test_attn_focus_py_42,test_tests_test_attn_focus_py_52,test_tests_test_attn_focus_py_76,test_tests_test_attn_focus_py_91,test_tests_test_attn_focus_py_100,test_tests_test_attn_estimate_py_40,test_tests_test_attn_estimate_py_47,test_tests_test_attn_focus_py_115,test_tests_test_attn_focus_py_126,test_tests_test_attn_focus_py_140,test_tests_test_attn_focus_py_165,test_tests_test_sync_specs_py_49,test_tests_test_sync_specs_py_53,test_tests_test_sync_specs_py_57,test_tests_test_sync_specs_py_63,test_tests_test_sync_specs_py_71,test_tests_test_sync_specs_py_78,test_tests_test_sync_specs_py_92,test_tests_test_sync_specs_py_103,test_tests_test_sync_specs_py_114,test_tests_test_sync_specs_py_131,test_tests_test_sync_specs_py_138,test_tests_test_sync_specs_py_149,test_tests_test_sync_specs_py_157,test_tests_test_sync_specs_py_169,test_tests_test_sync_specs_py_178,test_tests_test_sync_specs_py_194,test_tests_test_sync_specs_py_208,test_tests_test_sync_specs_py_224,test_tests_test_sync_specs_py_242,test_tests_test_sync_specs_py_256,test_tests_test_vault_specs_py_33,test_tests_test_vault_specs_py_39,test_tests_test_vault_specs_py_45,test_tests_test_vault_specs_py_51,test_tests_test_vault_specs_py_56,test_tests_test_vault_specs_py_62,test_tests_test_vault_specs_py_67,test_tests_test_vault_specs_py_72,test_tests_test_vault_specs_py_78,test_tests_test_vault_specs_py_83,test_tests_test_vault_specs_py_89,test_tests_test_vault_specs_py_97,test_tests_test_vault_specs_py_103,test_tests_test_vault_specs_py_109,test_tests_test_vault_specs_py_117,test_tests_test_vault_specs_py_134,test_tests_test_vault_specs_py_139,test_tests_test_vault_specs_py_146,test_tests_test_vault_specs_py_153,test_tests_test_vault_specs_py_158,test_tests_test_vault_specs_py_199,test_tests_test_vault_specs_py_238 testNode
+  class code_lib_deadline_scanner_py_36,code_lib_switch_tracker_py_36,code_lib_estimate_buffer_py_68,code_lib_chunk_helper_py_56,code_lib_switch_tracker_py_103,code_lib_deadline_scanner_py_162,code_lib_session_scanner_py_223,code_lib_session_scanner_py_190,code_lib_manifest_writer_py_30,code_lib_package_protocol_py_177,code_lib_package_protocol_py_83,code_lib_package_protocol_py_315,code_lib_package_protocol_py_359,code_lib_package_protocol_py_30,code_lib_status_aggregator_py_257,code_lib_tag_parser_py_28,code_lib_tag_parser_py_56,code_lib_intent_parser_py_366,code_lib_status_aggregator_py_27,code_lib_intent_parser_py_25,code_lib_manifest_writer_py_15,code_lib_tag_parser_py_23 codeNode
+```
+
+_Edge legend: HLD→LLD `decomposes_to` (solid), LLD→spec `specifies` (solid), spec→test `verified_by` (dotted), spec→code `implemented_by` (thick)._

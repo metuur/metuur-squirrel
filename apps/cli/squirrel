@@ -1,0 +1,765 @@
+#!/usr/bin/env python3
+"""cb — squirrel CLI. Direct terminal access to vault data without Claude Code."""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+_LIB = Path(__file__).resolve().parent / "lib"
+sys.path.insert(0, str(_LIB))
+
+
+def _read_config() -> dict:
+    """Legacy helper kept for backward compatibility. New callers should use
+    `from config_loader import ...` directly."""
+    cfg = Path("~/.squirrel/config.toml").expanduser()
+    if not cfg.exists():
+        return {}
+    result = {}
+    for line in cfg.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#") or s.startswith("["):
+            continue
+        if "=" in s:
+            k, _, v = s.partition("=")
+            result[k.strip()] = v.strip().strip("\"'")
+    return result
+
+
+def _vault(name=None) -> Path:
+    """Resolve a vault by name (or default if name is None) via config_loader."""
+    from config_loader import (
+        get_vault, NoVaultsConfiguredError, VaultNotFoundError, ConfigError,
+    )
+    try:
+        return get_vault(name=name).path
+    except NoVaultsConfiguredError as e:
+        print(f"❌  {e}", file=sys.stderr)
+        sys.exit(1)
+    except VaultNotFoundError as e:
+        print(f"❌  {e}", file=sys.stderr)
+        sys.exit(1)
+    except ConfigError as e:
+        print(f"❌  {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# status
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_status(args):
+    from status_aggregator import aggregate_status
+    data = aggregate_status(_vault(getattr(args, "vault", None)))
+    if args.json:
+        print(json.dumps(data, indent=2, default=str))
+        return
+
+    print(f"📊 Vault Status — {data.get('scanned_at', '')[:10]}\n")
+
+    wip = data.get("wip", {})
+    projs = wip.get("projects", [])
+    print(f"🟢 WIP ({len(projs)}/{wip.get('max', 3)})")
+    for i, p in enumerate(projs, 1):
+        pct = p.get("intents", {}).get("percent_done", 0)
+        dl = p.get("deadline", "—")
+        last = p.get("active_intent", "")
+        print(f"  {i}. {p['id']} — {pct}% — deadline: {dl} — last: {last}")
+
+    parking = data.get("parking_lot", {}).get("items", [])
+    if parking:
+        print(f"\n🚧 PARKING ({len(parking)})")
+        for p in parking:
+            pid = p.get("id", str(p)) if isinstance(p, dict) else str(p)
+            print(f"  • {pid}")
+
+    alerts = data.get("alerts", [])
+    if alerts:
+        print(f"\n⚠️  ALERTS")
+        for a in alerts:
+            print(f"  • {a.get('project', '?')}: {a.get('message')} [{a.get('level')}]")
+
+    focus = data.get("recommended_focus") or {}
+    if focus:
+        print(f"\n🎯 FOCUS: {focus.get('project')} — {focus.get('reason', '')}")
+        na = focus.get("next_action", "")
+        if na:
+            print(f"   Next: {na}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# deadlines
+# ─────────────────────────────────────────────────────────────────────────────
+
+_URGENCY_ORDER = ["overdue", "critical", "urgent", "soon", "upcoming", "future_fyi"]
+_ICONS = {
+    "overdue": "💀",
+    "critical": "🔴",
+    "urgent": "🟠",
+    "soon": "🟡",
+    "upcoming": "🔵",
+    "future_fyi": "🟢",
+}
+
+
+def cmd_deadlines(args):
+    from deadline_scanner import scan_vault_deadlines
+    data = scan_vault_deadlines(_vault(getattr(args, "vault", None)))
+    if args.json:
+        print(json.dumps(data, indent=2, default=str))
+        return
+
+    by_urgency = data.get("by_urgency", {})
+    filter_lvls = set(args.level.split(",")) if args.level else set(_URGENCY_ORDER)
+    shown = 0
+
+    for lvl in _URGENCY_ORDER:
+        if lvl not in filter_lvls:
+            continue
+        items = by_urgency.get(lvl, [])
+        if not items:
+            continue
+        print(f"\n{_ICONS[lvl]} {lvl.upper()} ({len(items)})")
+        for item in items:
+            tag = item.get("id", "?")
+            title = item.get("title", "")
+            dl = item.get("deadline", "")
+            days = item.get("days_left", item.get("days_overdue"))
+            hrs = item.get("hours_left")
+            if lvl == "overdue":
+                time_str = f"{days}d overdue" if days else "overdue"
+            elif hrs is not None and hrs < 24:
+                time_str = f"{hrs}h left"
+            elif days is not None:
+                time_str = f"{days}d left"
+            else:
+                time_str = ""
+            suffix = f" ({time_str})" if time_str else ""
+            print(f"  {tag} — {title} — {dl}{suffix}")
+            shown += 1
+
+    if shown == 0:
+        print("✅  No deadlines found.")
+    else:
+        total = data.get("total_intents_with_deadline", shown)
+        print(f"\n  Total: {total} intent(s) with deadline")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# chunk
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_chunk(args):
+    from chunk_helper import chunk_task
+    mins = args.minutes if args.minutes else int(args.hours * 60)
+    # CLI always chunks: threshold only applies to the skill's auto-suggest logic
+    data = chunk_task(mins, threshold_minutes=0)
+    if args.json:
+        print(json.dumps(data, indent=2))
+        return
+
+    print(f"📦 {data['total_human']} → {data['total_chunks']} chunks, {len(data['sessions'])} session(s)\n")
+    for phase in data["phases"]:
+        bar = "█" * max(1, phase["percent"] // 5)
+        print(f"  {phase['emoji']} {phase['name']:<14} {phase['total_minutes']:>3} min  {bar} {phase['percent']}%  ({phase['n_chunks']} chunk(s))")
+
+    if len(data["sessions"]) > 1:
+        print(f"\n  📅 Estimated: {data['estimated_days']} day(s) at 2 sessions/day")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# estimate
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_estimate(args):
+    from estimate_buffer import adjust_estimate, parse_estimate
+    if args.minutes is not None:
+        mins = float(args.minutes)
+    elif args.hours is not None:
+        mins = args.hours * 60
+    else:
+        try:
+            mins = parse_estimate(args.estimate)
+        except ValueError as e:
+            print(f"❌  {e}", file=sys.stderr)
+            sys.exit(1)
+
+    data = adjust_estimate(mins)
+    if args.json:
+        print(json.dumps(data, indent=2))
+        return
+
+    print(f"⏱️  {data['user_estimate_human']}  →  {data['adjusted_human']}  (×{data['multiplier']})")
+    print(f"\n   {data['explanation']}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# recover
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_recover(args):
+    from session_scanner import scan_sessions, _load_config
+    vault = _vault(getattr(args, "vault", None))
+    config = _load_config()
+    sessions = scan_sessions(vault, args.max_age, config)
+    if args.json:
+        print(json.dumps(sessions, indent=2, default=str))
+        return
+
+    if not sessions:
+        print("✅  No recoverable sessions.")
+        return
+
+    print(f"🔄  {len(sessions)} recoverable session(s)\n")
+    for s in sessions:
+        proj = s.get("project", s.get("cwd", "?"))
+        agent = s.get("agent", "?")
+        last = (s.get("last_seen") or s.get("started_at", ""))[:16]
+        print(f"  {proj} [{agent}] — last seen {last}")
+        summary = s.get("summary") or s.get("last_message", "")
+        if summary:
+            print(f"    {str(summary)[:80].replace(chr(10), ' ')}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# install
+# ─────────────────────────────────────────────────────────────────────────────
+
+_CODEX_AGENTS_BLOCK = """\
+# Context Bridge
+
+When the user mentions managing context across sessions or environments, use the
+squirrel skills installed at ~/.codex/skills/. The main entry points are:
+
+- /cb-start [PROJECT-TAG] — load project context
+- /cb-end — save shutdown notes
+- /cb-brief — generate structured status
+- /cb-sync-out — export package for another environment
+- /cb-sync-in — apply pasted package
+
+Configuration lives at ~/.squirrel/config.toml.
+"""
+
+
+def _copy_or_link(src: Path, dst: Path, link: bool, dry: bool) -> None:
+    import shutil
+    action = "symlink" if link else "copy"
+    if dry:
+        print(f"  [{action}] {src.name} → {dst}")
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if link:
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        elif dst.is_dir():
+            shutil.rmtree(dst)
+        dst.symlink_to(src.resolve())
+    elif src.is_dir():
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy2(src, dst)
+
+
+def _register_claude_marketplace(plugin_root: Path, dry: bool) -> None:
+    """Make Claude Code actually load the plugin.
+
+    Just copying files into ~/.claude/plugins/squirrel/ is NOT enough — Claude
+    Code needs THREE registrations:
+
+      1. ~/.claude/plugins/known_marketplaces.json  — registers the marketplace.
+      2. ~/.claude/plugins/installed_plugins.json   — records the install.
+      3. ~/.claude/settings.json                    — extraKnownMarketplaces
+                                                       + enabledPlugins.
+
+    We use the directory-as-marketplace pattern: the repo IS the marketplace
+    named "squirrel" and contains a single plugin also named "squirrel".
+    Both manifests live side-by-side at the marketplace root:
+
+      .claude-plugin/marketplace.json — lists the plugin(s) in this marketplace
+      .claude-plugin/plugin.json      — describes the plugin itself
+
+    No symlink dance. No nested marketplaces/ dir. The earlier "drop
+    marketplace.json" fix (62e5aea) was for an obsolete install path that
+    symlinked the repo INTO a separate marketplace dir, causing the loader
+    to treat the symlinked source as a nested marketplace. Under the current
+    pattern, marketplace.json at the repo root is required — without it,
+    `claude doctor` reports "Plugin squirrel not found in marketplace squirrel".
+
+    Idempotent. After this runs, the user needs to RESTART Claude Code.
+    """
+    import datetime as _dt
+    import json as _json
+
+    repo = str(plugin_root.resolve())
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    km_path = Path("~/.claude/plugins/known_marketplaces.json").expanduser()
+    ip_path = Path("~/.claude/plugins/installed_plugins.json").expanduser()
+    st_path = Path("~/.claude/settings.json").expanduser()
+
+    if dry:
+        print(f"  [registry] add 'squirrel' marketplace → {repo}")
+        print(f"  [registry] install 'squirrel@squirrel' in {ip_path.name}")
+        print(f"  [registry] enable 'squirrel@squirrel' in settings.json")
+        return
+
+    def _load(p: Path, default: dict) -> dict:
+        if not p.is_file():
+            return dict(default)
+        try:
+            return _json.loads(p.read_text())
+        except _json.JSONDecodeError:
+            print(f"  ⚠️   {p} is malformed; not modifying.")
+            return dict(default)
+
+    # 1. known_marketplaces.json
+    km = _load(km_path, {})
+    # Wipe any legacy "squirrel-local" leftover
+    km.pop("squirrel-local", None)
+    km["squirrel"] = {
+        "source": {"source": "directory", "path": repo},
+        "installLocation": repo,
+        "lastUpdated": now,
+    }
+    km_path.parent.mkdir(parents=True, exist_ok=True)
+    km_path.write_text(_json.dumps(km, indent=2))
+
+    # 2. installed_plugins.json
+    ip = _load(ip_path, {"version": 2, "plugins": {}})
+    ip.setdefault("plugins", {})
+    ip["plugins"].pop("squirrel@squirrel-local", None)
+    ip["plugins"]["squirrel@squirrel"] = [{
+        "scope": "user",
+        "installPath": repo,
+        "version": "0.7.0",
+        "installedAt": now,
+        "lastUpdated": now,
+        "gitCommitSha": "",
+    }]
+    ip_path.write_text(_json.dumps(ip, indent=2))
+
+    # 3. settings.json — extraKnownMarketplaces + enabledPlugins
+    st = _load(st_path, {})
+    ekm = st.setdefault("extraKnownMarketplaces", {})
+    ekm.pop("squirrel-local", None)
+    ekm["squirrel"] = {"source": {"source": "directory", "path": repo}}
+
+    ep = st.setdefault("enabledPlugins", {})
+    ep.pop("squirrel@squirrel-local", None)  # clean up legacy
+    already_enabled = ep.get("squirrel@squirrel") is True
+    ep["squirrel@squirrel"] = True
+    st_path.write_text(_json.dumps(st, indent=4))
+
+    if already_enabled:
+        print(f"  ✅  Marketplace + enable already set; restart Claude Code if commands are missing.")
+    else:
+        print(f"  ✅  Registered marketplace 'squirrel' → {repo}")
+        print(f"  ✅  Enabled 'squirrel@squirrel' in settings.json")
+        print(f"  ℹ️   Restart Claude Code to load the slash commands.")
+
+
+def _patch_codex_agents_md(dry: bool) -> None:
+    agents_md = Path("~/.codex/AGENTS.md").expanduser()
+    marker = "# Context Bridge"
+    if agents_md.exists():
+        content = agents_md.read_text(encoding="utf-8")
+        if marker in content:
+            print(f"  ✅  AGENTS.md already contains squirrel — skipping")
+            return
+        if dry:
+            print(f"  [patch] {agents_md}")
+            return
+        agents_md.write_text(content.rstrip() + "\n\n" + _CODEX_AGENTS_BLOCK, encoding="utf-8")
+    else:
+        if dry:
+            print(f"  [create] {agents_md}")
+            return
+        agents_md.parent.mkdir(parents=True, exist_ok=True)
+        agents_md.write_text(_CODEX_AGENTS_BLOCK, encoding="utf-8")
+    print(f"  ✅  AGENTS.md → {agents_md}")
+
+
+def cmd_install(args):
+    plugin_root = Path(__file__).resolve().parent
+    dry = args.dry_run
+    link = args.link
+
+    agent = args.agent
+    if not agent:
+        if Path("~/.claude").expanduser().exists():
+            agent = "claude"
+        elif Path("~/.codex").expanduser().exists():
+            agent = "codex"
+        elif Path("~/.cursor").expanduser().exists():
+            agent = "cursor"
+        else:
+            agent = "standalone"
+
+    print(f"🔧  Installing squirrel for {agent}{'  [dry run]' if dry else ''}\n")
+
+    if agent == "claude":
+        dst = Path("~/.claude/plugins/squirrel").expanduser()
+        _copy_or_link(plugin_root, dst, link, dry)
+        print(f"  ✅  Plugin → {dst}")
+        _register_claude_marketplace(plugin_root, dry)
+
+    elif agent == "codex":
+        skills_dst = Path("~/.codex/skills").expanduser()
+        cmds_dst = Path("~/.codex/commands").expanduser()
+        for skill_dir in sorted((plugin_root / "skills").iterdir()):
+            if skill_dir.is_dir() and not skill_dir.name.startswith("{"):
+                _copy_or_link(skill_dir, skills_dst / skill_dir.name, link, dry)
+        for cmd_file in sorted((plugin_root / "commands").glob("*.md")):
+            _copy_or_link(cmd_file, cmds_dst / cmd_file.name, link, dry)
+        print(f"  ✅  Skills → {skills_dst}")
+        print(f"  ✅  Commands → {cmds_dst}")
+        _patch_codex_agents_md(dry)
+
+    elif agent == "cursor":
+        rules_dst = Path("~/.cursor/rules/squirrel").expanduser()
+        for skill_dir in sorted((plugin_root / "skills").iterdir()):
+            if skill_dir.is_dir() and not skill_dir.name.startswith("{"):
+                _copy_or_link(skill_dir, rules_dst / skill_dir.name, link, dry)
+        print(f"  ✅  Rules → {rules_dst}")
+
+    # standalone: no agent files — config dir only
+    cfg_dir = Path("~/.squirrel").expanduser()
+    if dry:
+        print(f"  [mkdir] {cfg_dir}")
+    else:
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+
+    cfg = cfg_dir / "config.toml"
+    print()
+    if not cfg.exists() and not dry:
+        print("  ℹ️   No config found. Run /cb-init (Claude Code) to configure.")
+    elif dry:
+        print(f"  [check] config → {cfg}")
+    else:
+        print(f"  ✅  Config → {cfg}")
+
+    print("\n🎉  Done!")
+    hints = {
+        "claude": "Restart Claude Code, then /sq-where-am-i",
+        "codex": "Run: codex, then /sq-where-am-i",
+        "cursor": "Update Settings → Rules for AI to include squirrel",
+        "standalone": "Run: cb status --help",
+    }
+    print(f"     Next: {hints.get(agent, '')}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# dashboard
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_dashboard(args):
+    from dashboard_generator import generate_html
+    vault = _vault(getattr(args, "vault", None))
+    out = Path(args.out).expanduser() if args.out else Path("~/.squirrel/dashboard.html").expanduser()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    html = generate_html(vault)
+    out.write_text(html, encoding="utf-8")
+    print(f"✅  Dashboard → {out}")
+    if args.open_browser:
+        import subprocess
+        subprocess.run(["open", str(out)], check=False)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# vaults — list / add / remove / default
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_vaults(args):
+    from config_loader import (
+        list_vaults, add_vault, remove_vault, set_default,
+        ConfigError, ValidationError, VaultNotFoundError,
+        NoVaultsConfiguredError,
+    )
+
+    subcmd = args.vaults_cmd
+    try:
+        if subcmd == "list":
+            try:
+                vaults = list_vaults()
+            except NoVaultsConfiguredError:
+                vaults = []
+            if not vaults:
+                print("(no vaults configured — run 'squirrel vaults add NAME PATH')")
+                return
+            for v in vaults:
+                marker = "  (default)" if v.default else ""
+                print(f"  {v.name:<20} {v.path}{marker}")
+        elif subcmd == "add":
+            v = add_vault(args.name, args.path)
+            print(f"✅  Added vault {v.name!r} at {v.path}")
+        elif subcmd == "remove":
+            remove_vault(args.name)
+            print(f"✅  Removed vault {args.name!r}")
+        elif subcmd == "default":
+            set_default(args.name)
+            print(f"✅  Default vault is now {args.name!r}")
+        else:
+            print(f"❌  Unknown vaults subcommand: {subcmd}", file=sys.stderr)
+            sys.exit(1)
+    except (ValidationError, VaultNotFoundError, NoVaultsConfiguredError) as e:
+        print(f"❌  {e}", file=sys.stderr)
+        sys.exit(1)
+    except ConfigError as e:
+        print(f"❌  Config error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# web — companions/web-ui lifecycle
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WEB_PID_PATH = Path("~/.squirrel/web-ui.pid").expanduser()
+_WEB_LAUNCHD_PLIST = Path(
+    "~/Library/LaunchAgents/org.squirrel.web-ui.plist"
+).expanduser()
+
+
+def _web_server_script() -> Path:
+    """Locate companions/web-ui/server.py — repo or installed plugin path."""
+    here = Path(__file__).resolve().parent / "companions" / "web-ui" / "server.py"
+    if here.is_file():
+        return here
+    for cand in [
+        Path("~/.claude/plugins/squirrel/companions/web-ui/server.py").expanduser(),
+        Path("~/.codex/plugins/squirrel/companions/web-ui/server.py").expanduser(),
+    ]:
+        if cand.is_file():
+            return cand
+    raise FileNotFoundError("companions/web-ui/server.py not found")
+
+
+def _web_running_pid() -> int:
+    """Return the PID from the pid file if the process is alive, else 0."""
+    if not _WEB_PID_PATH.is_file():
+        return 0
+    try:
+        pid = int(_WEB_PID_PATH.read_text().strip() or "0")
+    except (OSError, ValueError):
+        return 0
+    if pid <= 0:
+        return 0
+    try:
+        import os as _os
+        _os.kill(pid, 0)  # signal 0: probe only
+    except (OSError, ProcessLookupError):
+        return 0
+    return pid
+
+
+def cmd_web(args):
+    sub = args.web_cmd
+    if sub == "start":
+        _web_start(args.port, args.lan)
+    elif sub == "stop":
+        _web_stop()
+    elif sub == "status":
+        _web_status()
+    elif sub == "open":
+        _web_open(args.port)
+    elif sub == "uninstall":
+        _web_uninstall()
+    else:
+        print(f"❌  Unknown web subcommand: {sub}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _web_start(port: int, lan: bool) -> None:
+    import subprocess
+    existing = _web_running_pid()
+    if existing:
+        url = f"http://127.0.0.1:{port}"
+        print(f"ℹ️   Already running on {url} (pid {existing})")
+        return
+    try:
+        server = _web_server_script()
+    except FileNotFoundError as e:
+        print(f"❌  {e}", file=sys.stderr)
+        sys.exit(1)
+    cmd = [sys.executable, str(server), "--port", str(port)]
+    if lan:
+        cmd.append("--lan")
+    _WEB_PID_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Detach so the parent shell exits independently.
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    _WEB_PID_PATH.write_text(str(proc.pid))
+    host = "127.0.0.1" if not lan else "0.0.0.0"
+    print(f"✅  Web UI started on http://{host}:{port}  (pid {proc.pid})")
+
+
+def _web_stop() -> None:
+    import os as _os
+    import signal
+    import time
+    pid = _web_running_pid()
+    if not pid:
+        if _WEB_PID_PATH.is_file():
+            _WEB_PID_PATH.unlink()
+        print("ℹ️   Web UI was not running.")
+        return
+    try:
+        _os.kill(pid, signal.SIGTERM)
+    except OSError as e:
+        print(f"❌  Could not stop pid {pid}: {e}", file=sys.stderr)
+    for _ in range(50):  # up to ~5 s
+        time.sleep(0.1)
+        try:
+            _os.kill(pid, 0)
+        except OSError:
+            break
+    else:
+        try:
+            _os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+    if _WEB_PID_PATH.is_file():
+        _WEB_PID_PATH.unlink()
+    print("✅  Web UI stopped.")
+
+
+def _web_status() -> None:
+    pid = _web_running_pid()
+    if pid:
+        print(f"running on http://127.0.0.1:3939 (pid {pid})")
+        sys.exit(0)
+    print("not running")
+    sys.exit(1)
+
+
+def _web_open(port: int) -> None:
+    if not _web_running_pid():
+        _web_start(port, False)
+    import webbrowser
+    webbrowser.open(f"http://127.0.0.1:{port}")
+
+
+def _web_uninstall() -> None:
+    _web_stop()
+    if _WEB_LAUNCHD_PLIST.is_file():
+        try:
+            import subprocess
+            subprocess.run(
+                ["launchctl", "unload", str(_WEB_LAUNCHD_PLIST)],
+                capture_output=True,
+            )
+        except FileNotFoundError:
+            pass
+        _WEB_LAUNCHD_PLIST.unlink()
+        print(f"✅  Removed launchd plist: {_WEB_LAUNCHD_PLIST}")
+    if _WEB_PID_PATH.is_file():
+        _WEB_PID_PATH.unlink()
+    print("✅  Web UI uninstalled.")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# main
+# ─────────────────────────────────────────────────────────────────────────────
+
+# @spec INT-008
+def main():
+    p = argparse.ArgumentParser(
+        prog="squirrel",
+        description="squirrel — vault CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Run 'cb <command> --help' for per-command options.",
+    )
+    p.add_argument("--json", action="store_true", help="Raw JSON output")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    st = sub.add_parser("status", help="WIP projects, alerts, recommended focus")
+    st.add_argument("--vault", metavar="NAME",
+                    help="Operate on the named vault (default: configured default)")
+
+    dl = sub.add_parser("deadlines", help="Deadline report grouped by urgency")
+    dl.add_argument("--level", metavar="LEVELS",
+                    help="Comma-separated: overdue,critical,urgent,soon,upcoming,future_fyi")
+    dl.add_argument("--vault", metavar="NAME",
+                    help="Operate on the named vault (default: configured default)")
+
+    ch = sub.add_parser("chunk", help="Decompose a task into ADHD-friendly chunks")
+    grp = ch.add_mutually_exclusive_group(required=True)
+    grp.add_argument("--minutes", type=int)
+    grp.add_argument("--hours", type=float)
+
+    est = sub.add_parser("estimate", help="Apply ADHD time buffer to an estimate")
+    grp2 = est.add_mutually_exclusive_group(required=True)
+    grp2.add_argument("--minutes", type=int)
+    grp2.add_argument("--hours", type=float)
+    grp2.add_argument("--estimate", metavar="STR", help="e.g. '90 min' or '2.5h'")
+
+    rec = sub.add_parser("recover", help="Find interrupted sessions (from manifest or Claude history)")
+    rec.add_argument("--max-age", type=int, default=72, dest="max_age", metavar="HOURS",
+                     help="Max session age in hours (default: 72)")
+    rec.add_argument("--vault", metavar="NAME",
+                     help="Operate on the named vault (default: configured default)")
+
+    dash = sub.add_parser("dashboard", help="Generate HTML dashboard and optionally open in browser")
+    dash.add_argument("--out", metavar="FILE", help="Output path (default: ~/.squirrel/dashboard.html)")
+    dash.add_argument("--open", action="store_true", dest="open_browser", help="Open in browser after generating")
+    dash.add_argument("--vault", metavar="NAME",
+                      help="Operate on the named vault (default: configured default)")
+
+    inst = sub.add_parser("install", help="Install squirrel for your agent (Claude Code, Codex, Cursor)")
+    inst.add_argument("--agent", choices=["claude", "codex", "cursor", "standalone"],
+                      help="Target agent (auto-detected if omitted)")
+    inst.add_argument("--link", action="store_true",
+                      help="Create symlinks instead of copying (stays updatable from repo)")
+    inst.add_argument("--dry-run", action="store_true", dest="dry_run",
+                      help="Show what would be done without making changes")
+
+    # vaults subcommand group
+    v = sub.add_parser("vaults", help="Manage configured vaults")
+    v_sub = v.add_subparsers(dest="vaults_cmd", required=True)
+    v_sub.add_parser("list", help="List all configured vaults")
+    v_add = v_sub.add_parser("add", help="Add a new vault")
+    v_add.add_argument("name", help="Short name (e.g., personal, work, client-a)")
+    v_add.add_argument("path", help="Path to the vault directory")
+    v_rm = v_sub.add_parser("remove", help="Remove a vault from config (files untouched)")
+    v_rm.add_argument("name", help="Name of the vault to remove")
+    v_def = v_sub.add_parser("default", help="Set the default vault")
+    v_def.add_argument("name", help="Name of the vault to make default")
+
+    # web subcommand group — companions/web-ui lifecycle
+    w = sub.add_parser("web", help="Manage the local browser interface")
+    w_sub = w.add_subparsers(dest="web_cmd", required=True)
+    w_start = w_sub.add_parser("start", help="Start the web UI server")
+    w_start.add_argument("--port", type=int, default=3939, help="Port (default: 3939)")
+    w_start.add_argument("--lan", action="store_true",
+                         help="Bind 0.0.0.0 (LAN-reachable, no auth)")
+    w_sub.add_parser("stop", help="Stop the running web UI server")
+    w_sub.add_parser("status", help="Print whether the web UI is running")
+    w_open = w_sub.add_parser("open", help="Open the web UI in the browser (starts if needed)")
+    w_open.add_argument("--port", type=int, default=3939)
+    w_sub.add_parser("uninstall", help="Stop server, remove PID file and launchd plist")
+
+    args = p.parse_args()
+    args.json = getattr(args, "json", False)
+
+    dispatch = {
+        "status": cmd_status,
+        "deadlines": cmd_deadlines,
+        "chunk": cmd_chunk,
+        "estimate": cmd_estimate,
+        "recover": cmd_recover,
+        "dashboard": cmd_dashboard,
+        "install": cmd_install,
+        "vaults": cmd_vaults,
+        "web": cmd_web,
+    }
+    dispatch[args.cmd](args)
+
+
+if __name__ == "__main__":
+    main()

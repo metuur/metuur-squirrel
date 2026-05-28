@@ -1,0 +1,199 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Modal } from '@/components/Modal';
+import { api, ApiError, type NewProjectRequest } from '@/api/client';
+import { useToast } from '@/components/Toast';
+
+const TAG_RE = /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$/;
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  onCreated?: (slug: string) => void;
+}
+
+export function NewProjectModal({ open, onClose, onCreated }: Props) {
+  const navigate = useNavigate();
+  const { show: toast } = useToast();
+  const [tag, setTag] = useState('');
+  const [tipo, setTipo] = useState<'A' | 'B' | 'C'>('C');
+  const [deadline, setDeadline] = useState('');
+  const [description, setDescription] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [wipPrompt, setWipPrompt] = useState<string | null>(null);
+
+  function reset() {
+    setTag('');
+    setTipo('C');
+    setDeadline('');
+    setDescription('');
+    setBusy(false);
+    setError(null);
+    setWipPrompt(null);
+  }
+
+  function close() {
+    if (busy) return;
+    reset();
+    onClose();
+  }
+
+  async function submit(force: boolean) {
+    setError(null);
+    const trimmed = tag.trim().toUpperCase();
+    if (!TAG_RE.test(trimmed)) {
+      setError('Tag must be UPPERCASE letters/digits, dash-separated (e.g. MYAPP or VISA-FAMILIA).');
+      return;
+    }
+    const req: NewProjectRequest = {
+      tag: trimmed,
+      tipo,
+      deadline: deadline || undefined,
+      description: description.trim() || undefined,
+      force: force || undefined,
+    };
+    setBusy(true);
+    try {
+      const res = await api.projectCreate(req);
+      toast(`Created ${res.slug}` + (res.over_cap ? ' (over WIP cap)' : ''), 'success');
+      reset();
+      onClose();
+      if (onCreated) onCreated(res.slug);
+      navigate(`/projects/${res.slug}`);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409 && e.payload?.code === 'WIP_CAPACITY') {
+        setWipPrompt(e.payload.error || 'Vault is at WIP capacity.');
+      } else if (e instanceof ApiError && e.status === 409 && e.payload?.code === 'PROJECT_EXISTS') {
+        setError(`A project named ${trimmed} already exists.`);
+      } else if (e instanceof ApiError) {
+        setError(e.payload?.error || e.message);
+      } else {
+        setError('Could not create the project. Please try again.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title="New project"
+      subtitle="Scaffolds the project page under 01-Proyectos-Activos/."
+      icon="folder_special"
+      size="md"
+      footer={
+        <>
+          <button
+            onClick={close}
+            disabled={busy}
+            className="px-4 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => submit(false)}
+            disabled={busy || !tag.trim()}
+            className="px-4 py-1.5 text-sm font-semibold bg-primary hover:bg-primary-dark text-white rounded-md shadow-sm transition-colors disabled:opacity-50"
+          >
+            {busy ? 'Creating…' : 'Create project'}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Field label="Tag" hint="UPPERCASE, dash-separated. e.g. MYAPP, VISA-FAMILIA-2027.">
+          <input
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            placeholder="MYAPP"
+            autoFocus
+            disabled={busy}
+            className="w-full font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
+          />
+        </Field>
+
+        <Field label="Tipo" hint="A=mission-critical, B=important, C=experimental.">
+          <div className="flex gap-2">
+            {(['A', 'B', 'C'] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setTipo(opt)}
+                disabled={busy}
+                className={`flex-1 py-2 text-sm font-semibold rounded-md border transition-all ${
+                  tipo === opt
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-primary'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Deadline (optional)">
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            disabled={busy}
+            className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+          />
+        </Field>
+
+        <Field label="Description (optional)" hint="One line shown under the H1 in the project page.">
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            disabled={busy}
+            placeholder="Short summary"
+            className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+          />
+        </Field>
+
+        {error && (
+          <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        {wipPrompt && (
+          <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 px-3 py-3 text-sm text-amber-800 dark:text-amber-200 space-y-2">
+            <div>{wipPrompt}</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => submit(true)}
+                disabled={busy}
+                className="px-3 py-1 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded transition-colors disabled:opacity-50"
+              >
+                Create anyway
+              </button>
+              <button
+                onClick={() => setWipPrompt(null)}
+                disabled={busy}
+                className="px-3 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{label}</div>
+      {children}
+      {hint && <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{hint}</div>}
+    </label>
+  );
+}
