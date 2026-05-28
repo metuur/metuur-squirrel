@@ -68,7 +68,7 @@
 | ID    | EARS statement |
 |-------|----------------|
 | R-7.1 | THE SYSTEM SHALL NOT embed or spawn the Python backend as a Tauri sidecar in Phase 2. |
-| R-7.2 | THE SYSTEM SHALL NOT create, modify, or remove any launchd plist in Phase 2. |
+| R-7.2 | THE SYSTEM SHALL NOT create, modify, or remove any launchd plist in Phase 2. **Superseded 2026-05-28**: user explicitly authorized repointing `org.squirrel.web-ui.plist` from the source-repo path to `apps/backend/server.py`. See LLD D8 supersession note. |
 | R-7.3 | THE SYSTEM SHALL NOT add `#[tauri::command]` wrappers that shell out to the `squirrel` Python CLI. All data flows from the webview's `fetch()` to the backend's HTTP API. |
 | R-7.4 | THE SYSTEM SHALL NOT introduce a `packages/ui/` shared-component layer in Phase 2. The popup's components live exclusively under `apps/desktop/src/components/`. |
 | R-7.5 | THE SYSTEM SHALL NOT alter the macOS deadline daemon (`agent-pack/companions/macos-reminders/reminder-daemon.sh`) in Phase 2. The daemon continues to shell out to `lib/deadline_scanner.py` directly. |

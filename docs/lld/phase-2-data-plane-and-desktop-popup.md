@@ -141,9 +141,17 @@ img-src 'self' data:;
 **Rejected**: Tauri sidecar embedding now (drags Phase 3 work into Phase 2), shelling out to `python3 server.py` from Rust setup (no supervision, dies silently on Python errors).
 
 ### D8. The user's launchd-managed backend at `~/Library/LaunchAgents/org.squirrel.web-ui.plist` is not touched
-**Decision**: Phase 2 does not modify, unload, or rewrite the existing launchd plist that points at the old `adhd-context-bridge/companions/web-ui/server.py`.
+**Decision (original Phase 2 spec)**: Phase 2 does not modify, unload, or rewrite the existing launchd plist that points at the old `adhd-context-bridge/companions/web-ui/server.py`.
 **Rationale**: The user's live environment is currently served by that plist (verified during smoke test, PID 26878). Touching it is a Phase 3 concern when the daemon refactor lands together. Until then, the user manually decides which backend they want and runs `make backend-start` from the new monorepo as needed.
 **Side effect**: While Phase 2 is being developed, port 3939 may be held by the legacy backend. Smoke-test scripts should accept a `--port` arg (already supported) so the migrated backend can run on 3940 alongside.
+
+**Superseded 2026-05-28**: After the Phase 2 implementation was complete and the migrated backend was verified working at `http://127.0.0.1:3940`, the OLD launchd-served SPA at `:3939` was throwing React #310 from a stale prod bundle. The user explicitly authorized repointing the plist. Sequence executed:
+1. `launchctl bootout gui/$UID ~/Library/LaunchAgents/org.squirrel.web-ui.plist`
+2. `sed -i.bak-<ts>` swap of `ProgramArguments[1]` from `…/adhd-context-bridge/companions/web-ui/server.py` to `…/squirrel/apps/backend/server.py`
+3. `launchctl bootstrap gui/$UID …`
+4. Verified PID on `:3939` is running the migrated path and serving the rebuilt dist `index-CDIuq7Ni.js`.
+
+Backup at `~/Library/LaunchAgents/org.squirrel.web-ui.plist.bak-<timestamp>`. Revert: `mv …bak-… plist && launchctl bootout/bootstrap`.
 
 ### D9. `dist/` policy stays untracked in the monorepo
 **Decision**: `apps/backend/app/dist/` is not committed in this monorepo, despite the v0.5 local `.gitignore` whitelisting it with `!dist/`.
