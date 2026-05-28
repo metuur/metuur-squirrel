@@ -1,8 +1,6 @@
 // Phase 2 CaptureButton — primary "+ Add a note" affordance.
 // EARS R-3.1 (visible), R-3.2 (offline-disable), R-3.3 (click → modal).
-// The modal itself lives at the App root (so per-task "+ note" buttons in
-// DeadlinesWidget can also open it). This component just fires the open
-// callback.
+// Sized to content; the parent footer handles layout + spacing.
 
 interface Props {
   online: boolean;
@@ -17,7 +15,7 @@ export function CaptureButton({ online, onClick }: Props) {
       onClick={() => !disabled && onClick()}
       disabled={disabled}
       title={disabled ? "Backend offline — capture will fail" : undefined}
-      className={`mx-4 mt-3 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
         disabled
           ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500"
           : "bg-primary text-white hover:bg-primary-dark"

@@ -12,6 +12,7 @@ import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
 import { CaptureModal } from "./components/CaptureModal";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
+import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
@@ -71,10 +72,13 @@ export default function App() {
 
       <div className="flex-1" />
 
-      <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
+      <footer className="flex items-center justify-between gap-2 flex-wrap px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
         <CaptureButton online={status.online} onClick={() => openCapture(null)} />
-        <OpenWebUIButton />
-      </div>
+        <div className="flex items-center gap-2">
+          <OpenWebUIButton />
+          <CloseWindowButton />
+        </div>
+      </footer>
 
       <CaptureModal
         open={captureOpen}
