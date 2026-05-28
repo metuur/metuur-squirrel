@@ -208,6 +208,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     # ── SPA shell + static bundle ───────────────────────────────────────────
     ("GET",  re.compile(r"^/favicon\.ico$"),                          "spa_favicon"),
     ("GET",  re.compile(r"^/favicon\.svg$"),                          "spa_favicon_svg"),
+    ("GET",  re.compile(r"^/squirrel\.svg$"),                         "spa_squirrel_svg"),
     ("GET",  re.compile(r"^/(?P<name>icon-\d+\.png)$"),               "spa_root_icon"),
     ("GET",  re.compile(r"^/apple-touch-icon\.png$"),                 "spa_apple_touch_icon"),
     ("GET",  re.compile(r"^/manifest\.json$"),                        "spa_manifest"),
@@ -839,6 +840,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def spa_favicon_svg(self) -> None:
         cand = APP_DIST / "favicon.svg"
+        if cand.is_file():
+            self._serve_static_file(cand)
+            return
+        raise _UserError(404, "Not found.")
+
+    def spa_squirrel_svg(self) -> None:
+        cand = APP_DIST / "squirrel.svg"
         if cand.is_file():
             self._serve_static_file(cand)
             return

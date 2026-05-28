@@ -70,7 +70,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             to="/"
             className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100 hover:opacity-80 transition-opacity cursor-pointer"
           >
-            <img src="/squirrel.svg" alt="" aria-hidden="true" className="w-6 h-6" />
+            <img src="/squirrel.svg" alt="" aria-hidden="true" className="w-8 h-8" />
             <span className="tracking-tight">Squirrel</span>
           </Link>
 

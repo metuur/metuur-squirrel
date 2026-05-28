@@ -44,7 +44,7 @@ mkdir -p "$DEST"
 magick "$SRC" \
   -background none -alpha on \
   -trim +repage \
-  -resize 24x24 \
+  -resize 30x30 \
   -gravity southwest -extent 32x32 \
   "$DEST/normal@2x.png"
 
