@@ -43,11 +43,11 @@ export default function App() {
   const focusSlug = home.data?.focus?.slug ?? null;
 
   return (
-    <main className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 flex flex-col">
+    <main className="h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 flex flex-col overflow-hidden">
       <BackendStatusBanner status={status} />
 
-      {/* Top chrome — mirrors the web UI's brand row */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
+      {/* Sticky header — never scrolls out of view */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span aria-hidden className="text-lg">🐿️</span>
           <span className="font-bold text-sm text-slate-900 dark:text-slate-100">Squirrel</span>
@@ -61,18 +61,22 @@ export default function App() {
         <SizeToggle />
       </header>
 
-      <FocusWidget home={home} online={status.online} />
-      <DeadlinesWidget
-        home={home}
-        online={status.online}
-        projects={projects}
-        onAddNote={openCapture}
-      />
-      <ParakeetWidget triggerKey={triggerKey} online={status.online} />
+      {/* Scrollable middle — takes all remaining vertical space; the only
+          area that overflows. Widgets get their natural height; the cards
+          inside DeadlinesWidget scroll vertically when the list grows. */}
+      <div className="flex-1 overflow-y-auto pb-2">
+        <FocusWidget home={home} online={status.online} />
+        <DeadlinesWidget
+          home={home}
+          online={status.online}
+          projects={projects}
+          onAddNote={openCapture}
+        />
+        <ParakeetWidget triggerKey={triggerKey} online={status.online} />
+      </div>
 
-      <div className="flex-1" />
-
-      <footer className="flex items-center justify-between gap-2 flex-wrap px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
+      {/* Sticky footer — never scrolls out of view */}
+      <footer className="flex items-center justify-between gap-2 flex-wrap px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 shrink-0">
         <CaptureButton online={status.online} onClick={() => openCapture(null)} />
         <div className="flex items-center gap-2">
           <OpenWebUIButton />

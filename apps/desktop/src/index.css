@@ -19,7 +19,9 @@
 /* Match the web UI's default body styles for parity. macOS uses system
  * fonts well, so the Inter fallback chain ends at system-ui — no external
  * font load required (CSP blocks Google Fonts anyway). */
-html, body {
+html, body, #root {
+  height: 100%;
+  margin: 0;
   font-family: var(--font-sans);
   background: var(--color-background-light);
   color: var(--color-slate-900);
