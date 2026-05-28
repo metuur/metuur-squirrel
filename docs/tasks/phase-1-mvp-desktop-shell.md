@@ -57,7 +57,7 @@ Conventions:
 
 ## Unit 2: Tray icon and tray menu
 
-- [ ] 2.1 Create four SQ icon assets (Normal, Notification, Processing, Error) at all required resolutions and wire them as bundled resources (est: ~40m)
+- [x] 2.1 Create four SQ icon assets (Normal, Notification, Processing, Error) at all required resolutions and wire them as bundled resources (est: ~40m)
   - acceptance: R-2.1 — THE SYSTEM SHALL support exactly four SQ icon states: Normal, Notification, Processing, Error. Assets exist at 16/32/64/128/256px (or Tauri's required template sizes for macOS menu bar) and are visually distinguishable.
   - verify: Bundle resources include all four files; load each from Rust and confirm `image::open()` succeeds for every variant.
 
