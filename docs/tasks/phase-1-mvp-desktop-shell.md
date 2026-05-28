@@ -61,11 +61,11 @@ Conventions:
   - acceptance: R-2.1 — THE SYSTEM SHALL support exactly four SQ icon states: Normal, Notification, Processing, Error. Assets exist at 16/32/64/128/256px (or Tauri's required template sizes for macOS menu bar) and are visually distinguishable.
   - verify: Bundle resources include all four files; load each from Rust and confirm `image::open()` succeeds for every variant.
 
-- [ ] 2.2 Install tray icon at startup with the five-item menu in the exact order from R-2.5 (deps: 0.1, 2.1, est: ~45m)
+- [x] 2.2 Install tray icon at startup with the five-item menu in the exact order from R-2.5 (deps: 0.1, 2.1, est: ~45m)
   - acceptance: R-1.2 — WHEN the user launches Squirrel, THE SYSTEM SHALL display an SQ icon in the macOS menu bar within 2 seconds of process start. R-2.5 — THE SYSTEM SHALL expose a tray menu containing exactly these items, in order: Open Squirrel, Background Watcher (On/Off toggle), Settings, View Logs, Quit Squirrel.
   - verify: Launch app; stopwatch ≤2s until SQ icon appears in menu bar; click icon and confirm menu items appear in the specified order.
 
-- [ ] 2.3 Set Normal icon state on startup with no pending events (deps: 2.2, est: ~10m)
+- [x] 2.3 Set Normal icon state on startup with no pending events (deps: 2.2, est: ~10m)
   - acceptance: R-2.2 — WHEN the application starts and no events are pending, THE SYSTEM SHALL set the SQ icon to the Normal state.
   - verify: Fresh launch; visual confirmation icon is Normal variant.
 
