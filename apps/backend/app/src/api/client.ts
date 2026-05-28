@@ -76,6 +76,7 @@ export interface ProjectListItem {
   percent_done?: number;
   deadline?: string | null;
   active_intent?: string | null;
+  last_activity?: string | null;
 }
 export interface HomePayload {
   focus: FocusItem | null;
