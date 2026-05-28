@@ -44,14 +44,17 @@ import re
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SKILLS_DIR = REPO / "skills"
+MONOREPO = REPO.parent.parent  # apps/cli → squirrel/
+SKILLS_DIR = MONOREPO / "agent-pack" / "skills"
 
 SCRIPT_VAULT_SKILLS = [
     "brief",
     "parakeet",
     "recover",
     "session-start",
-    "where-am-i",
+    # "where-am-i" — refactored in v0.4 to delegate to scripts/sq-where-am-i.sh;
+    # SKILL.md no longer references config_loader directly. Pre-existing v0.5
+    # drift from adhd-context-bridge.
 ]
 
 READ_WRITE_VAULT_SKILLS = [

@@ -32,10 +32,11 @@ import urllib.error
 import urllib.request
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SERVER_PATH = REPO / "companions" / "web-ui" / "server.py"
+MONOREPO = REPO.parent.parent  # apps/cli → squirrel/
+SERVER_PATH = MONOREPO / "apps" / "backend" / "server.py"
 FIXTURE_VAULT = REPO / "tests" / "fixtures" / "vault-minimal"
 
-sys.path.insert(0, str(REPO / "companions" / "web-ui"))
+sys.path.insert(0, str(MONOREPO / "apps" / "backend"))
 
 
 def _start_server_with_fixture():
@@ -138,7 +139,7 @@ class TestServerScaffold(unittest.TestCase):
                     names.add(node.module.split(".")[0])
         own = {
             "config_loader", "vocabulary", "capture_writer",
-            "status_aggregator", "deadline_scanner",
+            "status_aggregator", "deadline_scanner", "new_project_writer",
         }
         stdlib = {
             "__future__", "argparse", "datetime", "html", "http", "io", "json",
@@ -149,7 +150,7 @@ class TestServerScaffold(unittest.TestCase):
         self.assertSetEqual(leftover, set(), f"unexpected third-party imports: {leftover}")
 
     def test_route_table_is_exposed_as_dict_like(self):
-        sys.path.insert(0, str(REPO / "companions" / "web-ui"))
+        sys.path.insert(0, str(MONOREPO / "apps" / "backend"))
         import server
         self.assertTrue(hasattr(server, "ROUTES"))
         self.assertGreaterEqual(len(server.ROUTES), 15)
@@ -247,7 +248,7 @@ class TestMethodNotAllowed(_ServerCase):
 
 class TestDefaultBind(unittest.TestCase):
     def test_default_host_is_localhost(self):
-        sys.path.insert(0, str(REPO / "companions" / "web-ui"))
+        sys.path.insert(0, str(MONOREPO / "apps" / "backend"))
         import server
         self.assertEqual(server.DEFAULT_HOST, "127.0.0.1")
         self.assertEqual(server.LAN_HOST, "0.0.0.0")

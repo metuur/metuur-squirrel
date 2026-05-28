@@ -17,7 +17,8 @@ import pathlib
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SQ_INIT = REPO / "commands" / "sq-init.md"
+MONOREPO = REPO.parent.parent  # apps/cli → squirrel/
+SQ_INIT = MONOREPO / "agent-pack" / "commands" / "sq-init.md"
 
 
 def _read() -> str:

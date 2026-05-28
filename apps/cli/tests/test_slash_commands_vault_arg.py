@@ -15,7 +15,8 @@ import re
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-COMMANDS_DIR = REPO / "commands"
+MONOREPO = REPO.parent.parent  # apps/cli → squirrel/
+COMMANDS_DIR = MONOREPO / "agent-pack" / "commands"
 
 # R-6.1 — the 15 vault-touching slash commands
 VAULT_TOUCHING_COMMANDS = [

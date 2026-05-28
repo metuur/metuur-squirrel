@@ -523,17 +523,18 @@ _WEB_LAUNCHD_PLIST = Path(
 
 
 def _web_server_script() -> Path:
-    """Locate companions/web-ui/server.py — repo or installed plugin path."""
-    here = Path(__file__).resolve().parent / "companions" / "web-ui" / "server.py"
-    if here.is_file():
-        return here
-    for cand in [
+    """Locate the backend server.py — monorepo, sibling, or installed-plugin path."""
+    cli_dir = Path(__file__).resolve().parent
+    candidates = [
+        cli_dir.parent / "backend" / "server.py",                 # monorepo: apps/backend/
+        cli_dir / "companions" / "web-ui" / "server.py",          # legacy in-tree layout
         Path("~/.claude/plugins/squirrel/companions/web-ui/server.py").expanduser(),
         Path("~/.codex/plugins/squirrel/companions/web-ui/server.py").expanduser(),
-    ]:
+    ]
+    for cand in candidates:
         if cand.is_file():
             return cand
-    raise FileNotFoundError("companions/web-ui/server.py not found")
+    raise FileNotFoundError("backend server.py not found (checked monorepo + plugin paths)")
 
 
 def _web_running_pid() -> int:
