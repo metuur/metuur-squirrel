@@ -234,6 +234,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(204)
         self._send_common_headers(no_store=True)
         self.send_header("Allow", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
         _log_request("OPTIONS", self.path, 204)
     def do_HEAD(self) -> None: self._method_not_allowed("HEAD")
@@ -248,11 +251,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Allow", "GET, POST, OPTIONS")
         self.end_headers()
 
+    # Origins allowed to call the JSON API from a webview / browser. Localhost
+    # only — the Tauri popup (tauri://localhost), the vite dev server (:1420
+    # for the desktop, :5173 for the browser SPA), and the backend itself
+    # (:3939). Echo back when the request's Origin matches; omit otherwise so
+    # we never advertise `*` to arbitrary hosts.
+    _ALLOWED_CORS_ORIGINS = frozenset({
+        "tauri://localhost",
+        "http://localhost:1420",
+        "http://localhost:5173",
+        "http://127.0.0.1:1420",
+        "http://127.0.0.1:5173",
+        "http://localhost:3939",
+        "http://127.0.0.1:3939",
+    })
+
     def _send_common_headers(self, *, no_store: bool) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         if no_store:
             self.send_header("Cache-Control", "no-store")
+        origin = self.headers.get("Origin")
+        if origin and origin in self._ALLOWED_CORS_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
 
     def _dispatch(self, method: str) -> None:
         path = self.path
