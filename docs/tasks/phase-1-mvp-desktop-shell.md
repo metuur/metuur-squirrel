@@ -13,11 +13,11 @@ Conventions:
 
 ## Unit 0: Project bootstrap (prerequisite — not in EARS)
 
-- [ ] 0.1 Scaffold Tauri v2 + React + TypeScript project at repo root (est: ~45m)
+- [x] 0.1 Scaffold Tauri v2 + React + TypeScript project at repo root (est: ~45m)
   - acceptance: `pnpm tauri dev` (or chosen package manager) launches an empty Tauri v2 window on macOS; `cargo` builds cleanly; `src-tauri/tauri.conf.json` sets `productName="Squirrel"` and bundle identifier `com.squirrel.app`.
   - verify: `pnpm tauri dev` shows a blank window titled "Squirrel"; `pnpm tauri build` produces an unsigned `.app` bundle under `src-tauri/target/release/bundle/macos/`.
 
-- [ ] 0.2 Wire `tauri-plugin-notification`, `tauri-plugin-single-instance`, `tauri-plugin-store`, and `tauri-plugin-autostart` into `Cargo.toml` and `tauri.conf.json` (deps: 0.1, est: ~20m)
+- [x] 0.2 Wire `tauri-plugin-notification`, `tauri-plugin-single-instance`, `tauri-plugin-store`, and `tauri-plugin-autostart` into `Cargo.toml` and `tauri.conf.json` (deps: 0.1, est: ~20m)
   - acceptance: All four plugins compile, are registered in `lib.rs` / `main.rs`, and their JS bindings install cleanly into the React app.
   - verify: `pnpm tauri dev` still boots; calling each plugin's smallest no-op JS API from the React console returns without error.
 
