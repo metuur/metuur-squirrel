@@ -131,9 +131,13 @@ def scan_vault_deadlines(vault_path: Path) -> dict:
                 **time_info,
             }
 
-            # Include the next physical action if available
+            # Include the next physical action if available, and surface the
+            # most recent shutdown timestamp as `last_shutdown` so consumers
+            # can render "Last worked …" without re-parsing the note.
             if data.get("shutdown_notes"):
-                entry["next_action"] = data["shutdown_notes"][0].get("next_action")
+                first_sd = data["shutdown_notes"][0]
+                entry["next_action"] = first_sd.get("next_action")
+                entry["last_shutdown"] = first_sd.get("timestamp")
 
             result[level].append(entry)
 

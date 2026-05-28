@@ -58,7 +58,7 @@ export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
       {top.length > 0 ? (
         <ul className="space-y-2">
           {top.map((item) => {
-            const updated = timeAgo(item.mtime);
+            const lastWorked = timeAgo(item.last_worked);
             return (
               <li
                 key={item.id}
@@ -79,11 +79,11 @@ export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
                     <span aria-hidden>⏰</span>
                     {tail(item)}
                   </span>
-                  {updated && (
+                  {lastWorked && (
                     <>
                       <span className="text-slate-300 dark:text-slate-600">·</span>
                       <span className="text-slate-500 dark:text-slate-400 text-[10px]">
-                        Updated {updated}
+                        Last worked {lastWorked}
                       </span>
                     </>
                   )}

@@ -447,16 +447,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pressing = []
         for lvl in ("overdue", "critical", "urgent"):
             for item in deadlines.get("by_urgency", {}).get(lvl, []):
-                # mtime = last filesystem modification of the note's .md file.
-                # Used by the desktop popup to render "Updated Xd ago" without
-                # a per-item /api/notes/<id> round trip.
-                mtime: Optional[float] = None
-                path_str = item.get("path") or ""
-                if path_str:
-                    try:
-                        mtime = os.path.getmtime(path_str)
-                    except (OSError, FileNotFoundError):
-                        mtime = None
+                # `last_worked` = epoch seconds of the most recent shutdown
+                # note (`/sq-end`) on this task. Carries the "when did I last
+                # sit down with this" semantic — more meaningful than file
+                # mtime, which fires on any save.
+                last_worked: Optional[float] = None
+                ts = item.get("last_shutdown")
+                if ts:
+                    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                        try:
+                            last_worked = datetime.datetime.strptime(ts, fmt).timestamp()
+                            break
+                        except ValueError:
+                            continue
                 pressing.append({
                     "id": item.get("id", ""),
                     "title": item.get("title", item.get("id", "")),
@@ -466,7 +469,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "is_overdue": bool(item.get("is_overdue")),
                     "hours_left": item.get("hours_left"),
                     "days_overdue": item.get("days_overdue"),
-                    "mtime": mtime,
+                    "last_worked": last_worked,
                 })
 
         projects = []
