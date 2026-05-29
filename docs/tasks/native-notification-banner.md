@@ -26,7 +26,7 @@ Dependency layers:
   - verify:
     - Bash unit test: source the helper, call with `("FOO","BAR")` → `squirrel://projects/FOO/BAR`; `("FOO","FOO")` → `squirrel://projects/FOO`; `("FOO","")` → `squirrel://projects/FOO`; `("","BAR")` → `squirrel://projects/BAR`.
 
-- [ ] **1.2** Add the three emitter functions `show_notification_terminal_notifier`, `show_notification_osascript`, `show_dialog_fallback` to `reminder-daemon.sh` (deps: 1.1, mutex: daemon-script, est: ~45m)
+- [x] **1.2** Add the three emitter functions `show_notification_terminal_notifier`, `show_notification_osascript`, `show_dialog_fallback` to `reminder-daemon.sh` (deps: 1.1, mutex: daemon-script, est: ~45m)
   - acceptance:
     - R-1.5 / R-1.6 — `terminal-notifier` invocation includes `-group org.squirrel.reminders`, `-title`, `-subtitle`, `-message`, `-open <url>`, `-sound Submarine`. (R-1.10: `-sender com.metuur.squirrel` is intentionally NOT included in v1 — branding follow-up.)
     - R-2.3 — `osascript display notification` fallback uses title/subtitle/message but does NOT pass the deep-link URL (osascript can't open it).
