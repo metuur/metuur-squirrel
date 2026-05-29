@@ -428,6 +428,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctx, _ = self._context()
         from status_aggregator import aggregate_status
         from deadline_scanner import scan_vault_deadlines
+        from focus_picker import get_manual_focus
 
         try:
             status = aggregate_status(ctx.active.path)
@@ -437,6 +438,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             deadlines = scan_vault_deadlines(ctx.active.path)
         except Exception:
             deadlines = {"by_urgency": {}}
+        try:
+            manual_focus = get_manual_focus(ctx.active.path)
+        except Exception:
+            manual_focus = {"today": None, "week": None}
 
         focus = status.get("recommended_focus") or {}
         focus_payload = None
@@ -492,6 +497,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "focus": focus_payload,
             "pressing": pressing[:5],
             "projects": projects,
+            "manual_focus": {
+                "today": manual_focus.get("today"),
+                "week": manual_focus.get("week"),
+            },
             "parakeet": _parakeet_message_for(ctx.active.path),
         })
 
