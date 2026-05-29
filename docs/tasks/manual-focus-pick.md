@@ -98,7 +98,7 @@ A,B  (foundation: frontmatter round-trip + focus_picker module)
 
 ## Unit 5: `FocusWidget` rendering
 
-- [ ] **5.1** Widen the typed client + `useHome` to include `manual_focus` (deps: 4.1, est: ~20m)
+- [x] **5.1** Widen the typed client + `useHome` to include `manual_focus` (deps: 4.1, est: ~20m)
   - acceptance:
     - The `useHome()` hook return type exposes `manual_focus: {today: ManualPick|null, week: ManualPick|null}`.
   - verify:

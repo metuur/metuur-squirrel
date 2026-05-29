@@ -104,10 +104,25 @@ export interface ProjectListItem {
   last_activity?: string | null;
 }
 
+export interface ManualPick {
+  project_slug: string;
+  project_title: string;
+  intent_slug: string;
+  intent_title: string;
+  next_action: string | null;
+  picked_on: string;
+}
+
+export interface ManualFocusPayload {
+  today: ManualPick | null;
+  week: ManualPick | null;
+}
+
 export interface HomePayload {
   focus: FocusItem | null;
   pressing: PressingItem[];
   projects: ProjectListItem[];
+  manual_focus: ManualFocusPayload;
   parakeet: string;
 }
 
