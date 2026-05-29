@@ -36,7 +36,7 @@ Dependency layers:
     - Bash unit test (PATH-isolated): stub `terminal-notifier` with a recorder that echoes argv to a tmpfile; call `show_notification_terminal_notifier` with known args; assert the tmpfile contains `-title`, `-subtitle`, `-message`, `-open`, `-group org.squirrel.reminders`, `-sound Submarine`; assert the tmpfile does NOT contain `-sender` (v1 invariant).
     - Bash unit test: stub `osascript` similarly; call `show_dialog_fallback "PROJ" "subtitle" "body"`; assert the script passed to osascript contains the `⚠️ Notifications are disabled` prefix and `buttons {"OK"} default button "OK"`.
 
-- [ ] **1.3** Add `emit_banner(project, title, subtitle, body)` orchestrator + truncation + tagged logging to `reminder-daemon.sh` (deps: 1.2, mutex: daemon-script, est: ~45m)
+- [x] **1.3** Add `emit_banner(project, title, subtitle, body)` orchestrator + truncation + tagged logging to `reminder-daemon.sh` (deps: 1.2, mutex: daemon-script, est: ~45m)
   - acceptance:
     - R-1.1 — Called once per selected item (N ≤ 3 per run); produces one banner per item.
     - R-1.3 — Title = `⏰ squirrel: <PROJECT-ID>`, subtitle = due-status, body = note title.
@@ -51,7 +51,7 @@ Dependency layers:
     - Bash unit test: pass a 300-char body; assert the recorder's `-message` is exactly 240 codepoints ending with `…`.
     - Bash unit test: after one emission via terminal-notifier, assert `~/.squirrel/reminders-daemon.log` last line matches `*banner*PROJ*` (tag + project).
 
-- [ ] **1.4** Wire the fallback chain into `emit_banner` and retire legacy `show_dialog` / `open_in_web_ui` / rename `update_state_after_dialog → update_state_after_emit` (deps: 1.3, mutex: daemon-script, est: ~30m)
+- [x] **1.4** Wire the fallback chain into `emit_banner` and retire legacy `show_dialog` / `open_in_web_ui` / rename `update_state_after_dialog → update_state_after_emit` (deps: 1.3, mutex: daemon-script, est: ~30m)
   - acceptance:
     - R-1.2 — No `osascript display dialog` invocation appears in the happy path (only the permission-denied fallback).
     - R-2.4 — When `osascript display notification` exits non-zero once, the daemon logs `permission-denied` once for the run and uses `show_dialog_fallback` for the remaining items in that run AND subsequent items.
@@ -64,7 +64,7 @@ Dependency layers:
     - Bash unit test: stub `osascript` to exit non-zero on the `display notification` call; run `emit_banner` twice in sequence; assert second call routed through `show_dialog_fallback` and log shows one `permission-denied` line for the run.
     - State-file regression: pre-seed `~/.squirrel/reminders-state.json` with `snoozed_until = "2099-01-01T00:00:00Z"`; run `reminder-daemon.sh --force` with one item; assert post-run state has `snoozed_until` still set to the same value and `dialogs_today` incremented by exactly 1.
 
-- [ ] **1.5** Add the bash unit-test harness for emitter selection via PATH manipulation (deps: 1.4, est: ~30m)
+- [x] **1.5** Add the bash unit-test harness for emitter selection via PATH manipulation (deps: 1.4, est: ~30m)
   - acceptance:
     - R-9.1 — Test verifies `emit_banner` picks `terminal-notifier` when on PATH; `osascript display notification` when not; `osascript display dialog` when both unavailable (forced via non-zero exit on the osascript notification call).
   - verify:
@@ -72,7 +72,7 @@ Dependency layers:
 
 ## Unit 2: Tauri bundle — deep-link plugin and capability
 
-- [ ] **2.1** Register `tauri-plugin-deep-link` in `apps/desktop/src-tauri/{Cargo.toml,tauri.conf.json,capabilities/default.json}` (est: ~30m)
+- [x] **2.1** Register `tauri-plugin-deep-link` in `apps/desktop/src-tauri/{Cargo.toml,tauri.conf.json,capabilities/default.json}` (est: ~30m)
   - acceptance:
     - R-8.1 — `Cargo.toml` `[dependencies]` includes `tauri-plugin-deep-link = "2"`.
     - R-8.2 — `tauri.conf.json` declares `plugins.deep-link.desktop.schemes = ["squirrel"]`.

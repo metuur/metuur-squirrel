@@ -11,6 +11,7 @@
     "opener:default",
     "notification:default",
     "store:default",
-    "autostart:default"
+    "autostart:default",
+    "deep-link:default"
   ]
 }
