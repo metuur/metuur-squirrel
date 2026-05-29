@@ -151,6 +151,17 @@ export interface NewProjectResult {
   over_cap: boolean;
   intent_id: string | null;
 }
+export interface NewIntentRequest {
+  project_slug: string;
+  tag: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+}
+export interface NewIntentResult {
+  success: true;
+  path: string;
+}
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
@@ -177,6 +188,11 @@ export const api = {
     }),
   projectCreate: (req: NewProjectRequest) =>
     call<NewProjectResult>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  intentCreate: (req: NewIntentRequest) =>
+    call<NewIntentResult>('/intents', {
       method: 'POST',
       body: JSON.stringify(req),
     }),

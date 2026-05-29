@@ -17,7 +17,7 @@
   - acceptance: R-2.1 – R-2.6 — endpoint accepts `project_slug`, `tag`, `title`, and optionally `description` and `deadline`; validates vault path via `is_path_inside()`; returns 404 for unknown project, 409 for duplicate tag, 422 for invalid tag; on success writes `<vault>/01-Proyectos-Activos/<project_slug>/<tag>.md` from `agent-pack/templates/intent.md` and returns HTTP 201.
   - verify: `curl -s -X POST http://127.0.0.1:3939/api/intents -d '{"project_slug":"<existing>","tag":"TEST","title":"Test task"}' -H 'Content-Type: application/json'` → 201; repeat → 409; use a bad tag → 422; use unknown project → 404.
 
-- [ ] 2.2 Add `intentCreate` to browser SPA `client.ts` (deps: 2.1, est: ~15m)
+- [x] 2.2 Add `intentCreate` to browser SPA `client.ts` (deps: 2.1, est: ~15m)
   - files: `apps/backend/app/src/api/client.ts`
   - acceptance: R-2.1 — `NewIntentRequest` and `NewIntentResult` types are exported; `api.intentCreate(req)` calls `POST /api/intents` with the correct payload.
   - verify: TypeScript compiles without errors (`npm run build` in `apps/backend/app`); the type shape matches the backend's expected fields.
