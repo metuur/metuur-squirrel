@@ -104,6 +104,50 @@ show_dialog_fallback() {
     osascript -e "display dialog \"${esc_body}\" with title \"⏰ squirrel: ${esc_proj} — ${esc_sub}\" buttons {\"OK\"} default button \"OK\""
 }
 
+# Orchestrator: emit one macOS banner for a single item.
+# Args: project ntitle subtitle body
+#   project  — project ID (e.g. "CASA-CONTABILIDAD-TAXES-2025")
+#   ntitle   — note title (pre-built body text; may include " · → <next_action>")
+#   subtitle — human-readable due-status line
+#   body     — full body string (ntitle + optional " · → <next_action>", pre-built by caller)
+#
+# Behaviour:
+#   1. Truncates body to 240 UTF-8 codepoints (R-1.7).
+#   2. Composes deep-link URL via compose_deeplink (R-1.9).
+#   3. Selects emitter once at function entry (R-2.1/R-2.2):
+#      terminal-notifier on PATH → show_notification_terminal_notifier (tag: banner)
+#      else                      → show_notification_osascript         (tag: banner-fallback-osascript)
+#   4. Logs one of the above tags + project ID to $LOG_FILE (R-2.7/R-7.1/R-7.2).
+emit_banner() {
+    local project="$1" ntitle="$2" subtitle="$3" body="$4"
+
+    # R-1.3: compose title
+    local title="⏰ squirrel: ${project}"
+
+    # R-1.7: truncate body to 240 UTF-8 codepoints
+    local truncated_body
+    truncated_body=$(python3 -c "
+import sys
+b = sys.argv[1]
+if len(b) > 240:
+    b = b[:239] + \"…\"
+sys.stdout.write(b)
+" "$body")
+
+    # Compose deep-link URL (project-level; no task ID at this stage)
+    local url
+    url=$(compose_deeplink "$project" "$project")
+
+    # R-2.1/R-2.2: select emitter
+    if command -v terminal-notifier >/dev/null 2>&1; then
+        show_notification_terminal_notifier "$title" "$subtitle" "$truncated_body" "$url"
+        log "banner project=${project}"
+    else
+        show_notification_osascript "$title" "$subtitle" "$truncated_body"
+        log "banner-fallback-osascript project=${project}"
+    fi
+}
+
 # Read a value from config.toml (simple key = "value" in any section)
 read_config() {
     local key="$1" default="${2:-}"
