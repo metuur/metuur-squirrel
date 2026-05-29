@@ -190,6 +190,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/vault$"),                             "api_set_vault"),
     ("GET",  re.compile(r"^/api/home$"),                              "api_home"),
     ("GET",  re.compile(r"^/api/focus$"),                             "api_focus_get"),
+    ("PUT",  re.compile(r"^/api/focus/today$"),                       "api_focus_put_today"),
+    ("PUT",  re.compile(r"^/api/focus/week$"),                        "api_focus_put_week"),
     ("GET",  re.compile(r"^/api/projects$"),                          "api_projects_list"),
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_detail"),
@@ -235,14 +237,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         self._send_common_headers(no_store=True)
-        self.send_header("Allow", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Allow", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
         _log_request("OPTIONS", self.path, 204)
     def do_HEAD(self) -> None: self._method_not_allowed("HEAD")
-    def do_PUT(self) -> None: self._method_not_allowed("PUT")
+    def do_PUT(self) -> None: self._dispatch("PUT")
     def do_DELETE(self) -> None: self._method_not_allowed("DELETE")
     def do_PATCH(self) -> None: self._method_not_allowed("PATCH")
 
@@ -250,7 +252,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         _log_request(method, self.path, 405)
         self.send_response(405)
         self._send_common_headers(no_store=True)
-        self.send_header("Allow", "GET, POST, OPTIONS")
+        self.send_header("Allow", "GET, POST, PUT, OPTIONS")
         self.end_headers()
 
     # Origins allowed to call the JSON API from a webview / browser. Localhost
@@ -502,6 +504,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
             focus = get_manual_focus(ctx.active.path)
         except Exception:
             focus = {"today": None, "week": None}
+        self._send_json({"today": focus.get("today"), "week": focus.get("week")})
+
+    def api_focus_put_today(self) -> None:
+        self._api_focus_put("today")
+
+    def api_focus_put_week(self) -> None:
+        self._api_focus_put("week")
+
+    def _api_focus_put(self, slot: str) -> None:
+        ctx, _ = self._context()
+        body = self._read_json_body()
+        from focus_picker import (
+            set_manual_focus, clear_manual_focus, get_manual_focus,
+            IntentNotFound,
+        )
+        if body.get("clear") is True:
+            clear_manual_focus(ctx.active.path, slot)
+        elif body.get("project_slug") and body.get("intent_slug"):
+            try:
+                set_manual_focus(
+                    ctx.active.path, slot,
+                    body["project_slug"], body["intent_slug"],
+                )
+            except IntentNotFound:
+                self._send_json_error(404, "intent_not_found")
+                return
+        else:
+            self._send_json_error(400, "bad_request")
+            return
+        focus = get_manual_focus(ctx.active.path)
         self._send_json({"today": focus.get("today"), "week": focus.get("week")})
 
     # ── projects ────────────────────────────────────────────────────────────

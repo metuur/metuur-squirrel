@@ -235,13 +235,15 @@ class TestMethodNotAllowed(_ServerCase):
         except urllib.error.HTTPError as he:
             self.assertEqual(he.code, 405)
 
-    def test_put_returns_405(self):
-        req = urllib.request.Request(self._url("/"), method="PUT")
+    def test_put_to_unknown_api_returns_404(self):
+        # Story 3.2 enabled PUT dispatch for /api/focus/today and
+        # /api/focus/week. Other API paths still 404 (no route matches).
+        req = urllib.request.Request(self._url("/api/unknown"), method="PUT")
         try:
             urllib.request.urlopen(req, timeout=3)
-            self.fail("expected 405")
+            self.fail("expected 404")
         except urllib.error.HTTPError as he:
-            self.assertEqual(he.code, 405)
+            self.assertEqual(he.code, 404)
 
 
 # ─── Bind address (R-1.3) ────────────────────────────────────────────────────
