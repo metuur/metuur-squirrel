@@ -3,17 +3,81 @@
 // Header component): white surface, rounded-2xl, subtle shadow + border, an
 // uppercase tracking-wider label, then a bold title and a muted next action.
 // EARS R-2.2, R-2.3, R-2.9.
+//
+// Story 5.2 — adds two "manual focus" pills below the primary card (today
+// + this week). Display-only here; the Change/Clear buttons (5.3) and the
+// FocusPickerModal trigger (6.1) come in later stories. EARS R-5.1..R-5.9.
 
 import type { HomeState } from "../hooks/useHome";
+import type { ManualPick } from "../api/client";
 
 interface Props {
   home: HomeState;
   online: boolean;
+  /** Optional CTA handler wired in story 5.3. Omitted here ⇒ inert button. */
+  onPick?: (slot: "today" | "week") => void;
 }
 
-export function FocusWidget({ home, online }: Props) {
+interface ManualFocusPillProps {
+  slot: "today" | "week";
+  pick: ManualPick | null;
+  alignedWithFocus: boolean;
+  online: boolean;
+  onPick?: () => void;
+}
+
+function ManualFocusPill({
+  slot,
+  pick,
+  alignedWithFocus,
+  online,
+  onPick,
+}: ManualFocusPillProps) {
+  const label = slot === "today" ? "Today" : "This week";
+  const ctaLabel = slot === "today" ? "Pick today's focus" : "Pick this week's focus";
+  const base =
+    "text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex items-center gap-1";
+
+  // R-5.9: backend offline ⇒ show em-dash and disable the CTA.
+  if (!online) {
+    return <div className={base}>📌 {label}: —</div>;
+  }
+
+  if (pick) {
+    return (
+      <div className={base}>
+        <span>
+          📌 {label}: {pick.project_title} — {pick.intent_title}
+          {alignedWithFocus ? " (aligned with critical)" : ""}
+        </span>
+        {alignedWithFocus && <span aria-label="aligned with critical focus">✓</span>}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className={`${base} cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 disabled:cursor-not-allowed text-left`}
+    >
+      📌 {ctaLabel}
+    </button>
+  );
+}
+
+export function FocusWidget({ home, online, onPick }: Props) {
   const focus = home.data?.focus ?? null;
+  const manualFocus = home.data?.manual_focus ?? null;
   const dimmed = !online;
+
+  // R-5.7 alignment is project_slug-only because FocusItem doesn't expose
+  // an intent_slug on the existing /api/home.focus payload. Intent-level
+  // refinement can land when the API surfaces it.
+  const todayAligned =
+    !!focus && !!manualFocus?.today && focus.slug === manualFocus.today.project_slug;
+  const weekAligned =
+    !!focus && !!manualFocus?.week && focus.slug === manualFocus.week.project_slug;
 
   return (
     <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
@@ -39,6 +103,22 @@ export function FocusWidget({ home, online }: Props) {
         ) : (
           <div className="text-xs text-slate-400 dark:text-slate-500">—</div>
         )}
+      </div>
+      <div className="mt-2 flex flex-col gap-1">
+        <ManualFocusPill
+          slot="today"
+          pick={manualFocus?.today ?? null}
+          alignedWithFocus={todayAligned}
+          online={online}
+          onPick={onPick ? () => onPick("today") : undefined}
+        />
+        <ManualFocusPill
+          slot="week"
+          pick={manualFocus?.week ?? null}
+          alignedWithFocus={weekAligned}
+          online={online}
+          onPick={onPick ? () => onPick("week") : undefined}
+        />
       </div>
     </section>
   );
