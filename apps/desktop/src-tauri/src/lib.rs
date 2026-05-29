@@ -1,3 +1,4 @@
+mod deep_link;
 mod logging;
 mod tray;
 mod tray_alerts;

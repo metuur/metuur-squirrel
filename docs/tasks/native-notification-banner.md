@@ -86,7 +86,7 @@ Dependency layers:
 
 ## Unit 3: Rust deep-link handler
 
-- [ ] **3.1** Create `apps/desktop/src-tauri/src/deep_link.rs` module with `pub struct Target { project_id, task_id }` and `fn validate(&Url) -> Result<Target, DeepLinkError>` (est: ~45m)
+- [x] **3.1** Create `apps/desktop/src-tauri/src/deep_link.rs` module with `pub struct Target { project_id, task_id }` and `fn validate(&Url) -> Result<Target, DeepLinkError>` (est: ~45m)
   - acceptance:
     - R-3.4 — Scheme must be exactly `squirrel` (lowercase); other schemes rejected.
     - R-3.5 — Host must be exactly `projects`; other hosts rejected with `DeepLinkError::UnknownHost`.
