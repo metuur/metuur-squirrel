@@ -64,6 +64,46 @@ compose_deeplink() {
     fi
 }
 
+# Emit a banner via terminal-notifier (R-1.5/R-1.6).
+# Args: title subtitle body url
+# -sender is intentionally omitted (R-1.10 v1 deferral).
+show_notification_terminal_notifier() {
+    local title="$1" subtitle="$2" body="$3" url="$4"
+    terminal-notifier \
+        -group org.squirrel.reminders \
+        -title "$title" \
+        -subtitle "$subtitle" \
+        -message "$body" \
+        -open "$url" \
+        -sound Submarine
+}
+
+# Emit a banner via osascript display notification (R-2.3).
+# Args: title subtitle body
+# URL is NOT passed — osascript cannot open custom schemes as a click handler.
+show_notification_osascript() {
+    local title="$1" subtitle="$2" body="$3"
+    local esc_t esc_s esc_b
+    esc_t=$(printf '%s' "$title"    | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    esc_s=$(printf '%s' "$subtitle" | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    esc_b=$(printf '%s' "$body"     | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"Submarine\""
+}
+
+# Last-resort fallback: osascript display dialog (R-2.5/R-2.6).
+# Args: project subtitle body
+# Prepends a "notifications disabled" warning; single OK button only.
+show_dialog_fallback() {
+    local project="$1" subtitle="$2" body="$3"
+    local prefix="⚠️ Notifications are disabled — fallback to dialog.\n\n"
+    local full_body="${prefix}${body}"
+    local esc_proj esc_sub esc_body
+    esc_proj=$(printf '%s' "$project"   | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    esc_sub=$(printf '%s'  "$subtitle"  | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    esc_body=$(printf '%s' "$full_body" | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    osascript -e "display dialog \"${esc_body}\" with title \"⏰ squirrel: ${esc_proj} — ${esc_sub}\" buttons {\"OK\"} default button \"OK\""
+}
+
 # Read a value from config.toml (simple key = "value" in any section)
 read_config() {
     local key="$1" default="${2:-}"
