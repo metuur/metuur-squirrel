@@ -26,7 +26,7 @@
 
 ## Unit 3: Task Creation Form (Project Page)
 
-- [ ] 3.1 Create `NewTaskModal` component (deps: 2.2, est: ~30m)
+- [x] 3.1 Create `NewTaskModal` component (deps: 2.2, est: ~30m)
   - files: `apps/backend/app/src/components/NewTaskModal.tsx` (new file)
   - acceptance: R-3.1, R-3.2, R-3.3, R-3.4, R-3.5 — modal accepts `projectSlug` prop; renders `tag` (with client-side regexp validation) and `title` (required), `description` and `deadline` (optional); calls `api.intentCreate`; on 201 invokes `onCreated()` callback and closes; on error displays error inline without losing field values; invalid `tag` is blocked client-side before the network call.
   - verify: Render the modal in isolation (or via Storybook / direct route); submit with a lowercase tag → inline error, no fetch; submit valid fields against the running backend → modal closes and `onCreated` fires.
