@@ -40,7 +40,7 @@
 
 ## Unit 4: Cross-Context Task Creation Routing
 
-- [ ] 4.1 Add `ProjectSelectorModal` and global "New Task" trigger (deps: 3.1, est: ~35m)
+- [x] 4.1 Add `ProjectSelectorModal` and global "New Task" trigger (deps: 3.1, est: ~35m)
   - files: `apps/backend/app/src/components/ProjectSelectorModal.tsx` (new), `apps/backend/app/src/components/layout/Sidebar.tsx`
   - acceptance: R-4.1, R-4.2, R-4.3 — a "New task" button is present in the Sidebar (alongside the existing "New project" "+" button); clicking it from any non-project page opens `ProjectSelectorModal` listing active projects from `api.projects()`; selecting a project navigates to `/projects/<slug>?newTask=true`; the project page then auto-opens the task form (covered by 3.2).
   - verify: From the Home page, click the Sidebar "New task" trigger; select a project from the list; confirm navigation lands on the correct project page with the task form open.

@@ -5,6 +5,7 @@ import { useFetch } from '@/hooks/useFetch';
 import { api } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { NewProjectModal } from '@/components/NewProjectModal';
+import { ProjectSelectorModal } from '@/components/ProjectSelectorModal';
 
 export function Sidebar() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export function Sidebar() {
   const { data: home, mutate: refreshHome } = useFetch('sidebar-home', () => api.home());
   const { data: history } = useFetch('sidebar-history', () => api.history());
   const [showNewProject, setShowNewProject] = useState(false);
+  const [showNewTask, setShowNewTask] = useState(false);
 
   const total = home?.projects.length ?? 0;
   const pressing = home?.pressing.length ?? 0;
@@ -23,14 +25,24 @@ export function Sidebar() {
         <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           Dashboard
         </h3>
-        <button
-          onClick={() => setShowNewProject(true)}
-          title="New project"
-          aria-label="New project"
-          className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-        >
-          <span className="material-icons text-base">add</span>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowNewTask(true)}
+            title="New task"
+            aria-label="New task"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            <span className="material-icons text-base">add_task</span>
+          </button>
+          <button
+            onClick={() => setShowNewProject(true)}
+            title="New project"
+            aria-label="New project"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            <span className="material-icons text-base">add</span>
+          </button>
+        </div>
       </div>
       <nav className="space-y-1">
         <Link
@@ -104,6 +116,10 @@ export function Sidebar() {
         open={showNewProject}
         onClose={() => setShowNewProject(false)}
         onCreated={() => refreshHome()}
+      />
+      <ProjectSelectorModal
+        open={showNewTask}
+        onClose={() => setShowNewTask(false)}
       />
     </aside>
   );
