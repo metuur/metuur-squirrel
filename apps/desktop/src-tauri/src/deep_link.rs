@@ -51,11 +51,11 @@ pub fn validate(url: &Url) -> Result<Target, DeepLinkError> {
 }
 
 #[derive(Clone, Serialize)]
-struct FocusProjectPayload {
+pub struct FocusProjectPayload {
     #[serde(rename = "projectId")]
-    project_id: String,
+    pub project_id: String,
     #[serde(rename = "taskId")]
-    task_id: Option<String>,
+    pub task_id: Option<String>,
 }
 
 /// Foregrounds the popup window and emits `deep-link://focus-project` (R-4.1–R-4.7).
@@ -93,6 +93,12 @@ pub fn handle<R: Runtime>(app: &AppHandle<R>, url: &Url) {
         project_id: target.project_id.clone(),
         task_id: target.task_id.clone(),
     };
+    // Store for cold-launch drain: if the frontend listener isn't registered yet
+    // (React not mounted), the emitted event is lost. The frontend calls
+    // drain_pending_deep_link on mount to recover it.
+    if let Some(pending) = app.try_state::<crate::PendingDeepLink>() {
+        *pending.0.lock().unwrap() = Some(payload.clone());
+    }
     if let Err(e) = app.emit("deep-link://focus-project", payload) {
         tracing::warn!(error = %e, "deep-link: emit failed");
     }

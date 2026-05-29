@@ -2,10 +2,12 @@
 // "+ Add a note" button and the per-task "+ note" buttons in
 // DeadlinesWidget can open it with the right project pre-selected.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
 import { useDeepLink } from "./hooks/useDeepLink";
+import { BACKEND_ORIGIN } from "./api/client";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { FocusWidget } from "./components/FocusWidget";
 import { FocusPickerModal } from "./components/FocusPickerModal";
@@ -31,6 +33,16 @@ function formatToday(): string {
 export default function App() {
   const status = useBackend();
   const deepLink = useDeepLink();
+
+  useEffect(() => {
+    if (!deepLink) return;
+    if (!status.online) return;
+    const id = deepLink.taskId ?? deepLink.projectId;
+    openUrl(`${BACKEND_ORIGIN}/notes/${id}`).catch((err) => {
+      console.error("[App] deep-link openUrl failed:", err);
+    });
+  }, [deepLink?.key, status.online]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [homeBump, setHomeBump] = useState(0);
   // R-1.6: re-fetch widgets each time backend transitions to online.
   // homeBump forces a refetch after a manual-focus mutation (R-5.6).

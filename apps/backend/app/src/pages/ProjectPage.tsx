@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { marked } from 'marked';
 import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands } from '@/api/client';
@@ -16,6 +16,14 @@ export default function ProjectPage() {
   const [stakeholder, setStakeholder] = useState('');
   const [searchParams] = useSearchParams();
   const [showNewTask, setShowNewTask] = useState(() => searchParams.get('newTask') === 'true');
+
+  const suggestedTags = useMemo(() => {
+    const tags = new Set<string>([slug]);
+    for (const note of project?.notes ?? []) {
+      tags.add(note.id.replace(/-\d+$/, ''));
+    }
+    return [...tags];
+  }, [project?.notes, slug]);
 
   if (isLoading && !project) return <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
   if (error || !project) {
@@ -148,6 +156,7 @@ export default function ProjectPage() {
       <NewTaskModal
         open={showNewTask}
         projectSlug={slug}
+        suggestedTags={suggestedTags}
         onClose={() => setShowNewTask(false)}
         onCreated={() => {
           setShowNewTask(false);

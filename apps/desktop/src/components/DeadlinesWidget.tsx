@@ -52,9 +52,16 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
 
   // R-5.6 / R-5.7 / R-5.8 / R-5.10
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the last scrollTarget.key we successfully highlighted so we don't
+  // re-highlight on data refreshes once the element has been found.
+  const lastHandledKeyRef = useRef<number | null>(null);
 
+  // Also depend on !!home.data so the effect retries once data arrives when
+  // the deep-link fires before the first home fetch completes.
+  const dataReady = !!home.data;
   useEffect(() => {
     if (!scrollTarget) return;
+    if (lastHandledKeyRef.current === scrollTarget.key) return;
 
     let el: Element | null = null;
 
@@ -66,10 +73,18 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
       el = document.querySelector(`[data-project-id="${scrollTarget.projectId}"]`);
     }
 
+    // The daemon encodes the task ID as the project path segment (R-8.1), so
+    // projectId may be a task ID when no project slug prefix matches.
     if (!el) {
-      console.debug("[DeadlinesWidget] scroll target not found", scrollTarget);
+      el = document.getElementById(`deadline-card-${scrollTarget.projectId}`);
+    }
+
+    if (!el) {
+      console.debug("[DeadlinesWidget] scroll target not found, will retry when data loads", scrollTarget);
       return;
     }
+
+    lastHandledKeyRef.current = scrollTarget.key;
 
     el.scrollIntoView({ block: "center", behavior: "smooth" });
 
@@ -90,7 +105,7 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
         clearTimeout(highlightTimerRef.current);
       }
     };
-  }, [scrollTarget?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scrollTarget?.key, dataReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>

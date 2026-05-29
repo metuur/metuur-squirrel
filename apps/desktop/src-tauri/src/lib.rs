@@ -3,6 +3,20 @@ mod logging;
 mod tray;
 mod tray_alerts;
 
+use std::sync::Mutex;
+
+/// Holds the last parsed deep-link payload so the frontend can drain it on
+/// mount. Needed because on cold launch Rust fires the URL event before React
+/// registers its listener, causing the event to be silently dropped.
+pub(crate) struct PendingDeepLink(pub(crate) Mutex<Option<deep_link::FocusProjectPayload>>);
+
+#[tauri::command]
+fn drain_pending_deep_link(
+    state: tauri::State<PendingDeepLink>,
+) -> Option<deep_link::FocusProjectPayload> {
+    state.0.lock().unwrap().take()
+}
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -36,6 +50,8 @@ pub fn run() {
     }
 
     builder
+        .manage(PendingDeepLink(Mutex::new(None)))
+        .manage(Mutex::new(tray_alerts::TauriNotificationState::new()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -85,7 +101,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, drain_pending_deep_link])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/Modal';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { api, ApiError, type NewIntentRequest } from '@/api/client';
 
 const TAG_RE = /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$/;
@@ -7,12 +8,15 @@ const TAG_RE = /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$/;
 interface Props {
   open: boolean;
   projectSlug: string;
+  suggestedTags?: string[];
   onClose: () => void;
   onCreated?: () => void;
 }
 
-export function NewTaskModal({ open, projectSlug, onClose, onCreated }: Props) {
-  const [tag, setTag] = useState('');
+export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCreated }: Props) {
+  const initTags = () => suggestedTags?.length ? suggestedTags : [projectSlug];
+  const [localTags, setLocalTags] = useState<string[]>(initTags);
+  const [tag, setTag] = useState(projectSlug);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -20,7 +24,8 @@ export function NewTaskModal({ open, projectSlug, onClose, onCreated }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
-    setTag('');
+    setLocalTags(initTags());
+    setTag(projectSlug);
     setTitle('');
     setDescription('');
     setDeadline('');
@@ -32,6 +37,20 @@ export function NewTaskModal({ open, projectSlug, onClose, onCreated }: Props) {
     if (busy) return;
     reset();
     onClose();
+  }
+
+  function removeTag(t: string) {
+    setLocalTags((prev) => prev.filter((x) => x !== t));
+    if (tag === t) setTag(projectSlug);
+  }
+
+  function addTagChip() {
+    const trimmed = tag.trim().toUpperCase();
+    if (!trimmed || !TAG_RE.test(trimmed)) return;
+    if (!localTags.includes(trimmed)) {
+      setLocalTags((prev) => [...prev, trimmed]);
+    }
+    setTag(trimmed);
   }
 
   async function submit() {
@@ -97,15 +116,59 @@ export function NewTaskModal({ open, projectSlug, onClose, onCreated }: Props) {
       }
     >
       <div className="space-y-4">
-        <Field label="Tag" hint="UPPERCASE, dash-separated. e.g. MYAPP-TASK, VISA-SETUP.">
-          <input
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            placeholder="MYAPP-TASK"
-            autoFocus
-            disabled={busy}
-            className="w-full font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
-          />
+        <Field label="Tag" hint="UPPERCASE, dash-separated. e.g. MYAPP-TASK, VISA-SETUP. Press Enter to add a new tag.">
+          {localTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {localTags.map((t) => (
+                <span
+                  key={t}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border transition-colors ${
+                    tag.toUpperCase() === t
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setTag(t)}
+                    className="hover:underline"
+                  >
+                    {t}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => removeTag(t)}
+                    className="opacity-60 hover:opacity-100 leading-none"
+                    aria-label={`Remove ${t}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-1.5">
+            <input
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTagChip(); } }}
+              placeholder="TYPE-NEW-TAG"
+              autoFocus
+              disabled={busy}
+              className="flex-1 font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={addTagChip}
+              className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"
+              aria-label="Add tag"
+            >
+              <span className="material-icons text-base leading-none">add</span>
+            </button>
+          </div>
         </Field>
 
         <Field label="Title">
@@ -119,13 +182,12 @@ export function NewTaskModal({ open, projectSlug, onClose, onCreated }: Props) {
         </Field>
 
         <Field label="Description (optional)">
-          <textarea
+          <MarkdownEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
+            onChange={setDescription}
             disabled={busy}
             placeholder="Additional context"
-            className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+            minHeight="6rem"
           />
         </Field>
 
