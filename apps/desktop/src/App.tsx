@@ -7,6 +7,7 @@ import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { FocusWidget } from "./components/FocusWidget";
+import { FocusPickerModal } from "./components/FocusPickerModal";
 import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
@@ -14,6 +15,7 @@ import { CaptureModal } from "./components/CaptureModal";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
+import { api } from "./api/client";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
 // open sessions isn't worth a setInterval.
@@ -27,16 +29,29 @@ function formatToday(): string {
 
 export default function App() {
   const status = useBackend();
+  const [homeBump, setHomeBump] = useState(0);
   // R-1.6: re-fetch widgets each time backend transitions to online.
-  const triggerKey = status.lastOnlineAt ?? 0;
+  // homeBump forces a refetch after a manual-focus mutation (R-5.6).
+  const triggerKey = (status.lastOnlineAt ?? 0) + homeBump;
   const home = useHome(triggerKey);
 
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
+  const [focusModalSlot, setFocusModalSlot] = useState<"today" | "week" | null>(null);
 
   const openCapture = (initialSlug: string | null) => {
     setCaptureInitialSlug(initialSlug);
     setCaptureOpen(true);
+  };
+
+  const handleClearFocus = async (slot: "today" | "week") => {
+    try {
+      await api.focusSet(slot, { clear: true });
+      setHomeBump((n) => n + 1);
+    } catch {
+      // Best-effort. A toast surface lands in a later story; for now the
+      // pill stays as-is and the next backend-online tick will resync.
+    }
   };
 
   const projects = home.data?.projects ?? [];
@@ -70,7 +85,12 @@ export default function App() {
           area that overflows. Widgets get their natural height; the cards
           inside DeadlinesWidget scroll vertically when the list grows. */}
       <div className="flex-1 overflow-y-auto pb-2">
-        <FocusWidget home={home} online={status.online} />
+        <FocusWidget
+          home={home}
+          online={status.online}
+          onPick={status.online ? setFocusModalSlot : undefined}
+          onClear={status.online ? handleClearFocus : undefined}
+        />
         <DeadlinesWidget
           home={home}
           online={status.online}
@@ -96,6 +116,18 @@ export default function App() {
         focusSlug={focusSlug}
         initialSlug={captureInitialSlug}
       />
+
+      {focusModalSlot && (
+        <FocusPickerModal
+          slot={focusModalSlot}
+          projects={projects}
+          onClose={() => setFocusModalSlot(null)}
+          onPicked={() => {
+            setHomeBump((n) => n + 1);
+            setFocusModalSlot(null);
+          }}
+        />
+      )}
     </main>
   );
 }

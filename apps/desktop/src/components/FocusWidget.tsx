@@ -5,8 +5,8 @@
 // EARS R-2.2, R-2.3, R-2.9.
 //
 // Story 5.2 — adds two "manual focus" pills below the primary card (today
-// + this week). Display-only here; the Change/Clear buttons (5.3) and the
-// FocusPickerModal trigger (6.1) come in later stories. EARS R-5.1..R-5.9.
+// + this week). Story 5.3 — wires the Change / Clear controls on populated
+// pills (R-5.6). EARS R-5.1..R-5.9.
 
 import type { HomeState } from "../hooks/useHome";
 import type { ManualPick } from "../api/client";
@@ -14,8 +14,11 @@ import type { ManualPick } from "../api/client";
 interface Props {
   home: HomeState;
   online: boolean;
-  /** Optional CTA handler wired in story 5.3. Omitted here ⇒ inert button. */
+  /** Opens the FocusPickerModal for that slot. Fires from both the unset CTA
+   *  and the populated pill's "Change" control. */
   onPick?: (slot: "today" | "week") => void;
+  /** Clears the slot via PUT /api/focus/<slot> {clear: true}. */
+  onClear?: (slot: "today" | "week") => void;
 }
 
 interface ManualFocusPillProps {
@@ -24,6 +27,7 @@ interface ManualFocusPillProps {
   alignedWithFocus: boolean;
   online: boolean;
   onPick?: () => void;
+  onClear?: () => void;
 }
 
 function ManualFocusPill({
@@ -32,11 +36,14 @@ function ManualFocusPill({
   alignedWithFocus,
   online,
   onPick,
+  onClear,
 }: ManualFocusPillProps) {
   const label = slot === "today" ? "Today" : "This week";
   const ctaLabel = slot === "today" ? "Pick today's focus" : "Pick this week's focus";
   const base =
     "text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex items-center gap-1";
+  const controlClass =
+    "ml-1 text-[11px] underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline";
 
   // R-5.9: backend offline ⇒ show em-dash and disable the CTA.
   if (!online) {
@@ -46,11 +53,29 @@ function ManualFocusPill({
   if (pick) {
     return (
       <div className={base}>
-        <span>
+        <span className="truncate">
           📌 {label}: {pick.project_title} — {pick.intent_title}
           {alignedWithFocus ? " (aligned with critical)" : ""}
         </span>
         {alignedWithFocus && <span aria-label="aligned with critical focus">✓</span>}
+        <span className="ml-auto flex items-center shrink-0">
+          <button
+            type="button"
+            onClick={onPick}
+            disabled={!onPick}
+            className={controlClass}
+          >
+            Change
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={!onClear}
+            className={controlClass}
+          >
+            Clear
+          </button>
+        </span>
       </div>
     );
   }
@@ -66,7 +91,7 @@ function ManualFocusPill({
   );
 }
 
-export function FocusWidget({ home, online, onPick }: Props) {
+export function FocusWidget({ home, online, onPick, onClear }: Props) {
   const focus = home.data?.focus ?? null;
   const manualFocus = home.data?.manual_focus ?? null;
   const dimmed = !online;
@@ -111,6 +136,7 @@ export function FocusWidget({ home, online, onPick }: Props) {
           alignedWithFocus={todayAligned}
           online={online}
           onPick={onPick ? () => onPick("today") : undefined}
+          onClear={onClear ? () => onClear("today") : undefined}
         />
         <ManualFocusPill
           slot="week"
@@ -118,6 +144,7 @@ export function FocusWidget({ home, online, onPick }: Props) {
           alignedWithFocus={weekAligned}
           online={online}
           onPick={onPick ? () => onPick("week") : undefined}
+          onClear={onClear ? () => onClear("week") : undefined}
         />
       </div>
     </section>

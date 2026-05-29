@@ -115,7 +115,7 @@ A,B  (foundation: frontmatter round-trip + focus_picker module)
     - Manual smoke: `pnpm tauri dev` against a fixture vault → screenshot matches three states (none picked, today picked alone, today picked + matches critical).
     - Vitest component test: render `FocusWidget` with `manual_focus.today = null`, assert pill shows "Pick today's focus". Render with populated pick, assert intent title appears.
 
-- [ ] **5.3** Wire `Change` and `Clear` controls on each populated pill (deps: 5.2, 6.1, est: ~30m)
+- [x] **5.3** Wire `Change` and `Clear` controls on each populated pill (deps: 5.2, 6.1, est: ~30m)
   - acceptance:
     - R-5.6 — `Change` opens `FocusPickerModal` pre-selected on the slot. `Clear` issues `PUT /api/focus/<slot>` with `{clear: true}`.
   - verify:
