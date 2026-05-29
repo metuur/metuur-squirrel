@@ -50,6 +50,20 @@ log() {
 
 die() { log "ERROR: $*"; exit 1; }
 
+# Compose a squirrel:// deep-link URL for an item (R-1.9).
+# Args: project task
+# Both may be empty strings; task may equal project.
+compose_deeplink() {
+    local project="${1:-}" task="${2:-}"
+    if [ -z "$project" ] && [ -n "$task" ]; then
+        echo "squirrel://projects/${task}"
+    elif [ -z "$task" ] || [ "$task" = "$project" ]; then
+        echo "squirrel://projects/${project}"
+    else
+        echo "squirrel://projects/${project}/${task}"
+    fi
+}
+
 # Read a value from config.toml (simple key = "value" in any section)
 read_config() {
     local key="$1" default="${2:-}"
@@ -67,6 +81,23 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 
 VAULT_PATH=$(read_config "vault_path" "")
+if [ -z "$VAULT_PATH" ]; then
+    # Multi-vault schema: pick the [[vaults]] entry where default = true,
+    # falling back to the first vault listed.
+    VAULT_PATH=$(python3 - "$CONFIG_FILE" <<'PYEOF' 2>/dev/null
+import sys, tomllib
+try:
+    with open(sys.argv[1], "rb") as f:
+        cfg = tomllib.load(f)
+    vaults = cfg.get("vaults", [])
+    chosen = next((v for v in vaults if v.get("default")), vaults[0] if vaults else None)
+    if chosen and chosen.get("path"):
+        print(chosen["path"])
+except Exception:
+    pass
+PYEOF
+)
+fi
 [ -z "$VAULT_PATH" ] && die "vault_path not set in config.toml"
 VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
 
@@ -203,7 +234,7 @@ else:
 
 if choice == "Snooze":
     state["snoozed_until"] = (now + datetime.timedelta(minutes=snooze_min)).isoformat()
-elif choice in ("Focus now", "Dismiss"):
+elif choice in ("Open", "Dismiss"):
     state.pop("snoozed_until", None)
 
 print(json.dumps(state))
@@ -212,23 +243,28 @@ PYEOF
 
 # ─── Show notification ────────────────────────────────────────────────────────
 
-show_dialog() {
-    local project="$1" message="$2"
-    local escaped_msg escaped_proj
-    escaped_msg=$(printf '%s' "$message" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    escaped_proj=$(printf '%s' "$project" | sed 's/\\/\\\\/g; s/"/\\"/g')
+# Emit a macOS Notification Center banner. Non-blocking; stacks in the
+# Notification Center so multiple items can be reviewed later. Requires
+# Script Editor to have notification permission (System Settings →
+# Notifications → Script Editor → Allow notifications). If permission is
+# denied, the call silently no-ops.
+show_notification() {
+    local ntitle="$1" subtitle="$2" body="$3"
+    local esc_t esc_s esc_b
+    esc_t=$(printf '%s' "$ntitle"   | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    esc_s=$(printf '%s' "$subtitle" | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
+    esc_b=$(printf '%s' "$body"     | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
 
-    osascript <<EOF 2>/dev/null
-try
-    return button returned of (display dialog "${escaped_msg}" ¬
-        with title "⏰ squirrel: ${escaped_proj}" ¬
-        buttons {"Dismiss", "Snooze", "Focus now"} ¬
-        default button "Focus now" ¬
-        cancel button "Dismiss")
-on error errMsg number errNum
-    return "Dismiss"
-end try
-EOF
+    osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"Submarine\"" 2>/dev/null || true
+}
+
+# Open the project's page in the web UI. Uses macOS `open` so the user's
+# default browser handles it. Silent failure (e.g., backend offline) is fine —
+# the dialog choice is already recorded in state above.
+open_in_web_ui() {
+    local project="$1"
+    [ -z "$project" ] && return 0
+    open "http://localhost:3939/projects/${project}" 2>/dev/null || true
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -256,7 +292,7 @@ main() {
         exit 0
     fi
 
-    ITEM_COUNT=$(echo "$SCAN_OUTPUT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('items',[])))" 2>/dev/null || echo 0)
+    ITEM_COUNT=$(echo "$SCAN_OUTPUT" | python3 -c "import json,sys; d=json.load(sys.stdin); by=d.get('by_urgency',{}); print(len(by.get('critical',[]))+len(by.get('urgent',[])))" 2>/dev/null || echo 0)
     if [ "$ITEM_COUNT" -eq 0 ]; then
         log "No critical/urgent items — skipping."
         exit 0
@@ -264,21 +300,59 @@ main() {
 
     log "Found $ITEM_COUNT critical/urgent item(s). Showing up to 3 dialogs."
 
-    # Show up to 3 dialogs per run (cap per-run storm)
-    local shown=0
-    echo "$SCAN_OUTPUT" | python3 -c "
+    # Build rich, multi-line messages for up to 3 critical/urgent items.
+    # Output format: PROJECT<US>MSG<RS> where US=\x1f, RS=\x1e — robust against
+    # arbitrary text (including pipes and newlines) inside titles or next-action.
+    RECORDS=$(echo "$SCAN_OUTPUT" | python3 - <<'PYEOF' 2>/dev/null
 import json, sys
+
 d = json.load(sys.stdin)
-for item in d.get('items', [])[:3]:
-    print(item.get('project', ''), '|||', item.get('message', item.get('label', '')))
-" 2>/dev/null | while IFS='|||' read -r project msg; do
-        project=$(echo "$project" | xargs)
-        msg=$(echo "$msg" | xargs)
+by = d.get("by_urgency", {})
+items = (by.get("critical", []) + by.get("urgent", []))[:3]
+
+def truncate(s, n):
+    s = (s or "").strip()
+    return s if len(s) <= n else s[: n - 1] + "…"
+
+def due_line(it):
+    if it.get("is_overdue"):
+        n = it.get("days_overdue", 0)
+        return f"⚠️  Overdue {n}d (was {it.get('deadline','?')})"
+    h = it.get("hours_left")
+    if h is not None:
+        return f"⚠️  Due in {round(h)}h — today ({it.get('deadline','?')})"
+    dl = it.get("days_left")
+    if dl == 1:
+        return f"Due tomorrow ({it.get('deadline','?')})"
+    if dl is not None:
+        return f"Due in {dl} days ({it.get('deadline','?')})"
+    return f"Deadline: {it.get('deadline','?')}"
+
+for it in items:
+    proj = it.get("id", "") or ""
+    lines = [truncate(it.get("title"), 80), "", due_line(it)]
+    na = it.get("next_action")
+    if na:
+        lines.append(f"→ {truncate(na, 110)}")
+    last = it.get("last_shutdown")
+    if last:
+        lines.append(f"Last worked: {last[:10]}")
+    sys.stdout.write(f"{proj}\x1f" + "\n".join(lines) + "\x1e")
+PYEOF
+)
+
+    # Show up to 3 dialogs per run (cap per-run storm).
+    printf '%s' "$RECORDS" | while IFS= read -r -d $'\x1e' record; do
+        [ -z "$record" ] && continue
+        project="${record%%$'\x1f'*}"
+        msg="${record#*$'\x1f'}"
         [ -z "$project" ] && continue
 
         choice=$(show_dialog "$project" "$msg")
         choice=${choice:-Dismiss}
         log "Dialog shown for '${project}': choice='${choice}'"
+
+        [ "$choice" = "Open" ] && open_in_web_ui "$project"
 
         NEW_STATE=$(update_state_after_dialog "$STATE_JSON" "$choice")
         write_state "$NEW_STATE"
