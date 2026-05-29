@@ -104,6 +104,9 @@ show_dialog_fallback() {
     osascript -e "display dialog \"${esc_body}\" with title \"⏰ squirrel: ${esc_proj} — ${esc_sub}\" buttons {\"OK\"} default button \"OK\""
 }
 
+# Per-run flag: set to true when osascript display notification is denied (R-2.4).
+_OSASCRIPT_PERM_DENIED=false
+
 # Orchestrator: emit one macOS banner for a single item.
 # Args: project ntitle subtitle body
 #   project  — project ID (e.g. "CASA-CONTABILIDAD-TAXES-2025")
@@ -114,10 +117,12 @@ show_dialog_fallback() {
 # Behaviour:
 #   1. Truncates body to 240 UTF-8 codepoints (R-1.7).
 #   2. Composes deep-link URL via compose_deeplink (R-1.9).
-#   3. Selects emitter once at function entry (R-2.1/R-2.2):
+#   3. Selects emitter (R-2.1/R-2.2/R-2.4):
 #      terminal-notifier on PATH → show_notification_terminal_notifier (tag: banner)
-#      else                      → show_notification_osascript         (tag: banner-fallback-osascript)
-#   4. Logs one of the above tags + project ID to $LOG_FILE (R-2.7/R-7.1/R-7.2).
+#      _OSASCRIPT_PERM_DENIED    → show_dialog_fallback                (tag: banner-fallback-dialog)
+#      else                      → show_notification_osascript; on non-zero exit: set flag,
+#                                  log permission-denied, show_dialog_fallback
+#   4. Logs the chosen tag + project ID to $LOG_FILE (R-2.7/R-7.1/R-7.2).
 emit_banner() {
     local project="$1" ntitle="$2" subtitle="$3" body="$4"
 
@@ -138,13 +143,22 @@ sys.stdout.write(b)
     local url
     url=$(compose_deeplink "$project" "$project")
 
-    # R-2.1/R-2.2: select emitter
+    # R-2.1/R-2.2/R-2.4: select emitter
     if command -v terminal-notifier >/dev/null 2>&1; then
         show_notification_terminal_notifier "$title" "$subtitle" "$truncated_body" "$url"
         log "banner project=${project}"
+    elif [ "$_OSASCRIPT_PERM_DENIED" = "true" ]; then
+        show_dialog_fallback "$project" "$subtitle" "$truncated_body"
+        log "banner-fallback-dialog project=${project}"
     else
-        show_notification_osascript "$title" "$subtitle" "$truncated_body"
-        log "banner-fallback-osascript project=${project}"
+        if show_notification_osascript "$title" "$subtitle" "$truncated_body"; then
+            log "banner-fallback-osascript project=${project}"
+        else
+            _OSASCRIPT_PERM_DENIED=true
+            log "permission-denied project=${project}"
+            show_dialog_fallback "$project" "$subtitle" "$truncated_body"
+            log "banner-fallback-dialog project=${project}"
+        fi
     fi
 }
 
@@ -299,13 +313,11 @@ sys.exit(0)
 PYEOF
 }
 
-update_state_after_dialog() {
-    local state_json="$1" choice="$2" snooze_minutes="${3:-60}"
-    python3 - "$state_json" "$choice" "$snooze_minutes" <<'PYEOF'
+update_state_after_emit() {
+    local state_json="$1"
+    python3 - "$state_json" <<'PYEOF'
 import json, sys, datetime
 state = json.loads(sys.argv[1])
-choice = sys.argv[2]
-snooze_min = int(sys.argv[3])
 now = datetime.datetime.now()
 
 state["last_shown"] = now.isoformat()
@@ -315,11 +327,6 @@ if state.get("dialogs_date") == today:
 else:
     state["dialogs_date"] = today
     state["dialogs_today"] = 1
-
-if choice == "Snooze":
-    state["snoozed_until"] = (now + datetime.timedelta(minutes=snooze_min)).isoformat()
-elif choice in ("Open", "Dismiss"):
-    state.pop("snoozed_until", None)
 
 print(json.dumps(state))
 PYEOF
@@ -340,15 +347,6 @@ show_notification() {
     esc_b=$(printf '%s' "$body"     | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
 
     osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"Submarine\"" 2>/dev/null || true
-}
-
-# Open the project's page in the web UI. Uses macOS `open` so the user's
-# default browser handles it. Silent failure (e.g., backend offline) is fine —
-# the dialog choice is already recorded in state above.
-open_in_web_ui() {
-    local project="$1"
-    [ -z "$project" ] && return 0
-    open "http://localhost:3939/projects/${project}" 2>/dev/null || true
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -425,23 +423,24 @@ for it in items:
 PYEOF
 )
 
-    # Show up to 3 dialogs per run (cap per-run storm).
-    printf '%s' "$RECORDS" | while IFS= read -r -d $'\x1e' record; do
+    # Emit up to 3 banners per run (cap per-run storm).
+    _OSASCRIPT_PERM_DENIED=false
+    while IFS= read -r -d $'\x1e' record; do
         [ -z "$record" ] && continue
         project="${record%%$'\x1f'*}"
         msg="${record#*$'\x1f'}"
         [ -z "$project" ] && continue
 
-        choice=$(show_dialog "$project" "$msg")
-        choice=${choice:-Dismiss}
-        log "Dialog shown for '${project}': choice='${choice}'"
+        ntitle=$(printf '%s' "$msg" | head -1)
+        subtitle=$(printf '%s' "$msg" | sed -n '3p')
 
-        [ "$choice" = "Open" ] && open_in_web_ui "$project"
+        emit_banner "$project" "$ntitle" "$subtitle" "$msg"
+        log "Notification shown for '${project}'"
 
-        NEW_STATE=$(update_state_after_dialog "$STATE_JSON" "$choice")
+        NEW_STATE=$(update_state_after_emit "$STATE_JSON")
         write_state "$NEW_STATE"
         STATE_JSON="$NEW_STATE"
-    done
+    done < <(printf '%s' "$RECORDS")
 
     log "Daemon run complete."
 }

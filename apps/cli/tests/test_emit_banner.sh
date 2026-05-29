@@ -5,9 +5,8 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DAEMON="${SCRIPT_DIR}/../../../agent-pack/companions/macos-reminders/reminder-daemon.sh"
 
-# Extract compose_deeplink, show_notification_terminal_notifier, log, and emit_banner.
-# Each pattern matches from "fn() {" to the closing "}" at column-0.
-eval "$(sed -n '/^log()/,/^}$/p; /^compose_deeplink()/,/^}$/p; /^show_notification_terminal_notifier()/,/^}$/p; /^emit_banner()/,/^}$/p' "$DAEMON" 2>/dev/null)" 2>/dev/null || true
+# Extract all helper functions needed for tests (including permission-denied fallback path).
+eval "$(sed -n '/^log()/,/^}$/p; /^compose_deeplink()/,/^}$/p; /^show_notification_terminal_notifier()/,/^}$/p; /^show_notification_osascript()/,/^}$/p; /^show_dialog_fallback()/,/^}$/p; /^emit_banner()/,/^}$/p' "$DAEMON" 2>/dev/null)" 2>/dev/null || true
 
 pass=0; fail=0
 
@@ -137,6 +136,56 @@ assert_contains "test4: log line contains 'banner'" \
     "banner" "$LAST_LOG_LINE"
 assert_contains "test4: log line contains 'PROJ'" \
     "PROJ" "$LAST_LOG_LINE"
+
+# ─── Test 5: permission-denied fallback — _OSASCRIPT_PERM_DENIED flag (R-2.4) ─
+
+PERM_TMP="$(mktemp -d)"
+DIALOG_RECORD="${PERM_TMP}/dialog_calls.txt"
+OSASCRIPT_STUB="${PERM_TMP}/osascript"
+
+# Stub: exit 1 on display notification; record args + exit 0 on display dialog.
+cat > "$OSASCRIPT_STUB" <<'STUB'
+#!/bin/bash
+for arg in "$@"; do
+    if [[ "$arg" == *"display notification"* ]]; then exit 1; fi
+    if [[ "$arg" == *"display dialog"* ]]; then
+        printf '%s\n' "$arg" >> "${DIALOG_RECORD_FILE}"
+        exit 0
+    fi
+done
+exit 0
+STUB
+chmod +x "$OSASCRIPT_STUB"
+
+export DIALOG_RECORD_FILE="$DIALOG_RECORD"
+
+# Reset per-run flag and run two banners with NO terminal-notifier on PATH.
+_OSASCRIPT_PERM_DENIED=false
+OLD_LOG_LINES="$(wc -l < "${TMP_LOG}" 2>/dev/null | tr -d ' ')"
+
+# Minimal PATH: osascript stub first, then pyenv shims (python3), then system.
+# Excludes /opt/homebrew/bin so terminal-notifier is not found.
+PYENV_ROOT_T="${PYENV_ROOT:-${HOME}/.pyenv}"
+export PATH="${PERM_TMP}:${PYENV_ROOT_T}/shims:${PYENV_ROOT_T}/bin:/usr/bin:/bin"
+
+emit_banner "PROJ2" "title2" "Due tomorrow" "body2"
+emit_banner "PROJ3" "title3" "Due in 3d" "body3"
+
+export PATH="$OLD_PATH"
+
+NEW_LOG="$(tail -n +$((OLD_LOG_LINES + 1)) "${TMP_LOG}" 2>/dev/null || echo '')"
+
+PERM_DENIED_COUNT="$(printf '%s\n' "$NEW_LOG" | grep -c 'permission-denied' || true)"
+assert_eq "test5: exactly one permission-denied log line" "1" "$PERM_DENIED_COUNT"
+
+DIALOG_CALLS="$(cat "$DIALOG_RECORD" 2>/dev/null || echo '')"
+assert_contains "test5: second call used show_dialog_fallback" \
+    "display dialog" "$DIALOG_CALLS"
+
+assert_contains "test5: log has banner-fallback-dialog" \
+    "banner-fallback-dialog" "$NEW_LOG"
+
+rm -rf "$PERM_TMP"
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 
