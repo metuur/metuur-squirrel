@@ -257,5 +257,47 @@ class TestDefaultBind(unittest.TestCase):
         self.assertEqual(server.LAN_HOST, "0.0.0.0")
 
 
+# ─── Story 2.1 — POST /api/intents ───────────────────────────────────────────
+
+
+class TestIntentCreate(_ServerCase):
+    def test_201_creates_intent_file(self):
+        r = self._post("/api/intents", {
+            "project_slug": "TEST-PROJECT",
+            "tag": "NEW-TASK",
+            "title": "A new task",
+        })
+        self.assertEqual(r.status, 201)
+        data = json.loads(r.read())
+        self.assertIn("path", data)
+        intent_file = FIXTURE_VAULT / "01-Proyectos-Activos" / "TEST-PROJECT" / "NEW-TASK.md"
+        self.assertTrue(intent_file.is_file(), "intent file should have been written")
+        intent_file.unlink()
+
+    def test_404_for_unknown_project(self):
+        r = self._post("/api/intents", {
+            "project_slug": "DOES-NOT-EXIST",
+            "tag": "SOME-TASK",
+            "title": "title",
+        })
+        self.assertEqual(r.status, 404)
+
+    def test_409_for_duplicate_tag(self):
+        r = self._post("/api/intents", {
+            "project_slug": "TEST-PROJECT",
+            "tag": "TEST-PROJECT-AUTH-001",
+            "title": "duplicate",
+        })
+        self.assertEqual(r.status, 409)
+
+    def test_422_for_invalid_tag(self):
+        r = self._post("/api/intents", {
+            "project_slug": "TEST-PROJECT",
+            "tag": "bad tag!",
+            "title": "bad tag test",
+        })
+        self.assertEqual(r.status, 422)
+
+
 if __name__ == "__main__":
     unittest.main()

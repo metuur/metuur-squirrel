@@ -196,6 +196,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_detail"),
     ("POST", re.compile(r"^/api/projects$"),                          "api_project_create"),
+    ("POST", re.compile(r"^/api/intents$"),                           "api_intent_create"),
     ("POST", re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_save"),
     ("GET",  re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
@@ -652,6 +653,64 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._save_with_mtime(proj_md, ctx.active.path, self._read_json_body())
         self._send_json({"success": True, "slug": slug,
                          "mtime": proj_md.stat().st_mtime})
+
+    def api_intent_create(self) -> None:
+        ctx, _ = self._context()
+        payload = self._read_json_body()
+        project_slug = (payload.get("project_slug") or "").strip()
+        tag = (payload.get("tag") or "").strip().upper()
+        title = (payload.get("title") or "").strip()
+        deadline = (payload.get("deadline") or "").strip()
+        if not project_slug or not tag or not title:
+            raise _UserError(400, "project_slug, tag, and title are required.")
+        _INTENT_TAG_RE = re.compile(r"^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$")
+        if not _INTENT_TAG_RE.match(tag):
+            raise _UserError(422, f"{tag!r} is not a valid intent tag (UPPERCASE, dash-separated).")
+        vault_root = ctx.active.path
+        project_dir = vault_root / "01-Proyectos-Activos" / project_slug
+        if not is_path_inside(project_dir, vault_root) or not project_dir.is_dir():
+            raise _UserError(404, "Project not found.")
+        intent_path = project_dir / f"{tag}.md"
+        if not is_path_inside(intent_path, vault_root):
+            raise _UserError(403, "That path is outside your workspace.")
+        if intent_path.exists():
+            raise _UserError(409, f"An intent with tag {tag!r} already exists in this project.")
+        template_candidates = [
+            vault_root / "agent-pack" / "templates" / "intent.md",
+            _REPO / "agent-pack" / "templates" / "intent.md",
+        ]
+        template_text: Optional[str] = None
+        for tp in template_candidates:
+            if tp.is_file():
+                template_text = tp.read_text(encoding="utf-8")
+                break
+        if template_text is None:
+            raise _UserError(500, "Intent template not found. Ensure agent-pack/templates/intent.md exists.")
+        today = datetime.date.today().isoformat()
+        rendered = (
+            template_text
+            .replace("<TAG>", tag)
+            .replace("<PROJECT>", project_slug)
+            .replace("<YYYY-MM-DD>", today)
+            .replace("<Título corto>", title or tag)
+        )
+        if not deadline:
+            rendered = "\n".join(
+                line for line in rendered.splitlines()
+                if not line.strip().startswith("deadline:")
+            ) + "\n"
+        else:
+            rendered = rendered.replace(
+                "deadline: <YYYY-MM-DD>   # ISO date; omit if no hard deadline",
+                f"deadline: {deadline}",
+            )
+        tmp = intent_path.with_suffix(".md.tmp")
+        tmp.write_text(rendered, encoding="utf-8")
+        os.replace(tmp, intent_path)
+        self._send_json(
+            {"success": True, "path": str(intent_path.relative_to(vault_root))},
+            status=201,
+        )
 
     # ── notes ───────────────────────────────────────────────────────────────
 
