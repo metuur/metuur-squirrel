@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -35,5 +35,10 @@ export default defineConfig(async () => ({
       // directly (CSP + backend CORS allow tauri://localhost).
       "/api": "http://127.0.0.1:3939",
     },
+  },
+
+  test: {
+    environment: "jsdom",
+    globals: true,
   },
 }));

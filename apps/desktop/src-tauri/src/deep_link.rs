@@ -1,5 +1,5 @@
-#![allow(dead_code)]
-
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use url::Url;
 
 #[derive(Debug, PartialEq)]
@@ -48,6 +48,62 @@ pub fn validate(url: &Url) -> Result<Target, DeepLinkError> {
         }),
         _ => Err(DeepLinkError::BadPath),
     }
+}
+
+#[derive(Clone, Serialize)]
+struct FocusProjectPayload {
+    #[serde(rename = "projectId")]
+    project_id: String,
+    #[serde(rename = "taskId")]
+    task_id: Option<String>,
+}
+
+/// Foregrounds the popup window and emits `deep-link://focus-project` (R-4.1–R-4.7).
+pub fn handle<R: Runtime>(app: &AppHandle<R>, url: &Url) {
+    let t_start = std::time::Instant::now();
+
+    let target = match validate(url) {
+        Ok(t) => t,
+        Err(DeepLinkError::UnknownScheme) => {
+            tracing::warn!(tag = "deep-link-dropped", subtag = "deep-link-unknown-scheme", %url);
+            return;
+        }
+        Err(DeepLinkError::UnknownHost) => {
+            tracing::warn!(tag = "deep-link-dropped", subtag = "deep-link-unknown-host", %url);
+            return;
+        }
+        Err(DeepLinkError::BadPath) => {
+            tracing::warn!(tag = "deep-link-dropped", subtag = "deep-link-bad-path", %url);
+            return;
+        }
+    };
+
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.show() {
+            tracing::warn!(error = %e, "deep-link: show window failed");
+        }
+        if let Err(e) = window.set_focus() {
+            tracing::warn!(error = %e, "deep-link: focus window failed");
+        }
+    } else {
+        tracing::warn!("deep-link: 'main' window not found");
+    }
+
+    let payload = FocusProjectPayload {
+        project_id: target.project_id.clone(),
+        task_id: target.task_id.clone(),
+    };
+    if let Err(e) = app.emit("deep-link://focus-project", payload) {
+        tracing::warn!(error = %e, "deep-link: emit failed");
+    }
+
+    let elapsed_ms = t_start.elapsed().as_millis();
+    tracing::info!(
+        tag = "deep-link-handled",
+        project_id = %target.project_id,
+        task_id = ?target.task_id,
+        elapsed_ms,
+    );
 }
 
 #[cfg(test)]

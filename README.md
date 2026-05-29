@@ -54,6 +54,33 @@ pnpm -F @squirrel/desktop dev
 pnpm -F @squirrel/desktop build
 ```
 
+## macOS Notifications (reminder daemon)
+
+The reminder daemon (`agent-pack/companions/macos-reminders/reminder-daemon.sh`) emits
+banners with an optional deep-link back to the Squirrel popup.
+
+### Optional: `terminal-notifier`
+
+```bash
+brew install terminal-notifier
+```
+
+`terminal-notifier` is **optional**. When it is on `$PATH` the banner includes an
+`-open squirrel://…` URL so clicking the notification foregrounds the Squirrel popup
+and scrolls to the relevant card. Without it the daemon falls back to
+`osascript display notification`, which shows a no-click banner (the URL is silently
+dropped because `osascript` cannot open custom schemes from a notification action).
+
+If notification permission for Script Editor is also denied the daemon falls back further
+to a modal `osascript display dialog` as a last resort.
+
+### v1 icon caveat
+
+v1 banners display with the **generic Terminal icon**, not the Squirrel app icon. Showing
+the Squirrel branding requires passing `-sender com.metuur.squirrel` to `terminal-notifier`,
+which in turn requires a `UNUserNotificationCenter` bootstrap on the Tauri side to register
+the bundle ID as a notification delegate. That wiring is tracked as a follow-up change.
+
 ## Phase 1 scope
 
 Only `apps/desktop/` is implemented. See `docs/hld/phase-1-mvp-desktop-shell.md`.

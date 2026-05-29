@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
+import { useDeepLink } from "./hooks/useDeepLink";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { FocusWidget } from "./components/FocusWidget";
 import { FocusPickerModal } from "./components/FocusPickerModal";
@@ -29,6 +30,7 @@ function formatToday(): string {
 
 export default function App() {
   const status = useBackend();
+  const deepLink = useDeepLink();
   const [homeBump, setHomeBump] = useState(0);
   // R-1.6: re-fetch widgets each time backend transitions to online.
   // homeBump forces a refetch after a manual-focus mutation (R-5.6).
@@ -96,6 +98,7 @@ export default function App() {
           online={status.online}
           projects={projects}
           onAddNote={openCapture}
+          scrollTarget={deepLink}
         />
         <ParakeetWidget triggerKey={triggerKey} online={status.online} />
       </div>

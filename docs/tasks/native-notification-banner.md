@@ -96,13 +96,13 @@ Dependency layers:
     - `cargo build` succeeds.
     - `cargo check` shows no warnings in the new module beyond pre-existing project baseline.
 
-- [ ] **3.2** Add `#[cfg(test)] mod tests` block to `deep_link.rs` covering the EARS accept/reject set (deps: 3.1, est: ~30m)
+- [x] **3.2** Add `#[cfg(test)] mod tests` block to `deep_link.rs` covering the EARS accept/reject set (deps: 3.1, est: ~30m)
   - acceptance:
     - R-9.2 — Accepts `squirrel://projects/FOO` → `Target { project_id: "FOO", task_id: None }`; `squirrel://projects/FOO/BAR` → `Target { project_id: "FOO", task_id: Some("BAR") }`. Rejects each of: `http://projects/FOO`, `squirrel://focus/FOO`, `squirrel://projects/`, `squirrel://projects/FOO/BAR/BAZ`, `squirrel://projects/FO O`, `squirrel://projects/FOO/B R`.
   - verify:
     - `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml deep_link::` runs and all eight assertions pass.
 
-- [ ] **3.3** Implement `deep_link::handle<R: Runtime>(app, url)` + wire `tauri::Builder::on_open_url` in `lib.rs` (deps: 2.1, 3.2, est: ~75m)
+- [x] **3.3** Implement `deep_link::handle<R: Runtime>(app, url)` + wire `tauri::Builder::on_open_url` in `lib.rs` (deps: 2.1, 3.2, est: ~75m)
   - acceptance:
     - R-4.1 — On `squirrel://projects/<p>` or `squirrel://projects/<p>/<t>`: foreground the menubar popup window AND emit Tauri event `deep-link://focus-project` with payload `{ projectId, taskId }`.
     - R-4.2 — If the popup window is not currently open, open it BEFORE emitting the event.
@@ -119,7 +119,7 @@ Dependency layers:
 
 ## Unit 4: React popup deep-link consumer
 
-- [ ] **4.1** Create `apps/desktop/src/hooks/useDeepLink.ts` with monotonic-key subscription (deps: 3.3, est: ~30m)
+- [x] **4.1** Create `apps/desktop/src/hooks/useDeepLink.ts` with monotonic-key subscription (deps: 3.3, est: ~30m)
   - acceptance:
     - R-5.1 — Subscribes to Tauri event `deep-link://focus-project` on mount.
     - R-5.2 — Cleanup tears down the listener on unmount AND on HMR (no listener leak across hot reloads).
@@ -128,7 +128,7 @@ Dependency layers:
     - Vitest unit test: mock `@tauri-apps/api/event.listen`; render hook; fire two events with identical payload `{ projectId: "FOO", taskId: null }`; assert `key` differs between the two snapshots.
     - Vitest unit test: render hook then unmount; assert the unlisten callback returned from `listen()` was called exactly once.
 
-- [ ] **4.2** Extend `DeadlinesWidget.tsx` with `scrollTarget` prop + per-card data attributes + scroll-and-highlight effect (deps: 4.1, est: ~45m)
+- [x] **4.2** Extend `DeadlinesWidget.tsx` with `scrollTarget` prop + per-card data attributes + scroll-and-highlight effect (deps: 4.1, est: ~45m)
   - acceptance:
     - R-5.4 — Accepts optional prop `scrollTarget: { projectId: string; taskId: string | null; key: number } | null`.
     - R-5.5 — Each card rendered with `id="deadline-card-<task-id>"`, `data-task-id="<task-id>"`, `data-project-id="<project-slug>"`.
@@ -140,7 +140,7 @@ Dependency layers:
     - Vitest component test: render with fixtures for three cards across two projects; set `scrollTarget = { projectId: "P1", taskId: "T2", key: 1 }`; assert `scrollIntoView` called on the `data-task-id="T2"` ref and that element receives `data-highlight="on"`.
     - Vitest component test: set `scrollTarget` with only `projectId` (taskId null) for project `P1`; assert highlight lands on the first card whose `data-project-id="P1"`.
 
-- [ ] **4.3** Add `apps/desktop/src/components/DeadlinesWidget.module.css` with `squirrel-highlight` keyframe animation (deps: 4.2, est: ~15m)
+- [x] **4.3** Add `apps/desktop/src/components/DeadlinesWidget.module.css` with `squirrel-highlight` keyframe animation (deps: 4.2, est: ~15m)
   - acceptance:
     - R-5.9 — `[data-highlight="on"]` selector triggers a 1.5s CSS keyframe animation that auto-reverts on attribute removal (no JS-driven style mutation beyond the attribute).
     - R-5.11 — Highlight color is `rgba(253, 224, 71, …)` with peak alpha 0.55 at ~15%, decaying to 0 by 100%.
@@ -148,7 +148,7 @@ Dependency layers:
     - Manual: in DevTools, toggle `data-highlight="on"` on a card; observe the yellow pulse runs once over 1500 ms and the element returns to normal background when attribute is removed.
     - Inspect: `grep -E "0\.55|rgba\(253, 224, 71" apps/desktop/src/components/DeadlinesWidget.module.css` finds the peak-alpha rule.
 
-- [ ] **4.4** Wire `useDeepLink()` into `App.tsx` and pass `scrollTarget` down to `DeadlinesWidget` (deps: 4.2, 4.3, est: ~15m)
+- [x] **4.4** Wire `useDeepLink()` into `App.tsx` and pass `scrollTarget` down to `DeadlinesWidget` (deps: 4.2, 4.3, est: ~15m)
   - acceptance:
     - `App` mounts `useDeepLink()` once and passes its return value as `scrollTarget` prop to `DeadlinesWidget`.
     - No regression to other widgets — `FocusWidget`, `ParakeetWidget`, `BackendStatusBanner` unaffected.
@@ -156,7 +156,7 @@ Dependency layers:
     - `pnpm tsc --noEmit` passes.
     - Manual: launch popup; trigger `open squirrel://projects/<known-project>` from Terminal; popup foregrounds and the matching card scrolls into view with the yellow pulse.
 
-- [ ] **4.5** Vitest tests for scroll target matching AND repeat-key re-trigger (deps: 4.4, est: ~45m)
+- [x] **4.5** Vitest tests for scroll target matching AND repeat-key re-trigger (deps: 4.4, est: ~45m)
   - acceptance:
     - R-9.3 — Test (a): target with `taskId` matching a rendered card → `scrollIntoView` called AND `data-highlight="on"` applied to that specific card.
     - R-9.3 — Test (b): target with only `projectId` (taskId null) → falls back to first card whose `data-project-id` matches.
@@ -166,7 +166,7 @@ Dependency layers:
 
 ## Unit 5: Docs and manual integration checks
 
-- [ ] **5.1** Add a README note documenting the optional `brew install terminal-notifier` AND the v1 generic-icon caveat (est: ~10m)
+- [x] **5.1** Add a README note documenting the optional `brew install terminal-notifier` AND the v1 generic-icon caveat (est: ~10m)
   - acceptance:
     - R-8.4 — README (or equivalent docs surface) mentions `terminal-notifier` is optional, click-to-Tauri is lost without it, and the daemon falls back to a no-click banner. No bundling references.
     - R-1.10 — Same docs surface notes: v1 banners use the generic Terminal icon (no Squirrel branding) because `-sender com.metuur.squirrel` requires a Tauri-side `UNUserNotificationCenter` bootstrap that is tracked as a follow-up change.

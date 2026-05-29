@@ -10,18 +10,25 @@
 // - an action row: "+ note" (opens capture modal pre-set to the task's
 //   project) and "↗" (opens the web UI's /notes/<id> in the browser).
 
+import { useEffect, useRef } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { HomeState } from "../hooks/useHome";
+import type { DeepLinkTarget } from "../hooks/useDeepLink";
 import type { PressingItem, ProjectListItem } from "../api/client";
 import { BACKEND_ORIGIN } from "../api/client";
 import { projectForTask } from "../lib/projectForTask";
 import { timeAgo } from "../lib/timeAgo";
+import styles from "./DeadlinesWidget.module.css";
+
+// Import styles for side-effect (injects [data-highlight="on"] keyframe rule).
+void styles;
 
 interface Props {
   home: HomeState;
   online: boolean;
   projects: ProjectListItem[];
   onAddNote: (initialSlug: string | null) => void;
+  scrollTarget?: DeepLinkTarget | null;
 }
 
 function tail(item: PressingItem): string {
@@ -38,10 +45,52 @@ function openTaskDetails(taskId: string) {
   void openUrl(`${BACKEND_ORIGIN}/notes/${taskId}`);
 }
 
-export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
+export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarget }: Props) {
   const pressing = home.data?.pressing ?? [];
   const top = pressing.slice(0, 3);
   const dimmed = !online;
+
+  // R-5.6 / R-5.7 / R-5.8 / R-5.10
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!scrollTarget) return;
+
+    let el: Element | null = null;
+
+    if (scrollTarget.taskId) {
+      el = document.getElementById(`deadline-card-${scrollTarget.taskId}`);
+    }
+
+    if (!el) {
+      el = document.querySelector(`[data-project-id="${scrollTarget.projectId}"]`);
+    }
+
+    if (!el) {
+      console.debug("[DeadlinesWidget] scroll target not found", scrollTarget);
+      return;
+    }
+
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+
+    if (highlightTimerRef.current !== null) {
+      clearTimeout(highlightTimerRef.current);
+      el.removeAttribute("data-highlight");
+    }
+
+    el.setAttribute("data-highlight", "on");
+    const captured = el;
+    highlightTimerRef.current = setTimeout(() => {
+      captured.removeAttribute("data-highlight");
+      highlightTimerRef.current = null;
+    }, 1500);
+
+    return () => {
+      if (highlightTimerRef.current !== null) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, [scrollTarget?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
@@ -59,9 +108,13 @@ export function DeadlinesWidget({ home, online, projects, onAddNote }: Props) {
         <ul className="space-y-2">
           {top.map((item) => {
             const lastWorked = timeAgo(item.last_worked);
+            const projectSlug = projectForTask(item.id, projects) ?? "";
             return (
               <li
                 key={item.id}
+                id={`deadline-card-${item.id}`}
+                data-task-id={item.id}
+                data-project-id={projectSlug}
                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm px-3 py-1.5"
               >
                 <div className="text-[10px] font-mono text-slate-400 truncate">{item.id}</div>

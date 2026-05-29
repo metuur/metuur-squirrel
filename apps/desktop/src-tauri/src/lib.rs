@@ -39,6 +39,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             // R-1.7 / LLD D9: lock macOS activation policy to Accessory so the app
             // never gets a Dock icon, never gets an app menu in the top menu bar,
@@ -55,6 +56,18 @@ pub fn run() {
             // section. Backend offline → menu shows "No pressing items".
             #[cfg(desktop)]
             tray_alerts::start_polling(app.handle().clone());
+
+            // R-4.1: wire deep-link URL handler (story 3.3).
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let handle = app.handle().clone();
+                app.handle().deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        deep_link::handle(&handle, &url);
+                    }
+                });
+            }
 
             Ok(())
         })

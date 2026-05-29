@@ -1,0 +1,13 @@
+/* R-5.9 / R-5.11: yellow-pulse highlight triggered by [data-highlight="on"].
+   Peak alpha 0.55 at 15%, decays to 0 by 100%. Attribute removal auto-reverts. */
+:global {
+  @keyframes squirrel-highlight {
+    0%   { background-color: rgba(253, 224, 71, 0); }
+    15%  { background-color: rgba(253, 224, 71, 0.55); }
+    100% { background-color: rgba(253, 224, 71, 0); }
+  }
+
+  [data-highlight="on"] {
+    animation: squirrel-highlight 1.5s ease-out forwards;
+  }
+}
