@@ -164,20 +164,16 @@ A,B  (foundation: frontmatter round-trip + focus_picker module)
   - verify:
     - Pytest: against a fixture with two intents on the same project, the more-recently-updated one is returned. With no intents, returns `None`.
 
-- [ ] **8.2** Replace the `Open` button with `Focus now` in `agent-pack/companions/macos-reminders/reminder-daemon.sh` and wire the focus-set + browser-open flow (deps: 3.2, 8.1, mutex: daemon-script, est: ~60m)
+- [x] **8.2** Tag the daemon's deep-link URL with `?action=focus` so the desktop can distinguish focus-bearing banner clicks (deps: 8.1, mutex: daemon-script, est: ~15m)
+  - scope-note: Unit 8 was rewritten when `native-notification-banner` story 1.4 retired `show_dialog`/`open_in_web_ui`. Banners have no custom action buttons — the only click-target a banner can carry is a URL. Daemon-side scope collapses to a single change: emit the focus-tagged URL. Active-intent resolution + `PUT /api/focus/today` move to the desktop side (consumed by a future story in `native-notification-banner` unit 4). See LLD D-6 and `docs/ears/manual-focus-pick.md` Unit 8.
   - acceptance:
-    - R-8.1 — Dialog buttons become `{"Dismiss", "Snooze", "Focus now"}`, default `Focus now`.
-    - R-8.2 — Active intent resolved via the new helper.
-    - R-8.3 — `curl -sS --max-time 2 -X PUT http://127.0.0.1:3939/api/focus/today -H 'Content-Type: application/json' -d '{...}'`.
-    - R-8.4 / R-8.5 — Failures (offline, missing intent) are logged but the daemon still proceeds to R-8.6.
-    - R-8.6 — `open http://localhost:3939/projects/{TAG}` runs after the focus-set attempt.
-    - R-8.7 — State file records `Focus now` analogously to the prior `Open`.
-    - R-8.8 — Workday window / cadence / cap behaviour unchanged.
-    - R-8.9 / R-10.3 — Dismiss and Snooze behave byte-identically to today.
+    - R-8.1 — `compose_deeplink` accepts an optional `action` argument; when non-empty it appends `?action=<value>` to the URL. `emit_banner` calls it with `"focus"`, so the URL passed to `terminal-notifier -open` is `squirrel://projects/<TAG>?action=focus`.
+    - R-8.3 — On the `osascript display notification` and `show_dialog_fallback` paths no clickable URL is attached; this is an accepted v1 limitation.
+    - R-8.8 / R-10.3 — Workday window / cadence / cap behaviour unchanged.
   - verify:
-    - Manual: `reminder-daemon.sh --force` against a vault with a critical item, click `Focus now` → verify the alerted project's active intent file gains `focus_today: <today>` and the browser opens.
-    - Manual: stop the backend, repeat → log shows the curl failure, browser still opens.
-    - Manual: click `Snooze` → confirm `snoozed_until` is set as before (regression check).
+    - `bash apps/cli/tests/test_compose_deeplink.sh` — covers the action arg (with / without, plus the legacy 2-arg call signature).
+    - `bash apps/cli/tests/test_emit_banner.sh` — asserts the value passed to `-open` includes `?action=focus`.
+    - Manual: `reminder-daemon.sh --force` against a vault with a critical item → tail the daemon log and confirm no behavioural drift (cadence/cap timestamps unchanged from a baseline run).
 
 ## Unit 9: Invariants & end-to-end verification
 

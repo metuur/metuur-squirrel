@@ -54,12 +54,13 @@ Manual Focus Pick — touched components only
 │         # widens the typed response to include manual_focus
 │
 ├── agent-pack/companions/macos-reminders/reminder-daemon.sh   [TOUCHED]
-│   ├── show_dialog: buttons {"Dismiss", "Snooze", "Focus now"}
-│   │     (was: {"Dismiss", "Snooze", "Open"})
-│   └── On "Focus now":
-│       ├── curl PUT http://127.0.0.1:3939/api/focus/today
-│       │     body: {project_slug, intent_slug: <active intent>}
-│       └── open http://localhost:3939/projects/<TAG>
+│   ├── compose_deeplink(project, task, action="focus")
+│   │     emit_banner passes action="focus" so the URL becomes
+│   │     squirrel://projects/<TAG>?action=focus
+│   └── On banner click (terminal-notifier path only):
+│       └── macOS opens the URL → desktop app handles it (see D-6).
+│             (Older "Open" / 3-button-dialog model is gone — banners
+│              have no buttons; see native-notification-banner unit 1.)
 │
 └── CLI commands (squirrel plugin) [NEW]
     ├── /sq-focus                          # show current picks
@@ -82,15 +83,15 @@ Manual Focus Pick — touched components only
 6. Server returns the new `{ today: {...}, week: {...} }` object.
 7. `useHome()` refetches `/api/home`; widget re-renders with the pill populated.
 
-### Data flow — daemon "Focus now"
+### Data flow — daemon banner → desktop focus
 
-1. Daemon shows dialog for project TAG.
-2. User clicks `Focus now`.
-3. Daemon resolves the active intent for TAG via `python3 -c "from lib.status_aggregator import active_intent_for; print(active_intent_for(VAULT, TAG))"` (new helper exported from `status_aggregator.py`, wrapping existing logic at `:163–181`).
-4. If active intent is found: `curl -sS -X PUT http://127.0.0.1:3939/api/focus/today -H 'Content-Type: application/json' -d "{\"project_slug\": \"$TAG\", \"intent_slug\": \"$INTENT\"}"`.
-5. If no active intent or curl fails (backend offline): daemon logs and proceeds to step 6 regardless — the user's intent to focus is honored at least by opening the project page.
-6. Daemon runs `open http://localhost:3939/projects/$TAG` (same as today's `Open` behaviour).
-7. Daemon records the choice in its existing state file.
+1. Daemon's `emit_banner(project, ntitle, subtitle, body)` runs for project TAG.
+2. `compose_deeplink "$project" "$project" "focus"` yields `squirrel://projects/<TAG>?action=focus`.
+3. `terminal-notifier -open <url>` registers the URL as the banner's click target. (The `osascript display notification` and `show_dialog_fallback` paths have no URL-on-click affordance — focus-set is unavailable there; recorded in R-8.3 as a v1 limitation.)
+4. User clicks the banner; macOS routes the `squirrel://` URL to the registered Tauri app (`tauri-plugin-deep-link` — `native-notification-banner` story 2.1).
+5. Tauri's `on_open_url` handler (`native-notification-banner` story 3.3) inspects the parsed URL — including the `action=focus` query — and dispatches to a focus-action handler (consumed by a future story in unit 4 of `native-notification-banner`).
+6. Desktop calls `apps/cli/lib/status_aggregator.active_intent_for(vault, project_slug)` (story 8.1) and then `PUT /api/focus/today` with `{project_slug, intent_slug}`.
+7. Desktop navigates to the project page. Daemon state file is unaffected by the click; cadence / cap accounting still happens at emission time via `update_state_after_emit`.
 
 ### Data flow — lazy expiry on read
 
@@ -140,10 +141,15 @@ Manual Focus Pick — touched components only
 **Rationale**: Zero risk to existing consumers (browser SPA, future agents) of the current `focus` field. UI composes both views explicitly rather than the server collapsing them.
 **Rejected alternative**: Overload `focus` with a `source: "heuristic" | "manual"` tag. Rejected — breaks consumers that key off `focus.project` to highlight the overdue card.
 
-### D-6 — Daemon's "Focus now" replaces "Open"
-**Decision**: The macOS reminder dialog's third button is renamed from `Open` to `Focus now`. Clicking it BOTH writes the focus AND opens the browser (the old `Open` behaviour is preserved as a side effect).
-**Rationale**: macOS osascript dialogs cap at 3 buttons. The daemon's whole job is to nudge the user into committing to an alerted project; "Focus now" is a stronger commitment than "Open" and folds in the previous behaviour. Users who just want to peek can still click `Snooze` and visit the project from the popup.
-**Rejected alternative**: Add a 4th button via a separate `choose from list` dialog. Rejected — adds a click, breaks the existing one-tap UX, and complicates state recording.
+### D-6 — Daemon emits a `?action=focus` deep-link; desktop sets focus on click
+**Decision**: The daemon's `compose_deeplink` helper accepts an optional `action` argument. `emit_banner` calls it as `compose_deeplink "$project" "$project" "focus"`, producing `squirrel://projects/<TAG>?action=focus`. That URL is passed to `terminal-notifier -open`. When the user clicks the banner, macOS routes the URL to the registered Tauri app via `tauri-plugin-deep-link`; the desktop app resolves the active intent and calls `PUT /api/focus/today`, then navigates to the project page.
+**Rationale**: `native-notification-banner` stories 1.x replaced the legacy 3-button `osascript display dialog` with native banners. Banners have no custom action buttons; the only click-target a banner can express is a URL. Tagging the URL with `?action=focus` lets the desktop distinguish a focus-bearing click from a plain "navigate to project" deep-link click, without inventing new URL schemes or path conventions (so `deep_link::validate` from `native-notification-banner` story 3.1 still passes — it ignores query strings).
+**Rejected alternatives**:
+- Restore the 3-button `osascript display dialog` for daemon alerts. Rejected — undoes the recently-shipped banner work and reintroduces the UX trade-offs banners were chosen to fix.
+- Daemon does the `PUT /api/focus/today` eagerly at emission time. Rejected — "the banner appeared" ≠ "the user committed". User may dismiss without clicking; eager focus-set would falsify the pick.
+- Encode the active intent in the URL path (e.g. `squirrel://projects/<TAG>/<INTENT>?action=focus`). Rejected — conflates the `task_id` segment that `deep_link::validate` already defines; cleaner to keep intent resolution on the desktop side (it has access to the live `/api/home` payload via `useHome`).
+
+**Acknowledged trade-off**: On the `osascript display notification` and `show_dialog_fallback` paths, clicking the banner cannot open our URL. Focus-set is unavailable on those paths in v1. Recorded as R-8.3; revisit if the fallback paths become primary.
 
 ### D-7 — Auto-clear is "from the user's perspective", not "physical key removal"
 **Decision**: After local midnight, `manual_focus.today` is reported as `null` even though the YAML key still physically exists in the intent file (with yesterday's date).

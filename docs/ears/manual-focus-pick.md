@@ -87,19 +87,21 @@
 | R-7.7 | IF the backend returns 404 (intent_not_found), THE command SHALL print `No such intent: {TAG}/{INTENT-SLUG}` and exit with status 1. |
 | R-7.8 | THE command SHALL NOT read or write intent files directly; all mutation flows through `/api/focus/*`. |
 
-## Unit 8: macOS reminder daemon "Focus now" button
+## Unit 8: macOS reminder daemon "Focus now" — deep-link signal
+
+> **Model change.** `native-notification-banner` story 1.4 retired `show_dialog`/`open_in_web_ui`. Native banners (terminal-notifier / `osascript display notification`) have no custom action buttons; clicking a banner can only open a URL. Unit 8 was rewritten to model the new interaction: the daemon tags its banner URL with `?action=focus` so the desktop application can distinguish a focus-bearing click from any other deep-link entry point. The active-intent resolve + `PUT /api/focus/today` call moves to the desktop side (consumed by a future story in `native-notification-banner` unit 4).
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-8.1 | THE `show_dialog` function in `agent-pack/companions/macos-reminders/reminder-daemon.sh` SHALL declare its buttons as `{"Dismiss", "Snooze", "Focus now"}` with `"Focus now"` as the default button. |
-| R-8.2 | WHEN the user clicks `Focus now`, THE daemon SHALL resolve the active intent for the alerted project tag via a Python one-liner that imports `apps/cli/lib/status_aggregator` and calls its active-intent helper. |
-| R-8.3 | IF an active intent is resolved, THE daemon SHALL issue `curl -sS --max-time 2 -X PUT http://127.0.0.1:3939/api/focus/today -H 'Content-Type: application/json' -d '{"project_slug":"…","intent_slug":"…"}'`. |
-| R-8.4 | IF the curl fails (backend offline) or returns non-2xx, THE daemon SHALL log the failure to the existing daemon log and SHALL CONTINUE to step R-8.6 (browser open) regardless. |
-| R-8.5 | IF no active intent can be resolved for the project, THE daemon SHALL skip the curl call but SHALL CONTINUE to step R-8.6. |
-| R-8.6 | WHEN the user clicks `Focus now`, THE daemon SHALL invoke `open http://localhost:3939/projects/{TAG}` after the focus-setting attempt completes (success or failure). |
-| R-8.7 | THE daemon's state file (`reminders-state.json`) SHALL record the `Focus now` choice using the existing `update_state_after_dialog` path. The new choice string `Focus now` SHALL be treated equivalently to the prior `Open` choice for cadence and snooze accounting. |
-| R-8.8 | THE daemon SHALL NOT change its workday window, cadence, or daily cap behaviour as part of this feature. |
-| R-8.9 | THE `Dismiss` and `Snooze` buttons SHALL retain their existing behaviour byte-for-byte. |
+| R-8.1 | THE daemon's `emit_banner` SHALL pass a URL of the form `squirrel://projects/<TAG>?action=focus` to `terminal-notifier -open`, where `<TAG>` is the alerted project ID. The query string `action=focus` SHALL be the sole means by which a focus-bearing click is distinguished from a plain navigation click. |
+| R-8.2 | WHEN the user clicks a focus-bearing banner that opens a `squirrel://projects/<TAG>?action=focus` URL, THE desktop application SHALL resolve the active intent for `<TAG>` and SHALL call `PUT /api/focus/today` with `{project_slug: <TAG>, intent_slug: <active_intent>}`. *(Desktop-side requirement; implemented by a separate story in `native-notification-banner` unit 4. The daemon's only obligation is R-8.1.)* |
+| R-8.3 | IF the daemon's selected emitter is `osascript display notification` or `show_dialog_fallback` (i.e. terminal-notifier is unavailable), THE banner SHALL still be emitted but no clickable URL SHALL be attached. This is an accepted v1 limitation; focus-set on click is only available via the terminal-notifier path. |
+| R-8.4 | (REMOVED — daemon no longer issues the focus-set curl; the desktop owns that call. Backend-unreachable handling is the desktop's concern.) |
+| R-8.5 | (REMOVED — daemon no longer resolves active intent; the desktop owns that resolution.) |
+| R-8.6 | (REMOVED — the desktop's deep-link handler navigates to the project page as part of its R-8.2 flow; no separate `open` call from the daemon is needed.) |
+| R-8.7 | (REMOVED — the daemon has no per-click feedback channel from the desktop and so cannot record per-click choice in `reminders-state.json`. Existing emission-time `update_state_after_emit` semantics (cadence/cap accounting) are unaffected.) |
+| R-8.8 | THE daemon SHALL NOT change its workday window, cadence, or daily-cap behaviour as part of this feature. |
+| R-8.9 | (REMOVED — no buttons exist on a banner; "Dismiss" and "Snooze" were button-model concepts. The macOS Notification Center's built-in dismiss/clear gestures are unchanged and out of scope.) |
 
 ## Unit 9: Auto-expiry semantics
 

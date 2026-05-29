@@ -35,6 +35,16 @@ assert_eq "task empty" \
 assert_eq "project empty — legacy fallback to task" \
     "squirrel://projects/BAR" "$(compose_deeplink '' BAR)"
 
+# Action argument — R-8.1 (manual-focus-pick)
+assert_eq "action=focus, project only (legacy 2-arg signature with action)" \
+    "squirrel://projects/FOO?action=focus" "$(compose_deeplink FOO FOO focus)"
+
+assert_eq "action=focus, project + task" \
+    "squirrel://projects/FOO/BAR?action=focus" "$(compose_deeplink FOO BAR focus)"
+
+assert_eq "empty action — no query string appended" \
+    "squirrel://projects/FOO" "$(compose_deeplink FOO FOO '')"
+
 echo ""
 echo "Results: ${pass} passed, ${fail} failed"
 [[ "$fail" -eq 0 ]]

@@ -50,18 +50,26 @@ log() {
 
 die() { log "ERROR: $*"; exit 1; }
 
-# Compose a squirrel:// deep-link URL for an item (R-1.9).
-# Args: project task
-# Both may be empty strings; task may equal project.
+# Compose a squirrel:// deep-link URL for an item (R-1.9, manual-focus-pick R-8.1).
+# Args: project task [action]
+# project / task may be empty strings; task may equal project.
+# action is optional; when non-empty it is appended as `?action=<value>` so the
+# desktop's deep-link handler can distinguish a focus-bearing click from a
+# plain navigation click (see manual-focus-pick LLD D-6).
 compose_deeplink() {
-    local project="${1:-}" task="${2:-}"
+    local project="${1:-}" task="${2:-}" action="${3:-}"
+    local url
     if [ -z "$project" ] && [ -n "$task" ]; then
-        echo "squirrel://projects/${task}"
+        url="squirrel://projects/${task}"
     elif [ -z "$task" ] || [ "$task" = "$project" ]; then
-        echo "squirrel://projects/${project}"
+        url="squirrel://projects/${project}"
     else
-        echo "squirrel://projects/${project}/${task}"
+        url="squirrel://projects/${project}/${task}"
     fi
+    if [ -n "$action" ]; then
+        url="${url}?action=${action}"
+    fi
+    echo "$url"
 }
 
 # Emit a banner via terminal-notifier (R-1.5/R-1.6).
@@ -139,9 +147,11 @@ if len(b) > 240:
 sys.stdout.write(b)
 " "$body")
 
-    # Compose deep-link URL (project-level; no task ID at this stage)
+    # Compose deep-link URL (project-level; no task ID at this stage).
+    # action=focus tags the click so the desktop runs the focus-now flow
+    # (manual-focus-pick R-8.1).
     local url
-    url=$(compose_deeplink "$project" "$project")
+    url=$(compose_deeplink "$project" "$project" "focus")
 
     # R-2.1/R-2.2/R-2.4: select emitter
     if command -v terminal-notifier >/dev/null 2>&1; then

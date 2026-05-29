@@ -88,6 +88,11 @@ assert_eq "test1: title is '⏰ squirrel: PROJ'" \
 assert_contains "test1: record contains -title flag" \
     "-title" "$RECORDED"
 
+# manual-focus-pick R-8.1: -open URL carries ?action=focus
+OPEN_VAL="$(awk '/^-open$/{getline; print; exit}' "${RECORD_FILE}" 2>/dev/null || echo '')"
+assert_eq "test1: -open URL is squirrel://projects/PROJ?action=focus (R-8.1)" \
+    "squirrel://projects/PROJ?action=focus" "$OPEN_VAL"
+
 # ─── Test 2: body containing next_action appears in -message ─────────────────
 
 rm -f "${RECORD_FILE}"
