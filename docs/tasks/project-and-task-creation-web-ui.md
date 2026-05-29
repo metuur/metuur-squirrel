@@ -2,7 +2,7 @@
 
 ## Unit 1: Project Creation Form
 
-- [ ] 1.1 Add missing optional fields to `NewProjectModal` (est: ~30m)
+- [x] 1.1 Add missing optional fields to `NewProjectModal` (est: ~30m)
   - context: `NewProjectModal.tsx` already exists and is wired via Sidebar "+" button. `client.ts` already has all `NewProjectRequest` types. Only the UI fields for `stakeholders`, `first_intent_tag`, and `first_intent_title` are missing from the form.
   - files: `apps/backend/app/src/components/NewProjectModal.tsx`
   - acceptance: R-1.2, R-1.5 — WHEN optional fields `stakeholders`, `first_intent_tag`, or `first_intent_title` are filled, they are included in the `POST /api/projects` payload; IF `first_intent_tag` is filled and `first_intent_title` is empty, an inline error blocks submission.

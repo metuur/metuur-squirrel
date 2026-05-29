@@ -19,6 +19,9 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
   const [tipo, setTipo] = useState<'A' | 'B' | 'C'>('C');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
+  const [stakeholders, setStakeholders] = useState('');
+  const [firstIntentTag, setFirstIntentTag] = useState('');
+  const [firstIntentTitle, setFirstIntentTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wipPrompt, setWipPrompt] = useState<string | null>(null);
@@ -28,6 +31,9 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
     setTipo('C');
     setDeadline('');
     setDescription('');
+    setStakeholders('');
+    setFirstIntentTag('');
+    setFirstIntentTitle('');
     setBusy(false);
     setError(null);
     setWipPrompt(null);
@@ -46,11 +52,25 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
       setError('Tag must be UPPERCASE letters/digits, dash-separated (e.g. MYAPP or VISA-FAMILIA).');
       return;
     }
+    const trimmedIntentTag = firstIntentTag.trim().toUpperCase();
+    if (trimmedIntentTag) {
+      if (!TAG_RE.test(trimmedIntentTag)) {
+        setError('First intent tag must be UPPERCASE letters/digits, dash-separated (e.g. MYAPP-TASK).');
+        return;
+      }
+      if (!firstIntentTitle.trim()) {
+        setError('First intent title is required when a first intent tag is set.');
+        return;
+      }
+    }
     const req: NewProjectRequest = {
       tag: trimmed,
       tipo,
       deadline: deadline || undefined,
       description: description.trim() || undefined,
+      stakeholders: stakeholders.trim() || undefined,
+      first_intent_tag: trimmedIntentTag || undefined,
+      first_intent_title: firstIntentTitle.trim() || undefined,
       force: force || undefined,
     };
     setBusy(true);
@@ -153,6 +173,36 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
             disabled={busy}
             placeholder="Short summary"
             className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+          />
+        </Field>
+
+        <Field label="Stakeholders (optional)" hint="Comma-separated names or @handles.">
+          <input
+            value={stakeholders}
+            onChange={(e) => setStakeholders(e.target.value)}
+            disabled={busy}
+            placeholder="@alice, @bob"
+            className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+          />
+        </Field>
+
+        <Field label="First intent tag (optional)" hint="Creates an initial task file. UPPERCASE, dash-separated (e.g. MYAPP-SETUP).">
+          <input
+            value={firstIntentTag}
+            onChange={(e) => setFirstIntentTag(e.target.value)}
+            disabled={busy}
+            placeholder="MYAPP-SETUP"
+            className="w-full font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
+          />
+        </Field>
+
+        <Field label="First intent title" hint="Required when a first intent tag is provided.">
+          <input
+            value={firstIntentTitle}
+            onChange={(e) => setFirstIntentTitle(e.target.value)}
+            disabled={busy}
+            placeholder="Set up the initial project scaffold"
+            className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
           />
         </Field>
 
