@@ -189,6 +189,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/vaults$"),                            "api_vaults_list"),
     ("POST", re.compile(r"^/api/vault$"),                             "api_set_vault"),
     ("GET",  re.compile(r"^/api/home$"),                              "api_home"),
+    ("GET",  re.compile(r"^/api/focus$"),                             "api_focus_get"),
     ("GET",  re.compile(r"^/api/projects$"),                          "api_projects_list"),
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_detail"),
@@ -491,6 +492,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "projects": projects,
             "parakeet": _parakeet_message_for(ctx.active.path),
         })
+
+    # ── /api/focus — manual picks ───────────────────────────────────────────
+
+    def api_focus_get(self) -> None:
+        ctx, _ = self._context()
+        from focus_picker import get_manual_focus
+        try:
+            focus = get_manual_focus(ctx.active.path)
+        except Exception:
+            focus = {"today": None, "week": None}
+        self._send_json({"today": focus.get("today"), "week": focus.get("week")})
 
     # ── projects ────────────────────────────────────────────────────────────
 

@@ -140,6 +140,7 @@ class TestServerScaffold(unittest.TestCase):
         own = {
             "config_loader", "vocabulary", "capture_writer",
             "status_aggregator", "deadline_scanner", "new_project_writer",
+            "focus_picker",
         }
         stdlib = {
             "__future__", "argparse", "datetime", "html", "http", "io", "json",
