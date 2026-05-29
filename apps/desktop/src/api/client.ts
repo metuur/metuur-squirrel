@@ -136,6 +136,25 @@ export interface CaptureResult {
   project_slug: string;
 }
 
+// `GET /api/projects/{slug}` — shape mirrored from
+// apps/backend/server.py::api_project_detail. The `notes[]` collection is the
+// project's intent files (every `*.md` inside the project dir except the
+// project page itself, sorted by mtime desc).
+export interface ProjectNote {
+  id: string;
+  title: string;
+  modified_at: number;
+}
+
+export interface ProjectDetail {
+  slug: string;
+  title: string;
+  body: string;
+  raw_body: string;
+  mtime: number;
+  notes: ProjectNote[];
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -146,5 +165,17 @@ export const api = {
     call<CaptureResult>("/api/notes", {
       method: "POST",
       body: JSON.stringify({ text, project_slug }),
+    }),
+  projectDetail: (slug: string) =>
+    call<ProjectDetail>(`/api/projects/${slug}`),
+  focusSet: (
+    slot: "today" | "week",
+    body:
+      | { project_slug: string; intent_slug: string }
+      | { clear: true },
+  ) =>
+    call<ManualFocusPayload>(`/api/focus/${slot}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
     }),
 };

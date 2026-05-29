@@ -104,7 +104,7 @@ A,B  (foundation: frontmatter round-trip + focus_picker module)
   - verify:
     - `pnpm tsc --noEmit` passes after the type widening. A throwaway `console.log(home.manual_focus.today?.intent_title)` compiles.
 
-- [ ] **5.2** Render two manual-focus pills below the primary card in `FocusWidget.tsx` (deps: 5.1, est: ~60m)
+- [x] **5.2** Render two manual-focus pills below the primary card in `FocusWidget.tsx` (deps: 5.1, est: ~60m)
   - acceptance:
     - R-5.1 — Primary card visually unchanged from pre-feature.
     - R-5.2 / R-5.3 / R-5.4 / R-5.5 — Today pill then This-week pill, populated or "Pick…" CTA depending on null/non-null.
@@ -123,7 +123,7 @@ A,B  (foundation: frontmatter round-trip + focus_picker module)
 
 ## Unit 6: FocusPickerModal
 
-- [ ] **6.1** Create `apps/desktop/src/components/FocusPickerModal.tsx` (deps: 5.1, est: ~75m)
+- [x] **6.1** Create `apps/desktop/src/components/FocusPickerModal.tsx` (deps: 5.1, est: ~75m)
   - acceptance:
     - R-6.1 — Modal overlay opens above the popup.
     - R-6.2 — Project list sourced from cached `/api/home.projects[]` (no extra fetch).
