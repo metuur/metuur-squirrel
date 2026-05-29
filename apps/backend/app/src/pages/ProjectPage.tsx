@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { marked } from 'marked';
 import { useFetch } from '@/hooks/useFetch';
@@ -6,13 +6,16 @@ import { api, slashCommands } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { useCapture } from '@/components/CaptureModal';
 import { PromptPanel } from '@/components/PromptPanel';
+import { NewTaskModal } from '@/components/NewTaskModal';
 
 export default function ProjectPage() {
   const { slug = '' } = useParams();
-  const { data: project, error, isLoading } = useFetch(`project:${slug}`, () => api.project(slug));
+  const { data: project, error, isLoading, mutate: refreshProject } = useFetch(`project:${slug}`, () => api.project(slug));
   const { open: openCapture } = useCapture();
   const [briefPanelOpen, setBriefPanelOpen] = useState(false);
   const [stakeholder, setStakeholder] = useState('');
+  const [searchParams] = useSearchParams();
+  const [showNewTask, setShowNewTask] = useState(() => searchParams.get('newTask') === 'true');
 
   if (isLoading && !project) return <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
   if (error || !project) {
@@ -66,6 +69,12 @@ export default function ProjectPage() {
             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold border border-border-light dark:border-border-dark rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <span className="material-icons text-base">add</span> Note
+          </button>
+          <button
+            onClick={() => setShowNewTask(true)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold border border-border-light dark:border-border-dark rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <span className="material-icons text-base">add_task</span> New Task
           </button>
           <button
             onClick={() => setBriefPanelOpen(true)}
@@ -136,6 +145,15 @@ export default function ProjectPage() {
           </div>
         )}
       </section>
+      <NewTaskModal
+        open={showNewTask}
+        projectSlug={slug}
+        onClose={() => setShowNewTask(false)}
+        onCreated={() => {
+          setShowNewTask(false);
+          refreshProject();
+        }}
+      />
     </div>
   );
 }

@@ -31,7 +31,7 @@
   - acceptance: R-3.1, R-3.2, R-3.3, R-3.4, R-3.5 — modal accepts `projectSlug` prop; renders `tag` (with client-side regexp validation) and `title` (required), `description` and `deadline` (optional); calls `api.intentCreate`; on 201 invokes `onCreated()` callback and closes; on error displays error inline without losing field values; invalid `tag` is blocked client-side before the network call.
   - verify: Render the modal in isolation (or via Storybook / direct route); submit with a lowercase tag → inline error, no fetch; submit valid fields against the running backend → modal closes and `onCreated` fires.
 
-- [ ] 3.2 Wire "New Task" button and `?newTask=true` handling into `ProjectPage` (deps: 3.1, est: ~25m)
+- [x] 3.2 Wire "New Task" button and `?newTask=true` handling into `ProjectPage` (deps: 3.1, est: ~25m)
   - files: `apps/backend/app/src/pages/ProjectPage.tsx`
   - acceptance: R-3.1, R-3.2, R-3.3, R-3.4 — a "New Task" button appears in the project page action bar; clicking it opens `NewTaskModal` with `projectSlug` from the URL param; on `onCreated`, the task list re-fetches; on mount, if `?newTask=true` is in the URL, the modal opens automatically.
   - verify: Navigate to an existing project page; click "New Task"; fill the form and submit → new task appears in the "Recent notes" list without full page reload. Then navigate to `/projects/<slug>?newTask=true` and confirm the form opens immediately.
