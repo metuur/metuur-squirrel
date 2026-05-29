@@ -49,3 +49,59 @@ pub fn validate(url: &Url) -> Result<Target, DeepLinkError> {
         _ => Err(DeepLinkError::BadPath),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(s: &str) -> Url {
+        Url::parse(s).expect("test URL must be valid")
+    }
+
+    #[test]
+    fn accept_project_only() {
+        let t = validate(&parse("squirrel://projects/FOO")).unwrap();
+        assert_eq!(t.project_id, "FOO");
+        assert_eq!(t.task_id, None);
+    }
+
+    #[test]
+    fn accept_project_and_task() {
+        let t = validate(&parse("squirrel://projects/FOO/BAR")).unwrap();
+        assert_eq!(t.project_id, "FOO");
+        assert_eq!(t.task_id, Some("BAR".to_string()));
+    }
+
+    #[test]
+    fn reject_wrong_scheme() {
+        assert_eq!(validate(&parse("http://projects/FOO")), Err(DeepLinkError::UnknownScheme));
+    }
+
+    #[test]
+    fn reject_wrong_host() {
+        assert_eq!(validate(&parse("squirrel://focus/FOO")), Err(DeepLinkError::UnknownHost));
+    }
+
+    #[test]
+    fn reject_empty_path() {
+        assert_eq!(validate(&parse("squirrel://projects/")), Err(DeepLinkError::BadPath));
+    }
+
+    #[test]
+    fn reject_three_segments() {
+        assert_eq!(validate(&parse("squirrel://projects/FOO/BAR/BAZ")), Err(DeepLinkError::BadPath));
+    }
+
+    #[test]
+    fn reject_space_in_project_id() {
+        // spaces percent-encode to %20; is_valid_segment rejects the non-alphanumeric byte
+        let url = Url::parse("squirrel://projects/FO%20O").unwrap();
+        assert_eq!(validate(&url), Err(DeepLinkError::BadPath));
+    }
+
+    #[test]
+    fn reject_space_in_task_id() {
+        let url = Url::parse("squirrel://projects/FOO/B%20R").unwrap();
+        assert_eq!(validate(&url), Err(DeepLinkError::BadPath));
+    }
+}
