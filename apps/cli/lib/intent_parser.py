@@ -17,8 +17,10 @@ Uso CLI:
 import argparse
 import datetime
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
@@ -117,6 +119,166 @@ def _parse_yaml_subset(text: str) -> dict:
         i += 1
 
     return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Frontmatter writer — surgical, byte-preserving mutations
+# ─────────────────────────────────────────────────────────────────────────────
+
+# @spec R-1.6, R-1.7
+
+# Sentinel used by write_frontmatter to mark a key for deletion.
+_DELETE = object()
+
+# Match a top-level frontmatter key line (no leading whitespace, has a colon).
+_FM_KEY_PATTERN = re.compile(r"^([A-Za-z_][A-Za-z0-9_\-]*)\s*:(.*)$")
+
+
+def write_frontmatter(path: Path, mutations: dict) -> None:
+    """
+    Apply mutations to the YAML frontmatter of a Markdown file in-place.
+
+    - mutations[k] == _DELETE -> remove key k from the frontmatter entirely
+      (drops the key line and any continuation lines belonging to it).
+    - mutations[k] == <value>  -> upsert key k. Existing keys keep their
+      position; new keys are appended at the end of the frontmatter block.
+    - Keys NOT in mutations are left byte-identical (order, whitespace,
+      comments and quoting preserved).
+    - Body (everything after the closing `---`) is byte-identical.
+    - If `mutations` is empty, the file is left untouched (no write).
+    - If the file has no frontmatter block, the call is a no-op. This is
+      out of scope for the intent files this helper targets.
+    - File is written atomically: temp file in the same dir, then os.replace.
+    - Encoding: utf-8.
+    """
+    if not mutations:
+        return
+
+    content = path.read_text(encoding="utf-8")
+    lines = content.splitlines(keepends=True)
+
+    # Locate frontmatter block: first line must be `---` (with its line ending);
+    # find next `---` at start-of-line.
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        # No frontmatter — out of scope, no-op.
+        return
+
+    end_idx = None
+    for i in range(1, len(lines)):
+        if lines[i].rstrip("\r\n") == "---":
+            end_idx = i
+            break
+    if end_idx is None:
+        return  # malformed frontmatter, no-op
+
+    fm_lines = lines[1:end_idx]           # between the two `---` markers
+    header_line = lines[0]                # opening `---\n`
+    closing_line = lines[end_idx]         # closing `---\n`
+    body_lines = lines[end_idx + 1:]      # body, byte-identical
+
+    # Detect dominant newline style for any appended lines.
+    newline = _detect_newline(header_line, fm_lines, closing_line)
+
+    seen_keys: set = set()
+    new_fm_lines: list = []
+    i = 0
+    while i < len(fm_lines):
+        line = fm_lines[i]
+        stripped_line = line.lstrip()
+        # Skip top-level key detection for indented / blank / comment lines:
+        # they always travel with the preceding key (or stand alone).
+        if (
+            line.startswith(" ")
+            or line.startswith("\t")
+            or not stripped_line.strip()
+            or stripped_line.startswith("#")
+        ):
+            new_fm_lines.append(line)
+            i += 1
+            continue
+
+        m = _FM_KEY_PATTERN.match(line.rstrip("\r\n"))
+        if not m:
+            new_fm_lines.append(line)
+            i += 1
+            continue
+
+        key = m.group(1)
+        if key not in mutations:
+            new_fm_lines.append(line)
+            i += 1
+            continue
+
+        # This key is being mutated.
+        seen_keys.add(key)
+        # Collect continuation lines (indented or block-list `- ...`) so we
+        # can drop them together with the key on delete.
+        cont_start = i + 1
+        cont_end = cont_start
+        while cont_end < len(fm_lines):
+            nxt = fm_lines[cont_end]
+            nxt_stripped = nxt.lstrip()
+            if nxt.startswith(" ") or nxt.startswith("\t"):
+                cont_end += 1
+                continue
+            if nxt_stripped.startswith("- "):
+                cont_end += 1
+                continue
+            break
+
+        value = mutations[key]
+        if value is _DELETE:
+            # Drop the key line and all its continuation lines.
+            i = cont_end
+            continue
+
+        # Upsert: replace the key line, drop its continuation lines (the new
+        # scalar value owns the whole entry). For the targeted use-case
+        # (focus_today: ISO-date, focus_week: GGGG-Www) a plain scalar is safe.
+        new_fm_lines.append(f"{key}: {value}{newline}")
+        i = cont_end
+
+    # Append keys that weren't found and are not _DELETE.
+    for key, value in mutations.items():
+        if key in seen_keys or value is _DELETE:
+            continue
+        new_fm_lines.append(f"{key}: {value}{newline}")
+
+    new_content = "".join([header_line, *new_fm_lines, closing_line, *body_lines])
+
+    new_bytes = new_content.encode("utf-8")
+    if new_bytes == content.encode("utf-8"):
+        return  # no effective change, skip the write
+
+    _atomic_write_bytes(path, new_bytes)
+
+
+def _detect_newline(header_line: str, fm_lines: list, closing_line: str) -> str:
+    """Return the dominant line ending used in the frontmatter block."""
+    for ln in (header_line, *fm_lines, closing_line):
+        if ln.endswith("\r\n"):
+            return "\r\n"
+        if ln.endswith("\n"):
+            return "\n"
+    return "\n"
+
+
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Write `data` to `path` atomically (temp file in same dir + os.replace)."""
+    directory = path.parent
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=str(directory)
+    )
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────

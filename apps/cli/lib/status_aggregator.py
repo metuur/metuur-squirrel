@@ -90,6 +90,50 @@ def find_intents_for_project(project_md_path: Path) -> list[Path]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Active intent resolution
+# ─────────────────────────────────────────────────────────────────────────────
+
+def active_intent_for(vault: Path, project_slug: str) -> Optional[str]:
+    """
+    Return the active intent slug for a project, or None if no intent has activity yet.
+
+    "Active" = the intent (in the project's folder) whose most recent shutdown note
+    has the most recent timestamp. Mirrors the logic already used by analyze_project()
+    around status_aggregator.py:163–181.
+
+    - vault: Path to the vault root.
+    - project_slug: the project's TAG / folder name (e.g. "MY-PROJECT").
+    - Returns: the intent's file stem (e.g. "MY-PROJECT-i01") or None if no intents
+      have any shutdown notes / activity.
+    """
+    project_folder = vault / "01-Proyectos-Activos" / project_slug
+    if not project_folder.exists():
+        return None
+
+    project_md = project_folder / f"{project_slug}.md"
+    intent_paths = find_intents_for_project(project_md)
+
+    intents_with_activity = []
+    for ip in intent_paths:
+        try:
+            intent = parse_intent(ip)
+        except Exception:
+            continue
+        notes = intent.get("shutdown_notes") or []
+        if notes and notes[0].get("timestamp"):
+            intents_with_activity.append(intent)
+
+    if not intents_with_activity:
+        return None
+
+    intents_with_activity.sort(
+        key=lambda x: x["shutdown_notes"][0]["timestamp"],
+        reverse=True,
+    )
+    return intents_with_activity[0]["id"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Project analysis
 # ─────────────────────────────────────────────────────────────────────────────
 
