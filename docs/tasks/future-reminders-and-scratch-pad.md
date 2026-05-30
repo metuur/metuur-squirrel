@@ -63,7 +63,7 @@ Dependency layers:
     - Manual: create a test `.md` file in the vault with `reminder_date` set to today. `curl http://127.0.0.1:3939/api/reminders` returns it in `active`. `curl http://127.0.0.1:3939/api/home` includes `reminders.active_count: 1`.
     - Create a file with `reminder_date` 3 days from now. Appears in `approaching`.
 
-- [ ] **2.2** Add `PATCH /api/reminder/<id>/dismiss` and `PATCH /api/reminder/<id>/snooze` in `server.py` (deps: 1.2, 2.1, est: ~30m)
+- [x] **2.2** Add `PATCH /api/reminder/<id>/dismiss` and `PATCH /api/reminder/<id>/snooze` in `server.py` (deps: 1.2, 2.1, est: ~30m)
   - acceptance:
     - R-3.3 — `PATCH /api/reminder/<id>/dismiss` writes `reminder_dismissed: <today>` to frontmatter and removes the body callout. Returns HTTP 200.
     - R-3.4 — `PATCH /api/reminder/<id>/snooze` accepts `{ "until": "YYYY-MM-DD" }`, writes `reminder_snoozed_until: <date>`, updates body callout.
@@ -72,7 +72,7 @@ Dependency layers:
     - Manual: dismiss a reminder via curl, re-read the `.md` file — `reminder_dismissed` present, callout absent; subsequent `GET /api/reminders` excludes it.
     - Snooze: write `until` 30 days from now, verify file has `reminder_snoozed_until`; verify `GET /api/reminders` excludes the item.
 
-- [ ] **2.3** Extend task (intent) and capture creation endpoints to accept `reminder_date` (deps: 1.2, est: ~20m)
+- [x] **2.3** Extend task (intent) and capture creation endpoints to accept `reminder_date` (deps: 1.2, est: ~20m)
   - acceptance:
     - R-3.6 — `POST /api/intents` and `POST /api/captures` (or equivalent) accept optional `reminder_date` field (absolute or relative string).
     - If provided, `reminder_date` is written to frontmatter and body callout via the helpers from 1.2.
