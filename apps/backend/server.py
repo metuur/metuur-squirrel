@@ -223,6 +223,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
                                                                        "api_note_save"),
     ("POST", re.compile(r"^/api/notes$"),                             "api_note_create"),
+    ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
     ("GET",  re.compile(r"^/api/search$"),                            "api_search"),
@@ -514,6 +515,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "active_intent": p.get("active_intent"),
             })
 
+        try:
+            from reminder_scanner import scan_vault_reminders
+            rem = scan_vault_reminders(ctx.active.path)
+        except Exception:
+            rem = {"approaching": [], "active": []}
+
         self._send_json({
             "focus": focus_payload,
             "pressing": pressing[:5],
@@ -523,6 +530,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "week": manual_focus.get("week"),
             },
             "parakeet": _parakeet_message_for(ctx.active.path),
+            "reminders": {
+                "approaching_count": len(rem.get("approaching", [])),
+                "active_count": len(rem.get("active", [])),
+            },
         })
 
     # ── /api/focus — manual picks ───────────────────────────────────────────
@@ -825,7 +836,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tmp.write_text(str(body), encoding="utf-8")
         os.replace(tmp, target)
 
-    # ── deadlines / history / search / parakeet ─────────────────────────────
+    # ── reminders / deadlines / history / search / parakeet ────────────────
+
+    def api_reminders(self) -> None:
+        ctx, _ = self._context()
+        from reminder_scanner import scan_vault_reminders
+        try:
+            data = scan_vault_reminders(ctx.active.path)
+        except Exception:
+            data = {"approaching": [], "active": []}
+        self._send_json({
+            "approaching": data.get("approaching", []),
+            "active": data.get("active", []),
+        })
 
     def api_deadlines(self) -> None:
         ctx, _ = self._context()

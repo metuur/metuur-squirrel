@@ -55,7 +55,7 @@ Dependency layers:
 
 ## Unit 2: Reminder API
 
-- [ ] **2.1** Add `GET /api/reminders` and extend `GET /api/home` in `apps/backend/server.py` (deps: 1.1, est: ~30m)
+- [x] **2.1** Add `GET /api/reminders` and extend `GET /api/home` in `apps/backend/server.py` (deps: 1.1, est: ~30m)
   - acceptance:
     - R-3.1 — `GET /api/reminders` returns `{ "approaching": [...], "active": [...] }` with each entry containing `id`, `title`, `path`, `reminder_date`, `proyecto`.
     - R-3.2 — `GET /api/home` includes `reminders: { "approaching_count": N, "active_count": N }` in its response alongside existing fields.
