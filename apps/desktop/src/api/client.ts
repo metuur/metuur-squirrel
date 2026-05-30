@@ -156,6 +156,25 @@ export interface ProjectDetail {
   notes: ProjectNote[];
 }
 
+// `GET /api/notifications` — shape mirrored from apps/backend/server.py::api_notifications
+export interface NotificationItem {
+  id: number;
+  type: string;
+  item_id: string;
+  title: string;
+  body: string;
+  item_url: string | null;
+  fired_at: string;
+  read_at: string | null;
+  dismissed_at: string | null;
+}
+
+export interface NotificationsPayload {
+  items: NotificationItem[];
+  unread_count: number;
+  total_count: number;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -187,4 +206,25 @@ export const api = {
       body: JSON.stringify({ ...body, slot: half }),
     });
   },
+  notifications: (params: { limit?: number; unread?: boolean } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.limit !== undefined) qs.set("limit", String(params.limit));
+    if (params.unread) qs.set("unread", "true");
+    const query = qs.toString();
+    return call<NotificationsPayload>(
+      `/api/notifications${query ? `?${query}` : ""}`,
+    );
+  },
+  notificationsMarkAllRead: () =>
+    call<{ updated: number }>("/api/notifications/read-all", {
+      method: "POST",
+    }),
+  notificationRead: (id: number) =>
+    call<{ success: true }>(`/api/notification/${id}/read`, {
+      method: "PATCH",
+    }),
+  notificationDismiss: (id: number) =>
+    call<{ success: true }>(`/api/notification/${id}/dismiss`, {
+      method: "PATCH",
+    }),
 };
