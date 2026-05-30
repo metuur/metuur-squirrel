@@ -58,18 +58,21 @@ class IntentNotFound(Exception):
 def _token_now(slot: str, now: Optional[datetime.datetime] = None) -> str:
     """Return the current token string for `slot`.
 
-    - slot="today" -> "YYYY-MM-DD" (local date).
-    - slot="week"  -> "GGGG-Www"   (ISO-8601 year-week, e.g. "2026-W22").
+    - slot="today"    -> "YYYY-MM-DD"    (local date).
+    - slot="today_pm" -> "YYYY-MM-DD-PM" (local date with PM suffix).
+    - slot="week"     -> "GGGG-Www"      (ISO-8601 year-week, e.g. "2026-W22").
     - Raises ValueError on any other slot.
 
     If `now` is None, the host's local wall clock is used (R-1.3).
     """
-    if slot not in ("today", "week"):
-        raise ValueError(f"unknown slot: {slot!r} (expected 'today' or 'week')")
+    if slot not in ("today", "today_pm", "week"):
+        raise ValueError(f"unknown slot: {slot!r} (expected 'today', 'today_pm', or 'week')")
 
     n = now if now is not None else datetime.datetime.now()
     if slot == "today":
         return n.strftime("%Y-%m-%d")
+    if slot == "today_pm":
+        return n.strftime("%Y-%m-%d-PM")
     return n.strftime("%G-W%V")
 
 
@@ -77,6 +80,8 @@ def _slot_key(slot: str) -> str:
     """Frontmatter key for a slot."""
     if slot == "today":
         return "focus_today"
+    if slot == "today_pm":
+        return "focus_today_pm"
     if slot == "week":
         return "focus_week"
     raise ValueError(f"unknown slot: {slot!r}")
