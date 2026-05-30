@@ -712,6 +712,59 @@ def remove_vault(
     _atomic_write(cfg_path, new_text)
 
 
+def load_notifications_settings(
+    config_path: Optional[pathlib.Path] = None,
+) -> dict:
+    """Return {"in_app": bool, "os_popups": bool}. Defaults: in_app=True, os_popups=False."""
+    path = config_path if config_path is not None else DEFAULT_CONFIG_PATH
+    cfg = _load_toml(path) if path.exists() else {}
+    n = cfg.get("notifications", {})
+    return {
+        "in_app":    bool(n.get("in_app",    True)),
+        "os_popups": bool(n.get("os_popups", False)),
+    }
+
+
+def save_notifications_settings(
+    config_path: pathlib.Path,
+    *,
+    in_app: bool,
+    os_popups: bool,
+) -> None:
+    """Write [notifications] section to config.toml atomically."""
+    text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    lines = text.splitlines(keepends=False)
+
+    block_start: Optional[int] = None
+    for i, line in enumerate(lines):
+        if _strip_comment(line).strip() == "[notifications]":
+            block_start = i
+            break
+
+    if block_start is not None:
+        block_end = block_start
+        for i in range(block_start + 1, len(lines)):
+            if _strip_comment(lines[i]).strip().startswith("["):
+                break
+            block_end = i
+        start = block_start
+        while start > 0 and lines[start - 1].strip() == "":
+            start -= 1
+        lines = lines[:start] + lines[block_end + 1:]
+
+    new_text = "\n".join(lines)
+    if new_text and not new_text.endswith("\n"):
+        new_text += "\n"
+    if new_text and not new_text.endswith("\n\n"):
+        new_text += "\n"
+
+    in_app_s = "true" if in_app else "false"
+    os_popups_s = "true" if os_popups else "false"
+    new_text += f"[notifications]\nin_app = {in_app_s}\nos_popups = {os_popups_s}\n"
+
+    _atomic_write(config_path, new_text)
+
+
 def set_default(
     name: str,
     *,

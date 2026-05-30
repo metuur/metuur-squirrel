@@ -41,6 +41,7 @@ _REPO = pathlib.Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO / "apps" / "cli" / "lib"))
 
 import config_loader  # noqa: E402
+import db  # noqa: E402
 import vocabulary  # noqa: E402
 
 
@@ -231,6 +232,13 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/search$"),                            "api_search"),
     ("GET",  re.compile(r"^/api/parakeet$"),                          "api_parakeet"),
     ("POST", re.compile(r"^/api/theme$"),                             "api_set_theme"),
+    ("POST", re.compile(r"^/api/settings/notifications$"),           "api_settings_notifications"),
+    ("GET",  re.compile(r"^/api/notifications$"),                    "api_notifications_list"),
+    ("POST", re.compile(r"^/api/notifications/read-all$"),           "api_notifications_read_all"),
+    ("PATCH", re.compile(r"^/api/notification/(?P<nid>[A-Za-z0-9][A-Za-z0-9_-]*)/read$"),
+                                                                      "api_notification_read"),
+    ("PATCH", re.compile(r"^/api/notification/(?P<nid>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"),
+                                                                      "api_notification_dismiss"),
     # ── SPA shell + static bundle ───────────────────────────────────────────
     ("GET",  re.compile(r"^/favicon\.ico$"),                          "spa_favicon"),
     ("GET",  re.compile(r"^/favicon\.svg$"),                          "spa_favicon_svg"),
@@ -412,6 +420,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "multi_vault": ctx.multi,
             "theme": cookies.get(THEME_COOKIE) or "auto",
             "version": _detect_version(),
+            "notifications": config_loader.load_notifications_settings(
+                config_loader.DEFAULT_CONFIG_PATH
+            ),
         }
         if ctx.cookie_was_stale:
             self._send_json(payload, clear_cookie_name=WORKSPACE_COOKIE)
@@ -1001,6 +1012,103 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def api_parakeet(self) -> None:
         ctx, _ = self._context()
         self._send_json({"message": _parakeet_message_for(ctx.active.path)})
+
+    # ── /api/settings/notifications — story 5.3 ────────────────────────────
+
+    def api_settings_notifications(self) -> None:
+        payload = self._read_json_body()
+        in_app = payload.get("in_app")
+        os_popups = payload.get("os_popups")
+        if in_app is None or os_popups is None:
+            raise _UserError(400, "Both in_app and os_popups are required.")
+        config_loader.save_notifications_settings(
+            config_loader.DEFAULT_CONFIG_PATH,
+            in_app=bool(in_app),
+            os_popups=bool(os_popups),
+        )
+        self._send_json({"success": True})
+
+    # ── /api/notifications — stories 4.1, 4.2, 4.3 ─────────────────────────
+
+    def api_notifications_list(self) -> None:
+        parsed = urllib.parse.urlparse(self.path)
+        qs = urllib.parse.parse_qs(parsed.query)
+        unread_only = qs.get("unread", [""])[0].lower() == "true"
+        limit_raw = qs.get("limit", [None])[0]
+        limit: Optional[int] = None
+        if limit_raw is not None:
+            try:
+                limit = int(limit_raw)
+            except ValueError:
+                raise _UserError(400, "limit must be an integer.")
+
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            total_count = conn.execute("SELECT COUNT(*) FROM notifications").fetchone()[0]
+            unread_count = conn.execute(
+                "SELECT COUNT(*) FROM notifications WHERE read_at IS NULL AND dismissed_at IS NULL"
+            ).fetchone()[0]
+            cols = "id, type, item_id, title, body, item_url, fired_at, read_at, dismissed_at"
+            if unread_only:
+                q = (
+                    f"SELECT {cols} FROM notifications "
+                    "WHERE read_at IS NULL AND dismissed_at IS NULL "
+                    "ORDER BY fired_at DESC"
+                )
+            else:
+                q = f"SELECT {cols} FROM notifications ORDER BY fired_at DESC"
+            if limit is not None:
+                q += f" LIMIT {limit}"
+            rows = conn.execute(q).fetchall()
+        finally:
+            conn.close()
+
+        items = [
+            {
+                "id": r[0], "type": r[1], "item_id": r[2], "title": r[3],
+                "body": r[4], "item_url": r[5], "fired_at": r[6],
+                "read_at": r[7], "dismissed_at": r[8],
+            }
+            for r in rows
+        ]
+        self._send_json({"items": items, "unread_count": unread_count, "total_count": total_count})
+
+    def api_notification_read(self, nid: str) -> None:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            conn.execute("UPDATE notifications SET read_at = ? WHERE id = ?", (now, nid))
+            conn.commit()
+        finally:
+            conn.close()
+        self._send_json({"success": True})
+
+    def api_notification_dismiss(self, nid: str) -> None:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            conn.execute("UPDATE notifications SET dismissed_at = ? WHERE id = ?", (now, nid))
+            conn.commit()
+        finally:
+            conn.close()
+        self._send_json({"success": True})
+
+    def api_notifications_read_all(self) -> None:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            cur = conn.execute(
+                "UPDATE notifications SET read_at = ? WHERE read_at IS NULL", (now,)
+            )
+            conn.commit()
+            updated = cur.rowcount
+        finally:
+            conn.close()
+        self._send_json({"updated": updated})
 
     # ── SPA shell + assets ──────────────────────────────────────────────────
 
