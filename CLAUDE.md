@@ -1,15 +1,20 @@
 
+
+
+
+
 <!-- uncle-dev -->
 ## uncle-dev
 
 This project uses uncle-dev engineering skills for structured AI-assisted development.
 
-### SDD mode: lid-ears
-This project uses the **LID + EARS** documentation chain for spec-driven development.
-- Run `/uncle-dev-spec` before any non-trivial feature — it elicits Lenses / Intent / Details, then produces three docs
-- Specs tracked as `docs/hld/<slug>.md` → `docs/lld/<slug>.md` → `docs/ears/<slug>.md` (HLD → LLD → EARS → code/tests)
-- Update the EARS spec first to change behaviour; let changes flow downstream
-- Run `/uncle-dev-plan` after spec, before coding
+### SDD mode: lid-ears (LID+EARS)
+This project uses the **LID+EARS documentation chain** for spec-driven development.
+- Run `/uncle-dev-spec` before any non-trivial feature — it will elicit requirements and produce three docs
+- Documents live in `docs/hld/`, `docs/lld/`, `docs/ears/`
+- **Do NOT use OpenSpec change scaffolding in this project**
+- Arrow of intent: HLD → LLD → EARS → code/tests
+- To change a behaviour: update `docs/ears/` first, then let changes flow downstream
 
 ### Skills by Phase
 **Define:** uncle-dev-research, uncle-dev-spec-driven-development, uncle-dev-design-architecture-docs, uncle-dev-acknowledge

@@ -54,11 +54,19 @@ target/
 .env.local
 .env.*.local
 
+.claude/worktrees/
+
 # graphify
 graphify-out/manifest.json    # mtime-based, breaks after git clone
 graphify-out/cost.json        # local only
 graphify-out/cache/
+graphify-out/.graphify_root
+graphify-out/.graphify_python
+graphify-out/graph.html
+graphify-out/manifest.json
 
+.uncle-dev/
+.devlocal/
 
 # Logs
 *.log
