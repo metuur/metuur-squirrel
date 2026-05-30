@@ -275,6 +275,12 @@ pub fn set_state<R: Runtime>(app: &AppHandle<R>, state: IconState) -> tauri::Res
 /// and the notification-click handler.
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
+        // Switch to Regular policy before show() so the app is already in Cmd+Tab
+        // by the time the window becomes interactive.
+        #[cfg(target_os = "macos")]
+        if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
+            tracing::warn!(error = %e, "failed to set activation policy to Regular");
+        }
         if let Err(e) = window.show() {
             tracing::warn!(error = %e, "failed to show main window");
         }

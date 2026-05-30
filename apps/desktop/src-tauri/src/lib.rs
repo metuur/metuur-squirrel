@@ -4,6 +4,7 @@ mod tray;
 mod tray_alerts;
 
 use std::sync::Mutex;
+use tauri::Manager;
 
 /// Holds the last parsed deep-link payload so the frontend can drain it on
 /// mount. Needed because on cold launch Rust fires the URL event before React
@@ -46,7 +47,8 @@ pub fn run() {
             .plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                 None,
-            ));
+            ))
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build());
     }
 
     builder
@@ -73,6 +75,30 @@ pub fn run() {
             #[cfg(desktop)]
             tray_alerts::start_polling(app.handle().clone());
 
+            // Register Cmd+Shift+S global shortcut so the user can summon Squirrel
+            // from any app. Registration failure (e.g. hotkey held by another process)
+            // is a warning, not a crash — the app must stay alive regardless.
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                if let Err(e) = app.handle().global_shortcut().on_shortcut(
+                    "CmdOrCtrl+Shift+S",
+                    |app, _shortcut, event| {
+                        use tauri_plugin_global_shortcut::ShortcutState;
+                        if event.state == ShortcutState::Pressed {
+                            tray::show_main_window(app);
+                        }
+                    },
+                ) {
+                    tracing::warn!(
+                        error = %e,
+                        "global shortcut Cmd+Shift+S could not be registered (held by another app?)"
+                    );
+                } else {
+                    tracing::info!("global shortcut Cmd+Shift+S registered");
+                }
+            }
+
             // R-4.1: wire deep-link URL handler (story 3.3).
             #[cfg(desktop)]
             {
@@ -96,6 +122,18 @@ pub fn run() {
                     if let Err(e) = window.hide() {
                         tracing::warn!(error = %e, "failed to hide main window");
                     } else {
+                        // Revert to Accessory so the app disappears from Cmd+Tab
+                        // and the Dock while the window is hidden.
+                        #[cfg(target_os = "macos")]
+                        if let Err(e) = window
+                            .app_handle()
+                            .set_activation_policy(tauri::ActivationPolicy::Accessory)
+                        {
+                            tracing::warn!(
+                                error = %e,
+                                "failed to set activation policy to Accessory on hide"
+                            );
+                        }
                         tracing::info!("main window close intercepted; hidden");
                     }
                 }

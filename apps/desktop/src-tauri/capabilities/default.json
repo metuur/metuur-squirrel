@@ -12,6 +12,11 @@
     "notification:default",
     "store:default",
     "autostart:default",
-    "deep-link:default"
+    "deep-link:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-register-all",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-unregister-all"
   ]
 }
