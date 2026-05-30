@@ -117,7 +117,7 @@ Dependency layers:
 
 ## Unit 5: Scratch Pad Project
 
-- [ ] **5.1** Add `ensure_scratch_pad(vault_path)` to `apps/cli/lib/new_project_writer.py` and call it at server startup (est: ~30m)
+- [x] **5.1** Add `ensure_scratch_pad(vault_path)` to `apps/cli/lib/new_project_writer.py` and call it at server startup (est: ~30m)
   - acceptance:
     - R-5.1 — On every server start, the function checks for `01-Proyectos-Activos/SCRATCH-PAD/`.
     - R-5.2 — If absent, creates the project with `tipo: C`, `protected: true`, bypassing the WIP cap (`force=True`).
@@ -127,7 +127,7 @@ Dependency layers:
     - Delete `SCRATCH-PAD/` from the vault. Restart `server.py`. Confirm the directory and `SCRATCH-PAD.md` are recreated with `protected: true` in frontmatter.
     - Restart server again with `SCRATCH-PAD/` present — no error, no duplicate creation.
 
-- [ ] **5.2** Add HTTP 403 guard for `protected: true` projects in the delete handler of `server.py` (deps: 5.1, est: ~15m)
+- [x] **5.2** Add HTTP 403 guard for `protected: true` projects in the delete handler of `server.py` (deps: 5.1, est: ~15m)
   - acceptance:
     - R-5.4 — Any DELETE request targeting a project whose frontmatter has `protected: true` returns HTTP 403 and `{"error": "PROJECT_PROTECTED"}`.
   - verify:
