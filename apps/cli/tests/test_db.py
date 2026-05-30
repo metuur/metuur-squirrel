@@ -128,5 +128,64 @@ class TestInitSchema(unittest.TestCase):
                 conn.close()
 
 
+class TestNotificationsTable(unittest.TestCase):
+    def _tables(self, conn):
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+        ).fetchall()
+        return {r[0] for r in rows}
+
+    def _indexes(self, conn):
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'"
+        ).fetchall()
+        return {r[0] for r in rows}
+
+    def test_notifications_table_created(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = get_conn(pathlib.Path(tmp))
+            try:
+                init_schema(conn)
+                self.assertIn("notifications", self._tables(conn))
+            finally:
+                conn.close()
+
+    def test_notifications_columns(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = get_conn(pathlib.Path(tmp))
+            try:
+                init_schema(conn)
+                cols = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(notifications)").fetchall()
+                }
+                expected = {
+                    "id", "type", "item_id", "title", "body",
+                    "item_url", "fired_at", "read_at", "dismissed_at",
+                }
+                self.assertEqual(cols, expected)
+            finally:
+                conn.close()
+
+    def test_notifications_index_created(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = get_conn(pathlib.Path(tmp))
+            try:
+                init_schema(conn)
+                self.assertIn("idx_notifications_item_day", self._indexes(conn))
+            finally:
+                conn.close()
+
+    def test_notifications_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = get_conn(pathlib.Path(tmp))
+            try:
+                init_schema(conn)
+                init_schema(conn)
+                self.assertIn("notifications", self._tables(conn))
+            finally:
+                conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()

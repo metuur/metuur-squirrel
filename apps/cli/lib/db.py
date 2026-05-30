@@ -60,5 +60,20 @@ def init_schema(conn: sqlite3.Connection) -> None:
           checkin_at    TEXT NOT NULL,
           checkout_at   TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS notifications (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          type         TEXT NOT NULL,
+          item_id      TEXT NOT NULL,
+          title        TEXT NOT NULL,
+          body         TEXT NOT NULL,
+          item_url     TEXT,
+          fired_at     TEXT NOT NULL,
+          read_at      TEXT,
+          dismissed_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_notifications_item_day
+          ON notifications(item_id, date(fired_at));
     """)
     conn.commit()
