@@ -103,7 +103,7 @@ Dependency layers:
 
 ## Unit 4: Web UI Widget
 
-- [ ] **4.1** Add `RemindersWidget` to the desktop web UI (`apps/backend/app/src/`) with Dismiss and Snooze controls (deps: 2.1, 2.2, est: ~60m)
+- [x] **4.1** Add `RemindersWidget` to the desktop web UI (`apps/backend/app/src/`) with Dismiss and Snooze controls (deps: 2.1, 2.2, est: ~60m)
   - acceptance:
     - R-4.5 — A `RemindersWidget` component displays `approaching` and `active` lists.
     - R-4.6 — Clicking **Dismiss** calls `PATCH /api/reminder/<id>/dismiss`; item removed from list immediately (optimistic update).

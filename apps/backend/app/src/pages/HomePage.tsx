@@ -4,6 +4,7 @@ import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands, type ProjectListItem, type PressingItem } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { PromptPanel } from '@/components/PromptPanel';
+import { RemindersWidget } from '@/components/RemindersWidget';
 
 type Ctx = { viewMode: 'List' | 'Board' };
 
@@ -24,6 +25,7 @@ export default function HomePage() {
   return (
     <div className="max-w-6xl">
       <Header parakeet={data.parakeet} focus={data.focus} onRefresh={mutate} />
+      <RemindersWidget />
       {viewMode === 'Board' ? (
         <BoardView projects={data.projects} pressing={data.pressing} />
       ) : (

@@ -162,6 +162,17 @@ export interface NewIntentResult {
   success: true;
   path: string;
 }
+export interface ReminderItem {
+  id: string;
+  title: string;
+  path: string;
+  reminder_date: string;
+  proyecto: string | null;
+}
+export interface RemindersPayload {
+  approaching: ReminderItem[];
+  active: ReminderItem[];
+}
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
@@ -195,6 +206,14 @@ export const api = {
     call<NewIntentResult>('/intents', {
       method: 'POST',
       body: JSON.stringify(req),
+    }),
+  reminders: () => call<RemindersPayload>('/reminders'),
+  reminderDismiss: (id: string) =>
+    call<void>(`/reminder/${encodeURIComponent(id)}/dismiss`, { method: 'PATCH' }),
+  reminderSnooze: (id: string, until: string) =>
+    call<void>(`/reminder/${encodeURIComponent(id)}/snooze`, {
+      method: 'PATCH',
+      body: JSON.stringify({ until }),
     }),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
