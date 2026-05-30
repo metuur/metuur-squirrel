@@ -7,6 +7,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
 import { useDeepLink } from "./hooks/useDeepLink";
+import { useNotifications } from "./hooks/useNotifications";
 import { BACKEND_ORIGIN } from "./api/client";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { FocusWidget } from "./components/FocusWidget";
