@@ -45,6 +45,7 @@ pub mod ids {
     pub const REMINDER_HEADER: &str = "reminder_header";
     pub const REMINDER_PREFIX: &str = "reminder:";
     pub const NO_RADAR: &str = "no_radar";
+    pub const VIEW_NOTIFICATIONS: &str = "view_notifications";
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -81,6 +82,7 @@ fn build_menu<R: Runtime>(
     alerts: &[Alert],
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
+    unread_count: u32,
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
     let open_web_ui_item =
@@ -169,6 +171,22 @@ fn build_menu<R: Runtime>(
         }
     }
 
+    // "Notifications (N)" item — visible only when unread_count > 0 (R-8.1, R-8.2, R-8.3)
+    let notif_item_opt: Option<MenuItem<R>> = if unread_count > 0 {
+        Some(MenuItem::with_id(
+            app,
+            ids::VIEW_NOTIFICATIONS,
+            format!("Notifications ({})", unread_count),
+            true,
+            None::<&str>,
+        )?)
+    } else {
+        None
+    };
+    if let Some(ref ni) = notif_item_opt {
+        items.push(ni);
+    }
+
     items.push(&sep_bot);
     items.push(&quit_item);
 
@@ -176,7 +194,7 @@ fn build_menu<R: Runtime>(
 }
 
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let menu = build_menu(app, &[], &[], &[])?;
+    let menu = build_menu(app, &[], &[], &[], 0)?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_image(IconState::Normal)?)
@@ -191,6 +209,7 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     tracing::info!("tray: quit requested");
                     app.exit(0);
                 }
+                ids::VIEW_NOTIFICATIONS => show_main_window(app),
                 ids::PRESSING_HEADER | ids::NO_PRESSING | ids::RADAR_HEADER | ids::REMINDER_HEADER => {
                     // Disabled items; menu-event still fires on some platforms.
                 }
@@ -222,8 +241,9 @@ pub fn update_alerts<R: Runtime>(
     alerts: &[Alert],
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
+    unread_count: u32,
 ) -> tauri::Result<()> {
-    let menu = build_menu(app, alerts, approaching, active)?;
+    let menu = build_menu(app, alerts, approaching, active, unread_count)?;
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         tray.set_menu(Some(menu))?;
     }
@@ -347,6 +367,19 @@ mod tests {
         let reminder_id = &item_id[ids::REMINDER_PREFIX.len()..];
         let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder_id);
         assert_eq!(url, "http://127.0.0.1:3939/notes/VISA-001");
+    }
+
+    // ── Story 8.2: VIEW_NOTIFICATIONS constant and label format ──────────────
+
+    #[test]
+    fn view_notifications_id_constant() {
+        assert_eq!(ids::VIEW_NOTIFICATIONS, "view_notifications");
+    }
+
+    #[test]
+    fn view_notifications_label_format() {
+        assert_eq!(format!("Notifications ({})", 3u32), "Notifications (3)");
+        assert_eq!(format!("Notifications ({})", 12u32), "Notifications (12)");
     }
 
     #[test]

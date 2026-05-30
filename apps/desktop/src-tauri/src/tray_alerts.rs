@@ -517,21 +517,17 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         approaching: vec![],
                         active: vec![],
                     });
-                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active) {
-                        tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
-                    } else {
-                        tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
-                    }
+
+                    // Hoist db_path so it is available for unread_count query below
+                    let db_path = app
+                        .state::<Mutex<TauriNotificationState>>()
+                        .lock()
+                        .unwrap()
+                        .notif_db_path
+                        .clone();
 
                     // R-2.1 (Story 2.1): skip all notification storage when in_app=false
                     if settings.in_app {
-                        let db_path = app
-                            .state::<Mutex<TauriNotificationState>>()
-                            .lock()
-                            .unwrap()
-                            .notif_db_path
-                            .clone();
-
                         // R-2.2/R-2.8 (Story 2.2): dedup+INSERT for pressing alerts
                         for alert in &alerts {
                             let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, alert.id);
@@ -556,6 +552,15 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         }
                     }
 
+                    // R-8.2: pass current unread count so the menu shows/hides
+                    // "Notifications (N)" correctly after any new INSERTs above.
+                    let current_unread = unread_count(&db_path).unwrap_or(0);
+                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, current_unread) {
+                        tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
+                    } else {
+                        tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
+                    }
+
                     // R-3.1/R-3.2 (Story 3.1): OS popup guard — existing rate-limit guards apply inside
                     if settings.os_popups {
                         check_notifications(&app, &alerts, &reminders.active);
@@ -563,7 +568,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                 }
                 Err(e) => {
                     tracing::debug!(error = %e, "tray-alerts: backend unreachable, clearing");
-                    let _ = crate::tray::update_alerts(&app, &[], &[], &[]);
+                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], 0);
                 }
             }
 

@@ -82,11 +82,11 @@ _All stories touch `tray_alerts.rs` — run sequentially. Depends on Units 1 and
 
 _Depends on Unit 2 (unread count available in daemon state). Both stories touch `tray.rs`._
 
-- [ ] 8.1 Re-enable reminder tray items and thread `item_url` through `update_alerts()` (deps: 2.2, est: ~40m) `(mutex: tray-rs)`
+- [x] 8.1 Re-enable reminder tray items and thread `item_url` through `update_alerts()` (deps: 2.2, est: ~40m) `(mutex: tray-rs)`
   - acceptance: R-8.4, R-8.5, R-8.6 — `ReminderAlert` struct gains `item_url: String` field; `update_alerts()` signature updated to accept `item_url` per reminder; `disabled()` call removed from reminder menu items; click handler routes `ids::REMINDER_PREFIX` to `open_url(app, item_url)`
   - verify: reminder appears in tray menu, clicking it opens `http://127.0.0.1:3939/notes/{id}` in the browser
 
-- [ ] 8.2 Add conditional "Notifications (N)" menu item (deps: 2.3, 8.1, est: ~30m) `(mutex: tray-rs)`
+- [x] 8.2 Add conditional "Notifications (N)" menu item (deps: 2.3, 8.1, est: ~30m) `(mutex: tray-rs)`
   - acceptance: R-8.1, R-8.2, R-8.3 — `ids::VIEW_NOTIFICATIONS = "view_notifications"` item with label `"Notifications ({n})"` inserted above final separator when `unread_count > 0`; handler calls `show_main_window(app)`; item absent when count is zero
   - verify: with unread notifications, tray menu shows "Notifications (N)" item; clicking it opens popup; after "Mark all read", item disappears on next poll
 
