@@ -82,6 +82,27 @@ impl Alert {
     }
 }
 
+/// Mirror of /api/reminders — approaching and active reminder items.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReminderAlert {
+    pub id: String,
+    pub title: String,
+    pub reminder_date: String,
+    pub proyecto: Option<String>,
+}
+
+impl ReminderAlert {
+    pub fn menu_label(&self) -> String {
+        format!("📅 {} · {}", self.reminder_date, self.id)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RemindersResponse {
+    approaching: Vec<ReminderAlert>,
+    active: Vec<ReminderAlert>,
+}
+
 #[derive(Debug, Deserialize)]
 struct HomeResponse {
     pressing: Vec<Alert>,
@@ -106,6 +127,17 @@ fn today_date_string() -> String {
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
     format!("{:04}-{:02}-{:02}", y, m, d)
+}
+
+async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, reqwest::Error> {
+    client
+        .get("http://127.0.0.1:3939/api/reminders")
+        .timeout(REQUEST_TIMEOUT)
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<RemindersResponse>()
+        .await
 }
 
 async fn fetch_pressing(client: &reqwest::Client) -> Result<Vec<Alert>, reqwest::Error> {
@@ -153,14 +185,39 @@ fn select_candidates<'a>(state: &mut TauriNotificationState, alerts: &'a [Alert]
         .collect()
 }
 
-// R-1.1: called every tick from `start_polling`. Sends at most 3 native banners
-// when guards pass, then updates `last_check_at`.
-fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) {
+// Selects reminder_active candidates that pass per-item cooldown.
+// Called after select_candidates (which owns the interval guard and date rollover).
+fn select_reminder_candidates<'a>(
+    state: &TauriNotificationState,
+    reminders: &'a [ReminderAlert],
+) -> Vec<&'a ReminderAlert> {
+    if state.last_check_at.elapsed() < NOTIF_INTERVAL {
+        return vec![];
+    }
+    if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
+        return vec![];
+    }
+    reminders
+        .iter()
+        .filter(|r| {
+            state
+                .last_notified
+                .get(&r.id)
+                .map_or(true, |t| t.elapsed() >= ITEM_COOLDOWN)
+        })
+        .take(3)
+        .collect()
+}
+
+// R-1.1 + R-4.3: called every tick from `start_polling`. Sends at most 3 native banners
+// (pressing + reminder_active combined) when guards pass, then updates `last_check_at`.
+// R-4.4: reminder_approaching items are NOT passed here — tray only.
+fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminder_active: &[ReminderAlert]) {
     use tauri_plugin_notification::NotificationExt;
 
     let state_ref = app.state::<Mutex<TauriNotificationState>>();
 
-    // Phase 1: guards + candidate selection (lock held briefly)
+    // Phase 1: pressing candidates (owns interval guard + date rollover)
     let candidates: Vec<Alert> = {
         let mut state = state_ref.lock().unwrap();
         select_candidates(&mut state, alerts)
@@ -169,7 +226,16 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) {
             .collect()
     };
 
-    // Phase 2: assign IDs and store pending_clicks, then send (lock-free during IO)
+    // Phase 1b: reminder_active candidates (same NOTIF_INTERVAL / ITEM_COOLDOWN / daily cap)
+    let reminder_cands: Vec<ReminderAlert> = {
+        let state = state_ref.lock().unwrap();
+        select_reminder_candidates(&state, reminder_active)
+            .into_iter()
+            .cloned()
+            .collect()
+    };
+
+    // Phase 2: send pressing notifications
     for alert in &candidates {
         let (id, task_url) = {
             let mut state = state_ref.lock().unwrap();
@@ -183,7 +249,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) {
         let title = format!("⏰ squirrel: {}", alert.id);
         let body = alert.menu_label();
 
-        // R-4.3: extra data carries taskUrl so the React onAction handler can open it.
+        // extra data carries taskUrl so the React onAction handler can open it.
         let mut extra = std::collections::HashMap::new();
         extra.insert("taskUrl".to_string(), serde_json::json!(task_url));
 
@@ -207,7 +273,49 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) {
         }
     }
 
-    // Phase 3: always update last_check_at after passing all guards (even if 0 candidates)
+    // Phase 3: send reminder_active notifications (R-4.3)
+    for reminder in &reminder_cands {
+        let result = {
+            let mut state = state_ref.lock().unwrap();
+            if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
+                None
+            } else {
+                let id = state.next_id;
+                state.next_id += 1;
+                let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder.id);
+                state.pending_clicks.insert(id, url.clone());
+                Some((id, url))
+            }
+        };
+        let (id, _task_url) = match result {
+            Some(t) => t,
+            None => continue,
+        };
+
+        let title = format!("📅 squirrel: {}", reminder.id);
+        let body = reminder.menu_label();
+
+        match app
+            .notification()
+            .builder()
+            .id(id)
+            .title(&title)
+            .body(&body)
+            .show()
+        {
+            Ok(_) => {
+                let mut state = state_ref.lock().unwrap();
+                state.last_notified.insert(reminder.id.clone(), Instant::now());
+                state.dialogs_today += 1;
+                tracing::info!(reminder_id = %reminder.id, notification_id = id, "reminder-notif-sent");
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "reminder-notif-send-failed");
+            }
+        }
+    }
+
+    // Phase 4: always update last_check_at after passing all guards (even if 0 candidates)
     state_ref.lock().unwrap().last_check_at = Instant::now();
 }
 
@@ -229,17 +337,21 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
         loop {
             match fetch_pressing(&client).await {
                 Ok(alerts) => {
-                    if let Err(e) = crate::tray::update_alerts(&app, &alerts) {
+                    let reminders = fetch_reminders(&client).await.unwrap_or_else(|_| RemindersResponse {
+                        approaching: vec![],
+                        active: vec![],
+                    });
+                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active) {
                         tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
                     } else {
                         tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
                     }
-                    // R-1.1: call check_notifications every tick
-                    check_notifications(&app, &alerts);
+                    // R-1.1 + R-4.3: notify for pressing and reminder_active items
+                    check_notifications(&app, &alerts, &reminders.active);
                 }
                 Err(e) => {
                     tracing::debug!(error = %e, "tray-alerts: backend unreachable, clearing");
-                    let _ = crate::tray::update_alerts(&app, &[]);
+                    let _ = crate::tray::update_alerts(&app, &[], &[], &[]);
                 }
             }
 
@@ -327,5 +439,37 @@ mod tests {
         let alerts: Vec<Alert> = (0..5).map(|i| make_alert(&format!("item-{i}"))).collect();
         let result = select_candidates(&mut state, &alerts);
         assert_eq!(result.len(), 3);
+    }
+
+    fn make_reminder(id: &str) -> ReminderAlert {
+        ReminderAlert {
+            id: id.to_string(),
+            title: id.to_string(),
+            reminder_date: "2026-05-30".to_string(),
+            proyecto: None,
+        }
+    }
+
+    // (e) reminder on cooldown is excluded; others pass
+    #[test]
+    fn test_reminder_on_cooldown_excluded() {
+        let mut state = TauriNotificationState::new();
+        state.last_check_at = Instant::now() - NOTIF_INTERVAL - Duration::from_secs(1);
+        state.dialogs_date = today_date_string();
+        state.last_notified.insert("REM-A".to_string(), Instant::now());
+        let reminders = vec![make_reminder("REM-A"), make_reminder("REM-B")];
+        let result = select_reminder_candidates(&state, &reminders);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "REM-B");
+    }
+
+    // (f) interval guard blocks reminder candidates
+    #[test]
+    fn test_reminder_blocked_by_interval_guard() {
+        let state = TauriNotificationState::new();
+        // last_check_at defaults to Instant::now() → elapsed < NOTIF_INTERVAL
+        let reminders = vec![make_reminder("REM-A")];
+        let result = select_reminder_candidates(&state, &reminders);
+        assert!(result.is_empty());
     }
 }

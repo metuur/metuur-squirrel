@@ -24,7 +24,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::tray_alerts::Alert;
+use crate::tray_alerts::{Alert, ReminderAlert};
 
 pub const TRAY_ID: &str = "main";
 
@@ -41,6 +41,10 @@ pub mod ids {
     pub const ALERT_PREFIX: &str = "alert:";
     pub const PRESSING_HEADER: &str = "pressing_header";
     pub const NO_PRESSING: &str = "no_pressing";
+    pub const RADAR_HEADER: &str = "radar_header";
+    pub const REMINDER_HEADER: &str = "reminder_header";
+    pub const REMINDER_PREFIX: &str = "reminder:";
+    pub const NO_RADAR: &str = "no_radar";
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -72,7 +76,12 @@ fn load_image(state: IconState) -> tauri::Result<Image<'static>> {
 
 /// Build the menu from current alert state. Called from both `setup` (empty
 /// alerts on startup) and `update_alerts` (after a poll).
-fn build_menu<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) -> tauri::Result<Menu<R>> {
+fn build_menu<R: Runtime>(
+    app: &AppHandle<R>,
+    alerts: &[Alert],
+    approaching: &[ReminderAlert],
+    active: &[ReminderAlert],
+) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
@@ -122,6 +131,44 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) -> tauri::Result
         }
     }
 
+    // "On your radar" section (approaching reminders) — R-4.1
+    let sep_radar = PredefinedMenuItem::separator(app)?;
+    let radar_header = MenuItem::with_id(app, ids::RADAR_HEADER, "On your radar", false, None::<&str>)?;
+    let radar_items: Vec<MenuItem<R>> = approaching
+        .iter()
+        .map(|r| {
+            let id = format!("{}{}", ids::REMINDER_PREFIX, r.id);
+            MenuItem::with_id(app, id, r.menu_label(), false, None::<&str>)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+
+    // "Reminder due" section (active reminders) — R-4.2
+    let sep_reminder = PredefinedMenuItem::separator(app)?;
+    let reminder_header = MenuItem::with_id(app, ids::REMINDER_HEADER, "Reminder due", false, None::<&str>)?;
+    let reminder_items: Vec<MenuItem<R>> = active
+        .iter()
+        .map(|r| {
+            let id = format!("{}{}", ids::REMINDER_PREFIX, r.id);
+            MenuItem::with_id(app, id, r.menu_label(), false, None::<&str>)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+
+    if !approaching.is_empty() {
+        items.push(&sep_radar);
+        items.push(&radar_header);
+        for ri in radar_items.iter() {
+            items.push(ri);
+        }
+    }
+
+    if !active.is_empty() {
+        items.push(&sep_reminder);
+        items.push(&reminder_header);
+        for ri in reminder_items.iter() {
+            items.push(ri);
+        }
+    }
+
     items.push(&sep_bot);
     items.push(&quit_item);
 
@@ -129,7 +176,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) -> tauri::Result
 }
 
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let menu = build_menu(app, &[])?;
+    let menu = build_menu(app, &[], &[], &[])?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_image(IconState::Normal)?)
@@ -144,13 +191,17 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     tracing::info!("tray: quit requested");
                     app.exit(0);
                 }
-                ids::PRESSING_HEADER | ids::NO_PRESSING => {
+                ids::PRESSING_HEADER | ids::NO_PRESSING | ids::RADAR_HEADER | ids::REMINDER_HEADER => {
                     // Disabled items; menu-event still fires on some platforms.
                 }
                 other if other.starts_with(ids::ALERT_PREFIX) => {
                     let task_id = &other[ids::ALERT_PREFIX.len()..];
                     let url = format!("{}/notes/{}", BACKEND_ORIGIN, task_id);
                     open_url(app, &url);
+                }
+                other if other.starts_with(ids::REMINDER_PREFIX) => {
+                    // Reminder items are disabled (R-4.4), handle defensively
+                    tracing::debug!(item = other, "reminder tray item clicked (disabled)");
                 }
                 other => {
                     tracing::info!(menu_item = other, "tray menu clicked (unhandled)");
@@ -165,8 +216,13 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
 /// Rebuild the menu with a fresh set of alert items. Called by the
 /// `tray_alerts` background poller every 30 seconds.
-pub fn update_alerts<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert]) -> tauri::Result<()> {
-    let menu = build_menu(app, alerts)?;
+pub fn update_alerts<R: Runtime>(
+    app: &AppHandle<R>,
+    alerts: &[Alert],
+    approaching: &[ReminderAlert],
+    active: &[ReminderAlert],
+) -> tauri::Result<()> {
+    let menu = build_menu(app, alerts, approaching, active)?;
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         tray.set_menu(Some(menu))?;
     }

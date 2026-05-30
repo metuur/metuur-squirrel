@@ -83,7 +83,7 @@ Dependency layers:
 
 ## Unit 3: Tray & OS Notifications
 
-- [ ] **3.1** Add `ReminderAlert` struct and "On your radar" / "Reminder due" tray sections in `apps/desktop/src-tauri/src/tray_alerts.rs` (deps: 2.1, est: ~45m)
+- [x] **3.1** Add `ReminderAlert` struct and "On your radar" / "Reminder due" tray sections in `apps/desktop/src-tauri/src/tray_alerts.rs` (deps: 2.1, est: ~45m)
   - acceptance:
     - R-4.1 — `reminder_approaching` items appear in a tray section labeled **"On your radar"**, below "PRESSING NOW".
     - R-4.2 — `reminder_active` items appear in a tray section labeled **"Reminder due"**, below "On your radar".
@@ -92,7 +92,7 @@ Dependency layers:
     - With a vault file having `reminder_date: <today>`: Squirrel tray menu shows "Reminder due" section with the item.
     - With `reminder_date: <3 days from now>`: tray shows "On your radar" section; no OS banner fired.
 
-- [ ] **3.2** Fire OS notifications for `reminder_active` items in `tray_alerts.rs` (deps: 3.1, est: ~20m)
+- [x] **3.2** Fire OS notifications for `reminder_active` items in `tray_alerts.rs` (deps: 3.1, est: ~20m)
   - acceptance:
     - R-4.3 — `reminder_active` items are included in OS native notification banners on the same `NOTIF_INTERVAL` (120 s), `ITEM_COOLDOWN` (3600 s), and `MAX_DIALOGS_PER_DAY` (8) guards as pressing items.
   - verify:
