@@ -1,28 +1,53 @@
-# Tasks: Global Shortcut and Window Activation Policy
+# Global Shortcut & Window Activation — Tasks
 
-Stories for `Cmd+Shift+S` global shortcut and dynamic macOS activation-policy management.
+## Unit 1: Global Shortcut Registration
 
-## Epic 1 — Global Shortcut Registration
+- [x] 1.1 Add `tauri-plugin-global-shortcut` crate dependency (est: ~5m)
+  - acceptance: R-1.1 — THE SYSTEM SHALL register `CommandOrControl+Shift+S` as a system-wide global shortcut on desktop platforms at application startup.
+  - verify: `cargo build` compiles without errors; `Cargo.lock` contains `tauri-plugin-global-shortcut`
 
-- [x] **1.1** Add `tauri-plugin-global-shortcut = "2"` to desktop-only deps in `Cargo.toml`
-- [x] **1.2** Register `CmdOrCtrl+Shift+S` in `setup` closure via `GlobalShortcutExt::on_shortcut`; handler calls `tray::show_main_window`; registration failure logs a warning and does not crash the app
+- [x] 1.2 Register shortcut plugin in `lib.rs` setup block (deps: 1.1, est: ~15m)
+  - acceptance: R-1.1, R-1.2 — shortcut registered at startup; failure logs a warning and does not crash
+  - verify: App launches; pressing `Cmd+Shift+S` from another app triggers the handler (visible via `tracing::info!` log)
 
-## Epic 2 — Activation Policy: Regular on Show
+- [x] 1.3 Verify shortcut auto-unregisters on exit (deps: 1.2, est: ~5m)
+  - acceptance: R-1.3 — THE SYSTEM SHALL unregister the global shortcut automatically when the application process exits.
+  - verify: Quit the app via tray → "Quit Squirrel"; pressing `Cmd+Shift+S` afterwards has no effect
 
-- [x] **2.1** `show_main_window` is the single code path invoked by the shortcut handler
-- [x] **2.2** Handler fires `tray::show_main_window(app)` on `ShortcutState::Pressed`
-- [x] **2.3** `show_main_window` sets `ActivationPolicy::Regular` (macOS) before calling `window.show()` so the app appears in Cmd+Tab and the Dock
+## Unit 2: Shortcut-Triggered Window Show
 
-## Epic 3 — Activation Policy: Accessory on Hide
+- [x] 2.1 Call `show_main_window` from shortcut handler (deps: 1.2, est: ~10m)
+  - acceptance: R-2.1 — WHEN shortcut pressed while window hidden, THE SYSTEM SHALL show and focus the main window
+  - verify: Hide window → press `Cmd+Shift+S` → window appears and is focused
 
-- [x] **3.1** Existing `on_window_event` handler intercepts `CloseRequested` for the `"main"` window, calls `api.prevent_close()` and `window.hide()` — confirmed at `lib.rs:121-144`, no code change needed
-- [x] **3.2** After successful `window.hide()`, `on_window_event` sets `ActivationPolicy::Accessory` (macOS) so the app vanishes from Cmd+Tab and the Dock while hidden
+- [x] 2.2 Show is idempotent when window already visible (deps: 2.1, est: ~5m)
+  - acceptance: R-2.2 — WHEN shortcut pressed while window already visible, THE SYSTEM SHALL set focus (no double-show)
+  - verify: Window open → press `Cmd+Shift+S` → window stays open, no flicker, remains focused
 
-## Epic 4 — Tray Menu Integration
+- [x] 2.3 Set activation policy to `Regular` on window show (deps: 2.1, mutex: 3.2, est: ~15m)
+  - acceptance: R-2.3 — WHEN shortcut triggers window show, THE SYSTEM SHALL set macOS activation policy to `Regular`
+  - verify: Show window via shortcut → app icon appears in Cmd+Tab switcher and Dock
 
-- [x] **4.1** Tray "Open Squirrel" calls `show_main_window` — policy flip is already inside `show_main_window`, so no routing change needed
-- [x] **4.2** `set_state(app, IconState::Normal)` is called inside `show_main_window` — no change needed
+## Unit 3: Window Hide & Background Mode
 
----
+- [x] 3.1 Confirm existing close-intercept hides without quit (est: ~5m)
+  - acceptance: R-3.1 — WHEN user closes main window, THE SYSTEM SHALL hide it without quitting
+  - verify: Click red close button → window hides; tray icon remains; app process still running (`pgrep squirrel` returns PID)
 
-*All stories implemented in commit `feat(desktop): add Cmd+Shift+S global shortcut and dynamic activation policy`.*
+- [x] 3.2 Set activation policy to `Accessory` on window hide (deps: 3.1, mutex: 2.3, est: ~15m)
+  - acceptance: R-3.2 — WHEN main window hidden, THE SYSTEM SHALL set macOS activation policy to `Accessory`
+  - verify: Show window → close it → app disappears from Cmd+Tab and Dock
+
+- [ ] 3.3 Confirm tray polling continues while window is hidden (deps: 3.2, est: ~5m)
+  - acceptance: R-3.3 — WHILE main window hidden, THE SYSTEM SHALL continue tray alert polling
+  - verify: Hide window → wait 35s → tray menu still shows current pressing items (or "No pressing items" if backend offline)
+
+## Unit 4: Tray Menu Consistency
+
+- [x] 4.1 Route tray "Open Squirrel" through updated `show_main_window` (deps: 2.3, est: ~5m)
+  - acceptance: R-4.1 — WHEN "Open Squirrel" tray item selected, THE SYSTEM SHALL show/focus window via same path as shortcut
+  - verify: Hide window → click tray "Open Squirrel" → window shows, app appears in Cmd+Tab (policy flipped)
+
+- [x] 4.2 Tray icon resets to Normal on any window show (deps: 4.1, est: ~5m)
+  - acceptance: R-4.2 — THE SYSTEM SHALL reset tray icon to Normal whenever window is shown
+  - verify: Trigger a Notification tray state → show window via shortcut → tray icon returns to Normal
