@@ -328,5 +328,36 @@ class TestClearManualFocus(TestFocusPickerBase):
         self.assertEqual(stale.read_bytes(), before)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Story 2.1 — today_pm slot (R-1.1, R-1.2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+from focus_picker import _slot_key  # noqa: E402  (already imported via focus_picker)
+
+
+FROZEN_PM = datetime.datetime(2026, 5, 30, 14, 0, 0)
+
+
+class TestTodayPmSlot(unittest.TestCase):
+    def test_token_now_today_pm_format(self):
+        """R-1.1 — today_pm token is YYYY-MM-DD-PM."""
+        self.assertEqual(_token_now("today_pm", now=FROZEN_PM), "2026-05-30-PM")
+
+    def test_slot_key_today_pm(self):
+        """R-1.2 — slot key for today_pm is focus_today_pm."""
+        self.assertEqual(_slot_key("today_pm"), "focus_today_pm")
+
+    def test_invalid_slot_still_raises(self):
+        """Invalid slot raises ValueError regardless of today_pm addition."""
+        with self.assertRaises(ValueError):
+            _token_now("invalid_slot", now=FROZEN_PM)
+
+    def test_token_now_today_pm_uses_local_date(self):
+        """Date portion of today_pm token matches local date of frozen clock."""
+        token = _token_now("today_pm", now=FROZEN_PM)
+        self.assertTrue(token.startswith("2026-05-30-"), token)
+        self.assertTrue(token.endswith("-PM"), token)
+
+
 if __name__ == "__main__":
     unittest.main()
