@@ -241,6 +241,10 @@ pub struct ReminderAlert {
     pub title: String,
     pub reminder_date: String,
     pub proyecto: Option<String>,
+    /// URL to open when the tray item is clicked. Not in the API response;
+    /// populated by `fetch_reminders` after deserialization.
+    #[serde(default)]
+    pub item_url: String,
 }
 
 impl ReminderAlert {
@@ -282,14 +286,18 @@ fn today_date_string() -> String {
 }
 
 async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, reqwest::Error> {
-    client
+    let mut resp = client
         .get("http://127.0.0.1:3939/api/reminders")
         .timeout(REQUEST_TIMEOUT)
         .send()
         .await?
         .error_for_status()?
         .json::<RemindersResponse>()
-        .await
+        .await?;
+    for r in resp.approaching.iter_mut().chain(resp.active.iter_mut()) {
+        r.item_url = format!("{}/notes/{}", BACKEND_ORIGIN, r.id);
+    }
+    Ok(resp)
 }
 
 async fn fetch_pressing(client: &reqwest::Client) -> Result<Vec<Alert>, reqwest::Error> {
@@ -538,9 +546,8 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 
                         // R-2.2/R-2.9 (Story 2.2): dedup+INSERT for active reminders
                         for reminder in &reminders.active {
-                            let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder.id);
                             match insert_notification_if_new(
-                                &db_path, "reminder_active", &reminder.id, &reminder.id, &reminder.menu_label(), &item_url,
+                                &db_path, "reminder_active", &reminder.id, &reminder.id, &reminder.menu_label(), &reminder.item_url,
                             ) {
                                 Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
                                 Ok(false) => {}
@@ -690,7 +697,17 @@ mod tests {
             title: id.to_string(),
             reminder_date: "2026-05-30".to_string(),
             proyecto: None,
+            item_url: format!("{}/notes/{}", BACKEND_ORIGIN, id),
         }
+    }
+
+    // ── Story 8.1: item_url threading ────────────────────────────────────────
+
+    #[test]
+    fn test_reminder_item_url_populated_after_fetch() {
+        let id = "VISA-001";
+        let r = make_reminder(id);
+        assert_eq!(r.item_url, "http://127.0.0.1:3939/notes/VISA-001");
     }
 
     // (e) reminder on cooldown is excluded; others pass

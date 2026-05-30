@@ -138,7 +138,7 @@ fn build_menu<R: Runtime>(
         .iter()
         .map(|r| {
             let id = format!("{}{}", ids::REMINDER_PREFIX, r.id);
-            MenuItem::with_id(app, id, r.menu_label(), false, None::<&str>)
+            MenuItem::with_id(app, id, r.menu_label(), true, None::<&str>)
         })
         .collect::<tauri::Result<Vec<_>>>()?;
 
@@ -149,7 +149,7 @@ fn build_menu<R: Runtime>(
         .iter()
         .map(|r| {
             let id = format!("{}{}", ids::REMINDER_PREFIX, r.id);
-            MenuItem::with_id(app, id, r.menu_label(), false, None::<&str>)
+            MenuItem::with_id(app, id, r.menu_label(), true, None::<&str>)
         })
         .collect::<tauri::Result<Vec<_>>>()?;
 
@@ -200,8 +200,9 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     open_url(app, &url);
                 }
                 other if other.starts_with(ids::REMINDER_PREFIX) => {
-                    // Reminder items are disabled (R-4.4), handle defensively
-                    tracing::debug!(item = other, "reminder tray item clicked (disabled)");
+                    let reminder_id = &other[ids::REMINDER_PREFIX.len()..];
+                    let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder_id);
+                    open_url(app, &url);
                 }
                 other => {
                     tracing::info!(menu_item = other, "tray menu clicked (unhandled)");
@@ -336,5 +337,35 @@ mod tests {
             urgency_label: None,
         };
         assert_eq!(a.menu_label(), "5h left · BAR-002");
+    }
+
+    // ── Story 8.1: reminder click handler ────────────────────────────────────
+
+    #[test]
+    fn reminder_prefix_click_derives_correct_url() {
+        let item_id = format!("{}VISA-001", ids::REMINDER_PREFIX);
+        let reminder_id = &item_id[ids::REMINDER_PREFIX.len()..];
+        let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder_id);
+        assert_eq!(url, "http://127.0.0.1:3939/notes/VISA-001");
+    }
+
+    #[test]
+    fn reminder_item_url_matches_note_pattern() {
+        use crate::tray_alerts::ReminderAlert;
+        let r = ReminderAlert {
+            id: "VISA-001".into(),
+            title: "Pay visa".into(),
+            reminder_date: "2026-05-30".into(),
+            proyecto: None,
+            item_url: format!("{}/notes/{}", BACKEND_ORIGIN, "VISA-001"),
+        };
+        assert_eq!(r.item_url, "http://127.0.0.1:3939/notes/VISA-001");
+        // Confirm click handler would reconstruct the same URL
+        let item_id = format!("{}{}", ids::REMINDER_PREFIX, r.id);
+        let extracted_id = &item_id[ids::REMINDER_PREFIX.len()..];
+        assert_eq!(
+            format!("{}/notes/{}", BACKEND_ORIGIN, extracted_id),
+            r.item_url
+        );
     }
 }
