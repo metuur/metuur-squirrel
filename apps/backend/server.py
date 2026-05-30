@@ -224,6 +224,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
                                                                        "api_note_save"),
     ("POST", re.compile(r"^/api/notes$"),                             "api_note_create"),
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
+    ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
+    ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
     ("GET",  re.compile(r"^/api/search$"),                            "api_search"),
@@ -267,7 +269,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_HEAD(self) -> None: self._method_not_allowed("HEAD")
     def do_PUT(self) -> None: self._dispatch("PUT")
     def do_DELETE(self) -> None: self._dispatch("DELETE")
-    def do_PATCH(self) -> None: self._method_not_allowed("PATCH")
+    def do_PATCH(self) -> None: self._dispatch("PATCH")
 
     def _method_not_allowed(self, method: str) -> None:
         _log_request(method, self.path, 405)
@@ -708,6 +710,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tag = (payload.get("tag") or "").strip().upper()
         title = (payload.get("title") or "").strip()
         deadline = (payload.get("deadline") or "").strip()
+        reminder_date = (payload.get("reminder_date") or "").strip()
         if not project_slug or not tag or not title:
             raise _UserError(400, "project_slug, tag, and title are required.")
         _INTENT_TAG_RE = re.compile(r"^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$")
@@ -754,6 +757,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tmp = intent_path.with_suffix(".md.tmp")
         tmp.write_text(rendered, encoding="utf-8")
         os.replace(tmp, intent_path)
+        if reminder_date:
+            try:
+                from reminder_writer import write_reminder_date
+                write_reminder_date(intent_path, reminder_date)
+            except Exception as exc:
+                _log_exception(exc)
+                # Non-fatal: file was created; reminder is just missing
         self._send_json(
             {"success": True, "path": str(intent_path.relative_to(vault_root))},
             status=201,
@@ -792,6 +802,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not text:
             raise _UserError(400, "Please write something before saving.")
         project_slug = payload.get("project_slug")
+        reminder_date = (payload.get("reminder_date") or "").strip()
         if project_slug in ("", "unfiled", None):
             project_slug = None
         from capture_writer import write_capture
@@ -800,6 +811,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             _log_exception(exc)
             raise _UserError(500, "Could not save your note. Please try again.")
+        if reminder_date:
+            try:
+                from reminder_writer import write_reminder_date
+                write_reminder_date(path, reminder_date)
+            except Exception as exc:
+                _log_exception(exc)
+                # Non-fatal: capture was created; reminder is just missing
         self._send_json({
             "success": True,
             "id": path.stem,
@@ -849,6 +867,40 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "approaching": data.get("approaching", []),
             "active": data.get("active", []),
         })
+
+    def api_reminder_dismiss(self, note_id: str) -> None:
+        ctx, _ = self._context()
+        note_path = _find_note(ctx.active.path, note_id)
+        if note_path is None:
+            raise _UserError(404, "We could not find that item.")
+        from reminder_writer import dismiss_reminder
+        try:
+            dismiss_reminder(note_path)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not dismiss reminder.")
+        self._send_json({"success": True, "id": note_id})
+
+    def api_reminder_snooze(self, note_id: str) -> None:
+        ctx, _ = self._context()
+        note_path = _find_note(ctx.active.path, note_id)
+        if note_path is None:
+            raise _UserError(404, "We could not find that item.")
+        payload = self._read_json_body()
+        until = (payload.get("until") or "").strip()
+        if not until:
+            raise _UserError(400, "until date is required.")
+        try:
+            datetime.date.fromisoformat(until)
+        except ValueError:
+            raise _UserError(422, "until must be YYYY-MM-DD.")
+        from reminder_writer import snooze_reminder
+        try:
+            snooze_reminder(note_path, until)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not snooze reminder.")
+        self._send_json({"success": True, "id": note_id, "snoozed_until": until})
 
     def api_deadlines(self) -> None:
         ctx, _ = self._context()
