@@ -5,10 +5,12 @@ import {
   quotePlugin,
   thematicBreakPlugin,
   markdownShortcutPlugin,
+  diffSourcePlugin,
   toolbarPlugin,
   BoldItalicUnderlineToggles,
   UndoRedo,
   BlockTypeSelect,
+  DiffSourceToggleWrapper,
   Separator,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
@@ -19,9 +21,18 @@ interface Props {
   disabled?: boolean;
   placeholder?: string;
   minHeight?: string;
+  showSourceToggle?: boolean;
 }
 
-export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeight = '8rem' }: Props) {
+export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeight = '8rem', showSourceToggle = false }: Props) {
+  const basePlugins = [
+    headingsPlugin(),
+    listsPlugin(),
+    quotePlugin(),
+    thematicBreakPlugin(),
+    markdownShortcutPlugin(),
+  ];
+
   return (
     <div
       className="border border-slate-300 dark:border-slate-600 rounded-md overflow-hidden bg-white dark:bg-slate-800"
@@ -35,21 +46,27 @@ export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeig
         placeholder={placeholder}
         contentEditableClassName="prose prose-sm dark:prose-invert max-w-none px-3 py-2 outline-none min-h-[var(--mdxeditor-min-height,8rem)]"
         plugins={[
-          headingsPlugin(),
-          listsPlugin(),
-          quotePlugin(),
-          thematicBreakPlugin(),
-          markdownShortcutPlugin(),
+          ...basePlugins,
+          ...(showSourceToggle ? [diffSourcePlugin({ viewMode: 'rich-text' })] : []),
           toolbarPlugin({
-            toolbarContents: () => (
-              <>
-                <UndoRedo />
-                <Separator />
-                <BoldItalicUnderlineToggles />
-                <Separator />
-                <BlockTypeSelect />
-              </>
-            ),
+            toolbarContents: () =>
+              showSourceToggle ? (
+                <DiffSourceToggleWrapper>
+                  <UndoRedo />
+                  <Separator />
+                  <BoldItalicUnderlineToggles />
+                  <Separator />
+                  <BlockTypeSelect />
+                </DiffSourceToggleWrapper>
+              ) : (
+                <>
+                  <UndoRedo />
+                  <Separator />
+                  <BoldItalicUnderlineToggles />
+                  <Separator />
+                  <BlockTypeSelect />
+                </>
+              ),
           }),
         ]}
       />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '@/components/Modal';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { api, ApiError, type NewProjectRequest } from '@/api/client';
 import { useToast } from '@/components/Toast';
 
@@ -166,13 +167,12 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
         </Field>
 
         <Field label="Description (optional)" hint="One line shown under the H1 in the project page.">
-          <textarea
+          <MarkdownEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
+            onChange={setDescription}
             disabled={busy}
             placeholder="Short summary"
-            className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+            minHeight="5rem"
           />
         </Field>
 

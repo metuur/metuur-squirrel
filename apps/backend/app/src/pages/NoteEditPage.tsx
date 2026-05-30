@@ -4,25 +4,37 @@ import { api, ApiError } from '@/api/client';
 import { useFetch } from '@/hooks/useFetch';
 import { ConflictDialog } from '@/components/ConflictDialog';
 import { useToast } from '@/components/Toast';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
+
+function splitFrontmatter(raw: string): { front: string; content: string } {
+  const m = raw.match(/^(---\n[\s\S]*?\n---\n?)([\s\S]*)$/);
+  return m ? { front: m[1], content: m[2] } : { front: '', content: raw };
+}
 
 export default function NoteEditPage() {
   const { id = '' } = useParams();
   const nav = useNavigate();
   const toast = useToast();
   const { data: note } = useFetch(`note-edit:${id}`, () => api.note(id));
+  const [front, setFront] = useState('');
   const [body, setBody] = useState('');
   const [mtime, setMtime] = useState(0);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<{ current_body: string; current_mtime: number } | null>(null);
 
   useEffect(() => {
-    if (note) { setBody(note.raw_body); setMtime(note.mtime); }
+    if (note) {
+      const { front: f, content: c } = splitFrontmatter(note.raw_body);
+      setFront(f);
+      setBody(c);
+      setMtime(note.mtime);
+    }
   }, [note]);
 
   async function save() {
     setSaving(true);
     try {
-      const r = await api.noteSave(id, body, mtime);
+      const r = await api.noteSave(id, front + body, mtime);
       if (r.mtime) setMtime(r.mtime);
       toast.show('Saved.', 'success');
       nav(`/notes/${id}`);
@@ -35,7 +47,7 @@ export default function NoteEditPage() {
   if (!note) return <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-4xl space-y-4">
       <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
         <Link to={`/notes/${id}`} className="hover:text-primary flex items-center gap-1">
           <span className="material-icons text-base">close</span> Cancel
@@ -47,11 +59,13 @@ export default function NoteEditPage() {
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Edit note</h1>
         </div>
         <div className="px-6 py-5">
-          <textarea
+          <MarkdownEditor
+            key={id}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={20}
-            className="w-full px-4 py-3 font-mono text-sm border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-0 outline-none"
+            onChange={setBody}
+            disabled={saving}
+            minHeight="32rem"
+            showSourceToggle
           />
         </div>
         <div className="px-6 py-4 border-t border-border-light dark:border-border-dark flex items-center justify-end gap-2">
@@ -75,7 +89,10 @@ export default function NoteEditPage() {
         open={!!conflict}
         payload={conflict}
         onTakeTheirs={() => {
-          if (conflict) { setBody(conflict.current_body); setMtime(conflict.current_mtime); }
+          if (conflict) {
+            const { front: f, content: c } = splitFrontmatter(conflict.current_body);
+            setFront(f); setBody(c); setMtime(conflict.current_mtime);
+          }
           setConflict(null);
           toast.show('Loaded their version. Save again to keep it.', 'info');
         }}

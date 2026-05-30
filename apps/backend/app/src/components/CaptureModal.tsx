@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import { useFetch } from '@/hooks/useFetch';
 import { useToast } from '@/components/Toast';
 import { Modal } from '@/components/Modal';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 
 interface CaptureCtx { open: (defaultProject?: string) => void }
 const Ctx = createContext<CaptureCtx>({ open: () => {} });
@@ -150,13 +151,11 @@ function CaptureDialog({ open, onClose, defaultProject }: { open: boolean; onClo
           </div>
         )}
 
-        <textarea
+        <MarkdownEditor
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={mode === 'email' ? 8 : 6}
-          autoFocus
+          onChange={setText}
           placeholder={mode === 'email' ? 'Paste the email body here…' : 'Type your note here…'}
-          className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-primary focus:ring-0 outline-none"
+          minHeight={mode === 'email' ? '12rem' : '9rem'}
         />
 
         <div>
