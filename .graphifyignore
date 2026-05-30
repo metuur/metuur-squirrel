@@ -1,0 +1,27 @@
+# Exclude common build/runtime directories
+node_modules/
+dist/
+build/
+.next/
+*.generated.py
+
+# Exclude framework configs and rules
+.opencode/
+.claude/
+.agents/
+.git/
+
+# Allow research documents (override any implicit exclusion)
+!.uncle-dev/
+!.uncle-dev/research/
+
+# Include monorepo packages
+packages/*/src/
+packages/**/src/
+packages/**/*.ts
+packages/**/*.tsx
+packages/**/*.js
+packages/**/*.json
+
+# Include research documents
+!.uncle-dev/research/*.md

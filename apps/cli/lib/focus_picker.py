@@ -104,17 +104,12 @@ def _iter_intent_paths(vault: Path):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_manual_focus(vault: Path, now: Optional[datetime.datetime] = None) -> dict:
-    """Return `{"today": ManualPick|None, "week": ManualPick|None}`.
-
-    A slot is populated iff some intent file's `focus_today` / `focus_week`
-    frontmatter value equals the current local token (R-1.4 / R-1.5). If more
-    than one intent carries the current token (manual Obsidian dup), the one
-    with the most recent file mtime wins (R-2.6) — no error is raised.
-    """
+    """Return `{"today": ManualPick|None, "today_pm": ManualPick|None, "week": ManualPick|None}`."""
     today_token = _token_now("today", now=now)
+    today_pm_token = _token_now("today_pm", now=now)
     week_token = _token_now("week", now=now)
 
-    candidates: dict[str, list[tuple[Path, Path, dict]]] = {"today": [], "week": []}
+    candidates: dict[str, list[tuple[Path, Path, dict]]] = {"today": [], "today_pm": [], "week": []}
 
     for project_md, intent_path in _iter_intent_paths(vault):
         try:
@@ -124,10 +119,12 @@ def get_manual_focus(vault: Path, now: Optional[datetime.datetime] = None) -> di
         fm = intent.get("frontmatter", {}) or {}
         if fm.get("focus_today") == today_token:
             candidates["today"].append((project_md, intent_path, intent))
+        if fm.get("focus_today_pm") == today_pm_token:
+            candidates["today_pm"].append((project_md, intent_path, intent))
         if fm.get("focus_week") == week_token:
             candidates["week"].append((project_md, intent_path, intent))
 
-    result: dict = {"today": None, "week": None}
+    result: dict = {"today": None, "today_pm": None, "week": None}
     for slot, items in candidates.items():
         if not items:
             continue

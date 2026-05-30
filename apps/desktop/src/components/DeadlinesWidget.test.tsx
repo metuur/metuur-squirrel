@@ -43,7 +43,7 @@ function makeHome(items: PressingItem[]): HomeState {
       focus: null,
       pressing: items,
       projects: PROJECTS,
-      manual_focus: { today: null, week: null },
+      manual_focus: { today: null, today_pm: null, week: null },
       parakeet: "",
     },
     loading: false,

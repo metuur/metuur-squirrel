@@ -465,7 +465,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             manual_focus = get_manual_focus(ctx.active.path)
         except Exception:
-            manual_focus = {"today": None, "week": None}
+            manual_focus = {"today": None, "today_pm": None, "week": None}
 
         focus = status.get("recommended_focus") or {}
         focus_payload = None
@@ -529,6 +529,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "projects": projects,
             "manual_focus": {
                 "today": manual_focus.get("today"),
+                "today_pm": manual_focus.get("today_pm"),
                 "week": manual_focus.get("week"),
             },
             "parakeet": _parakeet_message_for(ctx.active.path),
@@ -546,18 +547,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             focus = get_manual_focus(ctx.active.path)
         except Exception:
-            focus = {"today": None, "week": None}
-        self._send_json({"today": focus.get("today"), "week": focus.get("week")})
+            focus = {"today": None, "today_pm": None, "week": None}
+        self._send_json({
+            "today": focus.get("today"),
+            "today_pm": focus.get("today_pm"),
+            "week": focus.get("week"),
+        })
 
     def api_focus_put_today(self) -> None:
-        self._api_focus_put("today")
+        body = self._read_json_body()
+        slot = "today_pm" if body.get("slot") == "pm" else "today"
+        self._api_focus_put(slot, body)
 
     def api_focus_put_week(self) -> None:
         self._api_focus_put("week")
 
-    def _api_focus_put(self, slot: str) -> None:
+    def _api_focus_put(self, slot: str, body: Optional[dict] = None) -> None:
         ctx, _ = self._context()
-        body = self._read_json_body()
+        if body is None:
+            body = self._read_json_body()
         from focus_picker import (
             set_manual_focus, clear_manual_focus, get_manual_focus,
             IntentNotFound,
@@ -577,7 +585,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send_json_error(400, "bad_request")
             return
         focus = get_manual_focus(ctx.active.path)
-        self._send_json({"today": focus.get("today"), "week": focus.get("week")})
+        self._send_json({
+            "today": focus.get("today"),
+            "today_pm": focus.get("today_pm"),
+            "week": focus.get("week"),
+        })
 
     # ── projects ────────────────────────────────────────────────────────────
 

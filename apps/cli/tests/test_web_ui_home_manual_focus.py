@@ -117,7 +117,7 @@ class TestHomeManualFocus(_Case):
         status, data = self._get_json("/api/home")
         self.assertEqual(status, 200)
         self.assertIn("manual_focus", data)
-        self.assertEqual(data["manual_focus"], {"today": None, "week": None})
+        self.assertEqual(data["manual_focus"], {"today": None, "today_pm": None, "week": None})
         # R-10.2 shape preservation smoke check.
         for k in ("focus", "pressing", "projects", "parakeet"):
             self.assertIn(k, data)

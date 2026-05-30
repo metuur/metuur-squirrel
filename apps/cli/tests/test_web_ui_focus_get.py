@@ -114,7 +114,7 @@ class TestFocusGet(_Case):
         # frontmatter keys, so both slots are null.
         status, data = self._get_json("/api/focus")
         self.assertEqual(status, 200)
-        self.assertEqual(data, {"today": None, "week": None})
+        self.assertEqual(data, {"today": None, "today_pm": None, "week": None})
 
     def test_focus_get_returns_today_pick_when_set(self):
         today = datetime.date.today().isoformat()

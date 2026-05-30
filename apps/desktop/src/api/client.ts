@@ -115,6 +115,7 @@ export interface ManualPick {
 
 export interface ManualFocusPayload {
   today: ManualPick | null;
+  today_pm: ManualPick | null;
   week: ManualPick | null;
 }
 
@@ -169,13 +170,21 @@ export const api = {
   projectDetail: (slug: string) =>
     call<ProjectDetail>(`/api/projects/${slug}`),
   focusSet: (
-    slot: "today" | "week",
+    slot: "today" | "today_pm" | "week",
     body:
       | { project_slug: string; intent_slug: string }
       | { clear: true },
-  ) =>
-    call<ManualFocusPayload>(`/api/focus/${slot}`, {
+  ) => {
+    if (slot === "week") {
+      return call<ManualFocusPayload>("/api/focus/week", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+    }
+    const half = slot === "today_pm" ? "pm" : "am";
+    return call<ManualFocusPayload>("/api/focus/today", {
       method: "PUT",
-      body: JSON.stringify(body),
-    }),
+      body: JSON.stringify({ ...body, slot: half }),
+    });
+  },
 };

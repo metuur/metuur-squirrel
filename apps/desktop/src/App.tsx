@@ -58,7 +58,7 @@ export default function App() {
     setCaptureOpen(true);
   };
 
-  const handleClearFocus = async (slot: "today" | "week") => {
+  const handleClearFocus = async (slot: "today" | "today_pm" | "week") => {  // today_pm still needed for pill clear
     try {
       await api.focusSet(slot, { clear: true });
       setHomeBump((n) => n + 1);
