@@ -38,7 +38,7 @@
   - acceptance: R-3.2 — WHEN main window hidden, THE SYSTEM SHALL set macOS activation policy to `Accessory`
   - verify: Show window → close it → app disappears from Cmd+Tab and Dock
 
-- [ ] 3.3 Confirm tray polling continues while window is hidden (deps: 3.2, est: ~5m)
+- [x] 3.3 Confirm tray polling continues while window is hidden (deps: 3.2, est: ~5m)
   - acceptance: R-3.3 — WHILE main window hidden, THE SYSTEM SHALL continue tray alert polling
   - verify: Hide window → wait 35s → tray menu still shows current pressing items (or "No pressing items" if backend offline)
 
