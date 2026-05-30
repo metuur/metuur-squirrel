@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 const BACKEND_HOME: &str = "http://127.0.0.1:3939/api/home";
@@ -88,6 +88,121 @@ pub(crate) fn init_notif_db(db_path: &Path) -> rusqlite::Result<()> {
     )?;
     Ok(())
 }
+
+// ── Story 2.1: notification settings ─────────────────────────────────────────
+
+/// R-3.3/R-3.4: Settings read from `/api/me` every poll cycle.
+/// Default `in_app=true, os_popups=false` when backend is unreachable.
+#[derive(Debug, Clone, Copy)]
+struct NotifSettings {
+    in_app: bool,
+    os_popups: bool,
+}
+
+impl Default for NotifSettings {
+    fn default() -> Self {
+        NotifSettings { in_app: true, os_popups: false }
+    }
+}
+
+#[derive(Deserialize)]
+struct MeNotifSection {
+    in_app: bool,
+    os_popups: bool,
+}
+
+#[derive(Deserialize)]
+struct MeResponse {
+    notifications: Option<MeNotifSection>,
+}
+
+async fn fetch_notif_settings(client: &reqwest::Client) -> NotifSettings {
+    let resp = client
+        .get(format!("{}/api/me", BACKEND_ORIGIN))
+        .timeout(REQUEST_TIMEOUT)
+        .send()
+        .await;
+    match resp {
+        Ok(r) => match r.error_for_status() {
+            Ok(r) => r
+                .json::<MeResponse>()
+                .await
+                .ok()
+                .and_then(|me| me.notifications)
+                .map(|n| NotifSettings { in_app: n.in_app, os_popups: n.os_popups })
+                .unwrap_or_default(),
+            Err(_) => NotifSettings::default(),
+        },
+        Err(_) => NotifSettings::default(),
+    }
+}
+
+// ── Story 2.2: dedup INSERT ───────────────────────────────────────────────────
+
+/// R-2.2/R-2.3/R-2.8/R-2.9: Insert a notification row only if no row for
+/// this `item_id` already has a `fired_at` date equal to today. Returns `true`
+/// when a new row was inserted, `false` when the dedup check found a match.
+fn insert_notification_if_new(
+    db_path: &Path,
+    notif_type: &str,
+    item_id: &str,
+    title: &str,
+    body: &str,
+    item_url: &str,
+) -> rusqlite::Result<bool> {
+    let conn = rusqlite::Connection::open(db_path)?;
+    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) FROM notifications WHERE item_id = ? AND date(fired_at) = date('now')",
+        rusqlite::params![item_id],
+        |r| r.get::<_, i64>(0),
+    )? > 0;
+    if exists {
+        return Ok(false);
+    }
+    conn.execute(
+        "INSERT INTO notifications (type, item_id, title, body, item_url, fired_at) \
+         VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%S', 'now'))",
+        rusqlite::params![notif_type, item_id, title, body, item_url],
+    )?;
+    Ok(true)
+}
+
+// ── Story 2.3: unread count, badge, event ─────────────────────────────────────
+
+fn unread_count(db_path: &Path) -> rusqlite::Result<u32> {
+    let conn = rusqlite::Connection::open(db_path)?;
+    conn.query_row(
+        "SELECT COUNT(*) FROM notifications WHERE read_at IS NULL AND dismissed_at IS NULL",
+        [],
+        |r| r.get::<_, u32>(0),
+    )
+}
+
+/// R-2.5/R-2.6/R-2.7: After an INSERT, set the tray badge and emit
+/// `squirrel:notif-updated` with the current unread count.
+fn update_badge_and_emit<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
+    let count = match unread_count(db_path) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!(error = %e, "tray-alerts: unread count query failed");
+            return;
+        }
+    };
+    let icon_state = if count > 0 {
+        crate::tray::IconState::Notification
+    } else {
+        crate::tray::IconState::Normal
+    };
+    if let Err(e) = crate::tray::set_state(app, icon_state) {
+        tracing::warn!(error = %e, "tray-alerts: badge update failed");
+    }
+    if let Err(e) = app.emit("squirrel:notif-updated", count) {
+        tracing::warn!(error = %e, "tray-alerts: event emit failed");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Mirror of /api/home.pressing[] — only the fields the tray label needs.
 #[derive(Debug, Clone, Deserialize)]
@@ -385,6 +500,9 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
         }
 
         loop {
+            // R-3.3/R-3.4 (Story 2.1): read notification settings every cycle; default on failure
+            let settings = fetch_notif_settings(&client).await;
+
             match fetch_pressing(&client).await {
                 Ok(alerts) => {
                     let reminders = fetch_reminders(&client).await.unwrap_or_else(|_| RemindersResponse {
@@ -396,8 +514,45 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                     } else {
                         tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
                     }
-                    // R-1.1 + R-4.3: notify for pressing and reminder_active items
-                    check_notifications(&app, &alerts, &reminders.active);
+
+                    // R-2.1 (Story 2.1): skip all notification storage when in_app=false
+                    if settings.in_app {
+                        let db_path = app
+                            .state::<Mutex<TauriNotificationState>>()
+                            .lock()
+                            .unwrap()
+                            .notif_db_path
+                            .clone();
+
+                        // R-2.2/R-2.8 (Story 2.2): dedup+INSERT for pressing alerts
+                        for alert in &alerts {
+                            let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, alert.id);
+                            match insert_notification_if_new(
+                                &db_path, "pressing", &alert.id, &alert.id, &alert.menu_label(), &item_url,
+                            ) {
+                                Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
+                                Ok(false) => {}
+                                Err(e) => tracing::warn!(error = %e, item_id = %alert.id, "tray-alerts: notif insert failed"),
+                            }
+                        }
+
+                        // R-2.2/R-2.9 (Story 2.2): dedup+INSERT for active reminders
+                        for reminder in &reminders.active {
+                            let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder.id);
+                            match insert_notification_if_new(
+                                &db_path, "reminder_active", &reminder.id, &reminder.id, &reminder.menu_label(), &item_url,
+                            ) {
+                                Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
+                                Ok(false) => {}
+                                Err(e) => tracing::warn!(error = %e, reminder_id = %reminder.id, "tray-alerts: reminder notif insert failed"),
+                            }
+                        }
+                    }
+
+                    // R-3.1/R-3.2 (Story 3.1): OS popup guard — existing rate-limit guards apply inside
+                    if settings.os_popups {
+                        check_notifications(&app, &alerts, &reminders.active);
+                    }
                 }
                 Err(e) => {
                     tracing::debug!(error = %e, "tray-alerts: backend unreachable, clearing");
@@ -559,5 +714,100 @@ mod tests {
         let reminders = vec![make_reminder("REM-A")];
         let result = select_reminder_candidates(&state, &reminders);
         assert!(result.is_empty());
+    }
+
+    // ── Story 2.1: NotifSettings defaults ────────────────────────────────────
+
+    #[test]
+    fn test_notif_settings_default_in_app_true_os_popups_false() {
+        let s = NotifSettings::default();
+        assert!(s.in_app, "in_app defaults to true");
+        assert!(!s.os_popups, "os_popups defaults to false");
+    }
+
+    // ── Story 2.2: insert_notification_if_new ────────────────────────────────
+
+    #[test]
+    fn test_insert_notification_if_new_returns_true_on_first_insert() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        let inserted = insert_notification_if_new(
+            &db_path, "pressing", "TASK-001", "TASK-001", "43d overdue", "http://127.0.0.1:3939/notes/TASK-001",
+        ).unwrap();
+        assert!(inserted, "first insert should return true");
+    }
+
+    #[test]
+    fn test_insert_notification_if_new_dedup_same_day_returns_false() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        insert_notification_if_new(&db_path, "pressing", "TASK-001", "T", "body", "url").unwrap();
+        let second = insert_notification_if_new(&db_path, "pressing", "TASK-001", "T", "body", "url").unwrap();
+        assert!(!second, "same item same day must not insert a duplicate");
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM notifications WHERE item_id = 'TASK-001'",
+            [], |r| r.get(0),
+        ).unwrap();
+        assert_eq!(count, 1, "exactly one row should exist after dedup");
+    }
+
+    #[test]
+    fn test_insert_notification_if_new_item_url_stored_correctly() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        insert_notification_if_new(
+            &db_path, "reminder_active", "VISA-001", "VISA-001", "Due today",
+            "http://127.0.0.1:3939/notes/VISA-001",
+        ).unwrap();
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        let url: String = conn.query_row(
+            "SELECT item_url FROM notifications WHERE item_id = 'VISA-001'",
+            [], |r| r.get(0),
+        ).unwrap();
+        assert_eq!(url, "http://127.0.0.1:3939/notes/VISA-001");
+    }
+
+    // ── Story 2.3: unread_count ───────────────────────────────────────────────
+
+    #[test]
+    fn test_unread_count_empty_table_is_zero() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        assert_eq!(unread_count(&db_path).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_unread_count_excludes_read_and_dismissed_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        // 1 unread, 1 read, 1 dismissed
+        conn.execute_batch("
+            INSERT INTO notifications (type, item_id, title, body, item_url, fired_at)
+              VALUES ('pressing','A','A','body','url','2026-01-01T10:00:00');
+            INSERT INTO notifications (type, item_id, title, body, item_url, fired_at, read_at)
+              VALUES ('pressing','B','B','body','url','2026-01-01T10:00:00','2026-01-01T11:00:00');
+            INSERT INTO notifications (type, item_id, title, body, item_url, fired_at, dismissed_at)
+              VALUES ('pressing','C','C','body','url','2026-01-01T10:00:00','2026-01-01T11:00:00');
+        ").unwrap();
+        assert_eq!(unread_count(&db_path).unwrap(), 1, "only row A (unread, not dismissed) should count");
+    }
+
+    #[test]
+    fn test_unread_count_increments_after_insert() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        assert_eq!(unread_count(&db_path).unwrap(), 0);
+        insert_notification_if_new(&db_path, "pressing", "A", "A", "body", "url").unwrap();
+        assert_eq!(unread_count(&db_path).unwrap(), 1);
+        insert_notification_if_new(&db_path, "pressing", "B", "B", "body", "url").unwrap();
+        assert_eq!(unread_count(&db_path).unwrap(), 2);
     }
 }

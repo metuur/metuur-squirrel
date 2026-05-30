@@ -60,19 +60,19 @@ _All stories touch `server.py` — run sequentially. Depends on Unit 1 (table mu
 
 _All stories touch `tray_alerts.rs` — run sequentially. Depends on Units 1 and 5._
 
-- [ ] 2.1 Fetch notification settings per poll cycle with early-exit guard (deps: 1.2, 5.2, est: ~20m) `(mutex: tray-alerts)`
+- [x] 2.1 Fetch notification settings per poll cycle with early-exit guard (deps: 1.2, 5.2, est: ~20m) `(mutex: tray-alerts)`
   - acceptance: R-2.1, R-3.3, R-3.4 — `fetch_notif_settings()` calls `GET /api/me`, reads `.notifications`; if `in_app=false` poll returns immediately; defaults to `{in_app:true, os_popups:false}` on fetch failure
   - verify: set `in_app=false` in `config.toml`, observe no new rows in `notifications` table after one poll cycle
 
-- [ ] 2.2 Dedup check and INSERT into notifications with item_url (deps: 2.1, est: ~40m) `(mutex: tray-alerts)`
+- [x] 2.2 Dedup check and INSERT into notifications with item_url (deps: 2.1, est: ~40m) `(mutex: tray-alerts)`
   - acceptance: R-2.2, R-2.3, R-2.8, R-2.9 — for each pressing alert and active reminder, SELECT for existing row with same `item_id` + today's date; INSERT only when absent; `item_url = "http://127.0.0.1:3939/notes/{item_id}"`
   - verify: trigger an active reminder, confirm exactly one row in `notifications` after multiple poll cycles within the same day; confirm `item_url` is set correctly
 
-- [ ] 2.3 Unread count → tray badge → Tauri event emit (deps: 2.2, est: ~30m) `(mutex: tray-alerts)`
+- [x] 2.3 Unread count → tray badge → Tauri event emit (deps: 2.2, est: ~30m) `(mutex: tray-alerts)`
   - acceptance: R-2.4, R-2.5, R-2.6, R-2.7 — after INSERT, `SELECT COUNT(*) WHERE read_at IS NULL AND dismissed_at IS NULL`; calls `set_state(Notification)` if count > 0, else `set_state(Normal)`; emits `"squirrel:notif-updated"` with unread count
   - verify: tray icon changes to notification state when a new alert row is inserted; reverts to normal after `POST /api/notifications/read-all`; event received in frontend devtools
 
-- [ ] 3.1 Guard OS notification calls behind `os_popups` flag (deps: 2.1, est: ~15m) `(mutex: tray-alerts)`
+- [x] 3.1 Guard OS notification calls behind `os_popups` flag (deps: 2.1, est: ~15m) `(mutex: tray-alerts)`
   - acceptance: R-3.1, R-3.2 — `check_notifications()` wrapped in `if settings.os_popups { ... }`; existing rate-limiting guards remain intact inside the block
   - verify: set `os_popups=false` in `config.toml`, trigger alert — no macOS system notification appears; set `os_popups=true` — system notification fires normally
 
