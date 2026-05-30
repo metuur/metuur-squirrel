@@ -72,7 +72,7 @@ Dependency layers:
     - Manual: dismiss a reminder via curl, re-read the `.md` file — `reminder_dismissed` present, callout absent; subsequent `GET /api/reminders` excludes it.
     - Snooze: write `until` 30 days from now, verify file has `reminder_snoozed_until`; verify `GET /api/reminders` excludes the item.
 
-- [ ] **2.3** Extend task (intent) and capture creation endpoints to accept `reminder_date` (deps: 1.2, est: ~20m)
+- [x] **2.3** Extend task (intent) and capture creation endpoints to accept `reminder_date` (deps: 1.2, est: ~20m)
   - acceptance:
     - R-3.6 — `POST /api/intents` and `POST /api/captures` (or equivalent) accept optional `reminder_date` field (absolute or relative string).
     - If provided, `reminder_date` is written to frontmatter and body callout via the helpers from 1.2.
