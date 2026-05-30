@@ -14,6 +14,7 @@
 
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, Runtime};
@@ -36,6 +37,7 @@ pub(crate) struct TauriNotificationState {
     last_poll_at: Instant,
     pending_clicks: HashMap<i32, String>,
     next_id: i32,
+    pub(crate) notif_db_path: PathBuf,
 }
 
 impl TauriNotificationState {
@@ -48,8 +50,43 @@ impl TauriNotificationState {
             last_poll_at: Instant::now(),
             pending_clicks: HashMap::new(),
             next_id: 0,
+            notif_db_path: default_notif_db_path(),
         }
     }
+}
+
+fn default_notif_db_path() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".squirrel")
+        .join("state")
+        .join("squirrel.db")
+}
+
+/// Create the `notifications` table and index in the given SQLite DB.
+/// Sets WAL mode. Idempotent (CREATE TABLE IF NOT EXISTS).
+pub(crate) fn init_notif_db(db_path: &Path) -> rusqlite::Result<()> {
+    if let Some(parent) = db_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let conn = rusqlite::Connection::open(db_path)?;
+    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS notifications (
+           id           INTEGER PRIMARY KEY AUTOINCREMENT,
+           type         TEXT NOT NULL,
+           item_id      TEXT NOT NULL,
+           title        TEXT NOT NULL,
+           body         TEXT NOT NULL,
+           item_url     TEXT,
+           fired_at     TEXT NOT NULL,
+           read_at      TEXT,
+           dismissed_at TEXT
+         );
+         CREATE INDEX IF NOT EXISTS idx_notifications_item_day
+           ON notifications(item_id, date(fired_at));",
+    )?;
+    Ok(())
 }
 
 /// Mirror of /api/home.pressing[] — only the fields the tray label needs.
@@ -334,6 +371,19 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             }
         };
 
+        // R-1.4: ensure notifications table exists before first poll
+        {
+            let db_path = app
+                .state::<Mutex<TauriNotificationState>>()
+                .lock()
+                .unwrap()
+                .notif_db_path
+                .clone();
+            if let Err(e) = init_notif_db(&db_path) {
+                tracing::warn!(error = %e, "tray-alerts: failed to init notifications DB");
+            }
+        }
+
         loop {
             match fetch_pressing(&client).await {
                 Ok(alerts) => {
@@ -383,6 +433,44 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_init_notif_db_creates_table_and_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        let table_exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='notifications'",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .unwrap()
+            > 0;
+        assert!(table_exists, "notifications table should exist");
+        let index_exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_notifications_item_day'",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .unwrap()
+            > 0;
+        assert!(index_exists, "idx_notifications_item_day should exist");
+        let mode: String = conn
+            .query_row("PRAGMA journal_mode", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(mode, "wal");
+    }
+
+    #[test]
+    fn test_init_notif_db_idempotent() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        init_notif_db(&db_path).unwrap(); // second call must not error
+    }
 
     fn make_alert(id: &str) -> Alert {
         Alert {
