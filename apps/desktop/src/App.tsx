@@ -2,7 +2,7 @@
 // "+ Add a note" button and the per-task "+ note" buttons in
 // DeadlinesWidget can open it with the right project pre-selected.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
@@ -48,6 +48,20 @@ export default function App() {
   // homeBump forces a refetch after a manual-focus mutation (R-5.6).
   const triggerKey = (status.lastOnlineAt ?? 0) + homeBump;
   const home = useHome(triggerKey);
+  // Optimistic focus state: applied immediately from the API response so the
+  // widget reflects the new pick without waiting for the next full home refetch.
+  const [focusOverride, setFocusOverride] = useState<import("./api/client").ManualFocusPayload | null>(null);
+
+  // Merge override into home state; clear it once the background refetch lands.
+  const homeWithOverride = useMemo(() => {
+    if (!focusOverride || !home.data) return home;
+    return { ...home, data: { ...home.data, manual_focus: focusOverride } };
+  }, [home, focusOverride]);
+
+  // Clear override as soon as a fresh refetch provides its own manual_focus.
+  useEffect(() => {
+    if (focusOverride && home.data && !home.loading) setFocusOverride(null);
+  }, [home.data, home.loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
@@ -58,13 +72,20 @@ export default function App() {
     setCaptureOpen(true);
   };
 
-  const handleClearFocus = async (slot: "today" | "today_pm" | "week") => {  // today_pm still needed for pill clear
+  const handleClearFocus = async (slot: "today" | "week") => {
     try {
-      await api.focusSet(slot, { clear: true });
+      if (slot === "today") {
+        // clear both AM and PM slots together
+        await Promise.all([
+          api.focusSet("today", { clear: true }),
+          api.focusSet("today_pm", { clear: true }),
+        ]);
+      } else {
+        await api.focusSet(slot, { clear: true });
+      }
       setHomeBump((n) => n + 1);
     } catch {
-      // Best-effort. A toast surface lands in a later story; for now the
-      // pill stays as-is and the next backend-online tick will resync.
+      // Best-effort.
     }
   };
 
@@ -100,7 +121,7 @@ export default function App() {
           inside DeadlinesWidget scroll vertically when the list grows. */}
       <div className="flex-1 overflow-y-auto pb-2">
         <FocusWidget
-          home={home}
+          home={homeWithOverride}
           online={status.online}
           onPick={status.online ? setFocusModalSlot : undefined}
           onClear={status.online ? handleClearFocus : undefined}
@@ -136,8 +157,11 @@ export default function App() {
         <FocusPickerModal
           slot={focusModalSlot}
           projects={projects}
+          currentAmPick={home.data?.manual_focus?.today ?? null}
+          currentPmPick={home.data?.manual_focus?.today_pm ?? null}
           onClose={() => setFocusModalSlot(null)}
-          onPicked={() => {
+          onPicked={(result) => {
+            setFocusOverride(result);
             setHomeBump((n) => n + 1);
             setFocusModalSlot(null);
           }}

@@ -24,15 +24,17 @@ const INITIAL: HomeState = {
 
 export function useHome(triggerKey: number): HomeState {
   const [state, setState] = useState<HomeState>(INITIAL);
-  const mountedRef = useRef(true);
+  // Incremented each time the effect fires; responses from earlier generations
+  // are discarded so a slow stale fetch can't overwrite a fresh one.
+  const generationRef = useRef(0);
 
   useEffect(() => {
-    mountedRef.current = true;
+    const generation = ++generationRef.current;
     setState((prev) => ({ ...prev, loading: true, error: null }));
     api
       .home()
       .then((data) => {
-        if (!mountedRef.current) return;
+        if (generationRef.current !== generation) return;
         setState({
           data,
           loading: false,
@@ -41,7 +43,7 @@ export function useHome(triggerKey: number): HomeState {
         });
       })
       .catch((err) => {
-        if (!mountedRef.current) return;
+        if (generationRef.current !== generation) return;
         const msg = err instanceof Error ? err.message : String(err);
         setState((prev) => ({
           data: prev.data, // keep last-good for R-2.9 dimmed rendering
@@ -50,9 +52,6 @@ export function useHome(triggerKey: number): HomeState {
           lastFetchedAt: prev.lastFetchedAt,
         }));
       });
-    return () => {
-      mountedRef.current = false;
-    };
   }, [triggerKey]);
 
   return state;
