@@ -708,6 +708,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tag = (payload.get("tag") or "").strip().upper()
         title = (payload.get("title") or "").strip()
         deadline = (payload.get("deadline") or "").strip()
+        reminder_date = (payload.get("reminder_date") or "").strip()
         if not project_slug or not tag or not title:
             raise _UserError(400, "project_slug, tag, and title are required.")
         _INTENT_TAG_RE = re.compile(r"^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$")
@@ -754,6 +755,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tmp = intent_path.with_suffix(".md.tmp")
         tmp.write_text(rendered, encoding="utf-8")
         os.replace(tmp, intent_path)
+        if reminder_date:
+            try:
+                from reminder_writer import write_reminder_date
+                write_reminder_date(intent_path, reminder_date)
+            except Exception as exc:
+                _log_exception(exc)
+                # Non-fatal: file was created; reminder is just missing
         self._send_json(
             {"success": True, "path": str(intent_path.relative_to(vault_root))},
             status=201,
@@ -792,6 +800,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not text:
             raise _UserError(400, "Please write something before saving.")
         project_slug = payload.get("project_slug")
+        reminder_date = (payload.get("reminder_date") or "").strip()
         if project_slug in ("", "unfiled", None):
             project_slug = None
         from capture_writer import write_capture
@@ -800,6 +809,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             _log_exception(exc)
             raise _UserError(500, "Could not save your note. Please try again.")
+        if reminder_date:
+            try:
+                from reminder_writer import write_reminder_date
+                write_reminder_date(path, reminder_date)
+            except Exception as exc:
+                _log_exception(exc)
+                # Non-fatal: capture was created; reminder is just missing
         self._send_json({
             "success": True,
             "id": path.stem,
