@@ -312,6 +312,43 @@ def create_project(
     }
 
 
+def ensure_scratch_pad(vault_path: pathlib.Path) -> None:
+    """Create SCRATCH-PAD project if absent. Called at every server start."""
+    project_dir = vault_path / "01-Proyectos-Activos" / "SCRATCH-PAD"
+    if project_dir.exists():
+        return
+    try:
+        today_iso = _dt.date.today().isoformat()
+        project_dir.mkdir(parents=True, exist_ok=True)
+        page = project_dir / "SCRATCH-PAD.md"
+        content = f"""---
+id: SCRATCH-PAD
+tipo: C
+estado: wip
+creado: {today_iso}
+protected: true
+tags: [proyecto, proyecto/activo, tipo/C]
+---
+
+# SCRATCH-PAD
+
+Default project for quick ideas, reminders, and captures.
+
+## 🎯 Objetivo
+Container for quick captures and scratch notes.
+
+## ✅ Definition of Done (mínima)
+- [ ] Items moved to appropriate projects
+
+## 🧩 Intents
+
+## 📝 Contexto
+"""
+        page.write_text(content, encoding="utf-8")
+    except Exception:
+        pass  # Non-fatal: server starts anyway
+
+
 def _print_summary(result: dict, first_intent_tag: Optional[str]) -> None:
     tag = result["tag"]
     print(f"✅ Created project: {tag}")

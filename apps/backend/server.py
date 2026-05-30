@@ -180,6 +180,23 @@ def is_path_inside(target: pathlib.Path, root: pathlib.Path) -> bool:
         return False
 
 
+# ─── Scratch-pad bootstrap ───────────────────────────────────────────────────
+
+_scratch_pad_ensured: set = set()  # vault paths already checked this process
+
+
+def _ensure_scratch_pad_once(vault_path: pathlib.Path) -> None:
+    key = str(vault_path)
+    if key in _scratch_pad_ensured:
+        return
+    _scratch_pad_ensured.add(key)
+    try:
+        from new_project_writer import ensure_scratch_pad
+        ensure_scratch_pad(vault_path)
+    except Exception:
+        pass  # Non-fatal
+
+
 # ─── Route table ─────────────────────────────────────────────────────────────
 
 
@@ -199,6 +216,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/intents$"),                           "api_intent_create"),
     ("POST", re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_save"),
+    ("DELETE", re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
+                                                                       "api_project_delete"),
     ("GET",  re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
                                                                        "api_note_detail"),
     ("POST", re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
@@ -238,15 +257,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         self._send_common_headers(no_store=True)
-        self.send_header("Allow", "GET, POST, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Allow", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
         _log_request("OPTIONS", self.path, 204)
     def do_HEAD(self) -> None: self._method_not_allowed("HEAD")
     def do_PUT(self) -> None: self._dispatch("PUT")
-    def do_DELETE(self) -> None: self._method_not_allowed("DELETE")
+    def do_DELETE(self) -> None: self._dispatch("DELETE")
     def do_PATCH(self) -> None: self._method_not_allowed("PATCH")
 
     def _method_not_allowed(self, method: str) -> None:
@@ -383,6 +402,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_me(self) -> None:
         ctx, cookies = self._context()
+        _ensure_scratch_pad_once(ctx.active.path)
         payload = {
             "active_workspace": _vault_to_dict(ctx.active),
             "workspaces": [_vault_to_dict(v) for v in ctx.all],
@@ -653,6 +673,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._save_with_mtime(proj_md, ctx.active.path, self._read_json_body())
         self._send_json({"success": True, "slug": slug,
                          "mtime": proj_md.stat().st_mtime})
+
+    def api_project_delete(self, slug: str) -> None:
+        ctx, _ = self._context()
+        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
+            raise _UserError(404, "We could not find that project.")
+        text = proj_md.read_text(encoding="utf-8", errors="replace")
+        fm = _parse_frontmatter_simple(text)
+        if str(fm.get("protected", "")).lower() in ("true", "1", "yes"):
+            raise _UserError(403, "PROJECT_PROTECTED")
+        import shutil
+        project_dir = ctx.active.path / "01-Proyectos-Activos" / slug
+        if not is_path_inside(project_dir, ctx.active.path):
+            raise _UserError(403, "That path is outside your workspace.")
+        shutil.rmtree(project_dir)
+        self._send_json({"success": True, "slug": slug})
 
     def api_intent_create(self) -> None:
         ctx, _ = self._context()
@@ -1016,6 +1052,25 @@ class _ResponseSent(Exception):
 
 def _vault_to_dict(v) -> dict:
     return {"name": v.name, "path": str(v.path), "default": bool(v.default)}
+
+
+def _parse_frontmatter_simple(text: str) -> dict:
+    """Parse YAML frontmatter from a markdown string into a flat dict.
+
+    Only handles simple ``key: value`` lines (no nested structure). Returns
+    an empty dict if the text has no frontmatter block.
+    """
+    lines = text.splitlines()
+    if not lines or lines[0].rstrip() != "---":
+        return {}
+    result: dict = {}
+    for line in lines[1:]:
+        if line.rstrip() == "---":
+            break
+        if ":" in line:
+            key, _, val = line.partition(":")
+            result[key.strip()] = val.strip()
+    return result
 
 
 def _strip_frontmatter(text: str) -> str:
