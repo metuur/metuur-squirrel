@@ -4,6 +4,17 @@ Local-first ADHD productivity companion. Monorepo.
 
 ## Installing (end users)
 
+Squirrel ships in two flavors. Pick whichever fits your audience:
+
+| Flavor | What you get | Who it's for |
+|---|---|---|
+| **Squirrel.app** (Tauri DMG) | Just the desktop popup with a bundled backend that the app supervises itself. No terminal needed after install. | End users who want the tray popup. |
+| **Full installer DMG** (below) | `squirrel` CLI + backend + `agent-pack/` (Claude/Codex skills) + launchd service. | Power users who want CLI access and agent integration alongside the popup. |
+
+For the **Squirrel.app** path, see [`docs/install.md`](docs/install.md) — drag to Applications, then a one-time Gatekeeper bypass (right-click → Open) because the app is currently unsigned. The signing roadmap is in [`docs/release.md`](docs/release.md).
+
+The instructions below cover the **full installer DMG** path.
+
 **Prerequisites:** Claude Code, Codex, Cursor, or Windsurf — plus a folder to use as your vault. Nothing else.
 
 1. Download `squirrel-installer-macos.dmg`
@@ -81,6 +92,42 @@ Key files:
 
 ---
 
+## Building the desktop popup (contributors)
+
+Also requires `pyinstaller` on the dev machine — the Tauri app bundles a PyInstaller-built `squirrel-backend` inside `Contents/Resources/` so the `.app` is self-sufficient (no launchd or separate install needed).
+
+```bash
+pip install pyinstaller
+make build                  # → Squirrel.app + .dmg (unsigned)
+```
+
+What `make build` does (via Tauri's `beforeBundleCommand`):
+
+```
+Step 1  pnpm build                              → apps/desktop/dist/  (Tauri SPA)
+Step 2  pnpm tauri:prebuild-backend             → src-tauri/bin/squirrel-backend-<TARGET_TRIPLE>
+        (PyInstaller; embeds apps/backend/app/dist/ for the React web UI)
+Step 3  cargo build --release
+Step 4  bundle .app + .dmg
+```
+
+Artifacts land at:
+
+- `apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app`
+- `apps/desktop/src-tauri/target/release/bundle/dmg/Squirrel_<version>_<arch>.dmg`
+
+The bundled backend is supervised by the Tauri app (see `apps/desktop/src-tauri/src/backend_supervisor.rs`): it's spawned on launch, health-checked every 30s, respawned on crash (bounded), and SIGTERM'd on quit. No launchd plist needed.
+
+Iterating on the backend without rebuilding the whole bundle:
+
+```bash
+cd apps/desktop && pnpm tauri:prebuild-backend   # rebuilds just the sidecar
+```
+
+Full code-signing + notarization setup for non-technical end-user distribution is documented in [`docs/release.md`](docs/release.md).
+
+---
+
 ## Layout
 
 ```
@@ -124,9 +171,22 @@ The first version of Squirrel (v0.5.0, `~/others/ai-agents/adhd-context-bridge`)
 
 ```bash
 pnpm install
-pnpm tauri dev          # runs the desktop app (filters to @squirrel/desktop)
-pnpm tauri build        # produces an unsigned .app + .dmg
+make dev                # pnpm tauri dev (adopts the running backend on :3939)
+make backend-start      # in a second terminal: python3 apps/backend/server.py --port 3939
+make build              # produces an unsigned Squirrel.app + .dmg (bundles PyInstaller backend)
 ```
+
+`make help` lists every target. Most useful day-to-day:
+
+| Target | What it does |
+|---|---|
+| `make dev` | Tauri popup in dev mode — supervisor adopts whatever's on `:3939` |
+| `make dev-all` | preflight backend check + `make dev` |
+| `make build` | full unsigned Tauri bundle with embedded backend |
+| `make backend-start` | run the backend directly (for `make dev` to adopt) |
+| `make backend-build` | rebuild the React web UI served by the backend |
+| `make build-installers` | the other distribution path: CLI + agent-pack DMG |
+| `make test-cli` | run the Python test suite |
 
 Per-package commands work via filter:
 
