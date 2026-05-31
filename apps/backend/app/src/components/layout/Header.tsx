@@ -26,7 +26,6 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
   const searchRef = useRef<HTMLInputElement>(null);
   const inflight = useRef(0);
 
-  // Cmd+K focuses the search box
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -38,7 +37,6 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Debounced search
   useEffect(() => {
     if (!q.trim()) { setResults([]); setShowResults(false); return; }
     const id = ++inflight.current;
@@ -63,24 +61,24 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
   }
 
   return (
-    <div className="flex flex-col sticky top-0 z-20 shadow-sm">
-      <header className="h-14 border-b border-border-light dark:border-border-dark bg-white dark:bg-surface-dark flex items-center px-6 gap-10 transition-colors duration-200">
+    <div className="flex flex-col sticky top-0 z-20">
+      <header className="h-14 border-b border-hairline bg-surface flex items-center px-6 gap-10">
         <div className="flex items-center gap-6 shrink-0">
           <Link
             to="/"
-            className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100 hover:opacity-80 transition-opacity cursor-pointer"
+            className="flex items-center gap-2 font-bold text-ink hover:opacity-80 transition-opacity cursor-pointer"
           >
             <img src="/squirrel.svg" alt="" aria-hidden="true" className="w-8 h-8" />
             <span className="tracking-tight">Squirrel</span>
           </Link>
 
-          <div className={`${showViewToggle ? 'hidden md:flex' : 'hidden'} bg-slate-100 dark:bg-slate-800 p-0.5 rounded border border-border-light dark:border-border-dark`}>
+          <div className={`${showViewToggle ? 'hidden md:flex' : 'hidden'} bg-surface-2 p-0.5 rounded border border-hairline`}>
             <button
               onClick={() => setViewMode('List')}
               className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
                 viewMode === 'List'
-                  ? 'text-primary bg-white dark:bg-slate-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'text-accent bg-surface shadow-sm'
+                  : 'text-ink-3 hover:text-ink-2'
               }`}
             >
               List
@@ -89,8 +87,8 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               onClick={() => setViewMode('Board')}
               className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
                 viewMode === 'Board'
-                  ? 'text-primary bg-white dark:bg-slate-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'text-accent bg-surface shadow-sm'
+                  : 'text-ink-3 hover:text-ink-2'
               }`}
             >
               Board
@@ -104,19 +102,19 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               <select
                 value={me.active_workspace.name}
                 onChange={(e) => switchWorkspace(e.target.value)}
-                className="appearance-none flex items-center gap-2 pl-9 pr-8 py-1.5 border border-border-light dark:border-border-dark rounded bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm outline-none focus:ring-1 focus:ring-primary"
+                className="appearance-none flex items-center gap-2 pl-9 pr-8 py-1.5 border border-hairline rounded bg-surface text-sm font-medium text-ink-2 cursor-pointer hover:border-ink-4 transition-all outline-none focus:ring-1 focus:ring-accent"
               >
                 {me.workspaces.map((w) => (
                   <option key={w.name} value={w.name}>{w.name}</option>
                 ))}
               </select>
-              <span className="material-icons text-slate-400 text-lg absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">folder_open</span>
-              <span className="material-icons text-slate-400 text-lg absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">arrow_drop_down</span>
+              <span className="material-icons text-ink-4 text-lg absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">folder_open</span>
+              <span className="material-icons text-ink-4 text-lg absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none">arrow_drop_down</span>
             </div>
           )}
 
           <div className="relative w-full max-w-sm group">
-            <span className="material-icons absolute left-3 top-[7px] text-slate-400 text-lg pointer-events-none group-focus-within:text-primary transition-colors">search</span>
+            <span className="material-icons absolute left-3 top-[7px] text-ink-4 text-lg pointer-events-none group-focus-within:text-accent transition-colors">search</span>
             <input
               ref={searchRef}
               type="text"
@@ -124,25 +122,25 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               onChange={(e) => setQ(e.target.value)}
               onFocus={() => results.length && setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 150)}
-              className="w-full pl-10 pr-10 py-1.5 text-sm border-2 border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-0 outline-none transition-all placeholder-slate-400 shadow-sm"
+              className="w-full pl-10 pr-10 py-1.5 text-sm border border-hairline rounded-md bg-surface text-ink focus:border-accent focus:ring-0 outline-none transition-all placeholder-ink-4"
               placeholder="Search notes... (Cmd+K)"
             />
             {searching && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-slate-300 border-t-primary rounded-full animate-spin" />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-hairline border-t-accent rounded-full animate-spin" />
             )}
             {showResults && results.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 max-h-80 overflow-auto rounded-md border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark shadow-lg z-50">
+              <div className="panel absolute top-full left-0 right-0 mt-1 max-h-80 overflow-auto z-50">
                 {results.slice(0, 12).map((h) => (
                   <Link
                     key={h.id}
                     to={`/notes/${h.id}`}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => { setShowResults(false); setQ(''); }}
-                    className="block border-b border-border-light dark:border-border-dark last:border-0 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                    className="block border-b border-hairline-2 last:border-0 px-3 py-2 text-sm hover:bg-surface-2"
                   >
-                    <div className="truncate font-medium text-slate-900 dark:text-slate-100">{h.title}</div>
+                    <div className="truncate font-medium text-ink">{h.title}</div>
                     {h.snippet_lines[0] && (
-                      <div className="truncate text-xs text-slate-500 dark:text-slate-400">{h.snippet_lines[0]}</div>
+                      <div className="truncate text-xs text-ink-3">{h.snippet_lines[0]}</div>
                     )}
                   </Link>
                 ))}
@@ -153,7 +151,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
           <div className="flex items-center gap-3 ml-2">
             <button
               onClick={() => openCapture()}
-              className="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-1.5 rounded shadow-sm flex items-center gap-1 transition-all"
+              className="btn btn-primary text-sm font-semibold px-4 py-1.5 flex items-center gap-1"
             >
               <span className="material-icons text-lg">add</span>
               Add a note
@@ -161,7 +159,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
 
             <button
               onClick={toggleDarkMode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all"
               title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               <span className="material-icons text-xl">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>

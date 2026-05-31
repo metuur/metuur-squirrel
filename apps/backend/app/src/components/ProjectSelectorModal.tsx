@@ -28,7 +28,7 @@ export function ProjectSelectorModal({ open, onClose }: Props) {
       footer={
         <button
           onClick={onClose}
-          className="px-4 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+          className="btn btn-ghost px-4 py-1.5 text-sm font-semibold"
         >
           Cancel
         </button>
@@ -36,19 +36,19 @@ export function ProjectSelectorModal({ open, onClose }: Props) {
     >
       <div className="space-y-1 max-h-72 overflow-y-auto">
         {isLoading && (
-          <div className="py-6 text-center text-sm text-slate-400">Loading projects…</div>
+          <div className="py-6 text-center text-sm text-ink-4">Loading projects…</div>
         )}
         {!isLoading && (!projects || projects.length === 0) && (
-          <div className="py-6 text-center text-sm text-slate-400">No active projects found.</div>
+          <div className="py-6 text-center text-sm text-ink-4">No active projects found.</div>
         )}
         {(projects ?? []).map((p: ProjectListItem) => (
           <button
             key={p.slug}
             onClick={() => select(p.slug)}
-            className="w-full text-left px-3 py-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+            className="w-full text-left px-3 py-2.5 rounded-lg border border-transparent hover:border-accent/30 hover:bg-focus-tint transition-all group"
           >
-            <div className="text-[10px] font-mono text-slate-400 mb-0.5">{p.slug}</div>
-            <div className="text-sm font-medium text-slate-800 dark:text-slate-100 group-hover:text-primary">{p.title}</div>
+            <div className="text-[10px] font-mono text-ink-4 mb-0.5">{p.slug}</div>
+            <div className="text-sm font-medium text-ink group-hover:text-accent">{p.title}</div>
           </button>
         ))}
       </div>

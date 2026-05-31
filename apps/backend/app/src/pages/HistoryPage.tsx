@@ -5,14 +5,14 @@ import { fromNow } from '@/lib/utils';
 
 export default function HistoryPage() {
   const { data, isLoading } = useFetch('history', () => api.history());
-  if (isLoading && !data) return <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
+  if (isLoading && !data) return <div className="h-64 animate-pulse rounded-lg bg-surface-2" />;
   return (
     <div className="max-w-3xl">
-      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6">Recent activity</h1>
+      <h1 className="title mb-6">Recent activity</h1>
       {!data || data.length === 0 ? (
-        <div className="text-center py-12 bg-surface-light dark:bg-surface-dark border border-dashed border-border-light dark:border-border-dark rounded-2xl">
-          <span className="material-icons text-slate-300 text-4xl">history</span>
-          <p className="text-slate-500 mt-2">Nothing yet.</p>
+        <div className="text-center py-12 panel border-dashed">
+          <span className="material-icons text-ink-4 text-4xl">history</span>
+          <p className="text-ink-3 mt-2">Nothing yet.</p>
         </div>
       ) : (
         <div className="space-y-1">
@@ -23,15 +23,15 @@ export default function HistoryPage() {
               <Link
                 key={`${it.kind}-${it.slug ?? it.note_id ?? i}`}
                 to={href}
-                className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 group"
+                className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-md hover:bg-surface-2 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="material-icons text-base text-slate-400 group-hover:text-primary">{icon}</span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate group-hover:text-primary">
+                  <span className="material-icons text-base text-ink-4 group-hover:text-accent">{icon}</span>
+                  <span className="text-sm font-medium text-ink truncate group-hover:text-accent">
                     {it.title}
                   </span>
                 </div>
-                <span className="text-xs text-slate-400 whitespace-nowrap">{fromNow(it.modified_at)}</span>
+                <span className="text-xs text-ink-4 whitespace-nowrap">{fromNow(it.modified_at)}</span>
               </Link>
             );
           })}

@@ -25,29 +25,29 @@ export function ConflictDialog({
         <>
           <button
             onClick={onCancel}
-            className="px-4 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+            className="btn btn-ghost px-4 py-1.5 text-sm font-semibold"
           >
             Cancel
           </button>
           <button
             onClick={onForceMine}
-            className="px-4 py-1.5 text-sm font-semibold border border-border-light dark:border-border-dark text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+            className="btn px-4 py-1.5 text-sm font-semibold"
           >
             Keep mine
           </button>
           <button
             onClick={onTakeTheirs}
             disabled={!payload}
-            className="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-1.5 rounded-md shadow-sm disabled:opacity-50"
+            className="btn btn-primary px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
           >
             Show their version
           </button>
         </>
       }
     >
-      <div className="flex gap-3 p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40">
-        <span className="material-icons text-amber-500 dark:text-amber-300 text-lg mt-0.5 shrink-0">info</span>
-        <p className="text-xs leading-relaxed text-amber-900 dark:text-amber-100">
+      <div className="flex gap-3 p-3.5 rounded-xl bg-warning-bg border border-warning/30">
+        <span className="material-icons text-warning text-lg mt-0.5 shrink-0">info</span>
+        <p className="text-xs leading-relaxed text-ink-2">
           A newer version of this file is already saved on disk. Keep your edits, or pull theirs in for review before overwriting.
         </p>
       </div>

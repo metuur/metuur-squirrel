@@ -112,10 +112,19 @@
       "norm_label": "@mdxeditor/editor"
     },
     {
-      "label": "marked",
+      "label": "@squirrel/design-system",
       "file_type": "code",
       "source_file": "package.json",
       "source_location": "L14",
+      "id": "app_package_dependencies_squirrel_design_system",
+      "community": 2,
+      "norm_label": "@squirrel/design-system"
+    },
+    {
+      "label": "marked",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L15",
       "id": "app_package_dependencies_marked",
       "community": 2,
       "norm_label": "marked"
@@ -124,7 +133,7 @@
       "label": "react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L15",
+      "source_location": "L16",
       "id": "app_package_dependencies_react",
       "community": 2,
       "norm_label": "react"
@@ -133,7 +142,7 @@
       "label": "react-dom",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L16",
+      "source_location": "L17",
       "id": "app_package_dependencies_react_dom",
       "community": 2,
       "norm_label": "react-dom"
@@ -142,7 +151,7 @@
       "label": "react-router-dom",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L17",
+      "source_location": "L18",
       "id": "app_package_dependencies_react_router_dom",
       "community": 2,
       "norm_label": "react-router-dom"
@@ -151,16 +160,25 @@
       "label": "devDependencies",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L19",
+      "source_location": "L20",
       "id": "app_package_devdependencies",
       "community": 2,
       "norm_label": "devdependencies"
     },
     {
+      "label": "@tailwindcss/vite",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L21",
+      "id": "app_package_devdependencies_tailwindcss_vite",
+      "community": 2,
+      "norm_label": "@tailwindcss/vite"
+    },
+    {
       "label": "@types/react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L20",
+      "source_location": "L22",
       "id": "app_package_devdependencies_types_react",
       "community": 2,
       "norm_label": "@types/react"
@@ -169,7 +187,7 @@
       "label": "@types/react-dom",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L21",
+      "source_location": "L23",
       "id": "app_package_devdependencies_types_react_dom",
       "community": 2,
       "norm_label": "@types/react-dom"
@@ -178,16 +196,25 @@
       "label": "@vitejs/plugin-react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L22",
+      "source_location": "L24",
       "id": "app_package_devdependencies_vitejs_plugin_react",
       "community": 2,
       "norm_label": "@vitejs/plugin-react"
     },
     {
+      "label": "tailwindcss",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L25",
+      "id": "app_package_devdependencies_tailwindcss",
+      "community": 2,
+      "norm_label": "tailwindcss"
+    },
+    {
       "label": "typescript",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L23",
+      "source_location": "L26",
       "id": "app_package_devdependencies_typescript",
       "community": 2,
       "norm_label": "typescript"
@@ -196,7 +223,7 @@
       "label": "vite",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L27",
       "id": "app_package_devdependencies_vite",
       "community": 2,
       "norm_label": "vite"
@@ -675,7 +702,7 @@
       "source_file": "src/components/RemindersWidget.tsx",
       "source_location": "L1",
       "id": "src_components_reminderswidget_tsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "reminderswidget.tsx"
     },
     {
@@ -684,25 +711,25 @@
       "source_file": "src/components/RemindersWidget.tsx",
       "source_location": "L5",
       "id": "components_reminderswidget_reminderswidget",
-      "community": 7,
+      "community": 3,
       "norm_label": "reminderswidget()"
     },
     {
       "label": "ApproachingRow()",
       "file_type": "code",
       "source_file": "src/components/RemindersWidget.tsx",
-      "source_location": "L75",
+      "source_location": "L70",
       "id": "components_reminderswidget_approachingrow",
-      "community": 7,
+      "community": 3,
       "norm_label": "approachingrow()"
     },
     {
       "label": "ActiveRow()",
       "file_type": "code",
       "source_file": "src/components/RemindersWidget.tsx",
-      "source_location": "L95",
+      "source_location": "L90",
       "id": "components_reminderswidget_activerow",
-      "community": 7,
+      "community": 3,
       "norm_label": "activerow()"
     },
     {
@@ -765,7 +792,7 @@
       "source_file": "src/components/CaptureModal.tsx",
       "source_location": "L26",
       "id": "components_capturemodal_capturedialog",
-      "community": 6,
+      "community": 0,
       "norm_label": "capturedialog()"
     },
     {
@@ -774,7 +801,7 @@
       "source_file": "src/components/ConflictDialog.tsx",
       "source_location": "L1",
       "id": "src_components_conflictdialog_tsx",
-      "community": 10,
+      "community": 0,
       "norm_label": "conflictdialog.tsx"
     },
     {
@@ -783,7 +810,7 @@
       "source_file": "src/components/ConflictDialog.tsx",
       "source_location": "L3",
       "id": "components_conflictdialog_conflictdialog",
-      "community": 10,
+      "community": 0,
       "norm_label": "conflictdialog()"
     },
     {
@@ -792,7 +819,7 @@
       "source_file": "src/components/ProjectSelectorModal.tsx",
       "source_location": "L1",
       "id": "src_components_projectselectormodal_tsx",
-      "community": 10,
+      "community": 5,
       "norm_label": "projectselectormodal.tsx"
     },
     {
@@ -801,7 +828,7 @@
       "source_file": "src/components/ProjectSelectorModal.tsx",
       "source_location": "L6",
       "id": "components_projectselectormodal_props",
-      "community": 10,
+      "community": 5,
       "norm_label": "props"
     },
     {
@@ -810,7 +837,7 @@
       "source_file": "src/components/ProjectSelectorModal.tsx",
       "source_location": "L11",
       "id": "components_projectselectormodal_projectselectormodal",
-      "community": 10,
+      "community": 5,
       "norm_label": "projectselectormodal()"
     },
     {
@@ -835,7 +862,7 @@
       "label": "PromptPanel()",
       "file_type": "code",
       "source_file": "src/components/PromptPanel.tsx",
-      "source_location": "L16",
+      "source_location": "L15",
       "id": "components_promptpanel_promptpanel",
       "community": 1,
       "norm_label": "promptpanel()"
@@ -846,7 +873,7 @@
       "source_file": "src/components/Modal.tsx",
       "source_location": "L1",
       "id": "src_components_modal_tsx",
-      "community": 10,
+      "community": 0,
       "norm_label": "modal.tsx"
     },
     {
@@ -855,25 +882,25 @@
       "source_file": "src/components/Modal.tsx",
       "source_location": "L3",
       "id": "components_modal_modalprops",
-      "community": 10,
+      "community": 0,
       "norm_label": "modalprops"
     },
     {
       "label": "SIZE_CLASS",
       "file_type": "code",
       "source_file": "src/components/Modal.tsx",
-      "source_location": "L20",
+      "source_location": "L14",
       "id": "components_modal_size_class",
-      "community": 10,
+      "community": 0,
       "norm_label": "size_class"
     },
     {
       "label": "Modal()",
       "file_type": "code",
       "source_file": "src/components/Modal.tsx",
-      "source_location": "L26",
+      "source_location": "L20",
       "id": "components_modal_modal",
-      "community": 10,
+      "community": 0,
       "norm_label": "modal()"
     },
     {
@@ -927,7 +954,7 @@
       "source_file": "src/components/Toast.tsx",
       "source_location": "L1",
       "id": "src_components_toast_tsx",
-      "community": 0,
+      "community": 6,
       "norm_label": "toast.tsx"
     },
     {
@@ -936,7 +963,7 @@
       "source_file": "src/components/Toast.tsx",
       "source_location": "L3",
       "id": "components_toast_toastmsg",
-      "community": 0,
+      "community": 6,
       "norm_label": "toastmsg"
     },
     {
@@ -945,7 +972,7 @@
       "source_file": "src/components/Toast.tsx",
       "source_location": "L4",
       "id": "components_toast_ctx",
-      "community": 0,
+      "community": 6,
       "norm_label": "ctx"
     },
     {
@@ -954,7 +981,7 @@
       "source_file": "src/components/Toast.tsx",
       "source_location": "L6",
       "id": "components_toast_toast",
-      "community": 0,
+      "community": 6,
       "norm_label": "toast"
     },
     {
@@ -972,7 +999,7 @@
       "source_file": "src/components/Toast.tsx",
       "source_location": "L9",
       "id": "components_toast_toastprovider",
-      "community": 0,
+      "community": 6,
       "norm_label": "toastprovider()"
     },
     {
@@ -1071,7 +1098,7 @@
       "source_file": "src/hooks/useFetch.ts",
       "source_location": "L1",
       "id": "src_hooks_usefetch_ts",
-      "community": 7,
+      "community": 5,
       "norm_label": "usefetch.ts"
     },
     {
@@ -1080,7 +1107,7 @@
       "source_file": "src/hooks/useFetch.ts",
       "source_location": "L5",
       "id": "hooks_usefetch_usefetch",
-      "community": 7,
+      "community": 5,
       "norm_label": "usefetch()"
     },
     {
@@ -1188,7 +1215,7 @@
       "source_file": "src/api/client.ts",
       "source_location": "L74",
       "id": "api_client_projectlistitem",
-      "community": 10,
+      "community": 5,
       "norm_label": "projectlistitem"
     },
     {
@@ -1377,7 +1404,7 @@
       "source_file": "src/api/client.ts",
       "source_location": "L215",
       "id": "api_client_reminderitem",
-      "community": 7,
+      "community": 3,
       "norm_label": "reminderitem"
     },
     {
@@ -1386,7 +1413,7 @@
       "source_file": "src/api/client.ts",
       "source_location": "L222",
       "id": "api_client_reminderspayload",
-      "community": 7,
+      "community": 3,
       "norm_label": "reminderspayload"
     },
     {
@@ -1422,7 +1449,7 @@
       "source_file": "src/pages/HistoryPage.tsx",
       "source_location": "L1",
       "id": "src_pages_historypage_tsx",
-      "community": 7,
+      "community": 5,
       "norm_label": "historypage.tsx"
     },
     {
@@ -1431,7 +1458,7 @@
       "source_file": "src/pages/HistoryPage.tsx",
       "source_location": "L6",
       "id": "pages_historypage_historypage",
-      "community": 7,
+      "community": 5,
       "norm_label": "historypage()"
     },
     {
@@ -1440,7 +1467,7 @@
       "source_file": "src/pages/SettingsPage.tsx",
       "source_location": "L1",
       "id": "src_pages_settingspage_tsx",
-      "community": 0,
+      "community": 5,
       "norm_label": "settingspage.tsx"
     },
     {
@@ -1449,34 +1476,34 @@
       "source_file": "src/pages/SettingsPage.tsx",
       "source_location": "L6",
       "id": "pages_settingspage_settingspage",
-      "community": 0,
+      "community": 5,
       "norm_label": "settingspage()"
     },
     {
       "label": "ToggleRow()",
       "file_type": "code",
       "source_file": "src/pages/SettingsPage.tsx",
-      "source_location": "L130",
+      "source_location": "L126",
       "id": "pages_settingspage_togglerow",
-      "community": 0,
+      "community": 5,
       "norm_label": "togglerow()"
     },
     {
       "label": "SettingsSection()",
       "file_type": "code",
       "source_file": "src/pages/SettingsPage.tsx",
-      "source_location": "L164",
+      "source_location": "L160",
       "id": "pages_settingspage_settingssection",
-      "community": 0,
+      "community": 5,
       "norm_label": "settingssection()"
     },
     {
       "label": "applyThemeClass()",
       "file_type": "code",
       "source_file": "src/pages/SettingsPage.tsx",
-      "source_location": "L191",
+      "source_location": "L187",
       "id": "pages_settingspage_applythemeclass",
-      "community": 0,
+      "community": 5,
       "norm_label": "applythemeclass()"
     },
     {
@@ -1485,7 +1512,7 @@
       "source_file": "src/pages/NotePage.tsx",
       "source_location": "L1",
       "id": "src_pages_notepage_tsx",
-      "community": 7,
+      "community": 5,
       "norm_label": "notepage.tsx"
     },
     {
@@ -1494,7 +1521,7 @@
       "source_file": "src/pages/NotePage.tsx",
       "source_location": "L6",
       "id": "pages_notepage_notepage",
-      "community": 7,
+      "community": 5,
       "norm_label": "notepage()"
     },
     {
@@ -1503,7 +1530,7 @@
       "source_file": "src/pages/DeadlinesPage.tsx",
       "source_location": "L1",
       "id": "src_pages_deadlinespage_tsx",
-      "community": 7,
+      "community": 5,
       "norm_label": "deadlinespage.tsx"
     },
     {
@@ -1512,7 +1539,7 @@
       "source_file": "src/pages/DeadlinesPage.tsx",
       "source_location": "L5",
       "id": "pages_deadlinespage_label_icons",
-      "community": 7,
+      "community": 5,
       "norm_label": "label_icons"
     },
     {
@@ -1521,16 +1548,25 @@
       "source_file": "src/pages/DeadlinesPage.tsx",
       "source_location": "L11",
       "id": "pages_deadlinespage_label_colors",
-      "community": 7,
+      "community": 5,
       "norm_label": "label_colors"
+    },
+    {
+      "label": "LABEL_STRIPE",
+      "file_type": "code",
+      "source_file": "src/pages/DeadlinesPage.tsx",
+      "source_location": "L17",
+      "id": "pages_deadlinespage_label_stripe",
+      "community": 5,
+      "norm_label": "label_stripe"
     },
     {
       "label": "DeadlinesPage()",
       "file_type": "code",
       "source_file": "src/pages/DeadlinesPage.tsx",
-      "source_location": "L18",
+      "source_location": "L24",
       "id": "pages_deadlinespage_deadlinespage",
-      "community": 7,
+      "community": 5,
       "norm_label": "deadlinespage()"
     },
     {
@@ -1645,7 +1681,7 @@
       "label": "BoardView()",
       "file_type": "code",
       "source_file": "src/pages/HomePage.tsx",
-      "source_location": "L157",
+      "source_location": "L154",
       "id": "pages_homepage_boardview",
       "community": 1,
       "norm_label": "boardview()"
@@ -1654,7 +1690,7 @@
       "label": "PressingCard()",
       "file_type": "code",
       "source_file": "src/pages/HomePage.tsx",
-      "source_location": "L219",
+      "source_location": "L213",
       "id": "pages_homepage_pressingcard",
       "community": 1,
       "norm_label": "pressingcard()"
@@ -1663,7 +1699,7 @@
       "label": "ProjectCard()",
       "file_type": "code",
       "source_file": "src/pages/HomePage.tsx",
-      "source_location": "L241",
+      "source_location": "L235",
       "id": "pages_homepage_projectcard",
       "community": 1,
       "norm_label": "projectcard()"
@@ -1672,7 +1708,7 @@
       "label": "ListView()",
       "file_type": "code",
       "source_file": "src/pages/HomePage.tsx",
-      "source_location": "L272",
+      "source_location": "L265",
       "id": "pages_homepage_listview",
       "community": 1,
       "norm_label": "listview()"
@@ -1807,6 +1843,16 @@
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "app_package_dependencies",
+      "target": "app_package_dependencies_squirrel_design_system"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_package_dependencies",
       "target": "app_package_dependencies_marked"
     },
     {
@@ -1843,6 +1889,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "package.json",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_package_devdependencies",
+      "target": "app_package_devdependencies_tailwindcss_vite"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
       "source_location": "L20",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -1868,6 +1924,16 @@
       "confidence_score": 1.0,
       "source": "app_package_devdependencies",
       "target": "app_package_devdependencies_vitejs_plugin_react"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L25",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "app_package_devdependencies",
+      "target": "app_package_devdependencies_tailwindcss"
     },
     {
       "relation": "contains",
@@ -3484,9 +3550,9 @@
       "source_file": "src/components/NewTaskModal.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_newtaskmodal_tsx",
-      "target": "components_newtaskmodal_titletofilename",
-      "confidence_score": 1.0
+      "target": "components_newtaskmodal_titletofilename"
     },
     {
       "relation": "contains",
@@ -5106,6 +5172,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/DeadlinesPage.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_pages_deadlinespage_tsx",
+      "target": "pages_deadlinespage_label_stripe"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/pages/DeadlinesPage.tsx",
       "source_location": "L18",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -5234,5 +5310,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "45433b4d3170f7d45e7b0da8130261b04826677f"
+  "built_at_commit": "312905a881d1206ef7c5aa040d293e167690c37f"
 }

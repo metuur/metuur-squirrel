@@ -19,7 +19,7 @@ export default function App() {
     <ToastProvider>
       <CaptureProvider>
         <ApiActivityIndicator />
-        <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading…</div>}>
+        <Suspense fallback={<div className="p-8 text-center text-ink-4">Loading…</div>}>
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
@@ -41,8 +41,8 @@ export default function App() {
 
 function NotFound() {
   return (
-    <div className="py-16 text-center text-slate-400">
-      <span className="material-icons text-5xl text-slate-300">help_outline</span>
+    <div className="py-16 text-center text-ink-4">
+      <span className="material-icons text-5xl text-ink-4">help_outline</span>
       <p className="mt-3">We could not find that page.</p>
     </div>
   );

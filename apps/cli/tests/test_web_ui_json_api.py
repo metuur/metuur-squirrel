@@ -150,6 +150,125 @@ class TestMeMultiVault(_Case):
         self.assertEqual(names, ["other", "test"])
 
 
+class TestMeNotificationsSound(_Case):
+    """R-4.4 — /api/me exposes notifications.sound."""
+
+    def test_default_sound_is_glass_when_section_absent(self):
+        status, data = self._get_json("/api/me")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["notifications"]["sound"], "Glass")
+
+    def test_persisted_sound_round_trips_through_api_me(self):
+        cfg = self.home / ".squirrel" / "config.toml"
+        cfg.write_text(cfg.read_text() + textwrap.dedent("""
+            [notifications]
+            in_app = true
+            os_popups = false
+            sound = "Funk"
+        """))
+        status, data = self._get_json("/api/me")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["notifications"]["sound"], "Funk")
+
+
+class TestNotificationsPreview(_Case):
+    """R-4.5 — POST /api/notifications/preview plays without persisting."""
+
+    def _config_text(self):
+        return (self.home / ".squirrel" / "config.toml").read_text()
+
+    def test_valid_sound_returns_200(self):
+        status, _ = self._post_json(
+            "/api/notifications/preview",
+            {"sound": "Funk"},
+        )
+        self.assertEqual(status, 200)
+
+    def test_silent_returns_200(self):
+        status, _ = self._post_json(
+            "/api/notifications/preview",
+            {"sound": "Silent"},
+        )
+        self.assertEqual(status, 200)
+
+    def test_invalid_sound_returns_400(self):
+        status, _ = self._post_json(
+            "/api/notifications/preview",
+            {"sound": "Bogus"},
+        )
+        self.assertEqual(status, 400)
+
+    def test_missing_sound_returns_400(self):
+        status, _ = self._post_json(
+            "/api/notifications/preview",
+            {},
+        )
+        self.assertEqual(status, 400)
+
+    def test_preview_does_not_mutate_config(self):
+        before = self._config_text()
+        # Try each branch — valid, silent, invalid.
+        self._post_json("/api/notifications/preview", {"sound": "Funk"})
+        self._post_json("/api/notifications/preview", {"sound": "Silent"})
+        self._post_json("/api/notifications/preview", {"sound": "Bogus"})
+        after = self._config_text()
+        self.assertEqual(before, after)
+
+
+class TestSettingsNotificationsSound(_Case):
+    """R-4.1, R-4.2, R-4.3 — POST /api/settings/notifications sound contract."""
+
+    def test_post_with_sound_persists_it(self):
+        status, _ = self._post_json(
+            "/api/settings/notifications",
+            {"in_app": True, "os_popups": False, "sound": "Funk"},
+        )
+        self.assertEqual(status, 200)
+        _, me = self._get_json("/api/me")
+        self.assertEqual(me["notifications"]["sound"], "Funk")
+
+    def test_post_silent_persists(self):
+        status, _ = self._post_json(
+            "/api/settings/notifications",
+            {"in_app": True, "os_popups": False, "sound": "Silent"},
+        )
+        self.assertEqual(status, 200)
+        _, me = self._get_json("/api/me")
+        self.assertEqual(me["notifications"]["sound"], "Silent")
+
+    def test_post_without_sound_preserves_current(self):
+        # Seed Funk, then POST a legacy 2-key payload — Funk must survive.
+        self._post_json(
+            "/api/settings/notifications",
+            {"in_app": True, "os_popups": False, "sound": "Funk"},
+        )
+        status, _ = self._post_json(
+            "/api/settings/notifications",
+            {"in_app": False, "os_popups": True},
+        )
+        self.assertEqual(status, 200)
+        _, me = self._get_json("/api/me")
+        self.assertEqual(me["notifications"]["sound"], "Funk")
+        self.assertEqual(me["notifications"]["in_app"], False)
+        self.assertEqual(me["notifications"]["os_popups"], True)
+
+    def test_post_invalid_sound_returns_400_and_does_not_mutate(self):
+        # Seed Funk so we can verify it survives the rejected request.
+        self._post_json(
+            "/api/settings/notifications",
+            {"in_app": True, "os_popups": False, "sound": "Funk"},
+        )
+        status, _ = self._post_json(
+            "/api/settings/notifications",
+            {"in_app": False, "os_popups": True, "sound": "Bogus"},
+        )
+        self.assertEqual(status, 400)
+        _, me = self._get_json("/api/me")
+        self.assertEqual(me["notifications"]["sound"], "Funk")
+        self.assertEqual(me["notifications"]["in_app"], True)
+        self.assertEqual(me["notifications"]["os_popups"], False)
+
+
 # ── /api/home ───────────────────────────────────────────────────────────────
 
 

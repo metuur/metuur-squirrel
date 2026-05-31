@@ -53,7 +53,7 @@ export interface Me {
   multi_vault: boolean;
   theme: 'auto' | 'light' | 'dark';
   version: string;
-  notifications?: { in_app: boolean; os_popups: boolean };
+  notifications?: { in_app: boolean; os_popups: boolean; sound: 'Glass' | 'Funk' | 'Silent' };
 }
 export interface FocusItem {
   slug: string;
@@ -280,7 +280,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ theme }),
     }),
-  setNotificationSettings: (settings: { in_app: boolean; os_popups: boolean }) =>
+  setNotificationSettings: (settings: { in_app: boolean; os_popups: boolean; sound?: 'Glass' | 'Funk' | 'Silent' }) =>
     call<{ success: true }>('/settings/notifications', {
       method: 'POST',
       body: JSON.stringify(settings),

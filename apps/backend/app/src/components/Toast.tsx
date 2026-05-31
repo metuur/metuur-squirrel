@@ -26,10 +26,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={
               'sq-pop pointer-events-auto px-4 py-2.5 rounded-full shadow-xl text-sm font-medium border inline-flex items-center gap-2 ' +
               (m.kind === 'error'
-                ? 'bg-rose-500 text-white border-rose-600'
+                ? 'bg-critical text-surface border-critical'
                 : m.kind === 'success'
-                ? 'bg-emerald-500 text-white border-emerald-600'
-                : 'bg-slate-900 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-200')
+                ? 'bg-ok text-surface border-ok'
+                : 'bg-ink text-surface border-ink-2')
             }
           >
             <span className="material-icons text-base">

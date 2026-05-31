@@ -712,16 +712,27 @@ def remove_vault(
     _atomic_write(cfg_path, new_text)
 
 
+VALID_NOTIFICATION_SOUNDS = ("Glass", "Funk", "Silent")
+
+
 def load_notifications_settings(
     config_path: Optional[pathlib.Path] = None,
 ) -> dict:
-    """Return {"in_app": bool, "os_popups": bool}. Defaults: in_app=True, os_popups=False."""
+    """Return {"in_app": bool, "os_popups": bool, "sound": str}.
+
+    Defaults: in_app=True, os_popups=False, sound="Glass". Unknown sound values
+    fall back to "Glass" (R-1.3).
+    """
     path = config_path if config_path is not None else DEFAULT_CONFIG_PATH
     cfg = _load_toml(path) if path.exists() else {}
     n = cfg.get("notifications", {})
+    sound = n.get("sound", "Glass")
+    if sound not in VALID_NOTIFICATION_SOUNDS:
+        sound = "Glass"
     return {
         "in_app":    bool(n.get("in_app",    True)),
         "os_popups": bool(n.get("os_popups", False)),
+        "sound":     sound,
     }
 
 
@@ -730,6 +741,7 @@ def save_notifications_settings(
     *,
     in_app: bool,
     os_popups: bool,
+    sound: str,
 ) -> None:
     """Write [notifications] section to config.toml atomically."""
     text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
@@ -760,7 +772,12 @@ def save_notifications_settings(
 
     in_app_s = "true" if in_app else "false"
     os_popups_s = "true" if os_popups else "false"
-    new_text += f"[notifications]\nin_app = {in_app_s}\nos_popups = {os_popups_s}\n"
+    new_text += (
+        f"[notifications]\n"
+        f"in_app = {in_app_s}\n"
+        f"os_popups = {os_popups_s}\n"
+        f'sound = "{sound}"\n'
+    )
 
     _atomic_write(config_path, new_text)
 

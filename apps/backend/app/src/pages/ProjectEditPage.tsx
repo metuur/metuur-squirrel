@@ -44,19 +44,19 @@ export default function ProjectEditPage() {
     } finally { setSaving(false); }
   }
 
-  if (!project) return <div className="h-64 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
+  if (!project) return <div className="h-64 animate-pulse rounded-lg bg-surface-2" />;
 
   return (
     <div className="max-w-4xl space-y-4">
-      <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-        <Link to={`/projects/${slug}`} className="hover:text-primary flex items-center gap-1">
+      <div className="flex items-center gap-3 text-sm text-ink-3">
+        <Link to={`/projects/${slug}`} className="hover:text-accent flex items-center gap-1">
           <span className="material-icons text-base">close</span> Cancel
         </Link>
       </div>
-      <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl shadow-sm">
-        <div className="px-6 py-4 border-b border-border-light dark:border-border-dark">
-          <div className="text-[10px] font-mono text-slate-400 mb-1">{project.slug}</div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Edit {project.title}</h1>
+      <div className="panel">
+        <div className="px-6 py-4 border-b border-hairline-2">
+          <div className="text-[10px] font-mono text-ink-4 mb-1">{project.slug}</div>
+          <h1 className="title">Edit {project.title}</h1>
         </div>
         <div className="px-6 py-5">
           <MarkdownEditor
@@ -68,17 +68,17 @@ export default function ProjectEditPage() {
             showSourceToggle
           />
         </div>
-        <div className="px-6 py-4 border-t border-border-light dark:border-border-dark flex items-center justify-end gap-2">
+        <div className="px-6 py-4 border-t border-hairline-2 flex items-center justify-end gap-2">
           <Link
             to={`/projects/${slug}`}
-            className="px-4 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
+            className="btn btn-ghost px-4 py-1.5 text-sm font-semibold"
           >
             Cancel
           </Link>
           <button
             onClick={save}
             disabled={saving}
-            className="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-1.5 rounded shadow-sm flex items-center gap-1"
+            className="btn btn-primary text-sm font-semibold px-4 py-1.5 flex items-center gap-1"
           >
             <span className="material-icons text-lg">save</span>
             {saving ? 'Saving…' : 'Save'}

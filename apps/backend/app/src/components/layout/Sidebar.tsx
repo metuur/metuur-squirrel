@@ -20,17 +20,15 @@ export function Sidebar() {
   const recent = (history ?? []).slice(0, 3);
 
   return (
-    <aside className="w-64 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex-shrink-0 hidden md:flex flex-col py-6 px-4 transition-colors duration-200">
+    <aside className="w-64 h-full bg-paper-2 border-r border-hairline flex-shrink-0 hidden md:flex flex-col py-6 px-4">
       <div className="flex items-center justify-between mb-4 px-2">
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-          Dashboard
-        </h3>
+        <h3 className="eyebrow">Dashboard</h3>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowNewTask(true)}
             title="New task"
             aria-label="New task"
-            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-ink-4 hover:text-accent hover:bg-focus-tint transition-colors"
           >
             <span className="material-icons text-base">add_task</span>
           </button>
@@ -38,7 +36,7 @@ export function Sidebar() {
             onClick={() => setShowNewProject(true)}
             title="New project"
             aria-label="New project"
-            className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-ink-4 hover:text-accent hover:bg-focus-tint transition-colors"
           >
             <span className="material-icons text-base">add</span>
           </button>
@@ -47,34 +45,32 @@ export function Sidebar() {
       <nav className="space-y-1">
         <Link
           to="/"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-primary bg-blue-50 dark:bg-blue-900/20 rounded-md group"
+          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-accent bg-focus-tint rounded-md group"
         >
           <span>My projects</span>
-          <span className="bg-white dark:bg-slate-700 px-2 py-0.5 rounded text-xs font-bold shadow-sm">{total}</span>
+          <span className="chip chip-count">{total}</span>
         </Link>
         <Link
           to="/deadlines"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
         >
           <span>Pressing</span>
-          <span className={`font-bold ${pressing > 0 ? 'text-orange-500' : 'text-slate-400'}`}>{pressing}</span>
+          <span className={`font-bold ${pressing > 0 ? 'text-warning' : 'text-ink-4'}`}>{pressing}</span>
         </Link>
         <Link
           to="/history"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
         >
           <span>Recent activity</span>
-          <span className="text-slate-400">{(history ?? []).length}</span>
+          <span className="text-ink-4">{(history ?? []).length}</span>
         </Link>
       </nav>
 
       <div className="mt-8">
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 px-2">
-          Recents
-        </h3>
+        <h3 className="eyebrow mb-2 px-2">Recents</h3>
         <div className="space-y-1">
           {recent.length === 0 && (
-            <div className="text-xs text-slate-400 px-2">Nothing yet.</div>
+            <div className="text-xs text-ink-4 px-2">Nothing yet.</div>
           )}
           {recent.map((it) => (
             <button
@@ -84,12 +80,12 @@ export function Sidebar() {
                   it.kind === 'project' ? `/projects/${it.slug}` : `/notes/${it.note_id}`,
                 )
               }
-              className="w-full text-left px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+              className="w-full text-left px-2 py-2 rounded-md hover:bg-surface-2 transition-colors group"
             >
-              <div className="text-xs font-medium truncate text-slate-700 dark:text-slate-300 group-hover:text-primary">
+              <div className="text-xs font-medium truncate text-ink-2 group-hover:text-accent">
                 {it.title}
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+              <div className="text-[10px] text-ink-4 mt-0.5 truncate">
                 {it.kind === 'project' ? 'Project' : 'Note'} • {fromNow(it.modified_at)}
               </div>
             </button>
@@ -97,17 +93,17 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="mt-auto pt-6 border-t border-border-light dark:border-border-dark space-y-1">
+      <div className="mt-auto pt-6 border-t border-hairline space-y-1">
         <button
           onClick={() => navigate('/settings')}
-          className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-surface-2 transition-colors"
         >
-          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-            <span className="material-icons text-slate-500 text-base">settings</span>
+          <div className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center">
+            <span className="material-icons text-ink-3 text-base">settings</span>
           </div>
-          <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</div>
+          <div className="text-sm font-medium text-ink-2">Settings</div>
         </button>
-        <div className="px-2 pt-2 text-[10px] text-slate-400 dark:text-slate-500">
+        <div className="px-2 pt-2 text-[10px] text-ink-4">
           v{me?.version ?? '?'}
         </div>
       </div>

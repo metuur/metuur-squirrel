@@ -90,17 +90,17 @@ function CaptureDialog({ open, onClose, defaultProject }: { open: boolean; onClo
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+            className="btn btn-ghost px-4 py-1.5 text-sm font-semibold"
           >
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={saving}
-            className="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-1.5 rounded-md shadow-sm flex items-center gap-1"
+            className="btn btn-primary text-sm font-semibold px-4 py-1.5 flex items-center gap-1"
           >
             {saving ? (
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-surface/40 border-t-surface rounded-full animate-spin" />
             ) : (
               <span className="material-icons text-lg">save</span>
             )}
@@ -110,16 +110,15 @@ function CaptureDialog({ open, onClose, defaultProject }: { open: boolean; onClo
       }
     >
       <div className="space-y-5">
-        {/* Mode toggle */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-border-light dark:border-border-dark">
+        <div className="inline-flex bg-surface-2 p-0.5 rounded-full border border-hairline">
           {(['note', 'email'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-full inline-flex items-center gap-1 transition-all ${
                 mode === m
-                  ? 'text-primary bg-white dark:bg-slate-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'text-accent bg-surface shadow-sm'
+                  : 'text-ink-3 hover:text-ink-2'
               }`}
             >
               <span className="material-icons text-sm">{m === 'note' ? 'edit_note' : 'mail'}</span>
@@ -131,21 +130,21 @@ function CaptureDialog({ open, onClose, defaultProject }: { open: boolean; onClo
         {mode === 'email' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">From</label>
+              <label className="block eyebrow mb-1">From</label>
               <input
                 value={emailFrom}
                 onChange={(e) => setEmailFrom(e.target.value)}
                 placeholder="sarah@acme.com"
-                className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-primary focus:ring-0 outline-none"
+                className="w-full px-3 py-2 border border-hairline rounded-lg bg-surface text-sm text-ink placeholder-ink-4 focus:border-accent focus:ring-0 outline-none"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Subject</label>
+              <label className="block eyebrow mb-1">Subject</label>
               <input
                 value={emailSubject}
                 onChange={(e) => setEmailSubject(e.target.value)}
                 placeholder="API timeout on /orders"
-                className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-primary focus:ring-0 outline-none"
+                className="w-full px-3 py-2 border border-hairline rounded-lg bg-surface text-sm text-ink placeholder-ink-4 focus:border-accent focus:ring-0 outline-none"
               />
             </div>
           </div>
@@ -159,13 +158,13 @@ function CaptureDialog({ open, onClose, defaultProject }: { open: boolean; onClo
         />
 
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+          <label className="block eyebrow mb-1">
             Add to project
           </label>
           <select
             value={project}
             onChange={(e) => setProject(e.target.value)}
-            className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 focus:border-primary focus:ring-0 outline-none"
+            className="w-full px-3 py-2 border border-hairline rounded-lg bg-surface text-sm text-ink-2 focus:border-accent focus:ring-0 outline-none"
           >
             <option value="unfiled">Unfiled (Inbox)</option>
             {(projects ?? []).map((p) => (

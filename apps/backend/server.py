@@ -33,6 +33,7 @@ import pathlib
 import re
 import socket
 import socketserver
+import subprocess
 import sys
 import threading
 import traceback
@@ -305,6 +306,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/parakeet$"),                          "api_parakeet"),
     ("POST", re.compile(r"^/api/theme$"),                             "api_set_theme"),
     ("POST", re.compile(r"^/api/settings/notifications$"),           "api_settings_notifications"),
+    ("POST", re.compile(r"^/api/notifications/preview$"),            "api_notifications_preview"),
     ("GET",  re.compile(r"^/api/notifications$"),                    "api_notifications_list"),
     ("POST", re.compile(r"^/api/notifications/read-all$"),           "api_notifications_read_all"),
     ("PATCH", re.compile(r"^/api/notification/(?P<nid>[A-Za-z0-9][A-Za-z0-9_-]*)/read$"),
@@ -1274,11 +1276,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
         os_popups = payload.get("os_popups")
         if in_app is None or os_popups is None:
             raise _UserError(400, "Both in_app and os_popups are required.")
+        # R-4.1/R-4.3: sound is optional; reject anything outside the curated set.
+        sound = payload.get("sound")
+        if sound is not None and sound not in config_loader.VALID_NOTIFICATION_SOUNDS:
+            raise _UserError(
+                400,
+                f"sound must be one of {list(config_loader.VALID_NOTIFICATION_SOUNDS)}.",
+            )
+        # R-4.2: preserve previously persisted sound when payload omits it.
+        if sound is None:
+            sound = config_loader.load_notifications_settings()["sound"]
         config_loader.save_notifications_settings(
             config_loader.DEFAULT_CONFIG_PATH,
             in_app=bool(in_app),
             os_popups=bool(os_popups),
+            sound=sound,
         )
+        self._send_json({"success": True})
+
+    # ── /api/notifications/preview — R-3.2, R-4.5 ──────────────────────────
+
+    def api_notifications_preview(self) -> None:
+        payload = self._read_json_body()
+        sound = payload.get("sound")
+        if sound is None:
+            raise _UserError(400, "sound is required.")
+        if sound not in config_loader.VALID_NOTIFICATION_SOUNDS:
+            raise _UserError(
+                400,
+                f"sound must be one of {list(config_loader.VALID_NOTIFICATION_SOUNDS)}.",
+            )
+        # Silent: ack-only, no audio.
+        if sound != "Silent":
+            try:
+                subprocess.Popen(
+                    ["afplay", f"/System/Library/Sounds/{sound}.aiff"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except OSError as e:
+                # Fail-soft per R-2.4: log and ack — preview should never error
+                # back to the user just because audio is broken on this system.
+                logging.getLogger("squirrel.server").warning(
+                    "afplay spawn failed for preview (sound=%s): %s", sound, e
+                )
         self._send_json({"success": True})
 
     # ── /api/notifications — stories 4.1, 4.2, 4.3 ─────────────────────────

@@ -35,7 +35,7 @@ export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeig
 
   return (
     <div
-      className="border border-slate-300 dark:border-slate-600 rounded-md overflow-hidden bg-white dark:bg-slate-800"
+      className="border border-hairline rounded-md overflow-hidden bg-surface"
       style={{ '--mdxeditor-min-height': minHeight } as React.CSSProperties}
     >
       <MDXEditor
@@ -44,7 +44,7 @@ export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeig
         onChange={onChange}
         readOnly={disabled}
         placeholder={placeholder}
-        contentEditableClassName="prose prose-sm dark:prose-invert max-w-none px-3 py-2 outline-none min-h-[var(--mdxeditor-min-height,8rem)]"
+        contentEditableClassName="prose prose-sm max-w-none px-3 py-2 outline-none min-h-[var(--mdxeditor-min-height,8rem)]"
         plugins={[
           ...basePlugins,
           ...(showSourceToggle ? [diffSourcePlugin({ viewMode: 'rich-text' })] : []),

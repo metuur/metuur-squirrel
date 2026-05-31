@@ -1,12 +1,14 @@
-/* All visual styles come from Tailwind via CDN (index.html).
-   This file holds the few app-wide tokens that aren't expressible in pure
-   utility classes — primarily reusable keyframes for modal animations. */
-
-:root {
-  color-scheme: light dark;
-}
+@import "@squirrel/design-system";
 
 html, body, #root { height: 100%; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-hairline);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-4); }
 
 @keyframes sq-fade-in {
   from { opacity: 0; }
@@ -23,6 +25,116 @@ html, body, #root { height: 100%; }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-.sq-fade-in   { animation: sq-fade-in 120ms ease-out; }
-.sq-pop       { animation: sq-pop 160ms cubic-bezier(0.22, 1, 0.36, 1); }
-.sq-slide-in  { animation: sq-slide-in-right 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+.sq-fade-in  { animation: sq-fade-in 120ms ease-out; }
+.sq-pop      { animation: sq-pop 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+.sq-slide-in { animation: sq-slide-in-right 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Web-only softening of the design-system button recipes.
+   The shared .btn/.btn-primary are tuned for the Tauri popup's editorial
+   "tactile" feel (1.5px ink border + 2px slate offset shadow). On the
+   wider web SPA that reads as too heavy, so soften here. */
+.btn {
+  border-width: 1px;
+  border-color: var(--color-hairline);
+  color: var(--color-ink-2);
+  box-shadow: 0 1px 2px rgba(14, 17, 22, 0.04);
+}
+.btn:hover {
+  border-color: var(--color-ink-4);
+  background: var(--color-surface-2);
+}
+.btn:active {
+  transform: none;
+  box-shadow: 0 1px 1px rgba(14, 17, 22, 0.06);
+}
+.btn:focus-visible {
+  box-shadow: 0 1px 2px rgba(14, 17, 22, 0.04), 0 0 0 3px rgba(31, 58, 138, 0.22);
+}
+.btn-primary {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  box-shadow: 0 1px 2px rgba(31, 58, 138, 0.10);
+}
+.btn-primary:focus-visible {
+  box-shadow: 0 1px 2px rgba(31, 58, 138, 0.10), 0 0 0 3px rgba(31, 58, 138, 0.20);
+}
+
+/* Web-only utilities — paper-tinted nav rail surfaces that read distinctly
+   against the body's dot-grid paper without going stark white. */
+.bg-paper      { background-color: var(--color-bg); background-image: none; }
+.bg-paper-2    { background-color: #F0EDE5; background-image: none; }
+
+/* Web-only one-off chip styles mirroring the Tauri popup's PM/Week accents
+   (FocusWidget VIOLET_CHIP_STYLE + the mint Week tint). */
+.chip-pm {
+  background: rgba(139, 92, 246, 0.10);
+  border-color: rgba(139, 92, 246, 0.18);
+  color: #8B5CF6;
+}
+.chip-week {
+  background: rgba(47, 107, 79, 0.10);
+  border-color: rgba(47, 107, 79, 0.20);
+  color: var(--color-ok);
+}
+
+/* Inline focus pill — "● Today (PM): Change · Clear" pattern from the Tauri
+   FocusWidget. The dot + label + change/clear actions stay on a single line. */
+.focus-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background 120ms ease, border-color 120ms ease;
+  cursor: default;
+}
+.focus-pill > .dot {
+  width: 7px; height: 7px; border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(31, 58, 138, 0.10);
+}
+.focus-pill > .dot.dot-pm {
+  background: #8B5CF6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.10);
+}
+.focus-pill > .dot.dot-week {
+  background: var(--color-ok);
+  box-shadow: 0 0 0 3px rgba(47, 107, 79, 0.12);
+}
+.focus-pill > .change-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-3);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.focus-pill > .change-btn:hover { text-decoration: underline; text-underline-offset: 2px; color: var(--color-ink-2); }
+.focus-pill > .change-btn:disabled { opacity: 0.5; cursor: default; }
+.focus-pill > .clear-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-critical);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.focus-pill > .clear-btn:hover { text-decoration: underline; text-underline-offset: 2px; }
+.focus-pill > .clear-btn:disabled { opacity: 0.5; cursor: default; }
+.focus-pill > .sep { color: var(--color-ink-4); }
+.focus-pill.empty {
+  cursor: pointer;
+  color: var(--color-ink-2);
+}
+.focus-pill.empty:hover {
+  background: rgba(31, 58, 138, 0.05);
+  border-color: rgba(31, 58, 138, 0.12);
+  color: var(--color-ink);
+}

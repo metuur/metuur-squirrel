@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
 // Vite config for the Squirrel React SPA.
@@ -22,5 +23,5 @@ export default defineConfig({
     sourcemap: false,
     chunkSizeWarningLimit: 600,
   },
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
 });
