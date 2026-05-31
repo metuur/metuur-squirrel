@@ -1,5 +1,27 @@
 #!/usr/bin/env bash
-# scripts/build-dmg.sh — Builds the Squirrel macOS installer DMG.
+# scripts/build-dmg.sh — Builds the Squirrel macOS *full-stack* installer DMG.
+#
+# Squirrel has two distribution paths. Pick the right one for your audience.
+#
+#   1. THIS SCRIPT — `scripts/build-dmg.sh` → squirrel-installer-macos.dmg
+#      Ships: squirrel CLI binary, squirrel-backend binary, agent-pack/
+#      (Claude/Codex skills + commands + hooks), plist template, and an
+#      `Install Squirrel` script that wires launchd + ~/.squirrel/config.toml.
+#      Use for: power users who want CLI access, terminal workflows, and
+#      Claude Code / Codex agent integration alongside the desktop popup.
+#
+#   2. TAURI APP — `cd apps/desktop && pnpm tauri build` → Squirrel.app + .dmg
+#      Ships: just the desktop popup with the bundled squirrel-backend
+#      sidecar (PyInstaller via apps/desktop/scripts/build-backend-sidecar.sh,
+#      wired in tauri.conf.json's `bundle.externalBin`). The Tauri supervisor
+#      owns the backend lifecycle.
+#      Use for: end users who just want the tray popup. No CLI, no
+#      agent-pack, no terminal required after install.
+#
+# The two .app/.dmg artifacts can coexist on the same machine — the Tauri
+# app's bundled backend and the build-dmg.sh backend both bind 127.0.0.1:3939,
+# so only one can run at a time. The supervisor's port-probe will adopt
+# whichever started first.
 #
 # Usage:
 #   ./scripts/build-dmg.sh            # build squirrel-installer-macos.dmg
