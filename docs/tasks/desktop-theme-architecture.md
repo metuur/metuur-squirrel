@@ -174,7 +174,7 @@ Dependency layers:
 
 ## Unit 8: Component className rewrites
 
-- [ ] **8.1** Rewrite `App.tsx` shell (header, scrollable body shell, footer) (deps: 7.1, est: ~45m)
+- [x] **8.1** Rewrite `App.tsx` shell (header, scrollable body shell, footer) (deps: 7.1, est: ~45m)
   - acceptance:
     - R-8.1 — `<main>` drops `bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100` (paint comes from `body`). Header uses `.panel`-style chrome (or inline equivalent) with `.icon-btn` for the bell + size toggle, `.notif-badge` for the unread count. Footer uses `.btn-primary` for the capture button and `.btn` for "Open Web UI" / "Close".
     - R-8.5 — All `dark:*` variants removed from `App.tsx`.
