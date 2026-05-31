@@ -59,3 +59,47 @@ body {
     transparent 100%
   );
 }
+
+
+/* ── Motion ───────────────────────────────────────────────────────
+ * `settle` is the orchestrated entrance: a card fades + rises 6 px and
+ * settles into place. Stagger helpers (.d1-.d5) let sections cascade
+ * (40 / 110 / 180 / 240 / 300 ms delays).
+ *
+ * `pulse-soft` is the breathing halo used by .notif-badge.
+ *
+ * Both are disabled under `prefers-reduced-motion: reduce` so users with
+ * vestibular sensitivity get a static UI.
+ */
+@keyframes settle {
+  from { opacity: 0; transform: translateY(6px) scale(0.995); }
+  to   { opacity: 1; transform: none; }
+}
+.settle    { animation: settle 420ms cubic-bezier(.22, .7, .28, 1) both; }
+.settle.d1 { animation-delay:  40ms; }
+.settle.d2 { animation-delay: 110ms; }
+.settle.d3 { animation-delay: 180ms; }
+.settle.d4 { animation-delay: 240ms; }
+.settle.d5 { animation-delay: 300ms; }
+
+@keyframes pulse-soft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(241, 185, 82, 0.5), 0 1px 2px rgba(184, 138, 30, 0.35); }
+  50%      { box-shadow: 0 0 0 4px rgba(241, 185, 82, 0.0), 0 1px 2px rgba(184, 138, 30, 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settle,
+  .notif-badge { animation: none; }
+  .btn { transition: none; }
+}
+
+
+/* ── Dark-mode stub ───────────────────────────────────────────────
+ * The paper-indigo theme is light-only in this change. The selector
+ * below preserves `color-scheme: dark` so native form controls
+ * (inputs, scrollbars) pick the dark variant when the OS or user agent
+ * forces dark mode — they don't end up white-on-white.
+ *
+ * A real dark theme (`paper-indigo-dark` or similar) is a follow-up.
+ */
+.dark { color-scheme: dark; }

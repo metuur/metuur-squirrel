@@ -162,7 +162,7 @@ Dependency layers:
 
 ## Unit 7: Motion + accessibility
 
-- [ ] **7.1** Add `.settle` entrance, `pulse-soft` badge, and a11y guards (deps: 6.5, est: ~15m)
+- [x] **7.1** Add `.settle` entrance, `pulse-soft` badge, and a11y guards (deps: 6.5, est: ~15m)
   - acceptance:
     - R-7.1 — `@keyframes settle` (0 → 1 opacity + translateY(6px)/scale(0.995) → none) running 420 ms `cubic-bezier(.22,.7,.28,1)` both. Stagger helpers `.d1`-`.d5` with delays 40 / 110 / 180 / 240 / 300 ms.
     - R-7.2 — `@keyframes pulse-soft` matches `code.html` lines 355-358; applied to `.notif-badge` via `animation: pulse-soft 2.4s ease-in-out infinite`.
