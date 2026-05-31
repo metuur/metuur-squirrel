@@ -53,6 +53,7 @@ export interface Me {
   multi_vault: boolean;
   theme: 'auto' | 'light' | 'dark';
   version: string;
+  notifications?: { in_app: boolean; os_popups: boolean };
 }
 export interface FocusItem {
   slug: string;
@@ -229,6 +230,11 @@ export const api = {
     call<{ success: true; theme: string }>('/theme', {
       method: 'POST',
       body: JSON.stringify({ theme }),
+    }),
+  setNotificationSettings: (settings: { in_app: boolean; os_popups: boolean }) =>
+    call<{ success: true }>('/settings/notifications', {
+      method: 'POST',
+      body: JSON.stringify(settings),
     }),
 };
 

@@ -16,6 +16,7 @@ import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
 import { CaptureModal } from "./components/CaptureModal";
+import { NotificationCenter } from "./components/NotificationCenter";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
@@ -34,6 +35,7 @@ function formatToday(): string {
 export default function App() {
   const status = useBackend();
   const deepLink = useDeepLink();
+  const notifications = useNotifications();
 
   useEffect(() => {
     if (!deepLink) return;
@@ -121,6 +123,7 @@ export default function App() {
           area that overflows. Widgets get their natural height; the cards
           inside DeadlinesWidget scroll vertically when the list grows. */}
       <div className="flex-1 overflow-y-auto pb-2">
+        <NotificationCenter notifications={notifications} />
         <FocusWidget
           home={homeWithOverride}
           online={status.online}
