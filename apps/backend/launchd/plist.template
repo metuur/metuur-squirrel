@@ -6,7 +6,8 @@
   <string>org.squirrel.web-ui</string>
   <key>ProgramArguments</key>
   <array>
-    <string>__BINARY__</string>
+    <string>__PYTHON__</string>
+    <string>__SERVER_PY__</string>
     <string>--port</string>
     <string>__PORT__</string>
   </array>
