@@ -76,14 +76,10 @@ fn default_notif_db_path() -> PathBuf {
         .join("squirrel.db")
 }
 
-/// Create the `notifications` table and index in the given SQLite DB.
-/// Sets WAL mode. Idempotent (CREATE TABLE IF NOT EXISTS).
-pub(crate) fn init_notif_db(db_path: &Path) -> rusqlite::Result<()> {
-    if let Some(parent) = db_path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let conn = rusqlite::Connection::open(db_path)?;
-    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+/// Apply the `notifications` schema (table + index) to an already-open
+/// connection. Idempotent. Used by both the one-shot test helper and the
+/// long-lived cached connection opened in `start_polling`.
+fn init_notif_schema(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS notifications (
            id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,8 +94,40 @@ pub(crate) fn init_notif_db(db_path: &Path) -> rusqlite::Result<()> {
          );
          CREATE INDEX IF NOT EXISTS idx_notifications_item_day
            ON notifications(item_id, date(fired_at));",
+    )
+}
+
+/// Path-based entry point: open a connection, set WAL, init schema. Used by
+/// the unit-test suite which works in tempdirs. Production code uses
+/// `open_cached_notif_conn` via `start_polling`.
+#[allow(dead_code)]
+pub(crate) fn init_notif_db(db_path: &Path) -> rusqlite::Result<()> {
+    if let Some(parent) = db_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let conn = rusqlite::Connection::open(db_path)?;
+    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+    init_notif_schema(&conn)
+}
+
+/// R-9.11/R-9.12/R-9.13: open the long-lived notifications connection used
+/// by the polling loop. Applies WAL + `busy_timeout=5000ms` +
+/// `synchronous=NORMAL` once, then runs the idempotent schema init. The
+/// returned `Connection` is meant to live for the app's lifetime inside
+/// `TauriNotificationState::notif_db`, eliminating the per-poll open and
+/// the redundant `PRAGMA journal_mode=WAL` re-parse on every helper call.
+fn open_cached_notif_conn(db_path: &Path) -> rusqlite::Result<rusqlite::Connection> {
+    if let Some(parent) = db_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let conn = rusqlite::Connection::open(db_path)?;
+    conn.execute_batch(
+        "PRAGMA journal_mode=WAL;
+         PRAGMA busy_timeout=5000;
+         PRAGMA synchronous=NORMAL;",
     )?;
-    Ok(())
+    init_notif_schema(&conn)?;
+    Ok(conn)
 }
 
 // ── Story 2.1: notification settings ─────────────────────────────────────────
@@ -152,19 +180,17 @@ async fn fetch_notif_settings(client: &reqwest::Client) -> NotifSettings {
 
 // ── Story 2.2: dedup INSERT ───────────────────────────────────────────────────
 
-/// R-2.2/R-2.3/R-2.8/R-2.9: Insert a notification row only if no row for
-/// this `item_id` already has a `fired_at` date equal to today. Returns `true`
-/// when a new row was inserted, `false` when the dedup check found a match.
-fn insert_notification_if_new(
-    db_path: &Path,
+/// Connection-borrowing variant — does the same-day dedup SELECT and the
+/// INSERT against the caller's connection. The polling loop calls this via
+/// `with_cached_conn` so it never opens a fresh connection per cycle.
+fn insert_notification_if_new_on_conn(
+    conn: &rusqlite::Connection,
     notif_type: &str,
     item_id: &str,
     title: &str,
     body: &str,
     item_url: &str,
 ) -> rusqlite::Result<bool> {
-    let conn = rusqlite::Connection::open(db_path)?;
-    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
     let exists: bool = conn.query_row(
         "SELECT COUNT(*) FROM notifications WHERE item_id = ? AND date(fired_at) = date('now')",
         rusqlite::params![item_id],
@@ -181,10 +207,29 @@ fn insert_notification_if_new(
     Ok(true)
 }
 
+/// R-2.2/R-2.3/R-2.8/R-2.9: Insert a notification row only if no row for
+/// this `item_id` already has a `fired_at` date equal to today. Returns `true`
+/// when a new row was inserted, `false` when the dedup check found a match.
+///
+/// Path-based wrapper used by the unit-test suite. Production code uses
+/// `insert_notification_if_new_on_conn` via the cached connection.
+#[allow(dead_code)]
+fn insert_notification_if_new(
+    db_path: &Path,
+    notif_type: &str,
+    item_id: &str,
+    title: &str,
+    body: &str,
+    item_url: &str,
+) -> rusqlite::Result<bool> {
+    let conn = rusqlite::Connection::open(db_path)?;
+    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+    insert_notification_if_new_on_conn(&conn, notif_type, item_id, title, body, item_url)
+}
+
 // ── Story 2.3: unread count, badge, event ─────────────────────────────────────
 
-fn unread_count(db_path: &Path) -> rusqlite::Result<u32> {
-    let conn = rusqlite::Connection::open(db_path)?;
+fn unread_count_on_conn(conn: &rusqlite::Connection) -> rusqlite::Result<u32> {
     conn.query_row(
         "SELECT COUNT(*) FROM notifications WHERE read_at IS NULL AND dismissed_at IS NULL",
         [],
@@ -192,10 +237,47 @@ fn unread_count(db_path: &Path) -> rusqlite::Result<u32> {
     )
 }
 
+#[allow(dead_code)]
+fn unread_count(db_path: &Path) -> rusqlite::Result<u32> {
+    let conn = rusqlite::Connection::open(db_path)?;
+    unread_count_on_conn(&conn)
+}
+
+/// R-9.11: borrow the cached notification connection. Clones the `Arc` out
+/// of state and drops the outer state lock before acquiring the inner DB
+/// lock, so concurrent state mutations are not serialized behind DB work.
+///
+/// If the cached connection is not initialized (which should not happen in
+/// practice — `start_polling` initializes it before the loop begins), this
+/// returns the closure's result over a freshly-opened path-based connection
+/// as a defensive fallback. The fallback path is logged at WARN.
+fn with_cached_conn<R, F, T>(
+    app: &AppHandle<R>,
+    fallback_db_path: &Path,
+    f: F,
+) -> rusqlite::Result<T>
+where
+    R: Runtime,
+    F: FnOnce(&rusqlite::Connection) -> rusqlite::Result<T>,
+{
+    let cached: Option<Arc<Mutex<rusqlite::Connection>>> = {
+        let state = app.state::<Mutex<TauriNotificationState>>();
+        let s = state.lock().unwrap();
+        s.notif_db.clone()
+    };
+    if let Some(arc) = cached {
+        let conn = arc.lock().unwrap_or_else(|p| p.into_inner());
+        return f(&conn);
+    }
+    tracing::warn!("tray-alerts: cached notif conn missing, falling back to one-shot open");
+    let conn = rusqlite::Connection::open(fallback_db_path)?;
+    f(&conn)
+}
+
 /// R-2.5/R-2.6/R-2.7: After an INSERT, set the tray badge and emit
 /// `squirrel:notif-updated` with the current unread count.
 fn update_badge_and_emit<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
-    let count = match unread_count(db_path) {
+    let count = match with_cached_conn(app, db_path, unread_count_on_conn) {
         Ok(c) => c,
         Err(e) => {
             tracing::warn!(error = %e, "tray-alerts: unread count query failed");
@@ -567,7 +649,10 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             }
         };
 
-        // R-1.4: ensure notifications table exists before first poll
+        // R-1.4: ensure notifications table exists before first poll.
+        // R-9.11/R-9.12/R-9.13: open the long-lived connection once with
+        // WAL + busy_timeout + synchronous=NORMAL, then stash it in state
+        // so the polling loop borrows instead of re-opening each cycle.
         {
             let db_path = app
                 .state::<Mutex<TauriNotificationState>>()
@@ -575,8 +660,15 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                 .unwrap()
                 .notif_db_path
                 .clone();
-            if let Err(e) = init_notif_db(&db_path) {
-                tracing::warn!(error = %e, "tray-alerts: failed to init notifications DB");
+            match open_cached_notif_conn(&db_path) {
+                Ok(conn) => {
+                    let state = app.state::<Mutex<TauriNotificationState>>();
+                    let mut s = state.lock().unwrap();
+                    s.notif_db = Some(Arc::new(Mutex::new(conn)));
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "tray-alerts: failed to init notifications DB");
+                }
             }
         }
 
@@ -638,9 +730,13 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         // R-2.2/R-2.8 (Story 2.2): dedup+INSERT for pressing alerts
                         for alert in &alerts {
                             let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, alert.id);
-                            match insert_notification_if_new(
-                                &db_path, "pressing", &alert.id, &alert.id, &alert.menu_label(), &item_url,
-                            ) {
+                            let label = alert.menu_label();
+                            let result = with_cached_conn(&app, &db_path, |conn| {
+                                insert_notification_if_new_on_conn(
+                                    conn, "pressing", &alert.id, &alert.id, &label, &item_url,
+                                )
+                            });
+                            match result {
                                 Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
                                 Ok(false) => {}
                                 Err(e) => tracing::warn!(error = %e, item_id = %alert.id, "tray-alerts: notif insert failed"),
@@ -649,9 +745,13 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 
                         // R-2.2/R-2.9 (Story 2.2): dedup+INSERT for active reminders
                         for reminder in &reminders.active {
-                            match insert_notification_if_new(
-                                &db_path, "reminder_active", &reminder.id, &reminder.id, &reminder.menu_label(), &reminder.item_url,
-                            ) {
+                            let label = reminder.menu_label();
+                            let result = with_cached_conn(&app, &db_path, |conn| {
+                                insert_notification_if_new_on_conn(
+                                    conn, "reminder_active", &reminder.id, &reminder.id, &label, &reminder.item_url,
+                                )
+                            });
+                            match result {
                                 Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
                                 Ok(false) => {}
                                 Err(e) => tracing::warn!(error = %e, reminder_id = %reminder.id, "tray-alerts: reminder notif insert failed"),
@@ -661,7 +761,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 
                     // R-8.2: pass current unread count so the menu shows/hides
                     // "Notifications (N)" correctly after any new INSERTs above.
-                    let current_unread = unread_count(&db_path).unwrap_or(0);
+                    let current_unread = with_cached_conn(&app, &db_path, unread_count_on_conn).unwrap_or(0);
                     if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, current_unread) {
                         tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
                     } else {
@@ -947,5 +1047,74 @@ mod tests {
         assert_eq!(unread_count(&db_path).unwrap(), 1);
         insert_notification_if_new(&db_path, "pressing", "B", "B", "body", "url").unwrap();
         assert_eq!(unread_count(&db_path).unwrap(), 2);
+    }
+
+    // ── R-9.11/R-9.12/R-9.13: cached connection path ────────────────────────
+
+    #[test]
+    fn test_open_cached_notif_conn_sets_wal_and_busy_timeout() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        let conn = open_cached_notif_conn(&db_path).unwrap();
+        let mode: String = conn
+            .query_row("PRAGMA journal_mode", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(mode, "wal");
+        let busy: i64 = conn
+            .query_row("PRAGMA busy_timeout", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(busy, 5000);
+        let sync: i64 = conn
+            .query_row("PRAGMA synchronous", [], |r| r.get(0))
+            .unwrap();
+        // synchronous=NORMAL is value 1 in SQLite
+        assert_eq!(sync, 1);
+    }
+
+    #[test]
+    fn test_open_cached_notif_conn_creates_schema() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        let conn = open_cached_notif_conn(&db_path).unwrap();
+        // Schema is in place — insert + read back via the on_conn helpers
+        let inserted = insert_notification_if_new_on_conn(
+            &conn, "pressing", "TASK-X", "TASK-X", "body", "url",
+        )
+        .unwrap();
+        assert!(inserted);
+        assert_eq!(unread_count_on_conn(&conn).unwrap(), 1);
+    }
+
+    #[test]
+    fn test_on_conn_helpers_dedup_same_day() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        let conn = open_cached_notif_conn(&db_path).unwrap();
+        let first = insert_notification_if_new_on_conn(
+            &conn, "pressing", "DUP-1", "DUP-1", "body", "url",
+        )
+        .unwrap();
+        let second = insert_notification_if_new_on_conn(
+            &conn, "pressing", "DUP-1", "DUP-1", "body", "url",
+        )
+        .unwrap();
+        assert!(first, "first insert succeeds");
+        assert!(!second, "same-day duplicate is suppressed");
+        assert_eq!(unread_count_on_conn(&conn).unwrap(), 1);
+    }
+
+    #[test]
+    fn test_cached_conn_survives_repeated_use() {
+        // Sanity check that a single Connection can be borrowed many times
+        // sequentially without re-opening — mirrors the polling loop usage.
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        let conn = open_cached_notif_conn(&db_path).unwrap();
+        for i in 0..50 {
+            let id = format!("ITEM-{i}");
+            insert_notification_if_new_on_conn(&conn, "pressing", &id, &id, "body", "url")
+                .unwrap();
+        }
+        assert_eq!(unread_count_on_conn(&conn).unwrap(), 50);
     }
 }
