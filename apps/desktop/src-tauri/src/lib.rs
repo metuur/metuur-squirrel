@@ -134,14 +134,14 @@ pub fn run() {
             #[cfg(desktop)]
             tray_alerts::start_polling(app.handle().clone());
 
-            // Register Cmd+Shift+S global shortcut so the user can summon Squirrel
+            // Register Ctrl+Cmd+S global shortcut so the user can summon Squirrel
             // from any app. Registration failure (e.g. hotkey held by another process)
             // is a warning, not a crash — the app must stay alive regardless.
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::GlobalShortcutExt;
                 if let Err(e) = app.handle().global_shortcut().on_shortcut(
-                    "CmdOrCtrl+Shift+S",
+                    "Ctrl+Cmd+S",
                     |app, _shortcut, event| {
                         use tauri_plugin_global_shortcut::ShortcutState;
                         if event.state == ShortcutState::Pressed {
@@ -151,10 +151,10 @@ pub fn run() {
                 ) {
                     tracing::warn!(
                         error = %e,
-                        "global shortcut Cmd+Shift+S could not be registered (held by another app?)"
+                        "global shortcut Ctrl+Cmd+S could not be registered (held by another app?)"
                     );
                 } else {
-                    tracing::info!("global shortcut Cmd+Shift+S registered");
+                    tracing::info!("global shortcut Ctrl+Cmd+S registered");
                 }
             }
 

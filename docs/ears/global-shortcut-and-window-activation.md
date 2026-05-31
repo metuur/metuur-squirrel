@@ -4,7 +4,7 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-1.1 | THE SYSTEM SHALL register `CommandOrControl+Shift+S` as a system-wide global shortcut on desktop platforms at application startup. |
+| R-1.1 | THE SYSTEM SHALL register `Ctrl+Cmd+S` as a system-wide global shortcut on desktop platforms at application startup. |
 | R-1.2 | WHEN the global shortcut registration fails, THE SYSTEM SHALL log a warning and continue startup without crashing. |
 | R-1.3 | THE SYSTEM SHALL unregister the global shortcut automatically when the application process exits. |
 
@@ -12,8 +12,8 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-2.1 | WHEN the user presses `Cmd+Shift+S` (macOS) while the Squirrel window is hidden, THE SYSTEM SHALL show the main window and bring it to the foreground. |
-| R-2.2 | WHEN the user presses `Cmd+Shift+S` (macOS) while the Squirrel window is already visible, THE SYSTEM SHALL set focus to the window (no-op on visibility). |
+| R-2.1 | WHEN the user presses `Ctrl+Cmd+S` (macOS) while the Squirrel window is hidden, THE SYSTEM SHALL show the main window and bring it to the foreground. |
+| R-2.2 | WHEN the user presses `Ctrl+Cmd+S` (macOS) while the Squirrel window is already visible, THE SYSTEM SHALL set focus to the window (no-op on visibility). |
 | R-2.3 | WHEN the shortcut triggers a window show, THE SYSTEM SHALL set the macOS activation policy to `Regular` so the app appears in Cmd+Tab and the Dock. |
 
 ## Unit 3: Window Hide & Background Mode

@@ -223,7 +223,15 @@ export function FocusPickerModal({
                 style={isAllDay ? SLOT_NEUTRAL_BG_ACTIVE : SLOT_NEUTRAL_BG}
               >
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-ink">📅 All day</span>
+                  <span className="text-sm font-bold text-ink inline-flex items-center gap-1.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <rect x="3" y="4" width="18" height="17" rx="2" />
+                      <path d="M3 9h18" />
+                      <path d="M8 2v4" />
+                      <path d="M16 2v4" />
+                    </svg>
+                    All day
+                  </span>
                   {isAllDay && (
                     <span className="text-[9px] font-bold rounded px-1 py-0.5 leading-none" style={CURRENT_BADGE_STYLE}>
                       current
@@ -242,7 +250,20 @@ export function FocusPickerModal({
                   style={hasAM && !isAllDay ? SLOT_AM_BG_ACTIVE : SLOT_AM_BG}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-accent">☀️ Morning</span>
+                    <span className="text-sm font-bold text-accent inline-flex items-center gap-1.5">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2" />
+                        <path d="M12 20v2" />
+                        <path d="m4.93 4.93 1.41 1.41" />
+                        <path d="m17.66 17.66 1.41 1.41" />
+                        <path d="M2 12h2" />
+                        <path d="M20 12h2" />
+                        <path d="m6.34 17.66-1.41 1.41" />
+                        <path d="m19.07 4.93-1.41 1.41" />
+                      </svg>
+                      Morning
+                    </span>
                     {hasAM && !isAllDay && (
                       <span
                         className="text-[9px] font-bold rounded px-1 py-0.5 leading-none"
@@ -264,7 +285,12 @@ export function FocusPickerModal({
                   style={hasPM && !isAllDay ? SLOT_PM_BG_ACTIVE : SLOT_PM_BG}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold" style={{ color: VIOLET }}>🌙 Afternoon</span>
+                    <span className="text-sm font-bold inline-flex items-center gap-1.5" style={{ color: VIOLET }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                      </svg>
+                      Afternoon
+                    </span>
                     {hasPM && !isAllDay && (
                       <span
                         className="text-[9px] font-bold rounded px-1 py-0.5 leading-none"
