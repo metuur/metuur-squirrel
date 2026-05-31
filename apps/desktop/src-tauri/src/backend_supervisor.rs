@@ -249,22 +249,69 @@ fn should_respawn(s: &mut SupervisorState) -> bool {
 
 /// R-9.3: shutdown hook called from the Tauri `RunEvent::ExitRequested`.
 /// In Adopted mode this is a no-op — the user owns the backend's lifecycle.
-/// In Managed mode the cached `CommandChild` is killed. Plugin's `.kill()`
-/// sends SIGKILL on Unix; the backend is a stateless HTTP server with
-/// atomic writes so this is safe (no half-finished commits to recover).
+/// In Managed mode we attempt a graceful shutdown:
+///
+///   1. Send SIGTERM (Unix) — gives the backend a chance to close logs,
+///      flush the journal-mode WAL, and exit on its own terms.
+///   2. Sleep for GRACEFUL_SHUTDOWN_TIMEOUT to give the backend room
+///      to actually exit.
+///   3. Call `CommandChild::kill()` — a no-op if the child already exited,
+///      and a SIGKILL escalation if it didn't. This call also performs
+///      the cleanup that Tokio expects (zombie reaping).
+///
+/// Why a fixed sleep instead of polling for exit: `kill(pid, 0)` returns
+/// "alive" for zombie children (post-exit, pre-reap) and racing with
+/// Tokio's SIGCHLD reaper via `waitpid(pid, WNOHANG)` adds complexity
+/// for a 2-second wait that the user tolerates anyway. Trade-off
+/// accepted: shutdown always takes ~2s, but is always correct.
+///
+/// Windows has no SIGTERM analogue, so step 1+2 are skipped and we go
+/// straight to the platform-native hard kill. The backend has atomic
+/// writes and no half-committed-transaction class of bugs, so even a
+/// hard kill is safe.
 pub(crate) fn shutdown<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<Mutex<SupervisorState>>();
     let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
     if s.mode != SupervisionMode::Managed {
         return;
     }
-    if let Some(child) = s.child.take() {
-        let pid = child.pid();
-        match child.kill() {
-            Ok(()) => tracing::info!(pid, "backend supervisor: child killed on shutdown"),
-            Err(e) => tracing::warn!(pid, error = %e, "backend supervisor: kill failed on shutdown"),
+    let Some(child) = s.child.take() else {
+        return;
+    };
+    let pid = child.pid();
+
+    #[cfg(unix)]
+    {
+        if send_term(pid) {
+            tracing::info!(
+                pid,
+                timeout_secs = GRACEFUL_SHUTDOWN_TIMEOUT.as_secs(),
+                "backend supervisor: SIGTERM sent; waiting for graceful exit",
+            );
+            std::thread::sleep(GRACEFUL_SHUTDOWN_TIMEOUT);
+        } else {
+            tracing::warn!(pid, "backend supervisor: SIGTERM failed; escalating to SIGKILL");
         }
     }
+
+    // child.kill() is a no-op if the process already exited from SIGTERM;
+    // otherwise it sends SIGKILL on Unix / TerminateProcess on Windows.
+    // Either way the Tokio Child handle gets properly cleaned up.
+    match child.kill() {
+        Ok(()) => tracing::info!(pid, "backend supervisor: shutdown complete"),
+        Err(e) => tracing::warn!(pid, error = %e, "backend supervisor: kill failed on shutdown"),
+    }
+}
+
+const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
+
+#[cfg(unix)]
+fn send_term(pid: u32) -> bool {
+    // SAFETY: libc::kill takes a pid_t + signal. Passing SIGTERM and a
+    // valid (non-zero) pid is well-defined. Returns 0 on success or -1
+    // with errno set on failure.
+    let rc = unsafe { libc::kill(pid as libc::pid_t, libc::SIGTERM) };
+    rc == 0
 }
 
 /// Pure state-inspection helper — true when the backend is either in
@@ -420,5 +467,49 @@ mod tests {
         s.mode = SupervisionMode::Adopted;
         s.consecutive_failures = STRIKES_BEFORE_ERROR;
         assert!(is_degraded_state(&s));
+    }
+
+    // ── Graceful-shutdown helpers (Unix only) ──────────────────────────────
+
+    #[cfg(unix)]
+    #[test]
+    fn send_term_delivers_sigterm_to_a_running_child() {
+        use std::process::Command;
+        // Spawn `sleep` directly (no shell wrapper) so SIGTERM hits the
+        // actual sleep process. We don't assert on exit timing — proving
+        // a child has exited from a separate thread races with the
+        // kernel's reaper. We assert two narrower properties:
+        //   - send_term returns true when the pid exists
+        //   - the kernel does NOT return -1/ESRCH from kill(pid, 0) before
+        //     we send SIGTERM (i.e. the child was actually alive)
+        // Anything stronger (e.g. "child exited within 1s") needs
+        // waitpid + reaper coordination that we intentionally don't do
+        // in the production shutdown path.
+        let mut child = Command::new("sleep")
+            .arg("30")
+            .spawn()
+            .expect("spawn sleep");
+        let pid = child.id();
+
+        let alive_before = unsafe { libc::kill(pid as libc::pid_t, 0) } == 0;
+        assert!(alive_before, "child should be alive before SIGTERM");
+
+        assert!(send_term(pid), "send_term should succeed for a live child");
+
+        // Cleanup — wait so we don't leave a zombie.
+        let _ = child.wait();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn send_term_returns_false_for_nonexistent_pid() {
+        // A high but plausibly-unused pid. Skip the assertion if it
+        // happens to be in use right now (extremely unlikely).
+        let phantom = 999_999;
+        let exists = unsafe { libc::kill(phantom as libc::pid_t, 0) } == 0;
+        if exists {
+            return;
+        }
+        assert!(!send_term(phantom), "SIGTERM to nonexistent pid should fail");
     }
 }
