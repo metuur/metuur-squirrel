@@ -18,6 +18,10 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-opener = "2"
+# Used by backend_supervisor to spawn the bundled `squirrel-backend` sidecar
+# (R-9.1/R-9.2). Without this plugin the supervisor stays in Adopted/Failed
+# mode and never owns the backend lifecycle.
+tauri-plugin-shell = "2"
 url = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-store = "2"

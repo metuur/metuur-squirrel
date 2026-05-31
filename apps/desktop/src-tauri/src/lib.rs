@@ -1,3 +1,4 @@
+mod backend_supervisor;
 mod deep_link;
 mod logging;
 mod tray;
@@ -73,10 +74,12 @@ pub fn run() {
     builder
         .manage(PendingDeepLink(Mutex::new(None)))
         .manage(Mutex::new(tray_alerts::TauriNotificationState::new()))
+        .manage(Mutex::new(backend_supervisor::SupervisorState::new()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             // R-1.7 / LLD D9: lock macOS activation policy to Accessory so the app
             // never gets a Dock icon, never gets an app menu in the top menu bar,
@@ -91,6 +94,38 @@ pub fn run() {
 
             #[cfg(desktop)]
             tray::setup(app.handle())?;
+
+            // R-9.1/R-9.2/R-9.6: decide backend lifecycle BEFORE the tray
+            // poller starts. spawn_or_adopt picks Managed (we spawned the
+            // sidecar) or Adopted (something else owns port 3939) or
+            // Failed (sidecar binary unavailable and nothing on 3939).
+            // Then run startup health-check + long-running health loop in
+            // separate spawned tasks so the setup hook returns quickly.
+            #[cfg(desktop)]
+            {
+                let handle = app.handle().clone();
+                let (mode, child) = backend_supervisor::spawn_or_adopt(&handle);
+                {
+                    use std::sync::Mutex as StdMutex;
+                    let state = handle.state::<StdMutex<backend_supervisor::SupervisorState>>();
+                    let mut s = state.lock().unwrap();
+                    s.mode = mode;
+                    s.child = child;
+                }
+                // Detached: wait up to ~10s for /api/me to respond, flip
+                // tray icon to Normal on success / Error on timeout.
+                let startup_handle = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    backend_supervisor::wait_for_ready(&startup_handle).await;
+                });
+                // Detached: long-running 30s health check that recovers
+                // Managed-mode backends from crash and surfaces persistent
+                // failure as an Error icon.
+                let loop_handle = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    backend_supervisor::run_health_loop(loop_handle).await;
+                });
+            }
 
             // Phase 2: start the tray-alerts background poller. Every 30s
             // it fetches /api/home and rebuilds the tray's PRESSING NOW
@@ -163,6 +198,14 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![greet, drain_pending_deep_link])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // R-9.3: kill the Managed backend child when the user quits
+            // Squirrel. No-op in Adopted/Failed modes — we never own the
+            // backend in those cases.
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                backend_supervisor::shutdown(app);
+            }
+        });
 }
