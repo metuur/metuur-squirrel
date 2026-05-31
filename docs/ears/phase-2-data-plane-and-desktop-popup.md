@@ -10,7 +10,7 @@
 | R-1.4 | IF `GET /api/me` returns a non-2xx response OR fails with a connection error OR times out after 3 seconds, THE SYSTEM SHALL set backend status to `offline`. |
 | R-1.5 | WHILE backend status is `offline`, THE SYSTEM SHALL display a top banner reading "Backend offline — run `make backend-start` in the squirrel monorepo". |
 | R-1.6 | WHEN backend status transitions from `offline` to `online`, THE SYSTEM SHALL hide the banner and SHALL re-trigger each widget's data fetch within 1 second. |
-| R-1.7 | THE SYSTEM SHALL NOT start, restart, or stop the `apps/backend/server.py` process from the Tauri app in Phase 2. |
+| R-1.7 | THE SYSTEM SHALL NOT start, restart, or stop the `apps/backend/server.py` process from the Tauri app in Phase 2. **Superseded 2026-05-31** by R-9.1 / R-9.2 / R-9.3 (see Unit 9 below). The Tauri app now owns the backend lifecycle when launchd is not installed, because the prior posture silently produced an empty tray for users who skipped the optional plist install. See LLD `harden-backend-lifecycle-and-caching.md`. |
 
 ## Unit 2: Popup widgets
 

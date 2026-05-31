@@ -114,7 +114,7 @@ Conventions:
   - acceptance: R-3.5 — Phase 1 does not persist the watcher toggle across launches; startup defaults to On.
   - verify: Toggle Off; quit; relaunch; observe watcher is On again, events fire within 60s.
 
-- [ ] 3.4 Break reminder: fire "Take a breath and continue" notification every 30 minutes from active session checkin (deps: 3.1, 4.2, est: ~30m)
+- [x] 3.4 Break reminder: fire "Take a breath and continue" notification every 30 minutes from active session checkin (deps: 3.1, 4.2, est: ~30m)
   - implementation:
     - Add `GET /api/focus/session` backend endpoint to `server.py`: queries `work_sessions WHERE checkout_at IS NULL ORDER BY checkin_at DESC LIMIT 1`; returns `{"checkin_at": "<ISO8601>", "project_slug": "...", "intent_slug": "..."}` or HTTP 204 when no open session.
     - Run a **separate** `tokio::time::interval(Duration::from_secs(300))` (5 min) for the break reminder — independent of the 60s `SimulatedEvent` interval so neither blocks the other.

@@ -28,6 +28,8 @@ const NOTIF_INTERVAL: Duration = Duration::from_secs(120);
 const SLEEP_THRESHOLD: Duration = Duration::from_secs(15);
 const ITEM_COOLDOWN: Duration = Duration::from_secs(3600);
 const MAX_DIALOGS_PER_DAY: u32 = 8;
+const BREAK_REMINDER_INTERVAL: Duration = Duration::from_secs(30 * 60);
+const BREAK_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
 pub(crate) struct TauriNotificationState {
     last_notified: HashMap<String, Instant>,
@@ -39,6 +41,7 @@ pub(crate) struct TauriNotificationState {
     next_id: i32,
     pub(crate) notif_db_path: PathBuf,
     pub(crate) focus_prompted_date: Option<String>,
+    pub(crate) last_break_notified: Option<Instant>,
 }
 
 impl TauriNotificationState {
@@ -53,6 +56,7 @@ impl TauriNotificationState {
             next_id: 0,
             notif_db_path: default_notif_db_path(),
             focus_prompted_date: None,
+            last_break_notified: None,
         }
     }
 }
@@ -481,6 +485,66 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
     state_ref.lock().unwrap().last_check_at = Instant::now();
 }
 
+/// Poll `GET /api/focus/session`. If a session is active and 30 minutes have
+/// elapsed since the last break reminder (or since first detection), fire a
+/// "Take a breath and continue" notification. Resets when session ends.
+async fn check_break_reminder<R: Runtime>(app: &AppHandle<R>, client: &reqwest::Client) {
+    #[derive(Deserialize)]
+    struct ActiveSession {
+        project_slug: String,
+        intent_slug: String,
+    }
+
+    let resp = match client
+        .get(format!("{}/api/focus/session", BACKEND_ORIGIN))
+        .timeout(REQUEST_TIMEOUT)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return,
+    };
+
+    if !resp.status().is_success() {
+        app.state::<Mutex<TauriNotificationState>>()
+            .lock()
+            .unwrap()
+            .last_break_notified = None;
+        return;
+    }
+
+    let session = match resp.json::<ActiveSession>().await {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    let state_ref = app.state::<Mutex<TauriNotificationState>>();
+    let should_fire = {
+        let mut s = state_ref.lock().unwrap();
+        match s.last_break_notified {
+            None => {
+                s.last_break_notified = Some(Instant::now());
+                false
+            }
+            Some(t) => t.elapsed() >= BREAK_REMINDER_INTERVAL,
+        }
+    };
+
+    if should_fire {
+        let _ = tauri_plugin_notification::NotificationExt::notification(app)
+            .builder()
+            .title("Squirrel")
+            .body("Take a breath and continue 🌿")
+            .show();
+        state_ref.lock().unwrap().last_break_notified = Some(Instant::now());
+        tracing::info!(
+            project_slug = %session.project_slug,
+            intent_slug = %session.intent_slug,
+            "break-reminder: notification fired"
+        );
+    }
+}
+
 /// Spawn the polling loop. Idempotent across module's lifecycle in the sense
 /// that callers should only invoke this once (from `lib::run`'s setup).
 pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
@@ -540,6 +604,8 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                 }
             }
         }
+
+        let mut last_break_check: Option<Instant> = None;
 
         loop {
             // R-3.3/R-3.4 (Story 2.1): read notification settings every cycle; default on failure
@@ -626,6 +692,15 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         "notif-wake-detected"
                     );
                 }
+            }
+
+            // Story 3.4: break reminder — run every BREAK_CHECK_INTERVAL (5 min)
+            let should_check_break = last_break_check
+                .map(|t| t.elapsed() >= BREAK_CHECK_INTERVAL)
+                .unwrap_or(true);
+            if should_check_break {
+                last_break_check = Some(Instant::now());
+                check_break_reminder(&app, &client).await;
             }
         }
     });

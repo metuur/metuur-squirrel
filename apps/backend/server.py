@@ -222,6 +222,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/focus/history$"),                     "api_focus_history"),
     ("POST", re.compile(r"^/api/focus/checkin$"),                     "api_focus_checkin"),
     ("POST", re.compile(r"^/api/focus/checkout$"),                    "api_focus_checkout"),
+    ("GET",  re.compile(r"^/api/focus/session$"),                     "api_focus_session"),
     ("POST", re.compile(r"^/api/focus/recalculate$"),                 "api_focus_recalculate"),
     ("GET",  re.compile(r"^/api/projects$"),                          "api_projects_list"),
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
@@ -720,6 +721,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "duration_minutes": duration_minutes,
             "time_invested_minutes": time_invested,
         })
+
+    def api_focus_session(self) -> None:
+        ctx, _ = self._context()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            row = conn.execute(
+                "SELECT project_slug, intent_slug, checkin_at FROM work_sessions"
+                " WHERE vault = ? AND checkout_at IS NULL ORDER BY checkin_at DESC LIMIT 1",
+                (ctx.active.path.name,),
+            ).fetchone()
+        finally:
+            conn.close()
+        if row is None:
+            self._send_json_error(404, "no_open_session")
+            return
+        project_slug, intent_slug, checkin_at = row
+        self._send_json({"project_slug": project_slug, "intent_slug": intent_slug, "checkin_at": checkin_at})
 
     def api_focus_recalculate(self) -> None:
         ctx, _ = self._context()
