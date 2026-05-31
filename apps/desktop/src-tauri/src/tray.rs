@@ -46,6 +46,11 @@ pub mod ids {
     pub const REMINDER_PREFIX: &str = "reminder:";
     pub const NO_RADAR: &str = "no_radar";
     pub const VIEW_NOTIFICATIONS: &str = "view_notifications";
+    /// Replaces NO_PRESSING when the backend_supervisor reports the
+    /// backend as degraded (Failed mode or 3+ consecutive health-check
+    /// failures), so the user sees the actual failure instead of the
+    /// misleading "No pressing items" empty state.
+    pub const BACKEND_ERROR: &str = "backend_error";
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -113,14 +118,17 @@ fn build_menu<R: Runtime>(
         })
         .collect::<tauri::Result<Vec<_>>>()?;
 
+    // When the backend is reachable, an empty alerts list means "you
+    // really have nothing pressing". When the backend supervisor reports
+    // degraded, an empty list is misleading — show the actual reason so
+    // the user has somewhere to look (~/.squirrel/squirrel.log).
     let no_pressing = if alert_items.is_empty() {
-        Some(MenuItem::with_id(
-            app,
-            ids::NO_PRESSING,
-            "No pressing items",
-            false,
-            None::<&str>,
-        )?)
+        let (id, label) = if crate::backend_supervisor::is_degraded(app) {
+            (ids::BACKEND_ERROR, "Backend unavailable — see ~/.squirrel/squirrel.log")
+        } else {
+            (ids::NO_PRESSING, "No pressing items")
+        };
+        Some(MenuItem::with_id(app, id, label, false, None::<&str>)?)
     } else {
         None
     };
@@ -210,7 +218,11 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     app.exit(0);
                 }
                 ids::VIEW_NOTIFICATIONS => show_main_window(app),
-                ids::PRESSING_HEADER | ids::NO_PRESSING | ids::RADAR_HEADER | ids::REMINDER_HEADER => {
+                ids::PRESSING_HEADER
+                | ids::NO_PRESSING
+                | ids::BACKEND_ERROR
+                | ids::RADAR_HEADER
+                | ids::REMINDER_HEADER => {
                     // Disabled items; menu-event still fires on some platforms.
                 }
                 other if other.starts_with(ids::ALERT_PREFIX) => {

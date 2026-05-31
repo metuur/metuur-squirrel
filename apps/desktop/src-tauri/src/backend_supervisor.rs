@@ -267,6 +267,27 @@ pub(crate) fn shutdown<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Pure state-inspection helper — true when the backend is either in
+/// permanent Failed mode or has accumulated enough consecutive health-check
+/// failures that the user should see an error UI. Split out so tests can
+/// exercise the logic without an AppHandle.
+fn is_degraded_state(s: &SupervisorState) -> bool {
+    matches!(s.mode, SupervisionMode::Failed)
+        || s.consecutive_failures >= STRIKES_BEFORE_ERROR
+}
+
+/// True when the tray UI should show a backend-error message instead of
+/// the normal "No pressing items" empty state. Used by `tray::build_menu`.
+/// Returns false if the supervisor state hasn't been registered yet
+/// (early startup, or test runs that don't init the supervisor).
+pub(crate) fn is_degraded<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Some(state) = app.try_state::<Mutex<SupervisorState>>() else {
+        return false;
+    };
+    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+    is_degraded_state(&s)
+}
+
 fn build_client() -> Option<reqwest::Client> {
     reqwest::Client::builder()
         .timeout(HEALTH_REQ_TIMEOUT)
@@ -359,5 +380,45 @@ mod tests {
         let port = listener.local_addr().unwrap().port();
         assert!(port_in_use(port));
         drop(listener);
+    }
+
+    #[test]
+    fn is_degraded_state_returns_true_for_failed_mode_regardless_of_strikes() {
+        let mut s = SupervisorState::new();
+        s.mode = SupervisionMode::Failed;
+        s.consecutive_failures = 0;
+        assert!(is_degraded_state(&s));
+    }
+
+    #[test]
+    fn is_degraded_state_returns_true_for_managed_mode_at_or_above_strike_limit() {
+        let mut s = SupervisorState::new();
+        s.mode = SupervisionMode::Managed;
+        s.consecutive_failures = STRIKES_BEFORE_ERROR;
+        assert!(is_degraded_state(&s));
+    }
+
+    #[test]
+    fn is_degraded_state_returns_false_for_managed_mode_below_strike_limit() {
+        let mut s = SupervisorState::new();
+        s.mode = SupervisionMode::Managed;
+        s.consecutive_failures = STRIKES_BEFORE_ERROR - 1;
+        assert!(!is_degraded_state(&s));
+    }
+
+    #[test]
+    fn is_degraded_state_returns_false_for_adopted_with_zero_strikes() {
+        let mut s = SupervisorState::new();
+        s.mode = SupervisionMode::Adopted;
+        s.consecutive_failures = 0;
+        assert!(!is_degraded_state(&s));
+    }
+
+    #[test]
+    fn is_degraded_state_returns_true_for_adopted_after_three_strikes() {
+        let mut s = SupervisorState::new();
+        s.mode = SupervisionMode::Adopted;
+        s.consecutive_failures = STRIKES_BEFORE_ERROR;
+        assert!(is_degraded_state(&s));
     }
 }
