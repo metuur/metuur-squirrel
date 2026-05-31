@@ -22,6 +22,10 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 const BACKEND_HOME: &str = "http://127.0.0.1:3939/api/home";
 const POLL_INTERVAL: Duration = Duration::from_secs(30);
+// Cap the exponential backoff applied while the backend is unreachable.
+// 30s → 60s → 120s → 240s → 300s; resets to POLL_INTERVAL on first success.
+// Keeps idle laptops from waking every 30s for a doomed connect-refused.
+const MAX_BACKOFF_INTERVAL: Duration = Duration::from_secs(300);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
 const MAX_ALERTS: usize = 3;
 const NOTIF_INTERVAL: Duration = Duration::from_secs(120);
@@ -705,6 +709,10 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
         }
 
         let mut last_break_check: Option<Instant> = None;
+        // Sleep cadence between polls. Starts at POLL_INTERVAL; doubles up
+        // to MAX_BACKOFF_INTERVAL on each consecutive fetch_pressing Err;
+        // resets to POLL_INTERVAL on the first Ok.
+        let mut current_interval: Duration = POLL_INTERVAL;
 
         loop {
             // R-3.3/R-3.4 (Story 2.1): read notification settings every cycle; default on failure
@@ -712,6 +720,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 
             match fetch_pressing(&client).await {
                 Ok(alerts) => {
+                    current_interval = POLL_INTERVAL;
                     let reminders = fetch_reminders(&client).await.unwrap_or_else(|_| RemindersResponse {
                         approaching: vec![],
                         active: vec![],
@@ -774,7 +783,14 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                     }
                 }
                 Err(e) => {
-                    tracing::debug!(error = %e, "tray-alerts: backend unreachable, clearing");
+                    let next = (current_interval * 2).min(MAX_BACKOFF_INTERVAL);
+                    tracing::debug!(
+                        error = %e,
+                        prev_interval_secs = current_interval.as_secs(),
+                        next_interval_secs = next.as_secs(),
+                        "tray-alerts: backend unreachable, clearing and backing off",
+                    );
+                    current_interval = next;
                     let _ = crate::tray::update_alerts(&app, &[], &[], &[], 0);
                 }
             }
@@ -785,14 +801,16 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                 .unwrap_or_else(|p| p.into_inner())
                 .last_poll_at = Instant::now();
 
-            tokio::time::sleep(POLL_INTERVAL).await;
+            tokio::time::sleep(current_interval).await;
 
-            // R-2.2–R-2.4: detect sleep/wake and reset notification timer
+            // R-2.2–R-2.4: detect sleep/wake and reset notification timer.
+            // Compare against current_interval (not the base POLL_INTERVAL)
+            // so backoff cycles don't get false-flagged as sleep events.
             {
                 let state_ref = app.state::<Mutex<TauriNotificationState>>();
                 let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
                 let actual_elapsed = state.last_poll_at.elapsed();
-                if actual_elapsed > POLL_INTERVAL + SLEEP_THRESHOLD {
+                if actual_elapsed > current_interval + SLEEP_THRESHOLD {
                     state.last_check_at = Instant::now();
                     tracing::info!(
                         actual_elapsed_secs = actual_elapsed.as_secs_f64(),
