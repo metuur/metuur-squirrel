@@ -2,12 +2,17 @@
  *
  * Cascade-layer order (low specificity first → high specificity wins):
  *   1. tailwindcss          — Tailwind v4 core (preflight, utilities, etc.)
- *   2. layer(theme)         — design tokens + theme overrides
+ *   2. layer(theme)         — design tokens + `[data-theme=...]` overrides
  *   3. layer(primitives)    — body chrome, dot grid, @font-face, .accent-line
  *   4. layer(components)    — .panel .card .btn .chip .stripe-* etc.
  *
- * Tailwind's utility layer always wins ties against custom layers below it,
- * which is what we want: utilities can override recipe defaults case by case.
+ * Tailwind v4 detects `@theme` blocks even when the file is imported via
+ * `@import "..." layer(theme)` — verified during story 2.1 by injecting a
+ * `bg-bg` utility and confirming `--color-bg` emits at `:root`.
+ *
+ * Tailwind's own utility layer always wins ties against custom layers
+ * below it, which is what we want: utilities can override recipe defaults
+ * case-by-case.
  *
  * CSS spec note: `@import "..."` cannot live inside `@layer { ... }` blocks
  * (imports must be top-level). The `layer(name)` keyword on the import is

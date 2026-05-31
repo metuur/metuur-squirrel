@@ -65,7 +65,7 @@ Dependency layers:
 
 ## Unit 2: Token contract
 
-- [ ] **2.1** Write `packages/design-system/src/tokens.css` `@theme` block (deps: 1.2, est: ~20m)
+- [x] **2.1** Write `packages/design-system/src/tokens.css` `@theme` block (deps: 1.2, est: ~20m)
   - acceptance:
     - R-2.1 — All 17 `--color-*` token names declared: `bg, surface, surface-2, focus-tint, focus-edge, ink, ink-2, ink-3, ink-4, hairline, hairline-2, accent, critical, critical-bg, warning, warning-bg, ok`.
     - R-2.2 — `--font-sans` (Manrope stack), `--font-mono` (JetBrains Mono stack), `--font-serif` (Fraunces stack) declared with system-font fallbacks.
