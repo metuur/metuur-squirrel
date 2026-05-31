@@ -18,7 +18,6 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
   const navigate = useNavigate();
   const location = useLocation();
   const { open: openCapture } = useCapture();
-  const showViewToggle = location.pathname === '/';
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -72,9 +71,9 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             <span className="tracking-tight">Squirrel</span>
           </Link>
 
-          <div className={`${showViewToggle ? 'hidden md:flex' : 'hidden'} bg-surface-2 p-0.5 rounded border border-hairline`}>
+          <div className="hidden md:flex bg-surface-2 p-0.5 rounded border border-hairline">
             <button
-              onClick={() => setViewMode('List')}
+              onClick={() => { setViewMode('List'); if (location.pathname !== '/') navigate('/'); }}
               className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
                 viewMode === 'List'
                   ? 'text-accent bg-surface shadow-sm'
@@ -84,7 +83,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               List
             </button>
             <button
-              onClick={() => setViewMode('Board')}
+              onClick={() => { setViewMode('Board'); if (location.pathname !== '/') navigate('/'); }}
               className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
                 viewMode === 'Board'
                   ? 'text-accent bg-surface shadow-sm'

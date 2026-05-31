@@ -36,13 +36,15 @@ export default function HomePage() {
   );
 }
 
-function Header({ parakeet, focus, manualFocus, onRefresh }: {
+function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
   parakeet: string;
   focus: { slug: string; title: string; next_action: string } | null;
   manualFocus?: { today: ManualPick | null; today_pm: ManualPick | null; week: ManualPick | null } | null;
+  projects: ProjectListItem[];
   onRefresh: () => void;
 }) {
   const [showStartPanel, setShowStartPanel] = useState(false);
+  const [pickerSlot, setPickerSlot] = useState<'today' | 'week' | null>(null);
   const [activeSession, setActiveSession] = useState<{ sessionId: number; slug: string } | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -116,6 +118,33 @@ function Header({ parakeet, focus, manualFocus, onRefresh }: {
   const isAllDay = !!(amPick && pmPick && amPick.intent_slug === pmPick.intent_slug);
   const hasTodayFocus = !!(amPick || pmPick);
 
+  const todayPillLabel = hasTodayFocus
+    ? isAllDay
+      ? 'Today (All day)'
+      : amPick && pmPick
+        ? 'Today (AM + PM)'
+        : amPick
+          ? 'Today (AM)'
+          : 'Today (PM)'
+    : null;
+  const todayDotClass = pmPick && !amPick ? 'dot dot-pm' : 'dot';
+
+  const handleClearFocus = async (slot: 'today' | 'week') => {
+    try {
+      if (slot === 'today') {
+        await Promise.all([
+          api.focusSet('today', { clear: true }),
+          api.focusSet('today_pm', { clear: true }),
+        ]);
+      } else {
+        await api.focusSet(slot, { clear: true });
+      }
+      onRefresh();
+    } catch {
+      /* best-effort */
+    }
+  };
+
   return (
     <div className="mb-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -167,6 +196,54 @@ function Header({ parakeet, focus, manualFocus, onRefresh }: {
           <div className="eyebrow mb-3">This week</div>
           {renderFocusRow(weekPick, 'Week', 'chip-week', 'week', false)}
         </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        {todayPillLabel ? (
+          <span className="focus-pill">
+            <span className={todayDotClass} />
+            <span>{todayPillLabel}:</span>
+            <button type="button" className="change-btn" onClick={() => setPickerSlot('today')}>Change</button>
+            <span className="sep">·</span>
+            <button type="button" className="clear-btn" onClick={() => handleClearFocus('today')}>Clear</button>
+          </span>
+        ) : (
+          <button type="button" className="focus-pill empty" onClick={() => setPickerSlot('today')}>
+            <span className="dot" />
+            Pick today's focus
+          </button>
+        )}
+        {amPick && !pmPick && (
+          <button type="button" className="focus-pill empty" onClick={() => setPickerSlot('today')}>
+            <span className="dot dot-pm" />
+            Add afternoon focus
+          </button>
+        )}
+        {weekPick ? (
+          <span className="focus-pill">
+            <span className="dot dot-week" />
+            <span>This week:</span>
+            <button type="button" className="change-btn" onClick={() => setPickerSlot('week')}>Change</button>
+            <span className="sep">·</span>
+            <button type="button" className="clear-btn" onClick={() => handleClearFocus('week')}>Clear</button>
+          </span>
+        ) : (
+          <button type="button" className="focus-pill empty" onClick={() => setPickerSlot('week')}>
+            <span className="dot dot-week" />
+            Pick this week's focus
+          </button>
+        )}
+      </div>
+
+      {pickerSlot && (
+        <FocusPickerModal
+          slot={pickerSlot}
+          projects={projects}
+          currentAmPick={amPick}
+          currentPmPick={pmPick}
+          onClose={() => setPickerSlot(null)}
+          onPicked={() => { setPickerSlot(null); onRefresh(); }}
+        />
       )}
     </div>
   );
