@@ -11,12 +11,20 @@ export function OpenWebUIButton() {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-    >
-      Open Web UI <span aria-hidden>↗</span>
+    <button type="button" onClick={handleClick} className="btn">
+      Open Web UI
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        aria-hidden
+      >
+        <line x1="7" y1="17" x2="17" y2="7" />
+        <polyline points="7 7 17 7 17 17" />
+      </svg>
     </button>
   );
 }

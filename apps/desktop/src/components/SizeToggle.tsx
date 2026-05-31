@@ -46,9 +46,22 @@ export function SizeToggle() {
       onClick={toggle}
       title={isCompact ? "Expand to full size" : "Shrink to compact"}
       aria-label={isCompact ? "Expand" : "Compact"}
-      className="inline-flex items-center justify-center w-9 h-9 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200 transition-colors text-xl leading-none"
+      className="icon-btn"
     >
-      {isCompact ? "⊞" : "⊟"}
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" />
+        <line x1="3.5" y1="11" x2="20.5" y2="11" />
+      </svg>
     </button>
   );
 }

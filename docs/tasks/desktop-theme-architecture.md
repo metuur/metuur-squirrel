@@ -203,7 +203,7 @@ Dependency layers:
     - Visual: pressing-section + 3 task cards match `code.html` lines 482-608.
     - Mapping table sanity check: render fixture with one card per level; stripe colors correctly distributed across the 3-color reduction.
 
-- [ ] **8.4** Rewrite small components batch: `BackendStatusBanner`, `CaptureButton`, `CloseWindowButton`, `OpenWebUIButton`, `SizeToggle`, `ParakeetWidget` (deps: 8.1, est: ~40m)
+- [x] **8.4** Rewrite small components batch: `BackendStatusBanner`, `CaptureButton`, `CloseWindowButton`, `OpenWebUIButton`, `SizeToggle`, `ParakeetWidget` (deps: 8.1, est: ~40m)
   - acceptance:
     - R-8.4 — Each file's color references resolve through semantic tokens or recipe classes. No `slate-*`, `background-*`, `bg-blue-*`, `text-red-*`, `bg-amber-400`, or raw hex (outside of recipe internals).
     - R-8.5 / R-8.6 — Same rules.
