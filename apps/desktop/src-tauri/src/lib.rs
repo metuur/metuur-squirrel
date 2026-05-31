@@ -80,6 +80,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // R-1.7 / LLD D9: lock macOS activation policy to Accessory so the app
             // never gets a Dock icon, never gets an app menu in the top menu bar,

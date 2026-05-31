@@ -13,6 +13,8 @@
     "store:default",
     "autostart:default",
     "deep-link:default",
+    "process:default",
+    "process:allow-restart",
     "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
     "global-shortcut:allow-register-all",

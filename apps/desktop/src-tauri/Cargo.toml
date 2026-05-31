@@ -22,6 +22,9 @@ tauri-plugin-opener = "2"
 # (R-9.1/R-9.2). Without this plugin the supervisor stays in Adopted/Failed
 # mode and never owns the backend lifecycle.
 tauri-plugin-shell = "2"
+# Powers the "Restart Squirrel" button in BackendStatusBanner so end users
+# can recover from a stuck-backend state without a terminal.
+tauri-plugin-process = "2"
 url = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-store = "2"
