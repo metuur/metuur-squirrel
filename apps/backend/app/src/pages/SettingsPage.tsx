@@ -7,13 +7,21 @@ export default function SettingsPage() {
   const { data: me, mutate } = useMe();
   const { show: toast } = useToast();
 
-  const [localNotif, setLocalNotif] = useState({ in_app: true, os_popups: false });
+  const [localNotif, setLocalNotif] = useState<{
+    in_app: boolean;
+    os_popups: boolean;
+    sound: 'Glass' | 'Funk' | 'Silent';
+  }>({ in_app: true, os_popups: false, sound: 'Glass' });
 
   useEffect(() => {
     if (me?.notifications) {
-      setLocalNotif({ in_app: me.notifications.in_app, os_popups: me.notifications.os_popups });
+      setLocalNotif({
+        in_app: me.notifications.in_app,
+        os_popups: me.notifications.os_popups,
+        sound: me.notifications.sound,
+      });
     }
-  }, [me?.notifications?.in_app, me?.notifications?.os_popups]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [me?.notifications?.in_app, me?.notifications?.os_popups, me?.notifications?.sound]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleNotifToggle(field: 'in_app' | 'os_popups', value: boolean) {
     const prev = localNotif;
@@ -25,6 +33,27 @@ export default function SettingsPage() {
     } catch {
       setLocalNotif(prev);
       toast('Failed to save notification settings', 'error');
+    }
+  }
+
+  async function handleSoundChange(sound: 'Glass' | 'Funk' | 'Silent') {
+    const prev = localNotif;
+    const next = { ...localNotif, sound };
+    setLocalNotif(next);
+    try {
+      await api.setNotificationSettings(next);
+      await mutate();
+    } catch {
+      setLocalNotif(prev);
+      toast('Failed to save notification sound', 'error');
+    }
+  }
+
+  async function handleSoundPreview(sound: 'Glass' | 'Funk' | 'Silent') {
+    try {
+      await api.previewNotificationSound(sound);
+    } catch {
+      toast('Could not preview sound', 'error');
     }
   }
 
@@ -110,6 +139,20 @@ export default function SettingsPage() {
             onChange={(v) => handleNotifToggle('os_popups', v)}
             disabled={!localNotif.in_app}
           />
+          <div className="pt-4 border-t border-hairline">
+            <p className="text-sm font-medium text-ink-2 mb-3">Notification sound</p>
+            <div className="space-y-2">
+              {(['Glass', 'Funk', 'Silent'] as const).map((s) => (
+                <SoundRow
+                  key={s}
+                  sound={s}
+                  selected={localNotif.sound === s}
+                  onSelect={() => handleSoundChange(s)}
+                  onPreview={() => handleSoundPreview(s)}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </SettingsSection>
 
@@ -152,6 +195,48 @@ function ToggleRow({
             value ? 'translate-x-4' : 'translate-x-0'
           }`}
         />
+      </button>
+    </div>
+  );
+}
+
+function SoundRow({
+  sound,
+  selected,
+  onSelect,
+  onPreview,
+}: {
+  sound: 'Glass' | 'Funk' | 'Silent';
+  selected: boolean;
+  onSelect: () => void;
+  onPreview: () => void;
+}) {
+  const icon = sound === 'Silent' ? 'volume_off' : 'music_note';
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors border ${
+          selected
+            ? 'bg-focus-tint text-accent border-accent/40'
+            : 'text-ink-2 hover:bg-surface-2 border-transparent'
+        }`}
+      >
+        <span className="material-icons text-base">{icon}</span>
+        <span>{sound}</span>
+        {selected && <span className="ml-auto material-icons text-base">check</span>}
+      </button>
+      <button
+        type="button"
+        onClick={onPreview}
+        disabled={sound === 'Silent'}
+        title={sound === 'Silent' ? 'Silent has no preview' : `Preview ${sound}`}
+        aria-label={`Preview ${sound}`}
+        className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-ink-3 hover:text-accent hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        <span className="material-icons text-base">volume_up</span>
       </button>
     </div>
   );

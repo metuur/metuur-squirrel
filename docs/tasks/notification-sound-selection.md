@@ -28,15 +28,15 @@
   - acceptance: R-3.2, R-4.5 — preview without save; invalid sound → 400; Silent → 200 + no audio
   - verify: HTTP tests — (a) POST `{"sound":"Funk"}` returns 200 and triggers afplay (mock or process check); (b) POST `{"sound":"Silent"}` returns 200 with no afplay spawned; (c) POST `{"sound":"Bogus"}` returns 400; (d) `~/.squirrel/config.toml` is unchanged after each preview
 
-- [ ] 2.3 Extend the existing Notifications section in `SettingsPage.tsx` (line ~102) with a sound control showing the current selection (deps: 2.1, 2.2, est: ~30m)
+- [x] 2.3 Extend the existing Notifications section in `SettingsPage.tsx` (line ~102) with a sound control showing the current selection (deps: 2.1, 2.2, est: ~30m)
   - acceptance: R-3.1 — control visible; current selection indicated; existing in_app/os_popups toggles still function
   - verify: Open settings, observe current selection highlighted; toggle in_app/os_popups still works exactly as before
 
-- [ ] 2.4 Wire the sound control to POST via `setNotificationSettings`, using the existing optimistic-update + revert-on-failure pattern (deps: 2.3, est: ~20m)
+- [x] 2.4 Wire the sound control to POST via `setNotificationSettings`, using the existing optimistic-update + revert-on-failure pattern (deps: 2.3, est: ~20m)
   - acceptance: R-3.3 — persists within 1s; failure reverts + shows toast
   - verify: Change selection → config updates within 1s; simulate API failure (kill backend) → UI reverts, toast appears
 
-- [ ] 2.5 Add 🔊 preview button per option that calls `api.previewNotificationSound(name)` (new API client method that POSTs to `/api/notifications/preview`) (deps: 2.2, 2.3, est: ~15m)
+- [x] 2.5 Add 🔊 preview button per option that calls `api.previewNotificationSound(name)` (new API client method that POSTs to `/api/notifications/preview`) (deps: 2.2, 2.3, est: ~15m)
   - acceptance: R-3.2 — preview plays each option without committing
   - verify: Click each preview button → corresponding sound plays from the backend; saved selection unchanged
 
