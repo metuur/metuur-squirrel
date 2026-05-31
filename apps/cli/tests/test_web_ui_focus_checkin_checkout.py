@@ -82,7 +82,7 @@ def _make_home(tmp: pathlib.Path, vault_name: str = "testvault") -> pathlib.Path
     shutil.copytree(FIXTURE_VAULT, vault)
     config = home / ".squirrel" / "config.toml"
     config.parent.mkdir(parents=True, exist_ok=True)
-    config.write_text(f'[[vaults]]\nname = "{vault_name}"\npath = "{vault}"\n')
+    config.write_text(f'[[vaults]]\nname = "{vault_name}"\npath = "{vault}"\ndefault = true\n')
     return home
 
 

@@ -69,6 +69,7 @@ _CODE_TO_EXIT = {
     "INVALID_DEADLINE": 8,
     "INVALID_INTENT_TAG": 8,
     "INTENT_TAG_MISMATCH": 8,
+    "INVALID_INTENT_FILENAME": 8,
 }
 
 _PROJECT_PAGE_TEMPLATE = """---
@@ -176,6 +177,19 @@ def _validate_first_intent(project_tag: str, intent_tag: Optional[str]) -> None:
         )
 
 
+_INTENT_FILENAME_RE = re.compile(r"^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$")
+
+
+def _validate_first_intent_filename(filename: Optional[str]) -> None:
+    if not filename:
+        return
+    if not _INTENT_FILENAME_RE.match(filename):
+        raise NewProjectError(
+            "INVALID_INTENT_FILENAME",
+            f"{filename!r} is not a valid intent filename. Expected UPPERCASE letters/digits with dashes.",
+        )
+
+
 def _check_wip_capacity(vault_path: pathlib.Path, force: bool) -> tuple[int, int]:
     agg = aggregate_status(vault_path)
     wip = agg.get("wip") or {}
@@ -247,6 +261,7 @@ def create_project(
     description: str = "",
     first_intent_tag: Optional[str] = None,
     first_intent_title: str = "",
+    first_intent_filename: Optional[str] = None,
     force: bool = False,
 ) -> dict:
     """Create a new project and return a summary dict.
@@ -258,6 +273,7 @@ def create_project(
     _validate_tipo(tipo)
     deadline = _validate_deadline(deadline)
     _validate_first_intent(tag, first_intent_tag)
+    _validate_first_intent_filename(first_intent_filename)
 
     vault_path = _resolve_vault(vault_name)
 
@@ -293,7 +309,8 @@ def create_project(
             creado_iso=creado_iso,
         )
         if intent_body is not None:
-            intent_path = project_dir / f"{first_intent_tag}.md"
+            fname = (first_intent_filename or "").strip() or first_intent_tag
+            intent_path = project_dir / f"{fname}.md"
 
     project_dir.mkdir(parents=True, exist_ok=False)
     project_page.write_text(page_body, encoding="utf-8")
@@ -378,6 +395,7 @@ def main() -> int:
     p.add_argument("--description", default="")
     p.add_argument("--first-intent-tag", default=None)
     p.add_argument("--first-intent-title", default="")
+    p.add_argument("--first-intent-filename", default=None)
     p.add_argument("--force", action="store_true")
     args = p.parse_args()
 
@@ -391,6 +409,7 @@ def main() -> int:
             description=args.description,
             first_intent_tag=args.first_intent_tag,
             first_intent_title=args.first_intent_title,
+            first_intent_filename=args.first_intent_filename,
             force=args.force,
         )
     except NewProjectError as e:

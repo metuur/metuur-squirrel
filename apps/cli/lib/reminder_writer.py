@@ -233,3 +233,55 @@ def snooze_reminder(path: Path, until_date: str) -> None:
     new_body = _insert_or_update_callout(body, abs_until)
     if new_body != body:
         _rewrite_body(path, new_body)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI entry point — R-8.2, R-8.3, R-8.4, R-8.5
+# ─────────────────────────────────────────────────────────────────────────────
+
+import argparse
+import json
+import re
+
+
+def _find_note(vault_path: Path, note_id: str):
+    if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_-]*$", note_id):
+        return None
+    for md in vault_path.rglob(f"{note_id}.md"):
+        return md
+    return None
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="reminder_writer")
+    sub = parser.add_subparsers(dest="cmd")
+
+    snooze_p = sub.add_parser("snooze")
+    snooze_p.add_argument("--note-id", required=True)
+    snooze_p.add_argument("--until", required=True)
+    snooze_p.add_argument("--vault", required=True)
+
+    args = parser.parse_args()
+
+    if args.cmd == "snooze":
+        try:
+            datetime.date.fromisoformat(args.until)
+        except ValueError:
+            print(json.dumps({"error": "invalid_date"}))
+            sys.exit(1)
+
+        vault = Path(args.vault)
+        note_path = _find_note(vault, args.note_id)
+        if note_path is None:
+            print(json.dumps({"error": "not_found", "id": args.note_id}))
+            sys.exit(1)
+
+        snooze_reminder(note_path, args.until)
+        print(json.dumps({"snoozed": True, "id": args.note_id, "until": args.until}))
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -677,7 +677,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ).fetchone()[0]
         intent_path = vault_path / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
         if intent_path.is_file():
-            from write_frontmatter import write_frontmatter
+            from intent_parser import write_frontmatter
             write_frontmatter(intent_path, {"time_invested_minutes": int(total)})
         return int(total)
 
