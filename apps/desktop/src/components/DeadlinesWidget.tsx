@@ -1,14 +1,15 @@
 // Phase 2 DeadlinesWidget — renders /api/home.pressing[] as small cards
-// styled like the web UI's PressingCard column header (red accent rule
-// above PRESSING items, white surface cards, mono id, red overdue chip).
-// EARS R-2.4, R-2.5, R-2.6, R-2.9.
+// matching the paper-indigo design (`.card` + `.stripe-*` severity rail,
+// `.slug` + `.title` typography, `.chip chip-critical/warning` overdue badge,
+// stacked `.btn` action buttons).
 //
-// Each card has:
-// - the task id (mono, small)
-// - the task title (clamped to 2 lines)
-// - a meta row: overdue/hours indicator + "Updated Xd ago" if mtime present
-// - an action row: "+ note" (opens capture modal pre-set to the task's
-//   project) and "↗" (opens the web UI's /notes/<id> in the browser).
+// Each card carries:
+// - the task id (mono, .slug)
+// - the task title (.title, clamped to 2 lines)
+// - an overdue/urgency chip (color tracks the stripe level)
+// - "Last worked Xd ago" if mtime present
+// - two .btn actions: "+ Note" (opens capture modal) and "Open ↗" (opens
+//   the web UI's /notes/<id> in the browser)
 
 import { useEffect, useRef } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -31,6 +32,25 @@ interface Props {
   scrollTarget?: DeepLinkTarget | null;
 }
 
+type StripeLevel = "critical" | "warning" | "ok";
+
+// Map a PressingItem to one of three stripe colors. Backend reduces the 6
+// canonical urgency levels (critical, urgent, soon, upcoming, eventual,
+// distant) to the 3 stripe variants the design system supports. Overdue
+// always escalates to critical regardless of bucket.
+function stripeLevel(item: PressingItem): StripeLevel {
+  if (item.is_overdue) return "critical";
+  switch (item.urgency) {
+    case "critical":
+      return "critical";
+    case "urgent":
+    case "soon":
+      return "warning";
+    default:
+      return "ok";
+  }
+}
+
 function tail(item: PressingItem): string {
   if (item.is_overdue) {
     return `${item.days_overdue ?? "?"}d overdue`;
@@ -43,6 +63,27 @@ function tail(item: PressingItem): string {
 
 function openTaskDetails(taskId: string) {
   void openUrl(`${BACKEND_ORIGIN}/notes/${taskId}`);
+}
+
+// Compact .btn — matches the per-card action button padding from code.html
+// lines 511-528 (5px 10px, 11px font). Used inline via style={ACTION_BTN_STYLE}.
+const ACTION_BTN_STYLE: React.CSSProperties = { padding: "5px 10px", fontSize: 11 };
+
+function ClockIcon() {
+  return (
+    <svg
+      width="9"
+      height="9"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
 }
 
 export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarget }: Props) {
@@ -109,55 +150,48 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
 
   return (
     <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
-      <div className="flex items-center justify-between border-b-2 border-red-300 dark:border-red-700/50 pb-1 mb-1.5 px-0.5">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-          Pressing
-        </h3>
-        {top.length > 0 && (
-          <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-[10px] font-bold rounded-full">
-            {pressing.length}
-          </span>
-        )}
+      <div className="flex items-center justify-between mb-2 px-0.5">
+        <div className="flex items-center gap-2">
+          <span className="eyebrow">Pressing</span>
+          {top.length > 0 && (
+            <span className="chip chip-count tabular">{pressing.length}</span>
+          )}
+        </div>
       </div>
+
       {top.length > 0 ? (
         <ul className="space-y-2">
           {top.map((item) => {
             const lastWorked = timeAgo(item.last_worked);
             const projectSlug = projectForTask(item.id, projects) ?? "";
+            const level = stripeLevel(item);
+            const chipClass = level === "critical" ? "chip-critical" : "chip-warning";
             return (
               <li
                 key={item.id}
                 id={`deadline-card-${item.id}`}
                 data-task-id={item.id}
                 data-project-id={projectSlug}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm px-3 py-1.5"
+                className={`card stripe stripe-${level}`}
+                style={{ padding: "10px 10px 10px 14px" }}
               >
-                <div className="text-[10px] font-mono text-slate-400 truncate">{item.id}</div>
-                <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-snug mt-0.5 line-clamp-2">
-                  {item.title}
-                </h4>
-
-                {/* meta + actions on one row */}
-                <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium min-w-0">
-                    <span
-                      className={`inline-flex items-center gap-1 ${
-                        item.is_overdue ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"
-                      }`}
-                    >
-                      <span aria-hidden>⏰</span>
+                <div className="flex justify-between items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="slug truncate">{item.id}</p>
+                    <p className="title text-[13.5px] leading-snug mt-0.5 mb-2 line-clamp-2">
+                      {item.title}
+                    </p>
+                    <span className={`chip ${chipClass}`}>
+                      <ClockIcon />
                       {tail(item)}
                     </span>
                     {lastWorked && (
-                      <>
-                        <span className="text-slate-300 dark:text-slate-600">·</span>
-                        <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">
-                          Last worked {lastWorked}
-                        </span>
-                      </>
+                      <span className="ml-2 text-[10px] text-ink-4 tabular">
+                        Last worked {lastWorked}
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex flex-col gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => online && onAddNote(projectForTask(item.id, projects))}
@@ -167,20 +201,44 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
                           ? `Add a note to ${projectForTask(item.id, projects) ?? "Inbox"}`
                           : "Backend offline"
                       }
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white hover:border-primary dark:hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="btn"
+                      style={ACTION_BTN_STYLE}
                     >
-                      <span aria-hidden>+</span>
-                      note
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden
+                      >
+                        <line x1="12" x2="12" y1="5" y2="19" />
+                        <line x1="5" x2="19" y1="12" y2="12" />
+                      </svg>
+                      Note
                     </button>
                     <button
                       type="button"
                       onClick={() => openTaskDetails(item.id)}
                       title="Open task in web UI"
                       aria-label="Open task in web UI"
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      className="btn"
+                      style={ACTION_BTN_STYLE}
                     >
-                      <span aria-hidden>↗</span>
-                      open
+                      Open
+                      <svg
+                        width="9"
+                        height="9"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        aria-hidden
+                      >
+                        <line x1="7" y1="17" x2="17" y2="7" />
+                        <polyline points="7 7 17 7 17 17" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -189,9 +247,9 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
           })}
         </ul>
       ) : home.data ? (
-        <div className="text-xs text-slate-500 dark:text-slate-400 px-1">Nothing pressing today.</div>
+        <div className="text-xs text-ink-3 px-1">Nothing pressing today.</div>
       ) : (
-        <div className="text-xs text-slate-400 dark:text-slate-500 px-1">—</div>
+        <div className="text-xs text-ink-4 px-1">—</div>
       )}
     </section>
   );

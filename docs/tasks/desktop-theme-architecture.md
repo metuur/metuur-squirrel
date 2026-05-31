@@ -192,7 +192,7 @@ Dependency layers:
     - Compare to `code.html` lines 438-480 visually.
     - Click "Add afternoon focus" still opens the PM focus modal (behavior unchanged).
 
-- [ ] **8.3** Rewrite `DeadlinesWidget.tsx` with stripe-level mapping (deps: 8.1, est: ~50m)
+- [x] **8.3** Rewrite `DeadlinesWidget.tsx` with stripe-level mapping (deps: 8.1, est: ~50m)
   - acceptance:
     - R-8.3 — Each deadline card: `<article className="card stripe stripe-<level>">`. Mapping: `critical` → `stripe-critical`; `urgent`, `soon` → `stripe-warning`; `upcoming`, `eventual`, `lurking` → `stripe-ok`. Slug uses `.slug`, title uses `.title`, overdue badge uses `.chip chip-critical` or `.chip chip-warning`. Per-card action buttons use `.btn` with tight padding (`5px 10px`, 11 px font).
     - The section header uses `.eyebrow` + `.chip chip-count` for the count.
