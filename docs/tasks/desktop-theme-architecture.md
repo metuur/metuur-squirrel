@@ -54,7 +54,7 @@ Dependency layers:
     - Run `pnpm list -F @squirrel/desktop @squirrel/design-system` and confirm the workspace link is shown.
     - Create empty skeleton files: `src/index.css`, `src/tokens.css`, `src/primitives.css`, `src/recipes.css`, `src/themes/paper-indigo.css`, `README.md`. Each contains only a header comment for now.
 
-- [ ] **1.2** Wire `src/index.css` cascade-layer import order (deps: 1.1, est: ~15m)
+- [x] **1.2** Wire `src/index.css` cascade-layer import order (deps: 1.1, est: ~15m)
   - acceptance:
     - R-1.4 — `packages/design-system/src/index.css` imports in this exact order: `tailwindcss`, then `./tokens.css`, then `./themes/paper-indigo.css`, then `./primitives.css`, then `./recipes.css`.
     - R-1.5 — Each import (except `tailwindcss`) is wrapped in the appropriate `@layer` directive (`theme`, `primitives`, `components`).
