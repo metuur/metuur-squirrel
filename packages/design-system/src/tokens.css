@@ -39,10 +39,15 @@
   --color-warning-bg:   #FBF1E5;
   --color-ok:           #2F6B4F;
 
-  /* ── Type stacks ────────────────────────────────────────── */
-  --font-sans:  "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  /* ── Type stacks ────────────────────────────────────────────────
+   * Fontsource ships each variable font under "<Name> Variable" family
+   * (e.g. "Manrope Variable"). That's what primitives.css's @font-face
+   * shims declare, so it must come first. The bare "Manrope" / etc.
+   * entries pick up locally-installed copies on developer machines.
+   * ───────────────────────────────────────────────────────────── */
+  --font-sans:  "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:  "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Fraunces Variable", "Fraunces", ui-serif, Georgia, serif;
 }
 
 /* ── Shadows (not utility-generating) ─────────────────────── */

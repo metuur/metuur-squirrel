@@ -1,3 +1,61 @@
-/* Primitives — @font-face declarations, body chrome, dot grid, .accent-line.
- * Content lands in story 5.1 (depends on story 4.1 font bundling).
+/* Primitives — body chrome + font faces + .accent-line.
+ *
+ * Lives in `@layer primitives` (one tier above components). Carries:
+ *   1. @font-face declarations via the @fontsource-variable/* shims
+ *   2. Document-level chrome (height reset, background, font-family,
+ *      font features, paper-grade dot grid)
+ *   3. The .accent-line recipe (the thin indigo strip at the panel top)
  */
+
+/* ── Font faces (variable woff2 bundled by Vite from @fontsource) ──
+ * Each shim declares an @font-face per subset (latin, latin-ext, cyrillic…)
+ * with a unicode-range, so the browser fetches only the subsets it renders.
+ * For English-only Squirrel content, that's effectively the latin subset.
+ * Family name is "<Font> Variable" — see tokens.css --font-sans/-mono/-serif.
+ */
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource-variable/fraunces";
+
+/* ── Document chrome ──────────────────────────────────────────────
+ * Force a full-height shell (so <main className="h-screen"> measures
+ * against the viewport reliably) and paint the warm-paper background.
+ */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+body {
+  /* Manrope stylistic sets — silently ignored if the variable woff2 lacks
+   * them; harmless on system-font fallback. */
+  font-feature-settings: "ss01", "ss02", "cv11";
+
+  /* Atmospheric dot grid (18 × 18 px). Subtle enough to read as "paper"
+   * rather than a chart. */
+  background-image:
+    radial-gradient(rgba(14,17,22,0.045) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+  background-position: 0 0;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Thin gradient strip — a one-line brand cue at panel top. ───── */
+.accent-line {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-accent) 18%,
+    var(--color-accent) 22%,
+    transparent 26%,
+    transparent 100%
+  );
+}

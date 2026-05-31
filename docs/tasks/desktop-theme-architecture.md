@@ -106,7 +106,7 @@ Dependency layers:
 
 ## Unit 5: Primitives (body chrome + @font-face)
 
-- [ ] **5.1** Write `packages/design-system/src/primitives.css` (deps: 2.1, 4.1, est: ~25m)
+- [x] **5.1** Write `packages/design-system/src/primitives.css` (deps: 2.1, 4.1, est: ~25m)
   - acceptance:
     - R-4.2 — `primitives.css` imports the three `@fontsource-variable/*` CSS shims (one each for Manrope, JetBrains Mono, Fraunces). Each shim ships its own `@font-face` rule with `font-display: swap` and a relative `url()` to the woff2 inside the package. Our `--font-sans/-mono/-serif` token stacks include the fontsource family name first, then `local()`-compatible system fallbacks.
     - R-4.3 — System-font fallback chain in `--font-sans` / `--font-mono` / `--font-serif` ensures rendering when the font assets fail to load.
