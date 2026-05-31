@@ -13,11 +13,6 @@
 squirrel/
 ├── apps/
 │   └── desktop/
-│       ├── public/
-│       │   └── fonts/                          ← NEW
-│       │       ├── Manrope-Variable.woff2
-│       │       ├── JetBrainsMono-Variable.woff2
-│       │       └── Fraunces-Variable.woff2
 │       ├── src/
 │       │   ├── index.css                       ← rewritten (thin wrapper)
 │       │   ├── App.tsx                         ← className rewrites
@@ -44,9 +39,10 @@ squirrel/
 │       │   ├── index.css                       ← public entry (imports below)
 │       │   ├── tokens.css                      ← @theme block — Tailwind v4 tokens
 │       │   ├── recipes.css                     ← .panel .card .btn .chip etc.
-│       │   ├── primitives.css                  ← body, dot grid, accent-line, motion
+│       │   ├── primitives.css                  ← @fontsource imports + body, dot grid, accent-line, motion
 │       │   └── themes/
 │       │       └── paper-indigo.css            ← [data-theme="paper-indigo"] vars
+│       ├── package.json                        ← deps: @fontsource-variable/{manrope,jetbrains-mono,fraunces}
 │       └── README.md                           ← usage + theme-authoring guide
 └── pnpm-workspace.yaml                         ← add "packages/*"
 ```
@@ -120,27 +116,44 @@ attribute in `main.tsx` before React mounts.
 
 ### Font loading
 
-Variable woff2 files are downloaded once (from Google Fonts' GitHub
-distributions) and committed to `apps/desktop/public/fonts/`. The
-`@font-face` rules in `primitives.css` use `local()` first (skip the file
-read if the user has the font installed) and fall back to the bundled
-woff2:
+Fonts ship via the `@fontsource-variable/*` npm packages — the de-facto
+standard for self-hosting Google Fonts in a build pipeline:
+
+- `@fontsource-variable/manrope`
+- `@fontsource-variable/jetbrains-mono`
+- `@fontsource-variable/fraunces`
+
+These are declared as dependencies of `@squirrel/design-system` so any app
+that imports the design-system gets the fonts transitively. Each package
+ships a variable woff2 file plus a small CSS shim that declares the
+`@font-face` rule pointing at the file inside the package:
 
 ```css
+/* From @fontsource-variable/manrope/index.css (illustrative) */
 @font-face {
-  font-family: "Manrope";
-  font-weight: 400 800;
+  font-family: "Manrope Variable";
+  font-style: normal;
   font-display: swap;
-  src: local("Manrope"),
-       url("/fonts/Manrope-Variable.woff2") format("woff2-variations");
+  font-weight: 200 800;
+  src: url("./files/manrope-latin-wght-normal.woff2") format("woff2-variations");
 }
 ```
 
-Tauri serves `public/` at the root in dev (`/fonts/...` resolves to
-`apps/desktop/public/fonts/...`). Production builds copy the same files
-into the bundle. No `font-src` CSP directive is needed because the default
-`'self'` applies and same-origin font loads are allowed by the existing
-`default-src 'self'`.
+`primitives.css` imports these CSS shims, and our own `@font-face` block
+adds `local()` fallbacks against the `--font-sans/-mono/-serif` token
+stacks so any system-installed copy is preferred over the network read.
+
+Vite resolves the `url("./files/*.woff2")` references at build time and
+emits the files into `dist/assets/<hash>.woff2`. At runtime the Tauri
+webview serves them from the same origin, so the existing CSP
+(`default-src 'self'`) covers font loads without any additional
+`font-src` directive.
+
+**Why npm packages instead of committing files to `public/fonts/`:**
+versioning is pinned via package.json, no binary blobs in git, Vite
+handles cache-busting hashes, and upgrades are a single `pnpm up` away.
+The trade-off is one layer of indirection over which exact font bytes
+ship — acceptable for a single-user app.
 
 ### Component rewrite mapping
 
@@ -185,10 +198,12 @@ time. Raw Tailwind utilities remain available for layout (`flex`, `gap-2`,
    first (`@import "tailwindcss"` at the top); theme tokens must load before
    recipes; recipes must load before any utility one-off so utilities win
    on tie-breaks.
-4. **No font CDN.** All three fonts ship as files in `public/fonts/`,
-   sourced from the official Google Fonts GitHub repositories (variable
-   woff2). Each must be < 100 KB to keep the bundle reasonable; total
-   font budget ~200 KB.
+4. **No font CDN.** All three fonts ship via `@fontsource-variable/*` npm
+   packages declared as dependencies of `@squirrel/design-system`. Vite
+   resolves their CSS shims and emits the variable woff2 files into
+   `dist/assets/<hash>.woff2` — same-origin at runtime, so the existing
+   CSP covers them without a `font-src` directive. Approximate budget:
+   ~200 KB total across the three weights.
 5. **Single-platform first.** macOS is the only target this change is
    verified against. Windows / Linux Tauri builds may render fonts and
    shadows differently — acceptable for now.
@@ -260,15 +275,27 @@ qualifier. The migration of the web SPA is its own change with its own
 risks (the SPA is server-rendered with a different bundling setup and
 would need a build-step change to import from the workspace).
 
-### D6 — Fonts are bundled day 1 (5A, not 5B)
+### D6 — Fonts are bundled day 1 via `@fontsource-variable/*` npm packages (5A)
 
-**Decision:** Manrope, JetBrains Mono, Fraunces ship as variable woff2 in
-`apps/desktop/public/fonts/` from day 1.
+**Decision:** Manrope, JetBrains Mono, Fraunces ship from day 1 via the
+`@fontsource-variable/*` npm packages declared as dependencies of
+`@squirrel/design-system`. Vite bundles the variable woff2 files into
+`dist/assets/<hash>.woff2` at build time; runtime serves them from the
+app's own origin.
 
-**Rationale:** User chose 5A. The editorial type pair is core to the
-proposal's identity; shipping with system-font fallback would deliver an
-incomplete version of the design. Bundle cost (~200 KB) is acceptable for
-a desktop app where the bundle is fetched once at install.
+**Rationale:** User chose 5A (bundle now). The editorial type pair is
+core to the proposal's identity; shipping with system-font fallback would
+deliver an incomplete version of the design. Bundle cost (~200 KB) is
+acceptable for a desktop app where the bundle is fetched once at install.
+
+The npm-package path was chosen over committing files to
+`apps/desktop/public/fonts/` (the original draft) because: pnpm pins the
+version, no binary blobs in git, Vite handles cache-busting hashes, and
+upgrades are a single `pnpm up` away. Discovered during implementation
+of story 4.1; LLD updated and user explicitly confirmed.
+
+**Rejected:** Committing raw woff2 files to `apps/desktop/public/fonts/`.
+Higher maintenance, requires git-tracked binaries, manual upgrade cadence.
 
 ### D7 — Dark mode is stubbed only, not designed
 

@@ -43,15 +43,19 @@ that can be implemented and verified independently.
 | R-3.4 | THE SYSTEM SHALL declare `paper-indigo` as the default theme by setting `data-theme="paper-indigo"` on the `<html>` element in `apps/desktop/index.html`. |
 | R-3.5 | THE SYSTEM SHALL NOT ship any second theme file (`v05-blue`, `paper-indigo-dark`, etc.) in this change. |
 
-## Unit 4: Local font bundling
+## Unit 4: Local font bundling (via `@fontsource-variable/*` npm packages)
+
+> **Implementation note:** R-4.1, R-4.2, and R-4.5 were updated during
+> story 4.1 to reflect the npm-package bundling approach (LLD D6). See
+> commit history for the prior `public/fonts/` formulation.
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-4.1 | THE SYSTEM SHALL include three variable-font woff2 files at `apps/desktop/public/fonts/`: `Manrope-Variable.woff2`, `JetBrainsMono-Variable.woff2`, `Fraunces-Variable.woff2`. |
-| R-4.2 | THE SYSTEM SHALL declare three `@font-face` rules in `packages/design-system/src/primitives.css`, each with `local()` listed first and the `url("/fonts/<file>.woff2")` fallback second, using `font-display: swap`. |
-| R-4.3 | IF a font file is missing from `public/fonts/`, THE SYSTEM SHALL still render the popup using the system-font fallback chain declared in `--font-sans`, `--font-mono`, `--font-serif`. |
-| R-4.4 | THE SYSTEM SHALL NOT request any font from a remote origin. WHEN the popup loads, the browser DevTools Network panel SHALL show font requests only to the app's own origin. |
-| R-4.5 | WHERE the Tauri build packages the app for distribution, THE SYSTEM SHALL include the three woff2 files in the final bundle. |
+| R-4.1 | THE SYSTEM SHALL declare three font dependencies on `@squirrel/design-system`: `@fontsource-variable/manrope`, `@fontsource-variable/jetbrains-mono`, `@fontsource-variable/fraunces`. |
+| R-4.2 | THE SYSTEM SHALL import each package's CSS shim from `packages/design-system/src/primitives.css` so the `@font-face` rules they ship are included in the bundle. The design-system's own `@font-face` block (if any) SHALL list `local(...)` before any URL source so installed copies on the user's machine are preferred. |
+| R-4.3 | IF the npm font packages are absent (broken install) or the bundled woff2 files fail to load at runtime, THE SYSTEM SHALL still render the popup using the system-font fallback chain declared in `--font-sans`, `--font-mono`, `--font-serif`. |
+| R-4.4 | THE SYSTEM SHALL NOT request any font from a remote origin. WHEN the popup loads, the browser DevTools Network panel SHALL show font requests only to the app's own origin (Vite emits them under `dist/assets/<hash>.woff2`). |
+| R-4.5 | WHERE the Tauri build packages the app for distribution, THE SYSTEM SHALL include the variable woff2 files in the final bundle. Vite resolves the `url(...)` references inside each `@fontsource-variable/*` CSS shim and emits the woff2 into `dist/assets/`. |
 
 ## Unit 5: Body chrome and primitives
 

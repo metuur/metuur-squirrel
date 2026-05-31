@@ -95,30 +95,29 @@ Dependency layers:
 
 ## Unit 4: Font bundling
 
-- [ ] **4.1** Commit 3 variable woff2 fonts to `apps/desktop/public/fonts/` (est: ~30m)
+- [x] **4.1** Install `@fontsource-variable/*` packages as design-system deps (est: ~15m)
   - acceptance:
-    - R-4.1 — `apps/desktop/public/fonts/Manrope-Variable.woff2`, `JetBrainsMono-Variable.woff2`, `Fraunces-Variable.woff2` exist.
-    - R-4.5 — Each is < 100 KB; combined < 250 KB.
-    - Sources documented in `.devlocal/javier/desktop-theme-architecture-4.1/scratchpad.md` (URLs to Google Fonts GitHub releases, license attribution).
+    - R-4.1 — `packages/design-system/package.json` declares dependencies on `@fontsource-variable/manrope`, `@fontsource-variable/jetbrains-mono`, `@fontsource-variable/fraunces` (latest stable).
+    - R-4.5 — Each package resolves into `node_modules` after `pnpm install` and contains at least one `.woff2` file under `files/`.
   - verify:
-    - `ls -la apps/desktop/public/fonts/*.woff2` lists three files with sane sizes.
-    - `du -sh apps/desktop/public/fonts/` < 250 KB.
-    - `file apps/desktop/public/fonts/Manrope-Variable.woff2` reports `Web Open Font Format (Version 2)`.
+    - `pnpm -F @squirrel/design-system list` lists the three fontsource deps.
+    - `ls packages/design-system/node_modules/@fontsource-variable/*/files/*.woff2` finds variable woff2 files for all three fonts.
+    - Note: actual `@import` of the CSS shims happens in story 5.1 (primitives.css).
 
 ## Unit 5: Primitives (body chrome + @font-face)
 
 - [ ] **5.1** Write `packages/design-system/src/primitives.css` (deps: 2.1, 4.1, est: ~25m)
   - acceptance:
-    - R-4.2 — Three `@font-face` blocks (Manrope, JetBrains Mono, Fraunces). Each has `src: local(...), url("/fonts/<file>.woff2") format("woff2-variations")`, `font-display: swap`, weight ranges from the proposal.
-    - R-4.3 — System-font fallback chain in `--font-sans` / `--font-mono` / `--font-serif` ensures rendering when woff2 files are absent.
+    - R-4.2 — `primitives.css` imports the three `@fontsource-variable/*` CSS shims (one each for Manrope, JetBrains Mono, Fraunces). Each shim ships its own `@font-face` rule with `font-display: swap` and a relative `url()` to the woff2 inside the package. Our `--font-sans/-mono/-serif` token stacks include the fontsource family name first, then `local()`-compatible system fallbacks.
+    - R-4.3 — System-font fallback chain in `--font-sans` / `--font-mono` / `--font-serif` ensures rendering when the font assets fail to load.
     - R-5.1 — `body` rule paints the dot-grid: `background-image: radial-gradient(rgba(14,17,22,0.045) 1px, transparent 1.2px)`, `background-size: 18px 18px`, `background-position: 0 0`.
     - R-5.2 — `html, body, #root` set `font-family: var(--font-sans)`, `height: 100%`, `margin: 0`, `background: var(--color-bg)`, `color: var(--color-ink)`.
     - R-5.3 — `font-feature-settings: "ss01", "ss02", "cv11"` applied to body.
     - R-5.4 — `.accent-line` class produces the 2 px indigo gradient strip (transparent → accent 18-22% → transparent).
   - verify:
-    - Open popup; DevTools Network panel shows 3 font requests to `/fonts/*.woff2`, all same-origin, status 200.
-    - Visual: body shows the subtle dot grid; remove `<link rel="stylesheet">` mentally and confirm no Google Fonts request exists.
-    - Temporarily move one woff2 out of `public/fonts/`. Reload; the fallback (e.g., `system-ui`) renders without console errors.
+    - Open popup; DevTools Network panel shows the variable woff2 requests to same-origin `/assets/*.woff2`, status 200.
+    - Visual: body shows the subtle dot grid and warm-paper background.
+    - Zero network requests to `fonts.googleapis.com` or any remote origin.
 
 ## Unit 6: Component recipes
 
