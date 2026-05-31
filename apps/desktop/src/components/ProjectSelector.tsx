@@ -1,6 +1,6 @@
-// Phase 2 ProjectSelector — chip row that picks the destination project
-// for a new capture. Inbox = null (default). Today's focus project is
-// highlighted so it's a single-click target without scanning the list.
+// Phase 2 ProjectSelector — small button row that picks the destination
+// project for a new capture. Inbox = null (default). Today's focus project
+// is highlighted so it's a single-click target without scanning the list.
 //
 // Renders inside CaptureModal above the textarea. Hides itself entirely
 // if no projects are available (e.g. backend offline at modal-open time).
@@ -26,18 +26,16 @@ export function ProjectSelector({ projects, focusSlug, selectedSlug, onSelect }:
 
   return (
     <div className="space-y-1.5">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        Save to
-      </div>
+      <div className="eyebrow">Save to</div>
       <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-        <Chip
+        <Pick
           label="Inbox"
           isActive={selectedSlug === null}
           isFocus={false}
           onClick={() => onSelect(null)}
         />
         {sorted.map((p) => (
-          <Chip
+          <Pick
             key={p.slug}
             label={p.slug}
             isActive={selectedSlug === p.slug}
@@ -50,27 +48,37 @@ export function ProjectSelector({ projects, focusSlug, selectedSlug, onSelect }:
   );
 }
 
-interface ChipProps {
+interface PickProps {
   label: string;
   isActive: boolean;
   isFocus: boolean;
   onClick: () => void;
 }
 
-function Chip({ label, isActive, isFocus, onClick }: ChipProps) {
-  let cls =
-    "px-2 py-1 text-[11px] font-mono rounded-md border transition-colors cursor-pointer";
+const ACTIVE_STYLE: React.CSSProperties = {
+  background: "rgba(31, 58, 138, 0.10)",
+  borderColor: "var(--color-accent)",
+  color: "var(--color-accent)",
+};
+const FOCUS_STYLE: React.CSSProperties = {
+  background: "var(--color-warning-bg)",
+  borderColor: "rgba(197, 106, 20, 0.28)",
+  color: "var(--color-warning)",
+};
+
+function Pick({ label, isActive, isFocus, onClick }: PickProps) {
+  // Compact, mono-typed picker. Order of precedence: active > focus > default.
+  let style: React.CSSProperties | undefined;
+  let cls = "px-2 py-1 text-[11px] font-mono rounded-md border transition-colors cursor-pointer";
   if (isActive) {
-    cls += " bg-primary/15 border-primary text-primary dark:bg-primary/25";
+    style = ACTIVE_STYLE;
   } else if (isFocus) {
-    cls +=
-      " bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-700/60 dark:text-amber-200";
+    style = FOCUS_STYLE;
   } else {
-    cls +=
-      " bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700";
+    cls += " bg-surface border-hairline text-ink-2 hover:bg-surface-2";
   }
   return (
-    <button type="button" onClick={onClick} className={cls}>
+    <button type="button" onClick={onClick} className={cls} style={style}>
       {label}
     </button>
   );

@@ -210,7 +210,7 @@ Dependency layers:
   - verify:
     - `grep -rn "slate-\|bg-background-\|text-red-\|text-blue-\|dark:" apps/desktop/src/components/{BackendStatusBanner,CaptureButton,CloseWindowButton,OpenWebUIButton,SizeToggle,ParakeetWidget}.tsx` returns nothing.
 
-- [ ] **8.5** Rewrite modals + overlays batch: `CaptureModal`, `FocusPickerModal`, `NotificationCenter`, `ProjectSelector`, `Toast` (deps: 8.1, est: ~60m)
+- [x] **8.5** Rewrite modals + overlays batch: `CaptureModal`, `FocusPickerModal`, `NotificationCenter`, `ProjectSelector`, `Toast` (deps: 8.1, est: ~60m)
   - acceptance:
     - R-8.4 — Same rule: semantic tokens or recipe classes only.
     - R-8.5 / R-8.6 — Same.

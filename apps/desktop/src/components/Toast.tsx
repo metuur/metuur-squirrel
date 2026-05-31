@@ -1,6 +1,6 @@
-// Phase 2 minimal toast primitive. Style mirrors the v0.5 web UI's Toast
-// pill (slate-900 background, white text, rounded-full, drop shadow).
-// Single-toast queue, 3s auto-dismiss, manual dismiss. R-3.5.
+// Phase 2 minimal toast primitive. Dark pill on the warm-paper field,
+// with paper-tan text — inverts the main palette for the duration of the
+// toast so it reads "system message" rather than "content". R-3.5.
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -40,13 +40,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast && (
         <div
           role="status"
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium shadow-xl border border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-200"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium shadow-xl"
+          style={{
+            background: "var(--color-ink)",
+            color: "var(--color-bg)",
+            border: "1px solid var(--color-ink-2)",
+          }}
         >
           <span>{toast.message}</span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="text-slate-400 dark:text-slate-500 hover:text-white dark:hover:text-slate-900 leading-none text-base"
+            className="leading-none text-base"
+            style={{ color: "var(--color-ink-4)" }}
             aria-label="Dismiss"
           >
             ×
