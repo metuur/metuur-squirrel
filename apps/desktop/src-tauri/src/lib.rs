@@ -24,6 +24,25 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Apply the squirrel dock icon via NSApplication.
+/// Must be called from the main thread; re-apply after every activation-policy
+/// change because macOS resets the dock icon when the policy switches.
+#[cfg(target_os = "macos")]
+pub(crate) fn set_dock_icon() {
+    use objc2::{AllocAnyThread, MainThreadMarker};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_foundation::NSData;
+
+    const ICON: &[u8] = include_bytes!("../icons/icon.png");
+    // SAFETY: caller is responsible for ensuring main-thread context.
+    let mtm = unsafe { MainThreadMarker::new_unchecked() };
+    let ns_app = NSApplication::sharedApplication(mtm);
+    let data = NSData::with_bytes(ICON);
+    if let Some(img) = NSImage::initWithData(NSImage::alloc(), &data) {
+        unsafe { ns_app.setApplicationIconImage(Some(&*img)) };
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // R-1.1: create ~/.squirrel/ before anything else writes inside it.
@@ -65,6 +84,10 @@ pub fn run() {
             // Runtime equivalent of Info.plist LSUIElement=true.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            // SAFETY: setup() fires on the main thread.
+            #[cfg(target_os = "macos")]
+            set_dock_icon();
 
             #[cfg(desktop)]
             tray::setup(app.handle())?;
