@@ -38,6 +38,7 @@ pub(crate) struct TauriNotificationState {
     pending_clicks: HashMap<i32, String>,
     next_id: i32,
     pub(crate) notif_db_path: PathBuf,
+    pub(crate) focus_prompted_date: Option<String>,
 }
 
 impl TauriNotificationState {
@@ -51,6 +52,7 @@ impl TauriNotificationState {
             pending_clicks: HashMap::new(),
             next_id: 0,
             notif_db_path: default_notif_db_path(),
+            focus_prompted_date: None,
         }
     }
 }
@@ -504,6 +506,38 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                 .clone();
             if let Err(e) = init_notif_db(&db_path) {
                 tracing::warn!(error = %e, "tray-alerts: failed to init notifications DB");
+            }
+        }
+
+        // R-6.1–R-6.5: fire a "What's your focus?" notification if today's focus
+        // is not set and we haven't already prompted today.
+        {
+            let today = today_date_string();
+            let focus_prompted_today = {
+                let state = app.state::<Mutex<TauriNotificationState>>();
+                let s = state.lock().unwrap();
+                s.focus_prompted_date.as_deref() == Some(today.as_str())
+            };
+            if !focus_prompted_today {
+                match client.get(format!("{}/api/focus", BACKEND_ORIGIN)).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        if let Ok(body) = resp.json::<serde_json::Value>().await {
+                            let today_set = !body["today"].is_null();
+                            if !today_set {
+                                let _ = tauri_plugin_notification::NotificationExt::notification(&app)
+                                    .builder()
+                                    .title("What's your focus today?")
+                                    .body("Tap to pick your focus for the morning.")
+                                    .show();
+                                let state = app.state::<Mutex<TauriNotificationState>>();
+                                let mut s = state.lock().unwrap();
+                                s.focus_prompted_date = Some(today);
+                                tracing::info!("focus-prompt: notification fired");
+                            }
+                        }
+                    }
+                    _ => tracing::debug!("focus-prompt: backend unreachable, skipping"),
+                }
             }
         }
 

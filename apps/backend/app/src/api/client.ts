@@ -79,11 +79,59 @@ export interface ProjectListItem {
   active_intent?: string | null;
   last_activity?: string | null;
 }
+export interface ManualPick {
+  project_slug: string;
+  project_title: string;
+  intent_slug: string;
+  intent_title: string;
+  next_action: string | null;
+  picked_on: string;
+  time_invested_minutes: number;
+}
+export interface ManualFocusPayload {
+  today: ManualPick | null;
+  today_pm: ManualPick | null;
+  week: ManualPick | null;
+}
+export interface CheckinResult {
+  session_id: number;
+}
+export interface CheckoutResult {
+  session_id: number;
+  duration_minutes: number;
+  time_invested_minutes: number;
+}
+export interface FocusPick {
+  id: number;
+  vault: string;
+  slot: string;
+  date: string;
+  project_slug: string;
+  intent_slug: string;
+  picked_at: string;
+  cleared_at: string | null;
+}
+export interface WorkSession {
+  id: number;
+  vault: string;
+  slot: string;
+  date: string;
+  project_slug: string;
+  intent_slug: string;
+  checkin_at: string;
+  checkout_at: string | null;
+  duration_minutes: number | null;
+}
+export interface FocusHistoryPayload {
+  picks: FocusPick[];
+  sessions: WorkSession[];
+}
 export interface HomePayload {
   focus: FocusItem | null;
   pressing: PressingItem[];
   projects: ProjectListItem[];
   parakeet: string;
+  manual_focus?: ManualFocusPayload;
 }
 export interface NoteSummary {
   id: string;
@@ -155,6 +203,7 @@ export interface NewProjectResult {
 export interface NewIntentRequest {
   project_slug: string;
   tag: string;
+  filename: string;
   title: string;
   description?: string;
   deadline?: string;
@@ -236,6 +285,28 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(settings),
     }),
+  focusGet: () => call<ManualFocusPayload>('/focus'),
+  focusSet: (
+    slot: 'today' | 'today_pm' | 'week',
+    body: { project_slug: string; intent_slug: string } | { clear: true },
+  ) => {
+    if (slot === 'week') {
+      return call<ManualFocusPayload>('/focus/week', { method: 'PUT', body: JSON.stringify(body) });
+    }
+    const half = slot === 'today_pm' ? 'pm' : 'am';
+    return call<ManualFocusPayload>('/focus/today', { method: 'PUT', body: JSON.stringify({ ...body, slot: half }) });
+  },
+  checkin: (body: { project_slug: string; intent_slug: string; slot: string }) =>
+    call<CheckinResult>('/focus/checkin', { method: 'POST', body: JSON.stringify(body) }),
+  checkout: () => call<CheckoutResult>('/focus/checkout', { method: 'POST' }),
+  focusHistory: (params: { date?: string; from?: string; to?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.date) qs.set('date', params.date);
+    if (params.from) qs.set('from', params.from);
+    if (params.to) qs.set('to', params.to);
+    const q = qs.toString();
+    return call<FocusHistoryPayload>(`/focus/history${q ? `?${q}` : ''}`);
+  },
 };
 
 // ── Slash-command builders ────────────────────────────────────────────────

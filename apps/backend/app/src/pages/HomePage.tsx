@@ -1,7 +1,7 @@
 import { Link, useOutletContext } from 'react-router-dom';
 import { useState } from 'react';
 import { useFetch } from '@/hooks/useFetch';
-import { api, slashCommands, type ProjectListItem, type PressingItem } from '@/api/client';
+import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { PromptPanel } from '@/components/PromptPanel';
 import { RemindersWidget } from '@/components/RemindersWidget';
@@ -24,7 +24,7 @@ export default function HomePage() {
 
   return (
     <div className="max-w-6xl">
-      <Header parakeet={data.parakeet} focus={data.focus} onRefresh={mutate} />
+      <Header parakeet={data.parakeet} focus={data.focus} manualFocus={data.manual_focus} onRefresh={mutate} />
       <RemindersWidget />
       {viewMode === 'Board' ? (
         <BoardView projects={data.projects} pressing={data.pressing} />
@@ -35,62 +35,120 @@ export default function HomePage() {
   );
 }
 
-function Header({ parakeet, focus, onRefresh }: {
+function Header({ parakeet, focus, manualFocus, onRefresh }: {
   parakeet: string;
   focus: { slug: string; title: string; next_action: string } | null;
+  manualFocus?: { today: ManualPick | null; today_pm: ManualPick | null; week: ManualPick | null } | null;
   onRefresh: () => void;
 }) {
   const [showStartPanel, setShowStartPanel] = useState(false);
+  const [activeSession, setActiveSession] = useState<{ sessionId: number; slug: string } | null>(null);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  const handleCheckin = async (pick: ManualPick, slot: string) => {
+    setCheckingIn(true);
+    try {
+      const res = await api.checkin({ project_slug: pick.project_slug, intent_slug: pick.intent_slug, slot });
+      setActiveSession({ sessionId: res.session_id, slug: pick.intent_slug });
+      onRefresh();
+    } catch { /* ignore */ } finally { setCheckingIn(false); }
+  };
+
+  const handleCheckout = async () => {
+    setCheckingOut(true);
+    try {
+      await api.checkout();
+      setActiveSession(null);
+      onRefresh();
+    } catch { /* ignore */ } finally { setCheckingOut(false); }
+  };
+
+  const formatTime = (minutes: number) => {
+    if (!minutes) return null;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  const renderFocusCard = (pick: ManualPick | null, label: string, slot: string) => {
+    if (!pick) return (
+      <div className="bg-surface-light dark:bg-surface-dark border border-dashed border-border-light dark:border-border-dark rounded-2xl p-5">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">{label}</div>
+        <p className="text-slate-400 text-sm">Not set</p>
+      </div>
+    );
+    const isActive = activeSession?.slug === pick.intent_slug;
+    const timeStr = formatTime(pick.time_invested_minutes);
+    return (
+      <div className={`bg-surface-light dark:bg-surface-dark border rounded-2xl shadow-sm p-5 ${isActive ? 'border-primary ring-1 ring-primary/20' : 'border-border-light dark:border-border-dark'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</div>
+          {isActive && <span className="flex items-center gap-1 text-xs text-primary font-medium"><span className="w-2 h-2 rounded-full bg-primary animate-pulse inline-block" />Active</span>}
+        </div>
+        <Link to={`/projects/${pick.project_slug}`} className="text-lg font-bold text-slate-900 dark:text-slate-100 hover:text-primary block leading-tight">
+          {pick.intent_title}
+        </Link>
+        {pick.next_action && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{pick.next_action}</p>}
+        {timeStr && <p className="text-xs text-slate-400 mt-2">⏱ {timeStr} invested</p>}
+        <div className="mt-3">
+          {isActive ? (
+            <button onClick={handleCheckout} disabled={checkingOut}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-all">
+              <span className="material-icons text-base">stop</span>
+              Check out
+            </button>
+          ) : (
+            <button onClick={() => handleCheckin(pick, slot)} disabled={checkingIn || !!activeSession}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold border-2 border-primary text-primary rounded-lg hover:bg-primary hover:text-white disabled:opacity-50 transition-all">
+              <span className="material-icons text-base">play_arrow</span>
+              Check in
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const hasPm = manualFocus?.today_pm != null;
+  const hasToday = manualFocus?.today != null;
+
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Today</h1>
-        <button
-          onClick={onRefresh}
-          className="text-xs font-semibold text-slate-400 hover:text-primary flex items-center gap-1"
-        >
+        <button onClick={onRefresh} className="text-xs font-semibold text-slate-400 hover:text-primary flex items-center gap-1">
           <span className="material-icons text-sm">refresh</span>
           Refresh
         </button>
       </div>
-      <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl shadow-sm p-5">
-        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-          Today's focus
+      {(hasToday || hasPm) ? (
+        <div className={`grid gap-4 ${hasPm ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {renderFocusCard(manualFocus!.today, 'AM focus', 'today')}
+          {hasPm && renderFocusCard(manualFocus!.today_pm, 'PM focus', 'today_pm')}
         </div>
-        {focus ? (
-          <>
-            <Link
-              to={`/projects/${focus.slug}`}
-              className="text-2xl font-bold text-slate-900 dark:text-slate-100 hover:text-primary block leading-tight"
-            >
-              {focus.title}
-            </Link>
-            {focus.next_action && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{focus.next_action}</p>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="text-slate-500 dark:text-slate-400">{parakeet || 'Nothing pressing right now.'}</p>
-            <div className="mt-3">
-              <button
-                onClick={() => setShowStartPanel(true)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold border-2 border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-all"
-              >
-                <span className="material-icons text-base">terminal</span>
-                Help me start
-              </button>
-              <PromptPanel
-                open={showStartPanel}
-                title="Start a session"
-                command={slashCommands.start()}
-                helpText="Run this in your AI agent — it picks the next concrete action for you from the active project."
-                onClose={() => setShowStartPanel(false)}
-              />
-            </div>
-          </>
-        )}
-      </div>
+      ) : (
+        <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl shadow-sm p-5">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Today's focus</div>
+          {focus ? (
+            <>
+              <Link to={`/projects/${focus.slug}`} className="text-2xl font-bold text-slate-900 dark:text-slate-100 hover:text-primary block leading-tight">{focus.title}</Link>
+              {focus.next_action && <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{focus.next_action}</p>}
+            </>
+          ) : (
+            <>
+              <p className="text-slate-500 dark:text-slate-400">{parakeet || 'Nothing pressing right now.'}</p>
+              <div className="mt-3">
+                <button onClick={() => setShowStartPanel(true)} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold border-2 border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-all">
+                  <span className="material-icons text-base">terminal</span>
+                  Help me start
+                </button>
+                <PromptPanel open={showStartPanel} title="Start a session" command={slashCommands.start()} helpText="Run this in your AI agent — it picks the next concrete action for you from the active project." onClose={() => setShowStartPanel(false)} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

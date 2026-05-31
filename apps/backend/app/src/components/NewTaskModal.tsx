@@ -5,6 +5,16 @@ import { api, ApiError, type NewIntentRequest } from '@/api/client';
 
 const TAG_RE = /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$/;
 
+function titleToFilename(title: string): string {
+  return title
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
 interface Props {
   open: boolean;
   projectSlug: string;
@@ -14,19 +24,20 @@ interface Props {
 }
 
 export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCreated }: Props) {
-  const initTags = () => suggestedTags?.length ? suggestedTags : [projectSlug];
-  const [localTags, setLocalTags] = useState<string[]>(initTags);
-  const [tag, setTag] = useState(projectSlug);
+  const [tag, setTag] = useState(suggestedTags?.length ? suggestedTags[0] : projectSlug);
   const [title, setTitle] = useState('');
+  const [filename, setFilename] = useState('');
+  const [filenameEdited, setFilenameEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
-    setLocalTags(initTags());
-    setTag(projectSlug);
+    setTag(suggestedTags?.length ? suggestedTags[0] : projectSlug);
     setTitle('');
+    setFilename('');
+    setFilenameEdited(false);
     setDescription('');
     setDeadline('');
     setBusy(false);
@@ -39,18 +50,16 @@ export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCrea
     onClose();
   }
 
-  function removeTag(t: string) {
-    setLocalTags((prev) => prev.filter((x) => x !== t));
-    if (tag === t) setTag(projectSlug);
+  function handleTitleChange(value: string) {
+    setTitle(value);
+    if (!filenameEdited) {
+      setFilename(titleToFilename(value));
+    }
   }
 
-  function addTagChip() {
-    const trimmed = tag.trim().toUpperCase();
-    if (!trimmed || !TAG_RE.test(trimmed)) return;
-    if (!localTags.includes(trimmed)) {
-      setLocalTags((prev) => [...prev, trimmed]);
-    }
-    setTag(trimmed);
+  function handleFilenameChange(value: string) {
+    setFilename(value.toUpperCase());
+    setFilenameEdited(value !== '' && value !== titleToFilename(title));
   }
 
   async function submit() {
@@ -64,9 +73,15 @@ export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCrea
       setError('Title is required.');
       return;
     }
+    const trimmedFilename = filename.trim();
+    if (!TAG_RE.test(trimmedFilename)) {
+      setError('File name must be UPPERCASE letters/digits, dash-separated (e.g. TRABAJO-PROYECTO-A).');
+      return;
+    }
     const req: NewIntentRequest = {
       project_slug: projectSlug,
       tag: trimmedTag,
+      filename: trimmedFilename,
       title: title.trim(),
       description: description.trim() || undefined,
       deadline: deadline || undefined,
@@ -88,6 +103,8 @@ export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCrea
     }
   }
 
+  const canSubmit = TAG_RE.test(tag.trim().toUpperCase()) && title.trim() !== '' && TAG_RE.test(filename.trim());
+
   return (
     <Modal
       open={open}
@@ -107,7 +124,7 @@ export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCrea
           </button>
           <button
             onClick={submit}
-            disabled={busy || !tag.trim() || !title.trim()}
+            disabled={busy || !canSubmit}
             className="px-4 py-1.5 text-sm font-semibold bg-primary hover:bg-primary-dark text-white rounded-md shadow-sm transition-colors disabled:opacity-50"
           >
             {busy ? 'Creating…' : 'Create task'}
@@ -116,69 +133,38 @@ export function NewTaskModal({ open, projectSlug, suggestedTags, onClose, onCrea
       }
     >
       <div className="space-y-4">
-        <Field label="Tag" hint="UPPERCASE, dash-separated. e.g. MYAPP-TASK, VISA-SETUP. Press Enter to add a new tag.">
-          {localTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {localTags.map((t) => (
-                <span
-                  key={t}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border transition-colors ${
-                    tag.toUpperCase() === t
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setTag(t)}
-                    className="hover:underline"
-                  >
-                    {t}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => removeTag(t)}
-                    className="opacity-60 hover:opacity-100 leading-none"
-                    aria-label={`Remove ${t}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-1.5">
-            <input
-              value={tag}
-              onChange={(e) => setTag(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTagChip(); } }}
-              placeholder="TYPE-NEW-TAG"
-              autoFocus
-              disabled={busy}
-              className="flex-1 font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
-            />
-            <button
-              type="button"
-              disabled={busy}
-              onClick={addTagChip}
-              className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"
-              aria-label="Add tag"
-            >
-              <span className="material-icons text-base leading-none">add</span>
-            </button>
-          </div>
+        <Field label="Tag" hint="UPPERCASE, dash-separated. Groups related tasks (e.g. VISA-SETUP). Multiple tasks can share the same tag.">
+          <input
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            placeholder="MYAPP-TASK"
+            autoFocus
+            disabled={busy}
+            className="w-full font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
+          />
         </Field>
 
         <Field label="Title">
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Short description of the task"
             disabled={busy}
             className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
           />
+        </Field>
+
+        <Field label="File name" hint={`The .md file that will be created (e.g. ${filename || 'TRABAJO-PROYECTO-A'}.md). Auto-filled from title — edit to customise.`}>
+          <div className="flex items-center gap-1">
+            <input
+              value={filename}
+              onChange={(e) => handleFilenameChange(e.target.value)}
+              placeholder="TRABAJO-PROYECTO-A"
+              disabled={busy}
+              className="flex-1 font-mono text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase"
+            />
+            <span className="text-sm text-slate-400 dark:text-slate-500 select-none">.md</span>
+          </div>
         </Field>
 
         <Field label="Description (optional)">

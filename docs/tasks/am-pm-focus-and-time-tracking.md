@@ -50,11 +50,11 @@ Dependency layers:
   - acceptance: R-1.1, R-1.2 — `_token_now("today_pm")` returns `YYYY-MM-DD-PM` (local date); `_slot_key("today_pm")` returns `"focus_today_pm"`; invalid slot still raises `ValueError`.
   - verify: unit test — freeze clock; assert `_token_now("today_pm") == "2026-05-30-PM"` and `_slot_key("today_pm") == "focus_today_pm"`.
 
-- [ ] **2.2** Update strip-pass in `set_manual_focus()` to isolate AM and PM keys (deps: 2.1, est: ~30m, mutex: focus_picker)
+- [x] **2.2** Update strip-pass in `set_manual_focus()` to isolate AM and PM keys (deps: 2.1, est: ~30m, mutex: focus_picker)
   - acceptance: R-1.3 — Setting `"today"` removes `focus_today` from other files but never touches `focus_today_pm`. Setting `"today_pm"` removes `focus_today_pm` from other files but never touches `focus_today`.
   - verify: pytest — two intent files: A has `focus_today: <today>`, B has `focus_today_pm: <today>-PM`. Call `set_manual_focus(vault, "today", new_project, C)`. Assert A loses `focus_today`; B still has `focus_today_pm`; C gains `focus_today`.
 
-- [ ] **2.3** Update `get_manual_focus()` to return `today_pm` slot (deps: 2.2, est: ~20m, mutex: focus_picker)
+- [x] **2.3** Update `get_manual_focus()` to return `today_pm` slot (deps: 2.2, est: ~20m, mutex: focus_picker)
   - acceptance: R-1.4, R-1.5 — Returns a dict with keys `today`, `today_pm`, `week`. `today_pm` is `None` when no matching token exists for today. If `today_pm` is not set, callers treat `today` as covering both halves.
   - verify: pytest — vault with one intent carrying `focus_today_pm: 2026-05-30-PM`; assert `get_manual_focus(vault)["today_pm"]` is not None and `["today"]` is None.
 
@@ -70,11 +70,11 @@ Dependency layers:
 
 ## Unit 4: API Extensions
 
-- [ ] **4.1** Update `PUT /api/focus/today` to accept `slot: "am"|"pm"` body param (deps: 2.2, est: ~30m)
+- [x] **4.1** Update `PUT /api/focus/today` to accept `slot: "am"|"pm"` body param (deps: 2.2, est: ~30m)
   - acceptance: R-5.1, R-5.2 — `slot` defaults to `"am"` when omitted (backwards compatible). `"am"` routes to `set_manual_focus("today", ...)`; `"pm"` routes to `set_manual_focus("today_pm", ...)`.
   - verify: HTTP test — `PUT /api/focus/today` with `{project_slug, intent_slug}` (no slot) → intent gets `focus_today`; same call with `{..., slot: "pm"}` → intent gets `focus_today_pm`.
 
-- [ ] **4.2** Extend `GET /api/focus` response to include `today_pm` field (deps: 2.3, est: ~20m)
+- [x] **4.2** Extend `GET /api/focus` response to include `today_pm` field (deps: 2.3, est: ~20m)
   - acceptance: R-5.3 — Response shape: `{today: ManualPick|null, today_pm: ManualPick|null, week: ManualPick|null}`.
   - verify: HTTP test — vault with both `focus_today` and `focus_today_pm` set on different intents; assert response includes both non-null with correct `intent_slug` values.
 
@@ -108,7 +108,7 @@ Dependency layers:
   - acceptance: R-5.1 to R-5.5 — Exports `setFocus(slot, projectSlug, intentSlug)`, `clearFocus(slot)`, `checkin(projectSlug, intentSlug, slot)`, `checkout()`, `getFocusHistory(params)`.
   - verify: TypeScript compiles without error; each function calls the correct HTTP method and path.
 
-- [ ] **6.2** Wire `FocusPickerModal.tsx` to `PUT /api/focus/today` with slot param (deps: 6.1, est: ~30m)
+- [x] **6.2** Wire `FocusPickerModal.tsx` to `PUT /api/focus/today` with slot param (deps: 6.1, est: ~30m)
   - acceptance: R-7.6 — Modal accepts a `slot: "am"|"pm"` prop; on confirm calls `api.setFocus(slot, ...)` instead of the existing start-prompt flow path.
   - verify: open modal with `slot="pm"`, select an intent, confirm; assert `focus_today_pm` appears in the intent file's frontmatter.
 
@@ -128,7 +128,7 @@ Dependency layers:
 
 ## Unit 8: Tests
 
-- [ ] **8.1** Unit tests for AM/PM slot extension in `focus_picker.py` (deps: 2.3, est: ~30m)
+- [x] **8.1** Unit tests for AM/PM slot extension in `focus_picker.py` (deps: 2.3, est: ~30m)
   - acceptance: R-1.1 to R-1.7 — Covers: token format, strip-pass isolation, duplicate tiebreak, expiry logic for `today_pm` slot.
   - verify: `make test-cli` stays green; new test file or additions to existing `test_focus_picker.py` pass.
 

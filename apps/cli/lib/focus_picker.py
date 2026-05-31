@@ -37,6 +37,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import _DELETE, parse_intent, write_frontmatter  # noqa: E402
 from status_aggregator import find_intents_for_project, find_projects  # noqa: E402
 
+try:
+    import db as _db
+    _HAS_DB = True
+except ImportError:
+    _HAS_DB = False
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Errors
@@ -167,6 +173,7 @@ def _build_pick(
         "intent_title": intent.get("title") or intent_path.stem,
         "next_action": next_action,
         "picked_on": fm.get(key, ""),
+        "time_invested_minutes": int(fm.get("time_invested_minutes") or 0),
     }
 
 
@@ -214,6 +221,23 @@ def set_manual_focus(
 
     # Write pass — idempotent upsert (R-2.4).
     write_frontmatter(target, {key: token})
+    if _HAS_DB:
+        try:
+            _now = (now or datetime.datetime.now(datetime.timezone.utc)).isoformat()
+            _today = datetime.date.today().isoformat()
+            _conn = _db.get_conn()
+            _db.init_schema(_conn)
+            try:
+                _conn.execute(
+                    "INSERT INTO focus_picks (vault, slot, date, project_slug, intent_slug, picked_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?)",
+                    (vault.name, slot, _today, project_slug, intent_slug, _now),
+                )
+                _conn.commit()
+            finally:
+                _conn.close()
+        except Exception:
+            pass
 
 
 def clear_manual_focus(
@@ -237,3 +261,20 @@ def clear_manual_focus(
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:
             write_frontmatter(intent_path, {key: _DELETE})
+            if _HAS_DB:
+                try:
+                    _cleared = (now or datetime.datetime.now(datetime.timezone.utc)).isoformat()
+                    _today = datetime.date.today().isoformat()
+                    _conn = _db.get_conn()
+                    _db.init_schema(_conn)
+                    try:
+                        _conn.execute(
+                            "UPDATE focus_picks SET cleared_at = ?"
+                            " WHERE vault = ? AND slot = ? AND date = ? AND cleared_at IS NULL",
+                            (_cleared, vault.name, slot, _today),
+                        )
+                        _conn.commit()
+                    finally:
+                        _conn.close()
+                except Exception:
+                    pass

@@ -140,12 +140,13 @@ class TestServerScaffold(unittest.TestCase):
         own = {
             "config_loader", "vocabulary", "capture_writer",
             "status_aggregator", "deadline_scanner", "new_project_writer",
-            "focus_picker",
+            "focus_picker", "db", "reminder_scanner", "reminder_writer",
+            "write_frontmatter",
         }
         stdlib = {
             "__future__", "argparse", "datetime", "html", "http", "io", "json",
-            "logging", "os", "pathlib", "re", "socket", "socketserver", "sys",
-            "threading", "traceback", "urllib", "typing",
+            "logging", "os", "pathlib", "re", "shutil", "socket", "socketserver",
+            "sys", "threading", "traceback", "urllib", "typing",
         }
         leftover = names - own - stdlib
         self.assertSetEqual(leftover, set(), f"unexpected third-party imports: {leftover}")

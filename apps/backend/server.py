@@ -210,6 +210,10 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/focus$"),                             "api_focus_get"),
     ("PUT",  re.compile(r"^/api/focus/today$"),                       "api_focus_put_today"),
     ("PUT",  re.compile(r"^/api/focus/week$"),                        "api_focus_put_week"),
+    ("GET",  re.compile(r"^/api/focus/history$"),                     "api_focus_history"),
+    ("POST", re.compile(r"^/api/focus/checkin$"),                     "api_focus_checkin"),
+    ("POST", re.compile(r"^/api/focus/checkout$"),                    "api_focus_checkout"),
+    ("POST", re.compile(r"^/api/focus/recalculate$"),                 "api_focus_recalculate"),
     ("GET",  re.compile(r"^/api/projects$"),                          "api_projects_list"),
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_detail"),
@@ -602,6 +606,128 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "week": focus.get("week"),
         })
 
+    def api_focus_history(self) -> None:
+        parsed = urllib.parse.urlparse(self.path)
+        qs = urllib.parse.parse_qs(parsed.query)
+        today = datetime.date.today().isoformat()
+        date_val = qs.get("date", [None])[0]
+        from_val = qs.get("from", [None])[0]
+        to_val   = qs.get("to",   [None])[0]
+        if date_val:
+            from_d = to_d = date_val
+        elif from_val and to_val:
+            from_d, to_d = from_val, to_val
+        else:
+            from_d = to_d = today
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            picks = conn.execute(
+                "SELECT id, vault, slot, date, project_slug, intent_slug, picked_at, cleared_at"
+                " FROM focus_picks WHERE date BETWEEN ? AND ? ORDER BY picked_at DESC",
+                (from_d, to_d),
+            ).fetchall()
+            sessions = conn.execute(
+                "SELECT id, vault, slot, date, project_slug, intent_slug, checkin_at, checkout_at,"
+                " CASE WHEN checkout_at IS NOT NULL"
+                " THEN CAST((julianday(checkout_at) - julianday(checkin_at)) * 1440 AS INTEGER)"
+                " ELSE NULL END AS duration_minutes"
+                " FROM work_sessions WHERE date BETWEEN ? AND ? ORDER BY checkin_at DESC",
+                (from_d, to_d),
+            ).fetchall()
+        finally:
+            conn.close()
+        pick_keys = ("id", "vault", "slot", "date", "project_slug", "intent_slug", "picked_at", "cleared_at")
+        session_keys = ("id", "vault", "slot", "date", "project_slug", "intent_slug", "checkin_at", "checkout_at", "duration_minutes")
+        self._send_json({
+            "picks": [dict(zip(pick_keys, r)) for r in picks],
+            "sessions": [dict(zip(session_keys, r)) for r in sessions],
+        })
+
+    def api_focus_checkin(self) -> None:
+        body = self._read_json_body()
+        project_slug = body.get("project_slug", "")
+        intent_slug = body.get("intent_slug", "")
+        slot = body.get("slot", "today")
+        if not project_slug or not intent_slug:
+            self._send_json_error(400, "project_slug and intent_slug are required")
+            return
+        ctx, _ = self._context()
+        today = datetime.date.today().isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            cur = conn.execute(
+                "INSERT INTO work_sessions (vault, slot, date, project_slug, intent_slug, checkin_at)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (ctx.active.path.name, slot, today, project_slug, intent_slug, now),
+            )
+            conn.commit()
+            session_id = cur.lastrowid
+        finally:
+            conn.close()
+        self._send_json({"session_id": session_id})
+
+    def _update_time_invested(self, vault_path, project_slug: str, intent_slug: str, conn) -> int:
+        total = conn.execute(
+            "SELECT COALESCE(SUM(CAST((julianday(checkout_at) - julianday(checkin_at)) * 1440 AS INTEGER)), 0)"
+            " FROM work_sessions WHERE vault = ? AND project_slug = ? AND intent_slug = ? AND checkout_at IS NOT NULL",
+            (vault_path.name, project_slug, intent_slug),
+        ).fetchone()[0]
+        intent_path = vault_path / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+        if intent_path.is_file():
+            from write_frontmatter import write_frontmatter
+            write_frontmatter(intent_path, {"time_invested_minutes": int(total)})
+        return int(total)
+
+    def api_focus_checkout(self) -> None:
+        ctx, _ = self._context()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            row = conn.execute(
+                "SELECT id, project_slug, intent_slug, checkin_at FROM work_sessions"
+                " WHERE vault = ? AND checkout_at IS NULL ORDER BY checkin_at DESC LIMIT 1",
+                (ctx.active.path.name,),
+            ).fetchone()
+            if row is None:
+                self._send_json_error(409, "no_open_session")
+                return
+            session_id, project_slug, intent_slug, checkin_at = row
+            conn.execute("UPDATE work_sessions SET checkout_at = ? WHERE id = ?", (now, session_id))
+            conn.commit()
+            duration_minutes = conn.execute(
+                "SELECT CAST((julianday(checkout_at) - julianday(checkin_at)) * 1440 AS INTEGER)"
+                " FROM work_sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()[0] or 0
+            time_invested = self._update_time_invested(ctx.active.path, project_slug, intent_slug, conn)
+        finally:
+            conn.close()
+        self._send_json({
+            "session_id": session_id,
+            "duration_minutes": duration_minutes,
+            "time_invested_minutes": time_invested,
+        })
+
+    def api_focus_recalculate(self) -> None:
+        ctx, _ = self._context()
+        conn = db.get_conn()
+        db.init_schema(conn)
+        try:
+            intents = conn.execute(
+                "SELECT DISTINCT project_slug, intent_slug FROM work_sessions"
+                " WHERE vault = ? AND checkout_at IS NOT NULL",
+                (ctx.active.path.name,),
+            ).fetchall()
+            for project_slug, intent_slug in intents:
+                self._update_time_invested(ctx.active.path, project_slug, intent_slug, conn)
+        finally:
+            conn.close()
+        self._send_json({"updated": len(intents)})
+
     # ── projects ────────────────────────────────────────────────────────────
 
     def api_projects_list(self) -> None:
@@ -739,15 +865,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         _INTENT_TAG_RE = re.compile(r"^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$")
         if not _INTENT_TAG_RE.match(tag):
             raise _UserError(422, f"{tag!r} is not a valid intent tag (UPPERCASE, dash-separated).")
+        # filename is the .md stem; falls back to tag for backward compat
+        filename = (payload.get("filename") or "").strip().upper() or tag
+        if not _INTENT_TAG_RE.match(filename):
+            raise _UserError(422, f"{filename!r} is not a valid filename (UPPERCASE, dash-separated, e.g. TRABAJO-PROYECTO-A).")
         vault_root = ctx.active.path
         project_dir = vault_root / "01-Proyectos-Activos" / project_slug
         if not is_path_inside(project_dir, vault_root) or not project_dir.is_dir():
             raise _UserError(404, "Project not found.")
-        intent_path = project_dir / f"{tag}.md"
+        intent_path = project_dir / f"{filename}.md"
         if not is_path_inside(intent_path, vault_root):
             raise _UserError(403, "That path is outside your workspace.")
         if intent_path.exists():
-            raise _UserError(409, f"An intent with tag {tag!r} already exists in this project.")
+            raise _UserError(409, f"A file named '{filename}.md' already exists in this project.")
         template_candidates = [
             vault_root / "agent-pack" / "templates" / "intent.md",
             _REPO / "agent-pack" / "templates" / "intent.md",
@@ -1355,7 +1485,22 @@ class _Threaded(socketserver.ThreadingMixIn, http.server.HTTPServer):
     allow_reuse_address = True
 
 
+def _startup_init() -> None:
+    """Call once at server start: ensure schema exists and close orphan sessions."""
+    conn = db.get_conn()
+    db.init_schema(conn)
+    try:
+        conn.execute(
+            "UPDATE work_sessions SET checkout_at = date || 'T23:59:59'"
+            " WHERE checkout_at IS NULL AND date < date('now','localtime')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def build_server(host: str, port: int) -> _Threaded:
+    _startup_init()
     return _Threaded((host, port), Handler)
 
 
