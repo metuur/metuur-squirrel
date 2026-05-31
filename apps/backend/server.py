@@ -253,6 +253,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
                                                                       "api_notification_read"),
     ("PATCH", re.compile(r"^/api/notification/(?P<nid>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"),
                                                                       "api_notification_dismiss"),
+    ("GET",  re.compile(r"^/api/cache/stats$"),                       "api_cache_stats"),
     # ── SPA shell + static bundle ───────────────────────────────────────────
     ("GET",  re.compile(r"^/favicon\.ico$"),                          "spa_favicon"),
     ("GET",  re.compile(r"^/favicon\.svg$"),                          "spa_favicon_svg"),
@@ -423,6 +424,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             )
         return ctx, cookies
 
+    # Drop all cached vault-scan entries for the active vault. Called from
+    # write handlers so the next /api/home reflects the user's own write
+    # immediately (R-9.9) instead of waiting up to TTL.
+    def _invalidate_vault_cache(self, ctx: "VaultContext") -> None:
+        import cache
+        cache.invalidate(str(ctx.active.path))
+
     # ── /api/me — bootstrap ─────────────────────────────────────────────────
 
     def api_me(self) -> None:
@@ -478,13 +486,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
         from status_aggregator import aggregate_status
         from deadline_scanner import scan_vault_deadlines
         from focus_picker import get_manual_focus
+        import cache
 
+        vault_key = str(ctx.active.path)
         try:
-            status = aggregate_status(ctx.active.path)
+            status = cache.get_or_compute(
+                vault_key, "status",
+                lambda: aggregate_status(ctx.active.path),
+            )
         except Exception:
             status = {"wip": {"projects": []}, "recommended_focus": None}
         try:
-            deadlines = scan_vault_deadlines(ctx.active.path)
+            deadlines = cache.get_or_compute(
+                vault_key, "deadlines",
+                lambda: scan_vault_deadlines(ctx.active.path),
+            )
         except Exception:
             deadlines = {"by_urgency": {}}
         try:
@@ -544,7 +560,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         try:
             from reminder_scanner import scan_vault_reminders
-            rem = scan_vault_reminders(ctx.active.path)
+            rem = cache.get_or_compute(
+                vault_key, "reminders",
+                lambda: scan_vault_reminders(ctx.active.path),
+            )
         except Exception:
             rem = {"approaching": [], "active": []}
 
@@ -609,6 +628,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         else:
             self._send_json_error(400, "bad_request")
             return
+        self._invalidate_vault_cache(ctx)
         focus = get_manual_focus(ctx.active.path)
         self._send_json({
             "today": focus.get("today"),
@@ -677,6 +697,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             session_id = cur.lastrowid
         finally:
             conn.close()
+        self._invalidate_vault_cache(ctx)
         self._send_json({"session_id": session_id})
 
     def _update_time_invested(self, vault_path, project_slug: str, intent_slug: str, conn) -> int:
@@ -716,6 +737,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             time_invested = self._update_time_invested(ctx.active.path, project_slug, intent_slug, conn)
         finally:
             conn.close()
+        self._invalidate_vault_cache(ctx)
         self._send_json({
             "session_id": session_id,
             "duration_minutes": duration_minutes,
@@ -754,6 +776,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._update_time_invested(ctx.active.path, project_slug, intent_slug, conn)
         finally:
             conn.close()
+        self._invalidate_vault_cache(ctx)
         self._send_json({"updated": len(intents)})
 
     # ── projects ────────────────────────────────────────────────────────────
@@ -841,6 +864,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 status=status_map.get(e.code, 400),
             )
             return
+        self._invalidate_vault_cache(ctx)
         self._send_json({
             "success": True,
             "slug": result["tag"],
@@ -861,6 +885,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         self._save_with_mtime(proj_md, ctx.active.path, self._read_json_body())
+        self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "slug": slug,
                          "mtime": proj_md.stat().st_mtime})
 
@@ -878,6 +903,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not is_path_inside(project_dir, ctx.active.path):
             raise _UserError(403, "That path is outside your workspace.")
         shutil.rmtree(project_dir)
+        self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "slug": slug})
 
     def api_intent_create(self) -> None:
@@ -945,6 +971,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except Exception as exc:
                 _log_exception(exc)
                 # Non-fatal: file was created; reminder is just missing
+        self._invalidate_vault_cache(ctx)
         self._send_json(
             {"success": True, "path": str(intent_path.relative_to(vault_root))},
             status=201,
@@ -973,6 +1000,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if note_path is None:
             raise _UserError(404, "We could not find that note.")
         self._save_with_mtime(note_path, ctx.active.path, self._read_json_body())
+        self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id,
                          "mtime": note_path.stat().st_mtime})
 
@@ -999,6 +1027,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except Exception as exc:
                 _log_exception(exc)
                 # Non-fatal: capture was created; reminder is just missing
+        self._invalidate_vault_cache(ctx)
         self._send_json({
             "success": True,
             "id": path.stem,
@@ -1060,6 +1089,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             _log_exception(exc)
             raise _UserError(500, "Could not dismiss reminder.")
+        self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id})
 
     def api_reminder_snooze(self, note_id: str) -> None:
@@ -1081,6 +1111,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             _log_exception(exc)
             raise _UserError(500, "Could not snooze reminder.")
+        self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id, "snoozed_until": until})
 
     def api_deadlines(self) -> None:
@@ -1170,6 +1201,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def api_parakeet(self) -> None:
         ctx, _ = self._context()
         self._send_json({"message": _parakeet_message_for(ctx.active.path)})
+
+    # R-9.10 — observability for the vault-scan cache; intended for
+    # troubleshooting and the manual smoke test in docs/lld/.
+    def api_cache_stats(self) -> None:
+        import cache
+        self._send_json(cache.stats_snapshot())
 
     # ── /api/settings/notifications — story 5.3 ────────────────────────────
 

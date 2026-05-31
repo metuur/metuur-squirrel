@@ -67,9 +67,31 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-7.1 | THE SYSTEM SHALL NOT embed or spawn the Python backend as a Tauri sidecar in Phase 2. |
+| R-7.1 | THE SYSTEM SHALL NOT embed or spawn the Python backend as a Tauri sidecar in Phase 2. **Superseded 2026-05-31** by Unit 9. Reason: see R-1.7 supersession note. |
 | R-7.2 | THE SYSTEM SHALL NOT create, modify, or remove any launchd plist in Phase 2. **Superseded 2026-05-28**: user explicitly authorized repointing `org.squirrel.web-ui.plist` from the source-repo path to `apps/backend/server.py`. See LLD D8 supersession note. |
 | R-7.3 | THE SYSTEM SHALL NOT add `#[tauri::command]` wrappers that shell out to the `squirrel` Python CLI. All data flows from the webview's `fetch()` to the backend's HTTP API. |
 | R-7.4 | THE SYSTEM SHALL NOT introduce a `packages/ui/` shared-component layer in Phase 2. The popup's components live exclusively under `apps/desktop/src/components/`. |
 | R-7.5 | THE SYSTEM SHALL NOT alter the macOS deadline daemon (`agent-pack/companions/macos-reminders/reminder-daemon.sh`) in Phase 2. The daemon continues to shell out to `lib/deadline_scanner.py` directly. |
 | R-7.6 | THE SYSTEM SHALL NOT change the Phase 1 fake watcher; the Rust 60-second simulated event source remains the only event producer in Phase 2. |
+
+## Unit 9: Backend lifecycle & stability NFRs (added 2026-05-31)
+
+These NFRs supersede R-1.7 and R-7.1. They are the EARS contract for the LLD
+`docs/lld/harden-backend-lifecycle-and-caching.md` ("harden backend lifecycle
++ caching").
+
+| ID    | EARS statement |
+|-------|----------------|
+| R-9.1 | WHEN the Tauri app starts AND no process is already listening on `127.0.0.1:3939`, THE SYSTEM SHALL spawn the bundled `squirrel-backend` binary as a managed child process and SHALL hold the `tauri_plugin_shell::process::CommandChild` handle in app state for the lifetime of the app. |
+| R-9.2 | IF a process is already listening on `127.0.0.1:3939` when the Tauri app starts (e.g. the user installed the launchd LaunchAgent), THE SYSTEM SHALL adopt that backend without spawning a second one, and SHALL NOT attempt to manage that external process's lifecycle. |
+| R-9.3 | WHEN the Tauri app initiates quit (tray "Quit Squirrel", Cmd-Q, or `app.exit`), THE SYSTEM SHALL send SIGTERM to the managed backend child (if any) within 100 ms and SHALL wait up to 2 seconds for graceful exit before sending SIGKILL. |
+| R-9.4 | WHILE the Tauri app is running, THE SYSTEM SHALL poll `GET http://127.0.0.1:3939/api/me` once per second for the first 10 seconds after spawn and once every 30 seconds thereafter; this health check is reused as the tray-alerts polling heartbeat. |
+| R-9.5 | IF the backend health check fails 3 consecutive times AND a managed child process exists, THE SYSTEM SHALL log the failure, set the tray icon to `IconState::Error`, and SHALL respawn the backend at most once per 60-second window (max 5 respawns per hour). |
+| R-9.6 | IF the backend health check fails 3 consecutive times AND no managed child exists (externally-managed mode per R-9.2), THE SYSTEM SHALL set the tray icon to `IconState::Error` and SHALL display "Backend offline" semantics in the tray menu, but SHALL NOT attempt to spawn a replacement. |
+| R-9.7 | WHEN the Tauri app cannot locate or execute the bundled `squirrel-backend` binary (missing from `resources/`, exec permission denied, or `spawn()` returns an error), THE SYSTEM SHALL set `IconState::Error`, log the error, and SHALL render a single disabled tray entry reading "Backend unavailable — see ~/.squirrel/squirrel.log". |
+| R-9.8 | THE backend process `GET /api/home` handler SHALL cache the underlying vault scan results (`aggregate_status`, `scan_vault_deadlines`, `scan_vault_reminders`) per `(vault_path, cache_key)` with a time-to-live of 25 seconds. |
+| R-9.9 | WHEN the backend handles any state-changing write (`POST /api/notes`, `POST /api/focus`, vault file write), THE SYSTEM SHALL invalidate the vault-scan cache entries for the affected `vault_path` before returning the HTTP response. |
+| R-9.10 | THE backend SHALL expose `GET /api/cache/stats` returning `{ entries: int, hit_rate: float, last_evicted_at: ISO8601 \| null }` to enable observability of the vault-scan cache. This endpoint SHALL be localhost-only (per C5). |
+| R-9.11 | THE Tauri Rust state `TauriNotificationState` SHALL hold a single `Mutex<rusqlite::Connection>` opened once at app startup against `~/.squirrel/state/squirrel.db`, with `PRAGMA journal_mode=WAL` and `PRAGMA busy_timeout=5000` set on the connection at creation time. |
+| R-9.12 | EVERY existing SQLite touchpoint in `tray_alerts.rs` (currently lines 159, 179, 559–565, 595) SHALL borrow the cached connection via `state.notif_db.lock()` and SHALL NOT call `rusqlite::Connection::open(...)` directly. |
+| R-9.13 | IF the cached `rusqlite::Connection` returns `SQLITE_BUSY` after the `busy_timeout` elapses, THE SYSTEM SHALL log a warning at WARN level (not ERROR), drop the current poll's INSERT, and proceed; the next 30-second poll cycle SHALL retry. |

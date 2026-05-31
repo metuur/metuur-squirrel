@@ -15,7 +15,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -42,6 +42,12 @@ pub(crate) struct TauriNotificationState {
     pub(crate) notif_db_path: PathBuf,
     pub(crate) focus_prompted_date: Option<String>,
     pub(crate) last_break_notified: Option<Instant>,
+    // R-9.11/R-9.12: cached SQLite connection opened once at start_polling
+    // time and reused for every notification insert/unread-count query. Wraps
+    // a Mutex in an Arc so callers clone the Arc out of state and drop the
+    // outer state lock before acquiring the inner DB lock — avoids
+    // serializing unrelated state mutations behind DB work.
+    pub(crate) notif_db: Option<Arc<Mutex<rusqlite::Connection>>>,
 }
 
 impl TauriNotificationState {
@@ -57,6 +63,7 @@ impl TauriNotificationState {
             notif_db_path: default_notif_db_path(),
             focus_prompted_date: None,
             last_break_notified: None,
+            notif_db: None,
         }
     }
 }
