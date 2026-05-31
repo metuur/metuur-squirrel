@@ -184,7 +184,7 @@ Dependency layers:
     - `pnpm -F @squirrel/desktop test` passes.
     - Open popup; header + footer visually match `code.html` lines 395-431 and 640-668.
 
-- [ ] **8.2** Rewrite `FocusWidget.tsx` (deps: 8.1, est: ~30m)
+- [x] **8.2** Rewrite `FocusWidget.tsx` (deps: 8.1, est: ~30m)
   - acceptance:
     - R-8.2 — Active focus card uses `.card-focus`; AM/PM chip uses `.chip chip-am` (PM gets a violet inline override per `code.html` line 472 pattern); project slug uses `.slug`; task title uses `.title`; quick-action row uses `.quick-action` with colored `.dot` per state.
     - R-8.5 / R-8.6 — Same rules as 8.1.

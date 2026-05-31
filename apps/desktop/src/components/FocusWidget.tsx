@@ -12,64 +12,106 @@ interface PillProps {
   slot: "today" | "week";
   label: string | null;
   online: boolean;
+  dotStyle?: React.CSSProperties;
   onPick?: () => void;
   onClear?: () => void;
 }
 
-function FocusPill({ slot, label, online, onPick, onClear }: PillProps) {
+// Violet — used for the PM chip override and the "Add afternoon focus" dot
+// per code.html line 472. Not a theme token because it's a one-off accent.
+const VIOLET = "#8B5CF6";
+const VIOLET_DOT_STYLE: React.CSSProperties = {
+  background: VIOLET,
+  boxShadow: `0 0 0 3px rgba(139, 92, 246, 0.10)`,
+};
+const VIOLET_CHIP_STYLE: React.CSSProperties = {
+  background: "rgba(139, 92, 246, 0.10)",
+  borderColor: "rgba(139, 92, 246, 0.18)",
+  color: VIOLET,
+};
+const OK_DOT_STYLE: React.CSSProperties = {
+  background: "var(--color-ok)",
+  boxShadow: "0 0 0 3px rgba(47, 107, 79, 0.12)",
+};
+
+function FocusPill({ slot, label, online, dotStyle, onPick, onClear }: PillProps) {
   const pickLabel = slot === "today" ? "Pick today's focus" : "Pick this week's focus";
-  const base = "text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex items-center gap-1";
-  const linkClass = "text-[11px] underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline";
-  const clearClass = "text-[11px] text-red-500 dark:text-red-400 underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline";
 
   if (!online) {
-    return <div className={base}>📌 {pickLabel.replace("Pick ", "")}: —</div>;
+    return (
+      <div className="quick-action" style={{ opacity: 0.5, cursor: "default" }}>
+        <span className="dot" style={dotStyle}></span>
+        <span>
+          {slot === "today" ? "today's focus" : "this week's focus"}:{" "}
+          <span className="text-ink-4">—</span>
+        </span>
+      </div>
+    );
   }
 
   if (label) {
     return (
-      <div className={base}>
-        <span>📌 {label}:</span>
-        <button type="button" onClick={onPick} disabled={!onPick} className={linkClass}>Change</button>
-        <span className="text-slate-300 dark:text-slate-600">·</span>
-        <button type="button" onClick={onClear} disabled={!onClear} className={clearClass}>Clear</button>
+      <div className="quick-action">
+        <span className="dot" style={dotStyle}></span>
+        <span>{label}:</span>
+        <button
+          type="button"
+          onClick={onPick}
+          disabled={!onPick}
+          className="text-[11px] underline-offset-2 hover:underline text-ink-3 disabled:opacity-50 disabled:no-underline"
+        >
+          Change
+        </button>
+        <span className="text-ink-4">·</span>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={!onClear}
+          className="text-[11px] underline-offset-2 hover:underline text-critical disabled:opacity-50 disabled:no-underline"
+          style={{ color: "var(--color-critical)" }}
+        >
+          Clear
+        </button>
       </div>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={onPick}
-      className={`${base} cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 disabled:cursor-not-allowed text-left`}
-    >
-      📌 {pickLabel}
+    <button type="button" onClick={onPick} className="quick-action">
+      <span className="dot" style={dotStyle}></span>
+      {pickLabel}
     </button>
   );
 }
 
 interface FocusRowProps {
   badge: string;
-  badgeColor: string;
+  chipStyle?: React.CSSProperties;
   pick: ManualPick;
   separator: boolean;
 }
 
-function ManualFocusRow({ badge, badgeColor, pick, separator }: FocusRowProps) {
+function ManualFocusRow({ badge, chipStyle, pick, separator }: FocusRowProps) {
+  // If next_action exists, the slug line carries project + intent context and
+  // the title line carries the action. Otherwise project goes to the slug and
+  // intent_title becomes the title (avoids printing intent twice).
+  const slugText = pick.next_action
+    ? `${pick.project_title} · ${pick.intent_title}`
+    : pick.project_title;
+  const titleText = pick.next_action || pick.intent_title;
+
   return (
-    <div className={`flex items-start gap-2 ${separator ? "mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60" : ""}`}>
-      <span className={`mt-0.5 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}`}>
+    <div
+      className={`flex items-start gap-2.5 ${
+        separator ? "mt-2 pt-2 border-t border-hairline-2" : ""
+      }`}
+    >
+      <span className="chip chip-am shrink-0 mt-0.5" style={chipStyle}>
         {badge}
       </span>
-      <div className="min-w-0">
-        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug truncate">
-          {pick.project_title} — {pick.intent_title}
-        </p>
-        {pick.next_action && (
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {pick.next_action}
-          </p>
-        )}
+      <div className="min-w-0 flex-1">
+        <p className="slug truncate mb-1">{slugText}</p>
+        <p className="title text-[14.5px] leading-snug">{titleText}</p>
       </div>
     </div>
   );
@@ -99,16 +141,13 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
 
   return (
     <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-          Today's focus
-        </div>
+      <div className="card-focus p-3.5">
+        <div className="eyebrow mb-2">Today's focus</div>
 
         {hasManualToday ? (
           isAllDay ? (
             <ManualFocusRow
               badge="Today"
-              badgeColor="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
               pick={amPick!}
               separator={false}
             />
@@ -117,7 +156,6 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
               {amPick && (
                 <ManualFocusRow
                   badge="AM"
-                  badgeColor="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                   pick={amPick}
                   separator={false}
                 />
@@ -125,7 +163,7 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
               {pmPick && (
                 <ManualFocusRow
                   badge="PM"
-                  badgeColor="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                  chipStyle={VIOLET_CHIP_STYLE}
                   pick={pmPick}
                   separator={!!amPick}
                 />
@@ -134,21 +172,19 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
           )
         ) : focus ? (
           <>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
-              {focus.title}
-            </h2>
+            <h2 className="title text-[14.5px] leading-snug">{focus.title}</h2>
             {focus.next_action && (
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="mt-1 text-xs text-ink-3 leading-relaxed">
                 {focus.next_action}
               </p>
             )}
           </>
         ) : home.data ? (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-xs text-ink-3">
             No active focus — capture a thought or start a project.
           </div>
         ) : (
-          <div className="text-xs text-slate-400 dark:text-slate-500">—</div>
+          <div className="text-xs text-ink-4">—</div>
         )}
       </div>
 
@@ -164,16 +200,17 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
           <button
             type="button"
             onClick={() => onPick("today")}
-            className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 text-left"
+            className="quick-action"
           >
-            <span>📌</span>
-            <span className="underline-offset-2 hover:underline">Add afternoon focus</span>
+            <span className="dot" style={VIOLET_DOT_STYLE}></span>
+            Add afternoon focus
           </button>
         )}
         <FocusPill
           slot="week"
           label={weekPick ? "This week" : null}
           online={online}
+          dotStyle={OK_DOT_STYLE}
           onPick={onPick ? () => onPick("week") : undefined}
           onClear={onClear ? () => onClear("week") : undefined}
         />
