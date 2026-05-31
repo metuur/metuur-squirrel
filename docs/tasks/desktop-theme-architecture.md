@@ -121,7 +121,7 @@ Dependency layers:
 
 ## Unit 6: Component recipes
 
-- [ ] **6.1** Write surfaces: `.panel`, `.card`, `.card-focus` (deps: 2.1, est: ~20m)
+- [x] **6.1** Write surfaces: `.panel`, `.card`, `.card-focus` (deps: 2.1, est: ~20m)
   - acceptance:
     - R-6.1 — `.panel`: `border-radius: 14px`, 1 px `var(--color-hairline)` border, `box-shadow: var(--shadow-1)`, `overflow: hidden`, `background: var(--color-surface)`.
     - R-6.2 — `.card`: `border-radius: 10px`, 1 px `var(--color-hairline)` border, `box-shadow: var(--shadow-card)`.
@@ -129,14 +129,14 @@ Dependency layers:
   - verify:
     - Inline test HTML in a `.devlocal/javier/desktop-theme-architecture-6.1/preview.html` renders the three surfaces; visually matches `code.html` lines 60-85.
 
-- [ ] **6.2** Write stripe modifier classes (deps: 6.1, est: ~10m)
+- [x] **6.2** Write stripe modifier classes (deps: 6.1, est: ~10m)
   - acceptance:
     - R-6.4 — `.stripe { position: relative }` + `.stripe::before` renders a 3 px rail at `left: 0; top: 8px; bottom: 8px` with `border-radius: 0 3px 3px 0`.
     - `.stripe-critical::before { background: var(--color-critical) }`, `.stripe-warning::before { background: var(--color-warning) }`, `.stripe-ok::before { background: var(--color-ok) }`.
   - verify:
     - Manually combine `.card.stripe.stripe-critical` on a test card; visual matches `code.html` task cards (lines 495-530).
 
-- [ ] **6.3** Write button family: `.btn`, `.btn-primary`, `.btn-ghost` (deps: 2.1, est: ~25m)
+- [x] **6.3** Write button family: `.btn`, `.btn-primary`, `.btn-ghost` (deps: 2.1, est: ~25m)
   - acceptance:
     - R-6.5 — `.btn`: `2 px 2 px 0 var(--btn-shadow)` offset shadow at rest; `:active` applies `transform: translate(2px, 2px)` and collapses shadow to `0 0 0 0`. Transitions clamped to 70 ms for `transform` + `box-shadow`, 120 ms for `background`.
     - R-6.6 — `.btn-primary`: indigo border + indigo text on surface bg (NOT a solid black block). `.btn-ghost`: transparent, no shadow, ink-3 text, hover lightens.
@@ -145,14 +145,14 @@ Dependency layers:
     - Tab into a `.btn` in the popup; indigo ring visible. Press space; button visibly sinks 2 px and ring reappears at the pressed position.
     - `.devlocal/javier/desktop-theme-architecture-6.3/preview.html` shows all three variants with hover + focus + active states.
 
-- [ ] **6.4** Write chip family: `.chip`, `.chip-am`, `.chip-critical`, `.chip-warning`, `.chip-count` (deps: 2.1, est: ~15m)
+- [x] **6.4** Write chip family: `.chip`, `.chip-am`, `.chip-critical`, `.chip-warning`, `.chip-count` (deps: 2.1, est: ~15m)
   - acceptance:
     - R-6.8 — Base `.chip` uses `var(--font-mono)`, 10 px, 600 weight, `font-variant-numeric: tabular-nums`, `padding: 3px 8px 3px 7px`, `border-radius: 6px`.
     - Each variant sets background + border + color to the matching `--color-*-bg` / `--color-*` token pair.
   - verify:
     - Render all four chips side-by-side in the preview file; visual matches `code.html` lines 222-256.
 
-- [ ] **6.5** Write typography helpers + `.quick-action` + `.icon-btn` + `.notif-badge` (deps: 2.1, est: ~30m)
+- [x] **6.5** Write typography helpers + `.quick-action` + `.icon-btn` + `.notif-badge` (deps: 2.1, est: ~30m)
   - acceptance:
     - R-6.9 — `.eyebrow` (mono, 9.5 px, uppercase, 0.16em tracking), `.slug` (mono, 10.5 px), `.title` (sans, 700, -0.012em), `.label` (sans, 600, -0.005em), `.tabular` (tabular-nums), `.date-numeral` (Fraunces, 16 px, opsz 72).
     - R-6.10 — `.icon-btn`: 30 × 30 px, `border-radius: 8px`, transparent at rest, hairline border + ink-2 color on hover. `.notif-badge`: positioned absolute, amber background with dark amber text, 14 px high, font-mono 8.5 px.
