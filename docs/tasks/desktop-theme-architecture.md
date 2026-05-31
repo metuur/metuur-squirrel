@@ -233,7 +233,7 @@ Dependency layers:
     - `pnpm -F @squirrel/desktop test` — full suite passes.
     - `pnpm -F @squirrel/desktop build` — succeeds.
 
-- [ ] **9.2** Visual diff + accessibility + CSP verification (deps: 9.1, est: ~30m)
+- [x] **9.2** Visual diff + accessibility + CSP verification (deps: 9.1, est: ~30m)
   - acceptance:
     - HLD Success Criteria #1 met: popup side-by-side with `.devlocal/javier/new-ui-proposal/code.html` reads as the same design (subjective check — Javier's call).
     - R-4.4 — DevTools Network panel shows font requests only to same-origin `/fonts/*.woff2`. No `fonts.googleapis.com` requests.
