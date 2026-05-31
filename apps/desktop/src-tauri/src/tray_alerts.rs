@@ -262,7 +262,7 @@ where
 {
     let cached: Option<Arc<Mutex<rusqlite::Connection>>> = {
         let state = app.state::<Mutex<TauriNotificationState>>();
-        let s = state.lock().unwrap();
+        let s = state.lock().unwrap_or_else(|p| p.into_inner());
         s.notif_db.clone()
     };
     if let Some(arc) = cached {
@@ -474,7 +474,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
 
     // Phase 1: pressing candidates (owns interval guard + date rollover)
     let candidates: Vec<Alert> = {
-        let mut state = state_ref.lock().unwrap();
+        let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
         select_candidates(&mut state, alerts)
             .into_iter()
             .cloned()
@@ -483,7 +483,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
 
     // Phase 1b: reminder_active candidates (same NOTIF_INTERVAL / ITEM_COOLDOWN / daily cap)
     let reminder_cands: Vec<ReminderAlert> = {
-        let state = state_ref.lock().unwrap();
+        let state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
         select_reminder_candidates(&state, reminder_active)
             .into_iter()
             .cloned()
@@ -493,7 +493,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
     // Phase 2: send pressing notifications
     for alert in &candidates {
         let (id, task_url) = {
-            let mut state = state_ref.lock().unwrap();
+            let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
             let id = state.next_id;
             state.next_id += 1;
             let url = format!("{}/notes/{}", BACKEND_ORIGIN, alert.id);
@@ -517,7 +517,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
             .show()
         {
             Ok(_) => {
-                let mut state = state_ref.lock().unwrap();
+                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
                 state.last_notified.insert(alert.id.clone(), Instant::now());
                 state.dialogs_today += 1;
                 tracing::info!(project_id = %alert.id, notification_id = id, "notif-sent");
@@ -531,7 +531,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
     // Phase 3: send reminder_active notifications (R-4.3)
     for reminder in &reminder_cands {
         let result = {
-            let mut state = state_ref.lock().unwrap();
+            let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
             if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
                 None
             } else {
@@ -559,7 +559,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
             .show()
         {
             Ok(_) => {
-                let mut state = state_ref.lock().unwrap();
+                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
                 state.last_notified.insert(reminder.id.clone(), Instant::now());
                 state.dialogs_today += 1;
                 tracing::info!(reminder_id = %reminder.id, notification_id = id, "reminder-notif-sent");
@@ -571,7 +571,7 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
     }
 
     // Phase 4: always update last_check_at after passing all guards (even if 0 candidates)
-    state_ref.lock().unwrap().last_check_at = Instant::now();
+    state_ref.lock().unwrap_or_else(|p| p.into_inner()).last_check_at = Instant::now();
 }
 
 /// Poll `GET /api/focus/session`. If a session is active and 30 minutes have
@@ -597,7 +597,7 @@ async fn check_break_reminder<R: Runtime>(app: &AppHandle<R>, client: &reqwest::
     if !resp.status().is_success() {
         app.state::<Mutex<TauriNotificationState>>()
             .lock()
-            .unwrap()
+            .unwrap_or_else(|p| p.into_inner())
             .last_break_notified = None;
         return;
     }
@@ -609,7 +609,7 @@ async fn check_break_reminder<R: Runtime>(app: &AppHandle<R>, client: &reqwest::
 
     let state_ref = app.state::<Mutex<TauriNotificationState>>();
     let should_fire = {
-        let mut s = state_ref.lock().unwrap();
+        let mut s = state_ref.lock().unwrap_or_else(|p| p.into_inner());
         match s.last_break_notified {
             None => {
                 s.last_break_notified = Some(Instant::now());
@@ -625,7 +625,7 @@ async fn check_break_reminder<R: Runtime>(app: &AppHandle<R>, client: &reqwest::
             .title("Squirrel")
             .body("Take a breath and continue 🌿")
             .show();
-        state_ref.lock().unwrap().last_break_notified = Some(Instant::now());
+        state_ref.lock().unwrap_or_else(|p| p.into_inner()).last_break_notified = Some(Instant::now());
         tracing::info!(
             project_slug = %session.project_slug,
             intent_slug = %session.intent_slug,
@@ -657,13 +657,13 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             let db_path = app
                 .state::<Mutex<TauriNotificationState>>()
                 .lock()
-                .unwrap()
+                .unwrap_or_else(|p| p.into_inner())
                 .notif_db_path
                 .clone();
             match open_cached_notif_conn(&db_path) {
                 Ok(conn) => {
                     let state = app.state::<Mutex<TauriNotificationState>>();
-                    let mut s = state.lock().unwrap();
+                    let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
                     s.notif_db = Some(Arc::new(Mutex::new(conn)));
                 }
                 Err(e) => {
@@ -678,7 +678,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             let today = today_date_string();
             let focus_prompted_today = {
                 let state = app.state::<Mutex<TauriNotificationState>>();
-                let s = state.lock().unwrap();
+                let s = state.lock().unwrap_or_else(|p| p.into_inner());
                 s.focus_prompted_date.as_deref() == Some(today.as_str())
             };
             if !focus_prompted_today {
@@ -693,7 +693,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                                     .body("Tap to pick your focus for the morning.")
                                     .show();
                                 let state = app.state::<Mutex<TauriNotificationState>>();
-                                let mut s = state.lock().unwrap();
+                                let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
                                 s.focus_prompted_date = Some(today);
                                 tracing::info!("focus-prompt: notification fired");
                             }
@@ -721,7 +721,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                     let db_path = app
                         .state::<Mutex<TauriNotificationState>>()
                         .lock()
-                        .unwrap()
+                        .unwrap_or_else(|p| p.into_inner())
                         .notif_db_path
                         .clone();
 
@@ -782,7 +782,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             // R-2.1: record time before sleep for wake detection
             app.state::<Mutex<TauriNotificationState>>()
                 .lock()
-                .unwrap()
+                .unwrap_or_else(|p| p.into_inner())
                 .last_poll_at = Instant::now();
 
             tokio::time::sleep(POLL_INTERVAL).await;
@@ -790,7 +790,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             // R-2.2–R-2.4: detect sleep/wake and reset notification timer
             {
                 let state_ref = app.state::<Mutex<TauriNotificationState>>();
-                let mut state = state_ref.lock().unwrap();
+                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
                 let actual_elapsed = state.last_poll_at.elapsed();
                 if actual_elapsed > POLL_INTERVAL + SLEEP_THRESHOLD {
                     state.last_check_at = Instant::now();
