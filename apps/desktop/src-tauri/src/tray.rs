@@ -281,6 +281,9 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
         if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
             tracing::warn!(error = %e, "failed to set activation policy to Regular");
         }
+        // macOS resets the dock icon when activation policy changes; re-apply.
+        #[cfg(target_os = "macos")]
+        crate::set_dock_icon();
         if let Err(e) = window.show() {
             tracing::warn!(error = %e, "failed to show main window");
         }
