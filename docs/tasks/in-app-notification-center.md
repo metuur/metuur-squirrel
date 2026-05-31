@@ -96,7 +96,7 @@ _Depends on Unit 2 (unread count available in daemon state). Both stories touch 
 
 _Depends on Units 2 (Tauri event) and 4 (HTTP endpoints)._
 
-- [ ] 6.1 Implement `useNotifications` hook (deps: 2.3, 4.1, 4.2, 4.3, est: ~45m)
+- [x] 6.1 Implement `useNotifications` hook (deps: 2.3, 4.1, 4.2, 4.3, est: ~45m)
   - acceptance: R-6.1, R-6.2, R-6.3, R-6.4 — `apps/desktop/src/hooks/useNotifications.ts` registers `listen("squirrel:notif-updated")` on mount, unregisters on unmount; on event fires `GET /api/notifications?limit=3&unread=true`; exposes `{ items, unreadCount, markAllRead, dismiss, loadAll }`; `loadAll()` fetches without filters
   - verify: open popup with pending notifications — `items` populates; call `markAllRead()` — `unreadCount` drops to 0; call `loadAll()` — full history returned
 
@@ -106,11 +106,11 @@ _Depends on Units 2 (Tauri event) and 4 (HTTP endpoints)._
 
 _Depends on Unit 6._
 
-- [ ] 7.1 Implement `NotificationCenter` component (deps: 6.1, est: ~60m)
+- [x] 7.1 Implement `NotificationCenter` component (deps: 6.1, est: ~60m)
   - acceptance: R-7.1, R-7.2, R-7.3, R-7.4, R-7.5, R-7.6, R-7.7, R-7.8 — renders when `unreadCount > 0`; shows ≤3 rows by default; "View all (N)" triggers `loadAll()`; each row has title, body, "Go to →" (`openUrl(item_url)`), dismiss button (optimistic remove + PATCH); "Mark all read" calls `markAllRead()`; panel hides when count reaches 0
   - verify: with 5 unread notifications — panel shows 3 rows + "View all (5)"; dismiss one row — it disappears immediately; click "Go to →" — browser opens correct URL; "Mark all read" — panel hides
 
-- [ ] 7.2 Mount `NotificationCenter` in `App.tsx` (deps: 7.1, est: ~10m)
+- [x] 7.2 Mount `NotificationCenter` in `App.tsx` (deps: 7.1, est: ~10m)
   - acceptance: R-7.1 — `<NotificationCenter />` inserted between `<header>` and `<FocusWidget />` in `apps/desktop/src/App.tsx`; `useNotifications()` called at App level and passed as props
   - verify: open tray popup with pending alert — notification panel visible above focus widget
 
@@ -120,7 +120,7 @@ _Depends on Unit 6._
 
 _Depends on Unit 5._
 
-- [ ] 9.1 Add Notifications section to `SettingsPage.tsx` (deps: 5.2, 5.3, est: ~40m)
+- [x] 9.1 Add Notifications section to `SettingsPage.tsx` (deps: 5.2, 5.3, est: ~40m)
   - acceptance: R-9.1, R-9.2, R-9.3, R-9.4, R-9.5, R-9.6 — new `<SettingsSection icon="notifications" title="Notifications">` block with "In-app notifications" and "OS notifications" toggles reading from `me.notifications`; `onChange` calls `POST /api/settings/notifications` + `mutate()`; when `in_app=false` OS toggle is visually disabled; on API failure toggle reverts + toast error shown
   - verify: toggle "OS notifications" ON — `config.toml` updates within seconds; toggle "In-app notifications" OFF — OS toggle greys out; disconnect backend, toggle — toast error appears and toggle reverts
 
