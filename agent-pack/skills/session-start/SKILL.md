@@ -160,6 +160,18 @@ Write to `~/.squirrel/state.json`:
 
 This state is used by `session-end` and by future `where-am-i` calls.
 
+### Step 5.5: Record checkin
+
+```bash
+python3 lib/focus_cli.py checkin \
+    --vault "$VAULT" \
+    --project "<PROJECT-TAG>" \
+    --intent "<INTENT-TAG>" \
+    --slot today
+```
+
+Non-fatal: if the script exits non-zero, log a one-line warning (`⚠️ checkin failed — continuing`) and continue. Do NOT abort the session or delay the loading note.
+
 ### Step 6: Offer one shortcut
 After producing the brief, offer a single concrete action the user can confirm with "sí":
 - "¿Abro auth.controller.ts línea 47?"

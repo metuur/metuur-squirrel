@@ -129,11 +129,34 @@ Write to `~/.squirrel/state.json`:
 }
 ```
 
+### Step 12.5: Record checkout
+
+The skill must resolve the vault path. Use the config_loader pattern (same as session-start Step 2) to set `$VAULT`, or reuse it if already set in this skill's execution context.
+
+```bash
+CHECKOUT_RESULT=$(python3 lib/focus_cli.py checkout --vault "$VAULT" 2>/dev/null)
+CHECKOUT_RC=$?
+```
+
+Parse the result:
+- If `CHECKOUT_RC=0`: extract `duration_minutes` and `time_invested_minutes` from the JSON; include in Step 13 output (see below)
+- If JSON contains `"error": "no_open_session"`: skip silently — no user-facing message
+- Any other non-zero exit: show `⚠️ checkout failed — session time not recorded` and continue normally
+
 ### Step 13: Confirm
 Brief output:
 ```
 ✅ Shutdown note guardada en <INTENT-TAG>
    Next: <next physical action>
+
+¿Algo más antes de cerrar?
+```
+
+Include the `⏱` line only when Step 12.5 produced a valid checkout result:
+```
+✅ Shutdown note guardada en <INTENT-TAG>
+   Next: <next physical action>
+   ⏱ Sesión: {duration_minutes} min   |   Total invertido: {time_invested_minutes} min
 
 ¿Algo más antes de cerrar?
 ```

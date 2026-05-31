@@ -66,6 +66,7 @@ export default function App() {
     if (focusOverride && home.data && !home.loading) setFocusOverride(null);
   }, [home.data, home.loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [notifOpen, setNotifOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
   const [focusModalSlot, setFocusModalSlot] = useState<"today" | "week" | null>(null);
@@ -116,14 +117,40 @@ export default function App() {
             · {formatToday()}
           </span>
         </div>
-        <SizeToggle />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setNotifOpen((v) => !v)}
+            aria-label="Notifications"
+            className="relative p-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {notifications.unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] bg-amber-400 text-white text-[8px] font-bold rounded-full leading-none">
+                {notifications.unreadCount}
+              </span>
+            )}
+          </button>
+          <SizeToggle />
+        </div>
       </header>
 
       {/* Scrollable middle — takes all remaining vertical space; the only
           area that overflows. Widgets get their natural height; the cards
           inside DeadlinesWidget scroll vertically when the list grows. */}
       <div className="flex-1 overflow-y-auto pb-2">
-        <NotificationCenter notifications={notifications} />
         <FocusWidget
           home={homeWithOverride}
           online={status.online}
@@ -148,6 +175,12 @@ export default function App() {
           <CloseWindowButton />
         </div>
       </footer>
+
+      <NotificationCenter
+        notifications={notifications}
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+      />
 
       <CaptureModal
         open={captureOpen}

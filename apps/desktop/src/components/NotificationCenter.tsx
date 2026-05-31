@@ -5,6 +5,8 @@ import type { NotificationItem } from "../api/client";
 
 interface Props {
   notifications: NotificationsHook;
+  open: boolean;
+  onClose: () => void;
 }
 
 const TYPE_DOT: Record<string, string> = {
@@ -60,60 +62,64 @@ function NotifRow({ item, onDismiss }: RowProps) {
   );
 }
 
-// R-7.1: renders when unreadCount > 0; R-7.8: hides when count returns to 0.
-export function NotificationCenter({ notifications }: Props) {
+export function NotificationCenter({ notifications, open, onClose }: Props) {
   const { items, unreadCount, markAllRead, dismiss, loadAll } = notifications;
   const [showAll, setShowAll] = useState(false);
 
-  if (unreadCount === 0) return null;
+  if (!open || unreadCount === 0) return null;
 
   const handleViewAll = () => {
     setShowAll(true);
     void loadAll();
   };
 
-  // R-7.3: show "View all" only when more exist than are currently displayed.
   const hasMore = !showAll && unreadCount > items.length;
 
   return (
-    <section className="px-4 pt-3">
-      <div className="flex items-center justify-between border-b-2 border-amber-300 dark:border-amber-700/50 pb-1 mb-1.5 px-0.5">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-          Notifications
-        </h3>
-        <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded-full">
-          {unreadCount}
-        </span>
-      </div>
+    <>
+      {/* Backdrop — closes modal on outside click */}
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
-      {/* R-7.2: max 3 rows by default (hook fetches with limit=3). R-7.3: all after loadAll(). */}
-      <ul className="space-y-1.5">
-        {items.map((item) => (
-          <NotifRow key={item.id} item={item} onDismiss={dismiss} />
-        ))}
-      </ul>
+      {/* Notification panel */}
+      <div className="fixed inset-x-3 top-12 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl">
+        <div className="px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between border-b-2 border-amber-300 dark:border-amber-700/50 pb-1 mb-1.5 px-0.5">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Notifications
+            </h3>
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded-full">
+              {unreadCount}
+            </span>
+          </div>
 
-      <div className="mt-2 flex items-center justify-between gap-2">
-        {hasMore ? (
-          <button
-            type="button"
-            onClick={handleViewAll}
-            className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline-offset-2 hover:underline"
-          >
-            View all ({unreadCount})
-          </button>
-        ) : (
-          <span />
-        )}
-        {/* R-7.7: mark all read → hook clears items + unreadCount → panel unmounts (R-7.8). */}
-        <button
-          type="button"
-          onClick={() => void markAllRead()}
-          className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline-offset-2 hover:underline"
-        >
-          Mark all read
-        </button>
+          <ul className="space-y-1.5">
+            {items.map((item) => (
+              <NotifRow key={item.id} item={item} onDismiss={dismiss} />
+            ))}
+          </ul>
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            {hasMore ? (
+              <button
+                type="button"
+                onClick={handleViewAll}
+                className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline-offset-2 hover:underline"
+              >
+                View all ({unreadCount})
+              </button>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              onClick={() => void markAllRead()}
+              className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline-offset-2 hover:underline"
+            >
+              Mark all read
+            </button>
+          </div>
+        </div>
       </div>
-    </section>
+    </>
   );
 }
