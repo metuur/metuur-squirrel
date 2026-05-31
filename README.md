@@ -2,6 +2,85 @@
 
 Local-first ADHD productivity companion. Monorepo.
 
+## Installing (end users)
+
+**Prerequisites:** Claude Code, Codex, Cursor, or Windsurf — plus a folder to use as your vault. Nothing else.
+
+1. Download `squirrel-installer-macos.dmg`
+2. Open it and double-click **Install Squirrel**
+3. Answer two questions:
+   - Which agent? (Claude Code / Codex / Cursor / Windsurf)
+   - Where is your vault? (existing folder or press Enter to create `~/squirrel-vault`)
+4. Allow the notification permission prompt
+5. Open your agent and type `/sq-status`
+
+The installer places two self-contained binaries on your machine and registers the backend as a launchd service that starts automatically at login:
+
+| What | Where |
+|------|-------|
+| `squirrel` CLI | `~/.local/bin/squirrel` |
+| `squirrel-backend` (API + web UI) | `~/.local/bin/squirrel-backend` |
+| Agent skills & commands | `~/.claude/plugins/squirrel/` (or Codex/Cursor/Windsurf equivalent) |
+| Config | `~/.squirrel/config.toml` |
+| Background service | `~/Library/LaunchAgents/org.squirrel.web-ui.plist` |
+
+### Upgrading
+
+Run the same installer from a newer DMG. It detects the existing version, stops the service, swaps the binaries atomically, restarts the service, and replaces the agent-pack. Your `config.toml` is never touched.
+
+### Uninstalling
+
+```bash
+launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.plist
+rm ~/Library/LaunchAgents/org.squirrel.web-ui.plist
+rm ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
+rm -rf ~/.claude/plugins/squirrel   # or your agent's equivalent
+# optionally: rm -rf ~/.squirrel
+```
+
+### Background service
+
+`squirrel-backend` serves the JSON API and the React web UI on `http://127.0.0.1:3939` (localhost only). launchd keeps it running — it restarts on crash and starts at login. Logs are at `~/.squirrel/web-ui.stdout.log` and `~/.squirrel/web-ui.stderr.log`.
+
+---
+
+## Building the installer (contributors)
+
+Requires `pyinstaller` on the dev machine (not shipped to users):
+
+```bash
+pip install pyinstaller
+make build-installers       # → squirrel-installer-macos.dmg
+make build-installers-dry   # preview steps without executing
+```
+
+What `make build-installers` does:
+
+```
+Step 1  pnpm -F squirrel-web-ui build     → apps/backend/app/dist/
+Step 2  pyinstaller → dist/squirrel        (CLI, pure stdlib)
+Step 3  pyinstaller → dist/squirrel-backend (API + React SPA embedded)
+Step 4  assemble dmg-staging/
+           bin/squirrel
+           bin/squirrel-backend
+           agent-pack/
+           resources/plist.template
+           resources/squirrel.toml.example
+           VERSION
+           "Install Squirrel"
+Step 5  hdiutil → squirrel-installer-macos.dmg
+```
+
+Key files:
+
+| File | Purpose |
+|------|---------|
+| `scripts/build-dmg.sh` | Builds the DMG artifact (runs on dev machine) |
+| `installer/install.sh` | End-user installer bundled inside the DMG |
+| `apps/backend/launchd/plist.template` | launchd plist with `__BINARY__`, `__PORT__`, `__HOME__` placeholders |
+
+---
+
 ## Layout
 
 ```
@@ -9,8 +88,10 @@ squirrel/
 ├── apps/
 │   ├── desktop/          # Tauri v2 + React + TypeScript (macOS menu-bar app) — Phase 1
 │   ├── cli/              # Python `squirrel` CLI + lib/ (migrated from v0.5)
-│   └── backend/          # Flask sidecar + companion web UI (migrated from v0.5)
-├── agent-pack/           # Skills, commands, hooks, templates, installer (migrated from v0.5)
+│   └── backend/          # stdlib HTTP server + React web UI (API on :3939)
+├── agent-pack/           # Skills, commands, hooks, templates (installed into AI agents)
+├── installer/            # End-user install.sh (bundled inside the DMG)
+├── scripts/              # Dev scripts — build-dmg.sh produces the installer DMG
 ├── docs/                 # LID + EARS docs (hld/ lld/ ears/ tasks/)
 │   └── legacy/v0.5/      # Reference docs from the v0.5 first version
 ├── package.json          # pnpm workspace root

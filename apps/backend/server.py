@@ -36,9 +36,14 @@ import traceback
 import urllib.parse
 from typing import Any, Callable, Optional
 
-# Import squirrel lib (apps/cli/lib) by walking up from apps/backend/server.py to the repo root.
-_REPO = pathlib.Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(_REPO / "apps" / "cli" / "lib"))
+# When running as a PyInstaller bundle, lib modules are frozen and sys._MEIPASS
+# holds the temp extraction dir. In dev, walk up to the repo root as before.
+if getattr(sys, "frozen", False):
+    _LIB = pathlib.Path(sys._MEIPASS)  # type: ignore[attr-defined]
+else:
+    _REPO = pathlib.Path(__file__).resolve().parent.parent.parent
+    _LIB = _REPO / "apps" / "cli" / "lib"
+    sys.path.insert(0, str(_LIB))
 
 import config_loader  # noqa: E402
 import db  # noqa: E402
@@ -51,9 +56,13 @@ DEFAULT_PORT = 3939
 DEFAULT_HOST = "127.0.0.1"
 LAN_HOST = "0.0.0.0"
 
-# The SPA build output (Vite emits to dist/). Falls back to a friendly
-# "build the app first" page when the bundle is missing.
-APP_DIST = pathlib.Path(__file__).resolve().parent / "app" / "dist"
+# The SPA build output. When frozen (PyInstaller bundle) the dist/ folder is
+# extracted alongside the lib modules under sys._MEIPASS. In dev it lives at
+# apps/backend/app/dist/ relative to this file.
+if getattr(sys, "frozen", False):
+    APP_DIST = pathlib.Path(sys._MEIPASS) / "app" / "dist"  # type: ignore[attr-defined]
+else:
+    APP_DIST = pathlib.Path(__file__).resolve().parent / "app" / "dist"
 
 WORKSPACE_COOKIE = "squirrel_vault"
 THEME_COOKIE = "squirrel_theme"

@@ -114,6 +114,20 @@ Conventions:
   - acceptance: R-3.5 — Phase 1 does not persist the watcher toggle across launches; startup defaults to On.
   - verify: Toggle Off; quit; relaunch; observe watcher is On again, events fire within 60s.
 
+- [ ] 3.4 Break reminder: fire "Take a breath and continue" notification every 30 minutes from active session checkin (deps: 3.1, 4.2, est: ~30m)
+  - implementation:
+    - Add `GET /api/focus/session` backend endpoint to `server.py`: queries `work_sessions WHERE checkout_at IS NULL ORDER BY checkin_at DESC LIMIT 1`; returns `{"checkin_at": "<ISO8601>", "project_slug": "...", "intent_slug": "..."}` or HTTP 204 when no open session.
+    - Run a **separate** `tokio::time::interval(Duration::from_secs(300))` (5 min) for the break reminder — independent of the 60s `SimulatedEvent` interval so neither blocks the other.
+    - Maintain `last_break_notified: Option<DateTime<Utc>>` in the shared watcher state.
+    - Each 5 min tick: call `GET /api/focus/session`; if a session is active, compute `elapsed = now - max(checkin_at, last_break_notified.unwrap_or(checkin_at))`; if `elapsed >= 30 min` → fire native notification title "Squirrel" body "Take a breath and continue 🌿" → update `last_break_notified`.
+    - Reset `last_break_notified` to `None` when no open session is found (session was checked out).
+  - acceptance:
+    - WHEN a work session is active (open `checkin_at` in DB) AND 30 minutes have elapsed since checkin (or last break reminder), THE SYSTEM SHALL fire a native notification with body "Take a breath and continue 🌿".
+    - Reminders continue every 30 minutes for as long as the session remains open.
+    - WHEN the session is checked out (no open row), the reminder clock resets — no stale firing.
+    - The break reminder fires independently of `SimulatedEvent`; toggling the watcher Off suppresses `SimulatedEvent`s but does NOT suppress break reminders (the user is still working).
+  - verify: `POST /api/focus/checkin`; wait ~30m (or advance system clock in dev); observe "Take a breath" notification. `POST /api/focus/checkout`; restart 30m window; confirm no notification fires. Confirm `GET /api/focus/session` returns 204 after checkout.
+
 ---
 
 ## Unit 4: Native notifications

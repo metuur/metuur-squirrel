@@ -1,0 +1,55 @@
+{
+  "_spec": "INT-007",
+  "_comment": "Normalized payload contract (INT-007): every hook command that dispatches to a skill MUST expose the following env vars so skill bodies receive a consistent interface — EVENT (e.g. SessionStart, UserPromptSubmit, Stop), PROJECT (active project tag from state.json, or empty string if not resolvable), TIMESTAMP (ISO-8601 UTC, e.g. $(date -u +%Y-%m-%dT%H:%M:%SZ)). Claude Code provides USER_PROMPT for UserPromptSubmit hooks. Hooks are responsible for resolving and exporting these before invoking any skill.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if [ -f ~/.squirrel/state.json ]; then echo \"💡 squirrel: detecté sesión previa. Corré /sq-start para retomar contexto, o /sq-where-am-i para diagnóstico.\"; fi'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if echo \"$USER_PROMPT\" | grep -q \"<!-- SQUIRREL-PACKAGE\"; then echo \"📦 Paquete detectado — el skill squirrel:sync-in lo procesará.\"; fi'"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'if echo \"$USER_PROMPT\" | grep -iE \"(decid(í|imos)|elegí|vamos a usar|let'\\''s go with|concluimos)\" > /dev/null; then echo \"💡 Detecté lenguaje decisional. Considerá /sq-decision para capturar como ADR.\"; fi'"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'if echo \"$USER_PROMPT\" | grep -iE \"(mandar update|update a @|email a (mi lead|sarah|el equipo)|standup)\" > /dev/null; then echo \"💡 Si vas a comunicar status, podés correr /sq-brief para generarlo estructurado.\"; fi'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if [ -f ~/.squirrel/state.json ]; then SESSION_AGE=$(($(date +%s) - $(stat -c %Y ~/.squirrel/state.json 2>/dev/null || stat -f %m ~/.squirrel/state.json))); if [ $SESSION_AGE -gt 1800 ]; then echo \"⏰ Sesión >30min sin shutdown. Considerá /sq-end para guardar contexto.\"; fi; fi'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'WRITER=$(find \"${HOME}/.claude\" \"${HOME}/others\" -name manifest_writer.py -path \"*/squirrel/*\" 2>/dev/null | head -1); [ -n \"$WRITER\" ] && python3 \"$WRITER\" 2>/dev/null || true'"
+          }
+        ]
+      }
+    ]
+  }
+}

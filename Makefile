@@ -14,6 +14,9 @@
 #   make backend-build     → pnpm -F squirrel-web-ui build
 #   make backend-dev-ui    → pnpm -F squirrel-web-ui dev
 #
+# Installer (macOS DMG, dev machine only — requires pyinstaller):
+#   make build-installers  → compile binaries + assemble squirrel-installer-macos.dmg
+#
 # Phase 2 dev workflow:
 #   1. Backend runs separately. The user's launchd plist may already serve
 #      port 3939 (org.squirrel.web-ui); if so, `make dev` Just Works.
@@ -21,8 +24,11 @@
 #   2. `make dev` (or `make dev-all`) launches the Tauri popup against it.
 
 ROOT := $(CURDIR)
+DMG_STAGING := $(ROOT)/dmg-staging
+DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
-.PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui
+.PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
+        build-installers _build-binaries _assemble-dmg
 
 help:
 	@awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' $(MAKEFILE_LIST)
@@ -65,3 +71,13 @@ backend-build:
 
 backend-dev-ui:
 	pnpm -F squirrel-web-ui dev
+
+# ─── Installer (macOS DMG) ───────────────────────────────────────────────────
+
+# Produces squirrel-installer-macos.dmg.
+# Requires: pip install pyinstaller  (dev machine only — not shipped to users)
+build-installers:
+	bash $(ROOT)/scripts/build-dmg.sh
+
+build-installers-dry:
+	bash $(ROOT)/scripts/build-dmg.sh --dry-run
