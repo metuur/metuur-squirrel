@@ -78,7 +78,7 @@ Dependency layers:
 
 ## Unit 3: paper-indigo theme
 
-- [ ] **3.1** Write `packages/design-system/src/themes/paper-indigo.css` (deps: 2.1, est: ~15m)
+- [x] **3.1** Write `packages/design-system/src/themes/paper-indigo.css` (deps: 2.1, est: ~15m)
   - acceptance:
     - R-3.1, R-3.2 — File exists; all overrides live under `[data-theme="paper-indigo"] { ... }`.
     - R-3.3 — Exact hex values match `code.html` lines 18-46: `--color-bg: #F4F2EE`, `--color-surface: #FFFFFF`, `--color-ink: #0E1116`, `--color-accent: #1F3A8A`, `--color-critical: #C8362A`, `--color-warning: #C56A14`, `--color-ok: #2F6B4F` (plus full set).
@@ -87,7 +87,7 @@ Dependency layers:
     - `grep -c "^[[:space:]]*--color-" packages/design-system/src/themes/paper-indigo.css` returns 17.
     - DevTools → Elements → `<html>` → computed styles shows `--color-bg: #F4F2EE` when `data-theme="paper-indigo"`.
 
-- [ ] **3.2** Set `data-theme="paper-indigo"` on `<html>` in `apps/desktop/index.html` (deps: 3.1, est: ~5m)
+- [x] **3.2** Set `data-theme="paper-indigo"` on `<html>` in `apps/desktop/index.html` (deps: 3.1, est: ~5m)
   - acceptance:
     - R-3.4 — `<html lang="en" data-theme="paper-indigo">` in `apps/desktop/index.html`.
   - verify:
