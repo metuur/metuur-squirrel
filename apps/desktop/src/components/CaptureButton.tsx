@@ -15,13 +15,21 @@ export function CaptureButton({ online, onClick }: Props) {
       onClick={() => !disabled && onClick()}
       disabled={disabled}
       title={disabled ? "Backend offline — capture will fail" : undefined}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-        disabled
-          ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500"
-          : "bg-primary text-white hover:bg-primary-dark"
-      }`}
+      className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <span aria-hidden className="text-base leading-none">+</span>
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        aria-hidden
+      >
+        <line x1="12" x2="12" y1="5" y2="19" />
+        <line x1="5" x2="19" y1="12" y2="12" />
+      </svg>
       Add a note
     </button>
   );

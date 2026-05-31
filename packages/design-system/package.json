@@ -1,0 +1,18 @@
+{
+  "name": "@squirrel/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Squirrel design system — tokens, themes, primitives, and component recipes (CSS only).",
+  "exports": {
+    ".": "./src/index.css"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/manrope": "^5.2.8"
+  }
+}

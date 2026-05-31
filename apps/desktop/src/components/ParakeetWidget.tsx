@@ -1,6 +1,6 @@
 // Phase 2 ParakeetWidget — renders /api/parakeet message verbatim.
-// Style: small italic callout in amber/yellow surface to match the web
-// UI's tone-of-voice for the parakeet line.
+// Visual matches code.html lines 611-633 ("slipped past" callout):
+// warm-paper-2 background, hairline border, gentle nudge tone.
 // EARS R-2.7, R-2.8, R-2.9.
 
 import { useEffect, useRef, useState } from "react";
@@ -35,11 +35,14 @@ export function ParakeetWidget({ triggerKey, online }: Props) {
 
   return (
     <div
-      className={`mx-4 mt-2 mb-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 ${
-        online ? "" : "opacity-50"
-      }`}
+      className={`mx-4 mt-2 mb-2 rounded-lg px-3 py-1.5 ${online ? "" : "opacity-50"}`}
+      style={{
+        background: "#FAF7F0",
+        border: "1px solid #ECE6D6",
+        boxShadow: "0 1px 0 rgba(0, 0, 0, 0.02)",
+      }}
     >
-      <p className="text-[11px] italic text-amber-800 dark:text-amber-200 leading-snug">{message}</p>
+      <p className="text-[11px] italic text-ink-2 leading-snug">{message}</p>
     </div>
   );
 }

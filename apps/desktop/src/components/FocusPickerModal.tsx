@@ -26,6 +26,39 @@ interface PendingIntent {
   intentTitle: string;
 }
 
+// Violet — used for the PM selector in step 2, matching FocusWidget's PM chip.
+const VIOLET = "#8B5CF6";
+
+const BACKDROP_STYLE: React.CSSProperties = { background: "rgba(14, 17, 22, 0.45)" };
+const SLOT_NEUTRAL_BG: React.CSSProperties = {
+  background: "var(--color-surface-2)",
+  borderColor: "var(--color-hairline)",
+};
+const SLOT_NEUTRAL_BG_ACTIVE: React.CSSProperties = {
+  background: "rgba(14, 17, 22, 0.06)",
+  borderColor: "var(--color-ink-3)",
+};
+const SLOT_AM_BG: React.CSSProperties = {
+  background: "rgba(31, 58, 138, 0.06)",
+  borderColor: "rgba(31, 58, 138, 0.25)",
+};
+const SLOT_AM_BG_ACTIVE: React.CSSProperties = {
+  background: "rgba(31, 58, 138, 0.12)",
+  borderColor: "var(--color-accent)",
+};
+const SLOT_PM_BG: React.CSSProperties = {
+  background: "rgba(139, 92, 246, 0.06)",
+  borderColor: "rgba(139, 92, 246, 0.25)",
+};
+const SLOT_PM_BG_ACTIVE: React.CSSProperties = {
+  background: "rgba(139, 92, 246, 0.12)",
+  borderColor: VIOLET,
+};
+const CURRENT_BADGE_STYLE: React.CSSProperties = {
+  background: "var(--color-ink)",
+  color: "var(--color-bg)",
+};
+
 export function FocusPickerModal({
   slot,
   projects,
@@ -129,11 +162,8 @@ export function FocusPickerModal({
   };
 
   const backdropClass =
-    "fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm";
-  const cardClass =
-    "w-full max-w-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]";
-  const btnBack =
-    "px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-md transition-colors disabled:opacity-50";
+    "fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm";
+  const cardClass = "panel w-full max-w-sm flex flex-col max-h-[90vh]";
 
   // ── Step 2: When / AM / PM ────────────────────────────────────────────────
   if (onStep2 && pending) {
@@ -162,19 +192,23 @@ export function FocusPickerModal({
         aria-modal="true"
         aria-label="Choose when to focus"
         className={backdropClass}
+        style={BACKDROP_STYLE}
         onClick={(e) => { if (e.target === e.currentTarget && !submitting) setPending(null); }}
       >
         <div className={cardClass}>
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">When will you work on this?</h2>
+          <div className="px-4 py-3 border-b border-hairline">
+            <h2 className="title text-sm">When will you work on this?</h2>
           </div>
           <div className="px-4 py-4 flex flex-col gap-3">
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-900/50 px-2.5 py-1.5 rounded text-[11px]">
+              <div
+                className="bg-critical-bg text-critical px-2.5 py-1.5 rounded text-[11px]"
+                style={{ border: "1px solid rgba(200, 54, 42, 0.25)" }}
+              >
                 {error}
               </div>
             )}
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-xs text-ink-2 leading-relaxed">
               <span className="font-semibold">{pending.projectTitle}</span>
               {" — "}
               {pending.intentTitle}
@@ -185,19 +219,18 @@ export function FocusPickerModal({
                 type="button"
                 onClick={() => handleSlotChoice("all")}
                 disabled={submitting}
-                className={`w-full px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors ${
-                  isAllDay
-                    ? "border-slate-500 dark:border-slate-400 bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
+                className="w-full px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors"
+                style={isAllDay ? SLOT_NEUTRAL_BG_ACTIVE : SLOT_NEUTRAL_BG}
               >
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">📅 All day</span>
+                  <span className="text-sm font-bold text-ink">📅 All day</span>
                   {isAllDay && (
-                    <span className="text-[9px] font-bold bg-slate-500 text-white rounded px-1 py-0.5 leading-none">current</span>
+                    <span className="text-[9px] font-bold rounded px-1 py-0.5 leading-none" style={CURRENT_BADGE_STYLE}>
+                      current
+                    </span>
                   )}
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{allDayNote}</div>
+                <div className="text-[10px] text-ink-3 mt-0.5">{allDayNote}</div>
               </button>
               {/* AM + PM side by side */}
               <div className="flex gap-2">
@@ -205,43 +238,56 @@ export function FocusPickerModal({
                   type="button"
                   onClick={() => handleSlotChoice("am")}
                   disabled={submitting}
-                  className={`flex-1 px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors ${
-                    hasAM && !isAllDay
-                      ? "border-amber-500 dark:border-amber-400 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-150 dark:hover:bg-amber-900/60"
-                      : "border-amber-200 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                  }`}
+                  className="flex-1 px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors"
+                  style={hasAM && !isAllDay ? SLOT_AM_BG_ACTIVE : SLOT_AM_BG}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-amber-800 dark:text-amber-300">☀️ Morning</span>
+                    <span className="text-sm font-bold text-accent">☀️ Morning</span>
                     {hasAM && !isAllDay && (
-                      <span className="text-[9px] font-bold bg-amber-500 text-white rounded px-1 py-0.5 leading-none">current</span>
+                      <span
+                        className="text-[9px] font-bold rounded px-1 py-0.5 leading-none"
+                        style={{ background: "var(--color-accent)", color: "var(--color-bg)" }}
+                      >
+                        current
+                      </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-amber-700/70 dark:text-amber-400/70 mt-0.5">{amNote}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "rgba(31, 58, 138, 0.65)" }}>
+                    {amNote}
+                  </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSlotChoice("pm")}
                   disabled={submitting}
-                  className={`flex-1 px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors ${
-                    hasPM && !isAllDay
-                      ? "border-indigo-500 dark:border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-150 dark:hover:bg-indigo-900/60"
-                      : "border-indigo-200 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-900/10 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
-                  }`}
+                  className="flex-1 px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors"
+                  style={hasPM && !isAllDay ? SLOT_PM_BG_ACTIVE : SLOT_PM_BG}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-indigo-800 dark:text-indigo-300">🌙 Afternoon</span>
+                    <span className="text-sm font-bold" style={{ color: VIOLET }}>🌙 Afternoon</span>
                     {hasPM && !isAllDay && (
-                      <span className="text-[9px] font-bold bg-indigo-500 text-white rounded px-1 py-0.5 leading-none">current</span>
+                      <span
+                        className="text-[9px] font-bold rounded px-1 py-0.5 leading-none"
+                        style={{ background: VIOLET, color: "var(--color-bg)" }}
+                      >
+                        current
+                      </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-indigo-700/70 dark:text-indigo-400/70 mt-0.5">{pmNote}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "rgba(139, 92, 246, 0.7)" }}>
+                    {pmNote}
+                  </div>
                 </button>
               </div>
             </div>
           </div>
-          <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-            <button type="button" onClick={() => setPending(null)} disabled={submitting} className={btnBack}>
+          <div className="px-4 py-3 bg-surface-2 border-t border-hairline-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              disabled={submitting}
+              className="btn btn-ghost disabled:opacity-50"
+            >
               ← Back
             </button>
           </div>
@@ -259,20 +305,24 @@ export function FocusPickerModal({
       aria-modal="true"
       aria-label={title}
       className={backdropClass}
+      style={BACKDROP_STYLE}
       onClick={(e) => { if (e.target === e.currentTarget && !submitting) onClose(); }}
     >
       <div className={cardClass}>
-        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+        <div className="px-4 py-3 border-b border-hairline">
+          <h2 className="title text-sm">{title}</h2>
         </div>
         <div className="px-4 py-3 flex flex-col gap-2 overflow-y-auto">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-900/50 px-2.5 py-1.5 rounded text-[11px]">
+            <div
+              className="bg-critical-bg text-critical px-2.5 py-1.5 rounded text-[11px]"
+              style={{ border: "1px solid rgba(200, 54, 42, 0.25)" }}
+            >
               {error}
             </div>
           )}
           {projects.length === 0 ? (
-            <div className="text-xs text-slate-500 dark:text-slate-400 px-1 py-2">No active projects.</div>
+            <div className="text-xs text-ink-3 px-1 py-2">No active projects.</div>
           ) : (
             <ul className="flex flex-col gap-1">
               {projects.map((p) => {
@@ -280,21 +330,21 @@ export function FocusPickerModal({
                 const intents = intentsBySlug[p.slug];
                 const loading = loadingSlug === p.slug;
                 return (
-                  <li key={p.slug} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <li key={p.slug} className="border border-hairline rounded-lg overflow-hidden">
                     <button
                       type="button"
                       onClick={() => handleExpand(p.slug)}
                       disabled={submitting}
                       aria-expanded={expanded}
-                      className="w-full px-3 py-2 text-left flex items-center justify-between gap-2 text-xs font-semibold text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-50"
+                      className="w-full px-3 py-2 text-left flex items-center justify-between gap-2 text-xs font-semibold text-ink hover:bg-surface-2 disabled:opacity-50"
                     >
                       <span className="truncate">{p.title}</span>
-                      <span className="text-slate-400 dark:text-slate-500 text-[10px]">{expanded ? "▾" : "▸"}</span>
+                      <span className="text-ink-4 text-[10px]">{expanded ? "▾" : "▸"}</span>
                     </button>
                     {expanded && (
-                      <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30">
+                      <div className="border-t border-hairline bg-surface-2">
                         {loading ? (
-                          <div className="px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400">Loading…</div>
+                          <div className="px-3 py-2 text-[11px] text-ink-3">Loading…</div>
                         ) : intents && intents.length > 0 ? (
                           <ul>
                             {intents.map((intent) => (
@@ -303,16 +353,16 @@ export function FocusPickerModal({
                                   type="button"
                                   onClick={() => handleIntentClick(p, intent)}
                                   disabled={submitting}
-                                  className="w-full px-3 py-1.5 text-left text-[11px] text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
+                                  className="w-full px-3 py-1.5 text-left text-[11px] text-ink-2 hover:bg-surface disabled:opacity-50 flex items-center gap-2"
                                 >
-                                  <span className="text-slate-400 dark:text-slate-500">›</span>
+                                  <span className="text-ink-4">›</span>
                                   <span className="truncate">{intent.title}</span>
                                 </button>
                               </li>
                             ))}
                           </ul>
                         ) : intents ? (
-                          <div className="px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400">No intents.</div>
+                          <div className="px-3 py-2 text-[11px] text-ink-3">No intents.</div>
                         ) : null}
                       </div>
                     )}
@@ -322,8 +372,13 @@ export function FocusPickerModal({
             </ul>
           )}
         </div>
-        <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-          <button type="button" onClick={onClose} disabled={submitting} className={btnBack}>
+        <div className="px-4 py-3 bg-surface-2 border-t border-hairline-2 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="btn btn-ghost disabled:opacity-50"
+          >
             Cancel
           </button>
         </div>

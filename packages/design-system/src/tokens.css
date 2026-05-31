@@ -1,0 +1,66 @@
+/* Canonical design tokens — Tailwind v4 `@theme` block.
+ *
+ * Two responsibilities:
+ *   1. Declare token names that themes (themes/<name>.css) override.
+ *   2. Carry the paper-indigo defaults so the UI renders sanely even when
+ *      no `data-theme` attribute is set on <html> (R-1.6 / R-2.4).
+ *
+ * Tokens declared inside `@theme` become BOTH:
+ *   - CSS custom properties (e.g. `var(--color-surface)`)
+ *   - Tailwind utility classes (e.g. `.bg-surface`, `.text-ink-3`)
+ *
+ * Shadows are declared in `:root` instead of `@theme` because they're
+ * multi-layer composites that don't map cleanly to a single utility.
+ */
+
+@theme {
+  /* ── Surfaces ───────────────────────────────────────────── */
+  --color-bg:           #F4F2EE;   /* warm paper background  */
+  --color-surface:      #FFFFFF;   /* primary card surface   */
+  --color-surface-2:    #FBFAF7;   /* secondary, subtler     */
+  --color-focus-tint:   #EEF3FB;   /* focus card soft blue   */
+  --color-focus-edge:   #C8D7EE;   /* focus card border      */
+
+  /* ── Ink (text) ─────────────────────────────────────────── */
+  --color-ink:          #0E1116;
+  --color-ink-2:        #2A2F38;
+  --color-ink-3:        #5C6470;
+  --color-ink-4:        #97A0AD;
+
+  /* ── Hairlines / dividers ───────────────────────────────── */
+  --color-hairline:     #E6E3DC;
+  --color-hairline-2:   #EFEDE7;
+
+  /* ── Brand + status ─────────────────────────────────────── */
+  --color-accent:       #1F3A8A;
+  --color-critical:     #C8362A;
+  --color-critical-bg:  #FBEEEC;
+  --color-warning:      #C56A14;
+  --color-warning-bg:   #FBF1E5;
+  --color-ok:           #2F6B4F;
+
+  /* ── Type stacks ────────────────────────────────────────────────
+   * Fontsource ships each variable font under "<Name> Variable" family
+   * (e.g. "Manrope Variable"). That's what primitives.css's @font-face
+   * shims declare, so it must come first. The bare "Manrope" / etc.
+   * entries pick up locally-installed copies on developer machines.
+   * ───────────────────────────────────────────────────────────── */
+  --font-sans:  "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:  "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Fraunces Variable", "Fraunces", ui-serif, Georgia, serif;
+}
+
+/* ── Shadows (not utility-generating) ─────────────────────── */
+:root {
+  --btn-shadow:
+    rgb(74, 98, 122);          /* slate-blue offset on outlined buttons */
+
+  --shadow-1:
+    0 1px 0 rgba(14,17,22,0.04),
+    0 2px 4px rgba(14,17,22,0.04),
+    0 12px 28px -10px rgba(14,17,22,0.10);
+
+  --shadow-card:
+    0 1px 0 rgba(14,17,22,0.04),
+    0 1px 2px rgba(14,17,22,0.04);
+}

@@ -1,0 +1,273 @@
+/* Component recipes — paper-indigo design language.
+ *
+ * Lives in `@layer components`. Tailwind's utility layer wins on ties,
+ * so utility one-offs in component className strings always beat these
+ * defaults. Recipes consume tokens via `var(--color-*)` / `var(--font-*)`
+ * / `var(--shadow-*)` so themes re-paint everything without rebuilding.
+ *
+ * Organization:
+ *   §1  Surfaces:   .panel, .card, .card-focus
+ *   §2  Stripes:    .stripe + .stripe-critical / -warning / -ok
+ *   §3  Buttons:    .btn / .btn-primary / .btn-ghost  + tactile press
+ *   §4  Chips:      .chip + .chip-am / -critical / -warning / -count
+ *   §5  Typography: .eyebrow / .slug / .title / .label / .tabular / .date-numeral
+ *   §6  Quick action pill
+ *   §7  Icon button + notification badge
+ */
+
+
+/* ── §1 Surfaces ─────────────────────────────────────────────── */
+
+.panel {
+  background: var(--color-surface);
+  border-radius: 14px;
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+}
+
+.card-focus {
+  background: linear-gradient(180deg, var(--color-focus-tint) 0%, #F4F8FD 100%);
+  border: 1px solid var(--color-focus-edge);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 0 rgba(31, 58, 138, 0.04),
+    0 1px 2px rgba(31, 58, 138, 0.04);
+}
+
+
+/* ── §2 Severity stripe ──────────────────────────────────────── */
+
+.stripe { position: relative; }
+
+.stripe::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+}
+
+.stripe-critical::before { background: var(--color-critical); }
+.stripe-warning::before  { background: var(--color-warning);  }
+.stripe-ok::before       { background: var(--color-ok);       }
+
+
+/* ── §3 Buttons ──────────────────────────────────────────────────
+ * Tactile press: 2 px offset shadow at rest collapses to 0 on :active
+ * while the element translates by the same offset, so the button
+ * physically sinks into the surface. 70 ms keeps the press crisp.
+ * ──────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 6px 11px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-ink);
+  border-radius: 8px;
+  color: var(--color-ink);
+  box-shadow: 2px 2px 0 var(--btn-shadow);
+  transition: background 120ms ease,
+              transform 70ms ease,
+              box-shadow 70ms ease;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn:hover  { background: var(--color-surface-2); }
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 var(--btn-shadow);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 2px 2px 0 var(--btn-shadow), 0 0 0 3px rgba(31, 58, 138, 0.35);
+}
+.btn:focus-visible:active {
+  box-shadow: 0 0 0 3px rgba(31, 58, 138, 0.35);
+}
+
+/* Primary: indigo outlined (not a solid black block). */
+.btn-primary {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.btn-primary:hover { background: rgba(31, 58, 138, 0.04); }
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 2px 2px 0 var(--btn-shadow), 0 0 0 3px rgba(31, 58, 138, 0.25);
+}
+
+/* Ghost: transparent at rest, no shadow, lifts to ink-2 on hover. */
+.btn-ghost {
+  background: transparent;
+  border: 1.5px solid transparent;
+  color: var(--color-ink-3);
+  box-shadow: none;
+}
+.btn-ghost:hover {
+  background: rgba(14, 17, 22, 0.04);
+  color: var(--color-ink);
+}
+.btn-ghost:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+
+/* ── §4 Chips ────────────────────────────────────────────────── */
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 3px 8px 3px 7px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.chip-am {
+  background: rgba(31, 58, 138, 0.10);
+  border-color: rgba(31, 58, 138, 0.18);
+  color: var(--color-accent);
+}
+.chip-critical {
+  background: var(--color-critical-bg);
+  border-color: rgba(200, 54, 42, 0.25);
+  color: var(--color-critical);
+}
+.chip-warning {
+  background: var(--color-warning-bg);
+  border-color: rgba(197, 106, 20, 0.28);
+  color: var(--color-warning);
+}
+.chip-count {
+  background: rgba(14, 17, 22, 0.06);
+  border-color: transparent;
+  color: var(--color-ink-2);
+  padding: 2px 7px;
+}
+
+
+/* ── §5 Typography helpers ───────────────────────────────────── */
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+.slug {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--color-ink-3);
+}
+.title {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  color: var(--color-ink);
+}
+.label {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.tabular { font-variant-numeric: tabular-nums; }
+
+.date-numeral {
+  font-family: var(--font-serif);
+  font-variation-settings: "opsz" 72;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-ink);
+}
+.date-numeral em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--color-ink-3);
+}
+
+
+/* ── §6 Quick action pill ────────────────────────────────────── */
+
+.quick-action {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background 120ms ease, border-color 120ms ease;
+  cursor: pointer;
+}
+.quick-action:hover {
+  background: rgba(31, 58, 138, 0.05);
+  border-color: rgba(31, 58, 138, 0.12);
+  color: var(--color-ink);
+}
+.quick-action .dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(31, 58, 138, 0.10);
+}
+
+
+/* ── §7 Icon button + notification badge ─────────────────────── */
+
+.icon-btn {
+  position: relative;
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--color-ink-2);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: rgba(14, 17, 22, 0.04);
+  border-color: var(--color-hairline);
+  color: var(--color-ink);
+}
+
+.notif-badge {
+  position: absolute;
+  top: 4px; right: 4px;
+  min-width: 14px; height: 14px;
+  padding: 0 3px;
+  background: #F1B952;
+  color: #5C3A06;
+  border: 1.5px solid var(--color-surface);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 11px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(184, 138, 30, 0.35);
+  /* Pulse keyframes live in primitives.css alongside reduced-motion guard. */
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}

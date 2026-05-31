@@ -20,6 +20,10 @@ interface Props {
   initialSlug?: string | null;
 }
 
+const BACKDROP_STYLE: React.CSSProperties = {
+  background: "rgba(14, 17, 22, 0.45)",
+};
+
 export function CaptureModal({ open, onClose, projects, focusSlug, initialSlug }: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -69,18 +73,22 @@ export function CaptureModal({ open, onClose, projects, focusSlug, initialSlug }
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={BACKDROP_STYLE}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleCancel();
       }}
     >
-      <div className="w-full max-w-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Capture</h2>
+      <div className="panel w-full max-w-sm flex flex-col">
+        <div className="px-4 py-3 border-b border-hairline">
+          <h2 className="title text-sm">Capture</h2>
         </div>
         <div className="px-4 py-3 flex flex-col gap-3">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-900/50 px-2.5 py-1.5 rounded text-[11px]">
+            <div
+              className="bg-critical-bg text-critical px-2.5 py-1.5 rounded text-[11px]"
+              style={{ border: "1px solid rgba(200, 54, 42, 0.25)" }}
+            >
               {error}
             </div>
           )}
@@ -97,15 +105,24 @@ export function CaptureModal({ open, onClose, projects, focusSlug, initialSlug }
             placeholder="What's on your mind?"
             rows={5}
             disabled={saving}
-            className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-sans resize-y outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
+            className="bg-surface-2 text-ink border border-hairline rounded-lg px-2.5 py-2 text-xs resize-y outline-none disabled:opacity-50"
+            style={{ fontFamily: "var(--font-sans)" }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-accent)";
+              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(31, 58, 138, 0.20)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "";
+              e.currentTarget.style.boxShadow = "";
+            }}
           />
         </div>
-        <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
+        <div className="px-4 py-3 bg-surface-2 border-t border-hairline-2 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={handleCancel}
             disabled={saving}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-md transition-colors disabled:opacity-50"
+            className="btn btn-ghost disabled:opacity-50"
           >
             Cancel
           </button>
@@ -113,7 +130,7 @@ export function CaptureModal({ open, onClose, projects, focusSlug, initialSlug }
             type="button"
             onClick={handleSave}
             disabled={saving || text.trim() === ""}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-dark disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-500 rounded-md transition-colors"
+            className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : "Save"}
           </button>

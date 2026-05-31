@@ -1,0 +1,39 @@
+/* Theme: paper-indigo.
+ *
+ * Activated by `<html data-theme="paper-indigo">`. Overrides the same
+ * `--color-*` token names declared in tokens.css so all utilities and
+ * recipes resolving through `var(--color-*)` re-paint on theme swap.
+ *
+ * Values match `.devlocal/javier/new-ui-proposal/code.html` lines 18-46.
+ * They are intentionally identical to the @theme defaults in tokens.css:
+ * removing the data-theme attribute in DevTools must NOT change visuals,
+ * which is how we prove the swap mechanism is the attribute, not a hidden
+ * default (R-3.4 verify step on story 3.2).
+ */
+
+[data-theme="paper-indigo"] {
+  /* Surfaces */
+  --color-bg:           #F4F2EE;
+  --color-surface:      #FFFFFF;
+  --color-surface-2:    #FBFAF7;
+  --color-focus-tint:   #EEF3FB;
+  --color-focus-edge:   #C8D7EE;
+
+  /* Ink */
+  --color-ink:          #0E1116;
+  --color-ink-2:        #2A2F38;
+  --color-ink-3:        #5C6470;
+  --color-ink-4:        #97A0AD;
+
+  /* Hairlines */
+  --color-hairline:     #E6E3DC;
+  --color-hairline-2:   #EFEDE7;
+
+  /* Brand + status */
+  --color-accent:       #1F3A8A;
+  --color-critical:     #C8362A;
+  --color-critical-bg:  #FBEEEC;
+  --color-warning:      #C56A14;
+  --color-warning-bg:   #FBF1E5;
+  --color-ok:           #2F6B4F;
+}
