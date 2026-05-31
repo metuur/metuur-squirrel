@@ -26,12 +26,15 @@ import argparse
 import datetime
 import http.server
 import json
+import logging
+import logging.handlers
 import os
 import pathlib
 import re
 import socket
 import socketserver
 import sys
+import threading
 import traceback
 import urllib.parse
 from typing import Any, Callable, Optional
@@ -77,14 +80,69 @@ def _log_path() -> pathlib.Path:
 LOG_PATH = _log_path()
 PID_PATH = pathlib.Path("~/.squirrel/web-ui.pid").expanduser()
 
+# Rotation policy — keep at most 4 files of 10 MB each (~40 MB worst case
+# per user). Prior implementation was unbounded append, which grew the log
+# ~1 MB/month per user with the tray polling every 30s.
+LOG_MAX_BYTES = 10_000_000
+LOG_BACKUP_COUNT = 3
+
+_LOG_HANDLER: Optional[logging.handlers.RotatingFileHandler] = None
+_LOG_HANDLER_PATH: Optional[pathlib.Path] = None
+_LOG_HANDLER_LOCK = threading.Lock()
+
+
+def _get_log_handler() -> Optional[logging.handlers.RotatingFileHandler]:
+    """Return a process-cached RotatingFileHandler keyed by the current
+    ``_log_path()``. Rebuilds when the path changes — needed for the test
+    suite, which sets ``HOME`` to a different tempdir per test.
+
+    Returns None when the parent dir can't be created or the file can't be
+    opened (matches the prior ``except OSError: pass`` swallow semantics).
+    """
+    global _LOG_HANDLER, _LOG_HANDLER_PATH
+    p = _log_path()
+    if _LOG_HANDLER is not None and _LOG_HANDLER_PATH == p:
+        return _LOG_HANDLER
+    with _LOG_HANDLER_LOCK:
+        if _LOG_HANDLER is not None and _LOG_HANDLER_PATH == p:
+            return _LOG_HANDLER
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            handler = logging.handlers.RotatingFileHandler(
+                str(p),
+                maxBytes=LOG_MAX_BYTES,
+                backupCount=LOG_BACKUP_COUNT,
+                encoding="utf-8",
+            )
+            handler.setFormatter(logging.Formatter("%(message)s"))
+        except OSError:
+            return None
+        if _LOG_HANDLER is not None:
+            try:
+                _LOG_HANDLER.close()
+            except Exception:
+                pass
+        _LOG_HANDLER = handler
+        _LOG_HANDLER_PATH = p
+        return handler
+
 
 def _write_log_line(line: str) -> None:
-    p = _log_path()
+    handler = _get_log_handler()
+    if handler is None:
+        return
+    record = logging.LogRecord(
+        name="squirrel.web-ui",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg=line,
+        args=None,
+        exc_info=None,
+    )
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-    except OSError:
+        handler.emit(record)
+    except Exception:
         pass
 
 
