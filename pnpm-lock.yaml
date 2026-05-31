@@ -44,6 +44,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@squirrel/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.0
@@ -102,6 +105,8 @@ importers:
       vitest:
         specifier: ^4.1.7
         version: 4.1.7(jsdom@29.1.1)(vite@7.3.3(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/design-system: {}
 
 packages:
 

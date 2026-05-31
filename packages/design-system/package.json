@@ -1,0 +1,13 @@
+{
+  "name": "@squirrel/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Squirrel design system — tokens, themes, primitives, and component recipes (CSS only).",
+  "exports": {
+    ".": "./src/index.css"
+  },
+  "files": [
+    "src"
+  ]
+}

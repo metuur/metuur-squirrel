@@ -1,0 +1,12 @@
+/* @squirrel/design-system — public entry point.
+ *
+ * Cascade-layer wiring lands in story 1.2. This file is intentionally a
+ * placeholder so the package resolves and the workspace install succeeds.
+ *
+ * Final form (per docs/lld/desktop-theme-architecture.md):
+ *   @import "tailwindcss";
+ *   @layer theme      { @import "./tokens.css";              }
+ *   @layer theme      { @import "./themes/paper-indigo.css"; }
+ *   @layer primitives { @import "./primitives.css";          }
+ *   @layer components { @import "./recipes.css";             }
+ */

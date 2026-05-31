@@ -43,7 +43,7 @@ Dependency layers:
 
 ## Unit 1: Shared design-system package
 
-- [ ] **1.1** Scaffold `packages/design-system/` workspace package (est: ~25m)
+- [x] **1.1** Scaffold `packages/design-system/` workspace package (est: ~25m)
   - acceptance:
     - R-1.1 — `packages/design-system/package.json` declares `name: "@squirrel/design-system"`, `type: "module"`, `version: "0.1.0"`, and `exports: { ".": "./src/index.css" }`.
     - R-1.2 — `pnpm-workspace.yaml` includes `packages/*` alongside existing `apps/*` entries.
