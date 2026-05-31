@@ -285,6 +285,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(settings),
     }),
+  previewNotificationSound: (sound: 'Glass' | 'Funk' | 'Silent') =>
+    call<{ success: true }>('/notifications/preview', {
+      method: 'POST',
+      body: JSON.stringify({ sound }),
+    }),
   focusGet: () => call<ManualFocusPayload>('/focus'),
   focusSet: (
     slot: 'today' | 'today_pm' | 'week',
