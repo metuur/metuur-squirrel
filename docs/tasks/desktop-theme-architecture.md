@@ -221,7 +221,7 @@ Dependency layers:
 
 ## Unit 9: Regression sweep + final verification
 
-- [ ] **9.1** Codebase sweep + automated checks (deps: 8.5, est: ~20m)
+- [x] **9.1** Codebase sweep + automated checks (deps: 8.5, est: ~20m)
   - acceptance:
     - R-9.4 — Backend, Tauri Rust side, CLI untouched. `git diff --stat origin/main -- apps/backend apps/cli apps/desktop/src-tauri` shows no changes.
     - R-9.3 — `apps/backend/app/index.html` untouched. `git diff -- apps/backend/app/index.html` empty.
