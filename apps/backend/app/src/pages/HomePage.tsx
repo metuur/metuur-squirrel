@@ -1,5 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick } from '@/api/client';
 import { fromNow } from '@/lib/utils';
@@ -9,9 +9,26 @@ import { FocusPickerModal } from '@/components/FocusPickerModal';
 
 type Ctx = { viewMode: 'List' | 'Board' };
 
+const FOCUS_POLL_MS = 5000;
+
 export default function HomePage() {
   const { viewMode } = useOutletContext<Ctx>();
   const { data, isLoading, mutate } = useFetch('home', () => api.home());
+
+  // Poll /api/home so focus stays in sync with the Tauri app (and external
+  // edits to the vault). Pauses while the tab is hidden.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') mutate();
+    };
+    const id = window.setInterval(tick, FOCUS_POLL_MS);
+    const onVisible = () => { if (document.visibilityState === 'visible') mutate(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [mutate]);
 
   if (isLoading && !data) {
     return (
@@ -77,57 +94,57 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
   const renderFocusRow = (pick: ManualPick, badge: string, chipClass: string, slot: string, separator: boolean) => {
     const isActive = activeSession?.slug === pick.intent_slug;
     const timeStr = formatTime(pick.time_invested_minutes);
-    const slugText = pick.next_action
-      ? `${pick.project_slug} · ${pick.intent_slug}`
-      : pick.project_slug;
+    const slugText = pick.next_action ? `${pick.project_slug} · ${pick.intent_slug}` : pick.project_slug;
     const titleText = pick.next_action || pick.intent_title;
     return (
-      <div key={slot} className={`flex items-start gap-3 ${separator ? 'mt-3 pt-3 border-t border-hairline-2' : ''}`}>
+      <div key={slot} className={`flex items-start gap-2.5 ${separator ? 'mt-2 pt-2 border-t border-hairline-2' : ''}`}>
         <span className={`chip ${chipClass} shrink-0 mt-0.5`}>{badge}</span>
         <div className="min-w-0 flex-1">
-          <p className="slug truncate mb-1">{slugText}</p>
-          <Link to={`/projects/${pick.project_slug}`} className="title text-[15px] leading-snug hover:text-accent block">
+          <p className="slug truncate">{slugText}</p>
+          <Link to={`/projects/${pick.project_slug}`} className="title text-[13.5px] leading-snug hover:text-accent block truncate">
             {titleText}
           </Link>
-          {pick.next_action && (
-            <p className="text-xs text-ink-3 mt-1 italic">"{pick.intent_title}"</p>
+          {(timeStr || isActive) && (
+            <div className="mt-0.5 flex items-center gap-2 text-[10.5px]">
+              {timeStr && <span className="text-ink-4 tabular">⏱ {timeStr}</span>}
+              {isActive && <span className="flex items-center gap-1 text-accent font-medium"><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />Active</span>}
+            </div>
           )}
-          <div className="mt-2 flex items-center gap-3">
-            {isActive ? (
-              <button onClick={handleCheckout} disabled={checkingOut} className="btn btn-primary text-xs px-2.5 py-1 disabled:opacity-50">
-                <span className="material-icons text-sm">stop</span>
-                Check out
-              </button>
-            ) : (
-              <button onClick={() => handleCheckin(pick, slot)} disabled={checkingIn || !!activeSession} className="btn btn-primary text-xs px-2.5 py-1 disabled:opacity-50">
-                <span className="material-icons text-sm">play_arrow</span>
-                Check in
-              </button>
-            )}
-            {timeStr && <span className="text-[11px] text-ink-4 tabular">⏱ {timeStr} invested</span>}
-            {isActive && <span className="flex items-center gap-1 text-[11px] text-accent font-medium"><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />Active</span>}
-          </div>
         </div>
+        {isActive ? (
+          <button
+            onClick={handleCheckout}
+            disabled={checkingOut}
+            title="Check out"
+            aria-label="Check out"
+            className="btn-tactile is-critical shrink-0"
+          >
+            <span className="material-icons text-[15px]">stop</span>
+            Check out
+          </button>
+        ) : (
+          <button
+            onClick={() => handleCheckin(pick, slot)}
+            disabled={checkingIn || !!activeSession}
+            title="Check in"
+            aria-label="Check in"
+            className="btn-tactile shrink-0"
+          >
+            <span className="material-icons text-[15px]">play_arrow</span>
+            Check in
+          </button>
+        )}
       </div>
     );
   };
 
-  const amPick = manualFocus?.today ?? null;
-  const pmPick = manualFocus?.today_pm ?? null;
-  const weekPick = manualFocus?.week ?? null;
-  const isAllDay = !!(amPick && pmPick && amPick.intent_slug === pmPick.intent_slug);
-  const hasTodayFocus = !!(amPick || pmPick);
-
-  const todayPillLabel = hasTodayFocus
-    ? isAllDay
-      ? 'Today (All day)'
-      : amPick && pmPick
-        ? 'Today (AM + PM)'
-        : amPick
-          ? 'Today (AM)'
-          : 'Today (PM)'
-    : null;
-  const todayDotClass = pmPick && !amPick ? 'dot dot-pm' : 'dot';
+  const renderActions = (slot: 'today' | 'week') => (
+    <span className="text-[10.5px] font-semibold inline-flex items-center gap-1.5">
+      <button type="button" onClick={() => setPickerSlot(slot)} className="text-ink-3 hover:text-ink hover:underline underline-offset-2">Change</button>
+      <span className="text-ink-4">·</span>
+      <button type="button" onClick={() => handleClearFocus(slot)} className="text-critical hover:underline underline-offset-2">Clear</button>
+    </span>
+  );
 
   const handleClearFocus = async (slot: 'today' | 'week') => {
     try {
@@ -145,95 +162,95 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
     }
   };
 
+  const amPick = manualFocus?.today ?? null;
+  const pmPick = manualFocus?.today_pm ?? null;
+  const weekPick = manualFocus?.week ?? null;
+  const isAllDay = !!(amPick && pmPick && amPick.intent_slug === pmPick.intent_slug);
+  const hasTodayFocus = !!(amPick || pmPick);
+
   return (
-    <div className="mb-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title">Today</h1>
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="title">What matters now:</h1>
         <button onClick={onRefresh} className="text-xs font-semibold text-ink-4 hover:text-accent flex items-center gap-1">
           <span className="material-icons text-sm">refresh</span>
           Refresh
         </button>
       </div>
 
-      {hasTodayFocus ? (
-        <div className="card-focus p-4">
-          <div className="eyebrow mb-3">Today's focus</div>
-          {isAllDay ? (
-            renderFocusRow(amPick!, 'Today', 'chip-am', 'today', false)
-          ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* ── Today's focus ─────────────────────────────────────────── */}
+        <div className="card-focus p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="eyebrow">Today's focus</span>
+            {hasTodayFocus && renderActions('today')}
+          </div>
+          {hasTodayFocus ? (
             <>
-              {amPick && renderFocusRow(amPick, 'AM', 'chip-am', 'today', false)}
-              {pmPick && renderFocusRow(pmPick, 'PM', 'chip-pm', 'today_pm', !!amPick)}
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="card-focus p-4">
-          <div className="eyebrow mb-3">Today's focus</div>
-          {focus ? (
-            <>
-              <p className="slug mb-1">{focus.slug}</p>
-              <Link to={`/projects/${focus.slug}`} className="title text-[15px] leading-snug hover:text-accent block">{focus.title}</Link>
-              {focus.next_action && <p className="text-xs text-ink-3 mt-2 italic">"{focus.next_action}"</p>}
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-ink-3">{parakeet || 'Nothing pressing right now.'}</p>
-              <div className="mt-3">
-                <button onClick={() => setShowStartPanel(true)} className="btn btn-primary text-xs px-2.5 py-1">
-                  <span className="material-icons text-sm">terminal</span>
-                  Help me start
+              {isAllDay
+                ? renderFocusRow(amPick!, 'Today', 'chip-am', 'today', false)
+                : (
+                  <>
+                    {amPick && renderFocusRow(amPick, 'AM', 'chip-am', 'today', false)}
+                    {pmPick && renderFocusRow(pmPick, 'PM', 'chip-pm', 'today_pm', !!amPick)}
+                  </>
+                )}
+              {amPick && !pmPick && (
+                <button
+                  type="button"
+                  onClick={() => setPickerSlot('today')}
+                  className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-3 hover:text-ink"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#8B5CF6' }} />
+                  Add afternoon focus
                 </button>
-                <PromptPanel open={showStartPanel} title="Start a session" command={slashCommands.start()} helpText="Run this in your AI agent — it picks the next concrete action for you from the active project." onClose={() => setShowStartPanel(false)} />
-              </div>
+              )}
             </>
+          ) : focus ? (
+            <div className="flex items-start gap-2.5">
+              <span className="chip chip-am shrink-0 mt-0.5">Auto</span>
+              <div className="min-w-0 flex-1">
+                <p className="slug truncate">{focus.slug}</p>
+                <Link to={`/projects/${focus.slug}`} className="title text-[13.5px] leading-snug hover:text-accent block truncate">{focus.title}</Link>
+                {focus.next_action && <p className="text-[10.5px] text-ink-3 mt-0.5 italic truncate">"{focus.next_action}"</p>}
+              </div>
+              <button type="button" onClick={() => setPickerSlot('today')} className="shrink-0 text-[10.5px] font-semibold text-ink-3 hover:text-ink hover:underline underline-offset-2">Pin</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickerSlot('today')}
+              className="w-full flex items-center gap-2.5 text-left text-ink-3 hover:text-ink"
+            >
+              <span className="w-2 h-2 rounded-full bg-accent" />
+              <span className="text-[12.5px] font-semibold">Pick today's focus</span>
+              <span className="text-[10.5px] text-ink-4 truncate">— {parakeet || 'nothing pressing'}</span>
+            </button>
           )}
         </div>
-      )}
 
-      {weekPick && (
-        <div className="card-focus p-4">
-          <div className="eyebrow mb-3">This week</div>
-          {renderFocusRow(weekPick, 'Week', 'chip-week', 'week', false)}
+        {/* ── This week ─────────────────────────────────────────────── */}
+        <div className="card-focus p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="eyebrow">This week</span>
+            {weekPick && renderActions('week')}
+          </div>
+          {weekPick ? (
+            renderFocusRow(weekPick, 'Week', 'chip-week', 'week', false)
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickerSlot('week')}
+              className="w-full flex items-center gap-2.5 text-left text-ink-3 hover:text-ink"
+            >
+              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--color-ok)' }} />
+              <span className="text-[12.5px] font-semibold">Pick this week's focus</span>
+            </button>
+          )}
         </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        {todayPillLabel ? (
-          <span className="focus-pill">
-            <span className={todayDotClass} />
-            <span>{todayPillLabel}:</span>
-            <button type="button" className="change-btn" onClick={() => setPickerSlot('today')}>Change</button>
-            <span className="sep">·</span>
-            <button type="button" className="clear-btn" onClick={() => handleClearFocus('today')}>Clear</button>
-          </span>
-        ) : (
-          <button type="button" className="focus-pill empty" onClick={() => setPickerSlot('today')}>
-            <span className="dot" />
-            Pick today's focus
-          </button>
-        )}
-        {amPick && !pmPick && (
-          <button type="button" className="focus-pill empty" onClick={() => setPickerSlot('today')}>
-            <span className="dot dot-pm" />
-            Add afternoon focus
-          </button>
-        )}
-        {weekPick ? (
-          <span className="focus-pill">
-            <span className="dot dot-week" />
-            <span>This week:</span>
-            <button type="button" className="change-btn" onClick={() => setPickerSlot('week')}>Change</button>
-            <span className="sep">·</span>
-            <button type="button" className="clear-btn" onClick={() => handleClearFocus('week')}>Clear</button>
-          </span>
-        ) : (
-          <button type="button" className="focus-pill empty" onClick={() => setPickerSlot('week')}>
-            <span className="dot dot-week" />
-            Pick this week's focus
-          </button>
-        )}
       </div>
+
+      <PromptPanel open={showStartPanel} title="Start a session" command={slashCommands.start()} helpText="Run this in your AI agent — it picks the next concrete action for you from the active project." onClose={() => setShowStartPanel(false)} />
 
       {pickerSlot && (
         <FocusPickerModal

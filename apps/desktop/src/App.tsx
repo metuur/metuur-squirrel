@@ -48,9 +48,30 @@ export default function App() {
 
   const [homeBump, setHomeBump] = useState(0);
   // R-1.6: re-fetch widgets each time backend transitions to online.
-  // homeBump forces a refetch after a manual-focus mutation (R-5.6).
+  // homeBump forces a refetch after a manual-focus mutation (R-5.6) and
+  // also drives a 5s focus-sync poll so changes made in the Web UI (or
+  // external editor) land here without the user reopening the popup.
   const triggerKey = (status.lastOnlineAt ?? 0) + homeBump;
   const home = useHome(triggerKey);
+
+  // Poll /api/home every 5s while the popup is visible and backend is online,
+  // so manual_focus stays in sync with the Web UI / vault edits.
+  useEffect(() => {
+    if (!status.online) return;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      setHomeBump((n) => n + 1);
+    };
+    const id = window.setInterval(tick, 5000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setHomeBump((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [status.online]);
   // Optimistic focus state: applied immediately from the API response so the
   // widget reflects the new pick without waiting for the next full home refetch.
   const [focusOverride, setFocusOverride] = useState<import("./api/client").ManualFocusPayload | null>(null);
