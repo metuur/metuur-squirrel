@@ -7,15 +7,18 @@
 #
 # Usage:
 #   bash companions/web-ui/launchd/install.sh           # install + load
+#   bash companions/web-ui/launchd/install.sh --reinstall  # regen token + rebootstrap
 #   bash companions/web-ui/launchd/install.sh --uninstall
 
 set -euo pipefail
 
 UNINSTALL=0
+REINSTALL=0
 PORT=3939
 for arg in "$@"; do
   case "$arg" in
     --uninstall) UNINSTALL=1 ;;
+    --reinstall) REINSTALL=1 ;;
     --port=*)    PORT="${arg#--port=}" ;;
     -h|--help)
       sed -n '1,16p' "$0"
@@ -114,6 +117,13 @@ PYTHON_BIN="$(command -v python3 || true)"
 
 command -v openssl >/dev/null 2>&1 || { echo "❌  openssl not on PATH" >&2; exit 1; }
 
+# R-5.6: --reinstall shreds the existing token so a fresh one is minted below,
+# forcing the running backend to pick up a new secret after re-bootstrap.
+if [ "$REINSTALL" -eq 1 ]; then
+  echo "♻️   --reinstall: regenerating ~/.squirrel/launchd-token"
+  rm -f "$TOKEN_FILE"
+fi
+
 # R-5.1: provision the launchd token BEFORE rendering the plist so the
 # --token-file path (R-5.3) points at a file that already exists and is valid.
 ensure_launchd_token
@@ -128,9 +138,18 @@ sed -e "s|__PYTHON__|$PYTHON_BIN|g" \
 
 mkdir -p "$HOME/.squirrel"
 
-# (Re)load
-launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load "$PLIST"
+if [ "$REINSTALL" -eq 1 ]; then
+  # R-5.6: modern launchctl API — bootout then bootstrap so a running instance
+  # restarts with the freshly-rendered plist (new token-file value).
+  DOMAIN="gui/$(id -u)"
+  launchctl bootout "$DOMAIN/$(basename "$PLIST_NAME" .plist)" 2>/dev/null || true
+  launchctl bootstrap "$DOMAIN" "$PLIST"
+  echo "✅  Reinstalled and re-bootstrapped $PLIST"
+else
+  # (Re)load
+  launchctl unload "$PLIST" 2>/dev/null || true
+  launchctl load "$PLIST"
+fi
 
 echo "✅  Installed $PLIST"
 echo "    Web UI will auto-start at login on http://127.0.0.1:$PORT"

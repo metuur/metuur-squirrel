@@ -172,7 +172,7 @@ Mutex tags:
       - Valid launchd-token + launchd backend running → adopts.
       - Tampered launchd-token (`echo "garbage" > ~/.squirrel/launchd-token`) → tray Error + LaunchdTokenInvalid banner.
 
-- [ ] **5.4** `install.sh --reinstall` regenerates token and re-bootstraps service (deps: 5.1, 5.2, est: ~30m)
+- [x] **5.4** `install.sh --reinstall` regenerates token and re-bootstraps service (deps: 5.1, 5.2, est: ~30m)
   - acceptance:
     - R-5.6 — `bash install.sh --reinstall`: regenerate `~/.squirrel/launchd-token`, rewrite plist, `launchctl bootout` then `launchctl bootstrap` so the running backend picks up the new token at process restart.
   - touchpoints:
