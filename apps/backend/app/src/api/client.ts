@@ -159,6 +159,7 @@ export interface NoteDetail {
   raw_body: string;
   mtime: number;
   project_slug: string;
+  kind: 'note' | 'project-task';
 }
 export interface DeadlineGroup {
   label: string;

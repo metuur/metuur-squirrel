@@ -1074,6 +1074,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "raw_body": text,
             "mtime": note_path.stat().st_mtime,
             "project_slug": note_path.parent.name,
+            "kind": _classify_kind(ctx.active.path, note_path),
         })
 
     def api_note_save(self, note_id: str) -> None:

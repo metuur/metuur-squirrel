@@ -54,10 +54,13 @@ export default function ProjectPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div className="flex items-center gap-2 text-sm text-ink-3">
+      <div className="flex items-center gap-2 text-sm text-ink-3 flex-wrap">
         <Link to="/" className="hover:text-accent flex items-center gap-1">
-          <span className="material-icons text-base">arrow_back</span> Back
+          <span className="material-icons text-base">arrow_back</span>
+          Back to dashboard
         </Link>
+        <span className="text-ink-4">|</span>
+        <span className="text-ink-2 font-medium">Project</span>
       </div>
 
       <header className="panel overflow-hidden">

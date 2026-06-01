@@ -37,17 +37,22 @@ export default function NotePage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex items-center gap-3 text-sm text-ink-3">
+      <div className="flex items-center gap-2 text-sm text-ink-3 flex-wrap">
+        <Link to="/" className="hover:text-accent flex items-center gap-1">
+          <span className="material-icons text-base">arrow_back</span>
+          Back to dashboard
+        </Link>
+        <span className="text-ink-4">|</span>
         {parentIsProject ? (
-          <Link to={`/projects/${note.project_slug}`} className="hover:text-accent flex items-center gap-1">
-            <span className="material-icons text-base">arrow_back</span>
-            Back to project
-          </Link>
+          <>
+            <Link to={`/projects/${note.project_slug}`} className="hover:text-accent">
+              {note.project_slug}
+            </Link>
+            <span className="text-ink-4">/</span>
+            <span className="text-ink-2 font-medium">{note.kind === 'project-task' ? 'Task' : 'Note'}</span>
+          </>
         ) : (
-          <Link to="/" className="hover:text-accent flex items-center gap-1">
-            <span className="material-icons text-base">arrow_back</span>
-            Back to dashboard
-          </Link>
+          <span className="text-ink-2 font-medium">Note</span>
         )}
       </div>
 
