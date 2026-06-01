@@ -10,6 +10,8 @@
     <string>__SERVER_PY__</string>
     <string>--port</string>
     <string>__PORT__</string>
+    <string>--token-file</string>
+    <string>__TOKEN_FILE__</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

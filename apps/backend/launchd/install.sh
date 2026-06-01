@@ -122,6 +122,7 @@ mkdir -p "$PLIST_DIR"
 sed -e "s|__PYTHON__|$PYTHON_BIN|g" \
     -e "s|__SERVER_PY__|$SERVER_PY|g" \
     -e "s|__PORT__|$PORT|g" \
+    -e "s|__TOKEN_FILE__|$TOKEN_FILE|g" \
     -e "s|__HOME__|$HOME|g" \
     "$HERE/plist.template" > "$PLIST"
 

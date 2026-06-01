@@ -148,7 +148,7 @@ Mutex tags:
     - Run installer second time: file is unchanged (compare sha256 before/after).
     - `pre-test:` `chmod 0644 ~/.squirrel/launchd-token`, run installer → exits non-zero with message naming the permission failure.
 
-- [ ] **5.2** Plist template includes `--token-file` argument (deps: 5.1, est: ~15m)
+- [x] **5.2** Plist template includes `--token-file` argument (deps: 5.1, est: ~15m)
   - acceptance:
     - R-5.3 — `ProgramArguments` array in rendered plist includes `--token-file` followed by the absolute path to `~/.squirrel/launchd-token`.
   - touchpoints:
