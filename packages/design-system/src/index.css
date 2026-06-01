@@ -20,6 +20,7 @@
  */
 
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "./tokens.css" layer(theme);
 @import "./themes/paper-indigo.css" layer(theme);
 @import "./primitives.css" layer(primitives);

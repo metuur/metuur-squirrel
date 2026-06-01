@@ -55,7 +55,7 @@ export default function NotePage() {
         <div className="px-6 py-5 border-b border-hairline-2 bg-focus-tint/40 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-ink-4 mb-1">{note.id}</div>
-            <h1 className="text-2xl font-bold text-ink leading-tight">{note.title}</h1>
+            <h1 className="text-sm font-semibold text-ink-2 leading-snug">{note.title}</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -82,7 +82,7 @@ export default function NotePage() {
         </div>
         <div className="px-6 py-5">
           {note.body ? (
-            <div className="prose prose-slate max-w-none text-sm leading-relaxed">
+            <div className="prose prose-slate max-w-none text-sm leading-relaxed prose-h1:text-2xl prose-h1:mt-0 prose-h2:text-lg prose-h3:text-base">
               <Markdown>{note.body}</Markdown>
             </div>
           ) : (
