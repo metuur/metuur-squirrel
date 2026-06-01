@@ -41,7 +41,7 @@ Mutex tags:
     - `cargo build` succeeds.
   - skip TDD; run the verify block as the test (scaffolding story).
 
-- [ ] **1.2** Pass `--token <hex>` to sidecar spawn (deps: 1.1, est: ~30m) `(mutex: supervisor)`
+- [x] **1.2** Pass `--token <hex>` to sidecar spawn (deps: 1.1, est: ~30m) `(mutex: supervisor)`
   - acceptance:
     - R-1.3 — Sidecar receives the token via `--token <hex>` argv argument.
     - R-1.4 — Token MUST NOT be added to any env var passed to the child.

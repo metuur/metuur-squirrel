@@ -96,12 +96,16 @@ fn port_in_use(port: u16) -> bool {
 /// binary, capability not granted, fork failed) returns Err with a message
 /// suitable for tracing.
 fn spawn_sidecar<R: Runtime>(app: &AppHandle<R>) -> Result<CommandChild, String> {
+    // R-1.3: hand the per-launch token to the sidecar via argv. R-1.4: never
+    // via env — env leaks through /proc and is inherited by grandchildren.
+    // We pass `--token` and set NO environment variables on the command.
+    let token = app.state::<crate::RuntimeToken>().0.clone();
     let cmd = app
         .shell()
         .sidecar(SIDECAR_NAME)
         .map_err(|e| format!("sidecar resolution: {e}"))?;
     let (mut rx, child) = cmd
-        .args(["--port", &BACKEND_PORT.to_string()])
+        .args(["--port", &BACKEND_PORT.to_string(), "--token", &token])
         .spawn()
         .map_err(|e| format!("sidecar spawn: {e}"))?;
 
