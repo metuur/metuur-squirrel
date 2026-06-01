@@ -213,7 +213,7 @@ Mutex tags:
 
 ## Unit 7: End-to-end verification
 
-- [ ] **7.1** Walk the six Success Criteria from `docs/hld/runtime-trust-handshake.md` on a fresh macOS install (deps: 6.2, 5.4, est: ~45m)
+- [x] **7.1** Walk the six Success Criteria from `docs/hld/runtime-trust-handshake.md` on a fresh macOS install (deps: 6.2, 5.4, est: ~45m)
   - acceptance: each of the six bullets in the HLD Success Criteria section reproduces as written.
   - verify (the six checks themselves):
     1. **Squat test:** `nc -l 3939 &`; launch Squirrel.app; within 3 s tray = Error, banner = UnknownProcess; `grep handshake_attempt ~/.squirrel/tauri.log` shows outcome=refused_unknown.
