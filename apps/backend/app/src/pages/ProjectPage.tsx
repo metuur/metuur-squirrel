@@ -1,12 +1,12 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useState, useMemo } from 'react';
-import { marked } from 'marked';
 import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { useCapture } from '@/components/CaptureModal';
 import { PromptPanel } from '@/components/PromptPanel';
 import { NewTaskModal } from '@/components/NewTaskModal';
+import { Markdown } from '@/components/Markdown';
 
 export default function ProjectPage() {
   const { slug = '' } = useParams();
@@ -108,10 +108,9 @@ export default function ProjectPage() {
         </div>
         <div className="px-6 py-5 border-t border-hairline-2">
           {project.body ? (
-            <div
-              className="prose prose-slate max-w-none text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: marked.parse(project.body) as string }}
-            />
+            <div className="prose prose-slate max-w-none text-sm leading-relaxed">
+              <Markdown>{project.body}</Markdown>
+            </div>
           ) : (
             <p className="text-ink-3 italic">No description yet.</p>
           )}

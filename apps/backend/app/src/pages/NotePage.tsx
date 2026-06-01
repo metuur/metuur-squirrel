@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
-import { marked } from 'marked';
 import { useFetch } from '@/hooks/useFetch';
 import { api } from '@/api/client';
+import { Markdown } from '@/components/Markdown';
 
 export default function NotePage() {
   const { id = '' } = useParams();
@@ -82,10 +82,9 @@ export default function NotePage() {
         </div>
         <div className="px-6 py-5">
           {note.body ? (
-            <div
-              className="prose prose-slate max-w-none text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: marked.parse(note.body) as string }}
-            />
+            <div className="prose prose-slate max-w-none text-sm leading-relaxed">
+              <Markdown>{note.body}</Markdown>
+            </div>
           ) : (
             <p className="text-ink-3 italic">This note is empty.</p>
           )}
