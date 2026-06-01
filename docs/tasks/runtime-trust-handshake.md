@@ -85,7 +85,7 @@ Mutex tags:
 
 ## Unit 3: Handshake endpoint
 
-- [ ] **3.1** Add `GET /api/_handshake` handler (deps: 2.1, 2.2, est: ~30m) `(mutex: server-routes)`
+- [x] **3.1** Add `GET /api/_handshake` handler (deps: 2.1, 2.2, est: ~30m) `(mutex: server-routes)`
   - acceptance:
     - R-3.1 — Matching header → `200 {"token_echo": "<hex>"}`.
     - R-3.2 — Missing/mismatched header AND not dev mode → `401` empty body.

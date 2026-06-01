@@ -292,6 +292,10 @@ def _ensure_scratch_pad_once(vault_path: pathlib.Path) -> None:
 
 ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     # ── JSON API ────────────────────────────────────────────────────────────
+    # Runtime Trust Handshake probe — exempt from the token gate in _dispatch
+    # because it runs its own contract (R-3.1..R-3.4). Must precede the SPA
+    # wildcard so it is matched as an API route, not the shell.
+    ("GET",  re.compile(r"^/api/_handshake$"),                        "api_handshake"),
     ("GET",  re.compile(r"^/api/me$"),                                "api_me"),
     ("GET",  re.compile(r"^/api/vaults$"),                            "api_vaults_list"),
     ("POST", re.compile(r"^/api/vault$"),                             "api_set_vault"),
@@ -535,6 +539,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _invalidate_vault_cache(self, ctx: "VaultContext") -> None:
         import cache
         cache.invalidate(str(ctx.active.path))
+
+    # ── /api/_handshake — runtime trust probe ───────────────────────────────
+
+    def api_handshake(self) -> None:
+        """Runtime Trust Handshake endpoint (R-3.1..R-3.4).
+
+        - dev mode            → 200 {"mode": "dev"} regardless of header (R-3.3)
+        - matching token      → 200 {"token_echo": "<hex>"} (R-3.1)
+        - missing/mismatched  → 401 empty body, no token leaked (R-3.2, R-3.4)
+        """
+        if DEV_MODE:
+            self._send_json({"mode": "dev"})
+            return
+        if _auth_required() and self._token_ok():
+            self._send_json({"token_echo": TOKEN})
+            return
+        self._send_unauthorized("GET")
 
     # ── /api/me — bootstrap ─────────────────────────────────────────────────
 

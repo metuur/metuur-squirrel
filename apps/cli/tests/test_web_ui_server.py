@@ -301,6 +301,69 @@ class TestIntentCreate(_ServerCase):
         self.assertEqual(r.status, 422)
 
 
+# ─── Story 3.1 — GET /api/_handshake (R-3.1..R-3.4) ──────────────────────────
+
+
+class TestHandshake(_ServerCase):
+    GOOD = "d" * 64
+
+    def setUp(self):
+        super().setUp()
+        import server
+        self.server_mod = server
+
+    def tearDown(self):
+        self.server_mod.TOKEN = None
+        self.server_mod.DEV_MODE = False
+        super().tearDown()
+
+    def _normal(self):
+        self.server_mod.TOKEN = self.GOOD
+        self.server_mod.DEV_MODE = False
+
+    def _dev(self):
+        self.server_mod.TOKEN = None
+        self.server_mod.DEV_MODE = True
+
+    # ── normal mode ──────────────────────────────────────────────────────────
+    def test_normal_matching_header_echoes_token(self):
+        self._normal()
+        r = self._get("/api/_handshake", headers={"X-Squirrel-Token": self.GOOD})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(json.loads(r.read())["token_echo"], self.GOOD)
+
+    def test_normal_missing_header_401_empty(self):
+        self._normal()
+        r = self._get("/api/_handshake")
+        self.assertEqual(r.status, 401)
+        self.assertEqual(r.read(), b"")  # R-3.4 — no token leaked
+
+    def test_normal_mismatch_header_401_empty(self):
+        self._normal()
+        r = self._get("/api/_handshake", headers={"X-Squirrel-Token": "e" * 64})
+        self.assertEqual(r.status, 401)
+        self.assertEqual(r.read(), b"")
+
+    # ── dev mode ─────────────────────────────────────────────────────────────
+    def test_dev_matching_header_returns_mode_dev(self):
+        self._dev()
+        r = self._get("/api/_handshake", headers={"X-Squirrel-Token": self.GOOD})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(json.loads(r.read()), {"mode": "dev"})
+
+    def test_dev_missing_header_returns_mode_dev(self):
+        self._dev()
+        r = self._get("/api/_handshake")
+        self.assertEqual(r.status, 200)
+        self.assertEqual(json.loads(r.read()), {"mode": "dev"})
+
+    def test_dev_mismatch_header_returns_mode_dev(self):
+        self._dev()
+        r = self._get("/api/_handshake", headers={"X-Squirrel-Token": "f" * 64})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(json.loads(r.read()), {"mode": "dev"})
+
+
 # ─── Story 2.2 — X-Squirrel-Token enforcement (R-2.6..R-2.9) ─────────────────
 
 
@@ -342,11 +405,12 @@ class TestTokenEnforcement(_ServerCase):
         self.assertEqual(r.status, 401)
 
     def test_handshake_path_is_exempt_from_gate(self):
-        # The handshake must never be 401'd by the generic gate — it runs its
-        # own contract (added in 3.1). Until then it 404s; the point is it is
-        # NOT blocked by the token gate.
-        r = self._get("/api/_handshake")
-        self.assertNotEqual(r.status, 401)
+        # The handshake is exempt from the generic gate and runs its own
+        # contract: a matching header yields 200 + token_echo (R-3.1), proving
+        # the handler ran rather than being blanket-401'd by the gate.
+        r = self._get("/api/_handshake", headers={"X-Squirrel-Token": self.GOOD})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(json.loads(r.read())["token_echo"], self.GOOD)
 
     def test_dev_mode_bypasses_enforcement(self):
         # R-2.8 — flip to dev mode: requests succeed with no header.
