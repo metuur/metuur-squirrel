@@ -58,11 +58,43 @@ pub(crate) fn mint_runtime_token() -> String {
     s
 }
 
+/// Outcome of the adoption handshake probe against a backend already bound to
+/// port 3939 (Runtime Trust Handshake, R-4.2..R-4.6). Only `Adopted` proceeds;
+/// every other variant is a terminal refusal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HandshakeOutcome {
+    /// 200 with a constant-time-equal `token_echo` → the backend is ours.
+    Adopted,
+    /// 200 `{"mode": "dev"}` → an unauthenticated dev backend (R-4.3).
+    RefusedDev,
+    /// 401 → a process that does not know our token (R-4.4).
+    Refused401,
+    /// 200 with a body matching neither shape, or any other status (R-4.5).
+    RefusedUnknown,
+    /// connect/send/read exceeded the 3s budget (R-4.6).
+    RefusedTimeout,
+}
+
+/// Stable `tracing` label for a handshake outcome (R-4.10).
+fn handshake_outcome_label(o: HandshakeOutcome) -> &'static str {
+    match o {
+        HandshakeOutcome::Adopted => "adopted",
+        HandshakeOutcome::RefusedDev => "refused_dev",
+        HandshakeOutcome::Refused401 => "refused_401",
+        HandshakeOutcome::RefusedUnknown => "refused_unknown",
+        HandshakeOutcome::RefusedTimeout => "refused_timeout",
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SupervisionMode {
     Adopted,
     Managed,
     Failed,
+    /// Port 3939 was bound by a process that failed the trust handshake. The
+    /// inner outcome drives the banner cause (Unit 6). Terminal: no fallback
+    /// port, no sidecar spawn, and no API request is ever issued (R-4.7..R-4.9).
+    RefusedAdoption(HandshakeOutcome),
 }
 
 pub(crate) struct SupervisorState {
@@ -135,12 +167,117 @@ fn spawn_sidecar<R: Runtime>(app: &AppHandle<R>) -> Result<CommandChild, String>
 ///
 /// Returns the new `(mode, child)`. The caller is responsible for storing
 /// these in `SupervisorState`.
+/// Total budget for the adoption handshake — connect + send + read (R-4.1).
+/// Matches the existing health-check timeout so a wedged backend can't stall
+/// startup longer than the user already tolerates.
+const HANDSHAKE_TIMEOUT: Duration = HEALTH_REQ_TIMEOUT;
+
+/// R-4.1..R-4.6: probe a backend already bound to port 3939 and classify it.
+///
+/// Issues exactly one `GET /api/_handshake` with `X-Squirrel-Token: <token>`
+/// over a raw TCP connection (no async runtime, no extra deps) so it is safe
+/// to call from both the sync setup hook and the async health loop. One
+/// attempt, 3s total, no retry (LLD timing constraint). Any timeout maps to
+/// `RefusedTimeout`; any other transport/parse failure maps to `RefusedUnknown`.
+fn probe_handshake(token: &str) -> HandshakeOutcome {
+    match probe_handshake_inner(token) {
+        Ok(outcome) => outcome,
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut
+            || e.kind() == std::io::ErrorKind::WouldBlock => HandshakeOutcome::RefusedTimeout,
+        Err(_) => HandshakeOutcome::RefusedUnknown,
+    }
+}
+
+fn probe_handshake_inner(token: &str) -> std::io::Result<HandshakeOutcome> {
+    use std::io::{Read, Write};
+    let addr = SocketAddr::from(([127, 0, 0, 1], BACKEND_PORT));
+    let mut stream = TcpStream::connect_timeout(&addr, HANDSHAKE_TIMEOUT)?;
+    stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT))?;
+    stream.set_write_timeout(Some(HANDSHAKE_TIMEOUT))?;
+    let req = format!(
+        "GET /api/_handshake HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\n\
+         X-Squirrel-Token: {token}\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        port = BACKEND_PORT,
+    );
+    stream.write_all(req.as_bytes())?;
+    stream.flush()?;
+    let mut raw = Vec::new();
+    stream.read_to_end(&mut raw)?;
+    Ok(classify_handshake_response(&raw, token))
+}
+
+/// Map a raw HTTP/1.x response to a `HandshakeOutcome`. Split out as a pure
+/// function so every branch (R-4.2..R-4.5) is unit-testable without a socket.
+fn classify_handshake_response(raw: &[u8], token: &str) -> HandshakeOutcome {
+    let text = String::from_utf8_lossy(raw);
+    let Some((head, body)) = text.split_once("\r\n\r\n") else {
+        return HandshakeOutcome::RefusedUnknown;
+    };
+    let status = head
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|code| code.parse::<u16>().ok());
+    match status {
+        Some(401) => HandshakeOutcome::Refused401,
+        Some(200) => {
+            if body.contains("\"mode\"") && body.contains("\"dev\"") {
+                HandshakeOutcome::RefusedDev
+            } else if let Some(echo) = extract_token_echo(body) {
+                if ct_eq(echo.as_bytes(), token.as_bytes()) {
+                    HandshakeOutcome::Adopted
+                } else {
+                    HandshakeOutcome::RefusedUnknown
+                }
+            } else {
+                HandshakeOutcome::RefusedUnknown
+            }
+        }
+        _ => HandshakeOutcome::RefusedUnknown,
+    }
+}
+
+/// Pull the string value of `"token_echo"` out of a JSON body without a JSON
+/// dependency. Returns None if the field is absent or unterminated.
+fn extract_token_echo(body: &str) -> Option<String> {
+    let key = "\"token_echo\"";
+    let after = &body[body.find(key)? + key.len()..];
+    let rest = &after[after.find(':')? + 1..];
+    let start = rest.find('"')? + 1;
+    let end = start + rest[start..].find('"')?;
+    Some(rest[start..end].to_string())
+}
+
+/// Constant-time byte comparison (R-4.2 / LLD D4). The length check leaks only
+/// the length, which is not secret (both sides are 64-char hex tokens).
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    use subtle::ConstantTimeEq;
+    if a.len() != b.len() {
+        return false;
+    }
+    a.ct_eq(b).into()
+}
+
 pub(crate) fn spawn_or_adopt<R: Runtime>(
     app: &AppHandle<R>,
 ) -> (SupervisionMode, Option<CommandChild>) {
     if port_in_use(BACKEND_PORT) {
-        tracing::info!(port = BACKEND_PORT, "backend supervisor: port already bound, adopting");
-        return (SupervisionMode::Adopted, None);
+        // R-4.1: something is on 3939. Don't blindly adopt — prove it's ours.
+        let token = app.state::<crate::RuntimeToken>().0.clone();
+        let started = Instant::now();
+        let outcome = probe_handshake(&token);
+        tracing::info!(
+            target: "handshake",
+            outcome = handshake_outcome_label(outcome),
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            "handshake_attempt"
+        );
+        return match outcome {
+            HandshakeOutcome::Adopted => (SupervisionMode::Adopted, None),
+            // R-4.7/4.8/4.9: refusal is terminal — no fallback port, no
+            // displacing spawn, and the supervisor issues no further requests.
+            refused => (SupervisionMode::RefusedAdoption(refused), None),
+        };
     }
     match spawn_sidecar(app) {
         Ok(child) => {
@@ -160,6 +297,12 @@ pub(crate) fn spawn_or_adopt<R: Runtime>(
 /// `spawn_or_adopt` so the tray icon can flip to Normal as soon as the
 /// backend is ready, or Error if the budget is exceeded.
 pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
+    // R-4.7: a refused adoption is terminal. Never issue /api/me (or any other
+    // request) to the squatter. Surface the error state and bail.
+    if is_refused_adoption(app) {
+        let _ = crate::tray::set_state(app, crate::tray::IconState::Error);
+        return false;
+    }
     let client = match build_client() {
         Some(c) => c,
         None => return false,
@@ -189,6 +332,11 @@ pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
 /// - Adopted mode never respawns; the user manages launchd or `make
 ///   backend-start` themselves.
 pub(crate) async fn run_health_loop<R: Runtime>(app: AppHandle<R>) {
+    // R-4.7: never poll a backend whose adoption we refused.
+    if is_refused_adoption(&app) {
+        tracing::info!("backend supervisor: adoption refused — health loop disabled (R-4.7)");
+        return;
+    }
     let client = match build_client() {
         Some(c) => c,
         None => {
@@ -340,8 +488,18 @@ fn send_term(pid: u32) -> bool {
 /// failures that the user should see an error UI. Split out so tests can
 /// exercise the logic without an AppHandle.
 fn is_degraded_state(s: &SupervisorState) -> bool {
-    matches!(s.mode, SupervisionMode::Failed)
+    matches!(s.mode, SupervisionMode::Failed | SupervisionMode::RefusedAdoption(_))
         || s.consecutive_failures >= STRIKES_BEFORE_ERROR
+}
+
+/// True when the supervisor refused to adopt the process on port 3939. Used to
+/// suppress all health probing (R-4.7) and to drive the refusal banner.
+fn is_refused_adoption<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Some(state) = app.try_state::<Mutex<SupervisorState>>() else {
+        return false;
+    };
+    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+    matches!(s.mode, SupervisionMode::RefusedAdoption(_))
 }
 
 /// True when the tray UI should show a backend-error message instead of
@@ -390,6 +548,73 @@ mod tests {
     fn mint_runtime_token_two_calls_differ() {
         // CSPRNG draw — collision probability is 2^-256, effectively never.
         assert_ne!(mint_runtime_token(), mint_runtime_token());
+    }
+
+    // ── Adoption handshake classification (R-4.2..R-4.6) ─────────────────────
+
+    const TKN: &str = "abc123";
+
+    fn resp(status_line: &str, body: &str) -> Vec<u8> {
+        format!("{status_line}\r\nContent-Type: application/json\r\n\r\n{body}").into_bytes()
+    }
+
+    #[test]
+    fn classify_200_matching_echo_is_adopted() {
+        let raw = resp("HTTP/1.0 200 OK", &format!("{{\"token_echo\": \"{TKN}\"}}"));
+        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::Adopted);
+    }
+
+    #[test]
+    fn classify_200_mismatched_echo_is_refused_unknown() {
+        let raw = resp("HTTP/1.0 200 OK", "{\"token_echo\": \"deadbeef\"}");
+        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+    }
+
+    #[test]
+    fn classify_200_dev_mode_is_refused_dev() {
+        let raw = resp("HTTP/1.0 200 OK", "{\"mode\": \"dev\"}");
+        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedDev);
+    }
+
+    #[test]
+    fn classify_401_is_refused_401() {
+        let raw = resp("HTTP/1.0 401 Unauthorized", "");
+        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::Refused401);
+    }
+
+    #[test]
+    fn classify_200_unrecognized_body_is_refused_unknown() {
+        let raw = resp("HTTP/1.0 200 OK", "{\"hello\": \"world\"}");
+        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+    }
+
+    #[test]
+    fn classify_garbage_without_header_split_is_refused_unknown() {
+        let raw = b"not even http".to_vec();
+        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+    }
+
+    #[test]
+    fn ct_eq_matches_only_identical_bytes() {
+        assert!(ct_eq(b"deadbeef", b"deadbeef"));
+        assert!(!ct_eq(b"deadbeef", b"deadbeee"));
+        assert!(!ct_eq(b"short", b"longer"));
+    }
+
+    #[test]
+    fn extract_token_echo_pulls_the_value() {
+        assert_eq!(
+            extract_token_echo("{\"token_echo\": \"cafe\"}").as_deref(),
+            Some("cafe")
+        );
+        assert_eq!(extract_token_echo("{\"mode\": \"dev\"}"), None);
+    }
+
+    #[test]
+    fn refused_adoption_mode_is_degraded() {
+        let mut s = SupervisorState::new();
+        s.mode = SupervisionMode::RefusedAdoption(HandshakeOutcome::Refused401);
+        assert!(is_degraded_state(&s));
     }
 
     #[test]

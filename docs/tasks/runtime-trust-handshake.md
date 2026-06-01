@@ -102,7 +102,7 @@ Mutex tags:
 
 ## Unit 4: Tauri adoption decision
 
-- [ ] **4.1** Replace `port_in_use → Adopted` with `port_in_use → probe + verify-or-refuse` (deps: 1.1, 3.1, est: ~90m) `(mutex: supervisor)`
+- [x] **4.1** Replace `port_in_use → Adopted` with `port_in_use → probe + verify-or-refuse` (deps: 1.1, 3.1, est: ~90m) `(mutex: supervisor)`
   - acceptance:
     - R-4.1 — On `port_in_use(3939) == true`, issue `GET /api/_handshake` with `X-Squirrel-Token: <runtime_token>` within 3 s.
     - R-4.2 — `200` with constant-time-equal `token_echo` → `SupervisionMode::Adopted`.
