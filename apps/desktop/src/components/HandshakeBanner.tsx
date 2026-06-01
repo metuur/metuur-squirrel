@@ -31,16 +31,87 @@ function isTauriContext(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
-// Per-cause copy is filled in story 6.2; 6.1 establishes the shell with a
-// generic title so the blocking behaviour and Quit action can be verified.
-function CauseBody({ cause }: { cause: RefusalCause }) {
+// Inline shell-command chip — copy-pasteable, monospace.
+function Cmd({ children }: { children: string }) {
   return (
-    <p className="text-[13px] leading-relaxed text-ink-2">
-      Squirrel found another program already using port 3939 and could not
-      verify it. To stay safe, Squirrel will not connect to it.{" "}
-      <span className="text-ink-4">({cause})</span>
-    </p>
+    <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[12px] text-ink-1 select-all">
+      {children}
+    </code>
   );
+}
+
+// Per-cause title + recovery instructions (R-6.3..R-6.6). Single locale.
+function CauseBody({ cause }: { cause: RefusalCause }) {
+  switch (cause) {
+    case "DevModeDetected":
+      // R-6.3
+      return (
+        <div className="space-y-2.5">
+          <h3 className="text-[13px] font-semibold text-ink-1">
+            A development backend is running
+          </h3>
+          <p className="text-[13px] leading-relaxed text-ink-2">
+            Squirrel found an <strong>unauthenticated</strong> backend on port
+            3939 — most likely one you started with <Cmd>make backend-start</Cmd>.
+            Squirrel won’t connect to an unauthenticated backend. You can either:
+          </p>
+          <ul className="list-disc pl-5 text-[13px] leading-relaxed text-ink-2 space-y-1">
+            <li>Quit that dev backend, then relaunch Squirrel, or</li>
+            <li>Quit Squirrel and keep using the CLI.</li>
+          </ul>
+        </div>
+      );
+    case "UnknownProcess":
+      // R-6.4
+      return (
+        <div className="space-y-2.5">
+          <h3 className="text-[13px] font-semibold text-ink-1">
+            Another program is using port 3939
+          </h3>
+          <p className="text-[13px] leading-relaxed text-ink-2">
+            Squirrel found a program on port 3939 that it can’t verify, so it
+            won’t connect. To see what it is, run <Cmd>lsof -i :3939</Cmd> in a
+            terminal, then quit that program (or quit Squirrel).
+          </p>
+        </div>
+      );
+    case "NotResponding":
+      // R-6.5
+      return (
+        <div className="space-y-2.5">
+          <h3 className="text-[13px] font-semibold text-ink-1">
+            The backend isn’t responding
+          </h3>
+          <p className="text-[13px] leading-relaxed text-ink-2">
+            The program on port 3939 didn’t answer in time. Wait about 30
+            seconds and relaunch Squirrel. If it keeps happening, check{" "}
+            <Cmd>~/.squirrel/web-ui.stderr.log</Cmd>.
+          </p>
+        </div>
+      );
+    case "LaunchdTokenInvalid":
+      // R-6.6
+      return (
+        <div className="space-y-2.5">
+          <h3 className="text-[13px] font-semibold text-ink-1">
+            The launch token is invalid
+          </h3>
+          <p className="text-[13px] leading-relaxed text-ink-2">
+            Squirrel’s stored launch token (<Cmd>~/.squirrel/launchd-token</Cmd>)
+            is missing, has the wrong permissions, or is malformed. Re-provision
+            it by running <Cmd>install.sh --reinstall</Cmd>, then relaunch
+            Squirrel.
+          </p>
+        </div>
+      );
+    default:
+      return (
+        <p className="text-[13px] leading-relaxed text-ink-2">
+          Squirrel found another program using port 3939 and could not verify
+          it, so it won’t connect. Quit Squirrel and resolve the conflict.
+        </p>
+      );
+  }
 }
 
 export function HandshakeBanner() {

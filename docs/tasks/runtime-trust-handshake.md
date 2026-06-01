@@ -198,7 +198,7 @@ Mutex tags:
   - verify:
     - Manual: drive a refusal cause (e.g. nc squat); tray menu shows "Why?"; clicking it opens the dashboard with the banner above content; the rest of the dashboard is visually inaccessible until Quit is clicked.
 
-- [ ] **6.2** Banner copy for each refusal cause (deps: 6.1, est: ~30m)
+- [x] **6.2** Banner copy for each refusal cause (deps: 6.1, est: ~30m)
   - acceptance:
     - R-6.3 — `DevModeDetected`: identify `make backend-start` as likely source; offer (a) quit dev backend + relaunch, or (b) quit Squirrel + use CLI.
     - R-6.4 — `UnknownProcess`: suggest running `lsof -i :3939` to identify the squatter.
