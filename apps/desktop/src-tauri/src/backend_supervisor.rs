@@ -25,7 +25,8 @@ use std::net::{SocketAddr, TcpStream};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use tauri::{AppHandle, Manager, Runtime};
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -73,6 +74,48 @@ pub(crate) enum HandshakeOutcome {
     RefusedUnknown,
     /// connect/send/read exceeded the 3s budget (R-4.6).
     RefusedTimeout,
+}
+
+/// Map a refusal outcome to the typed banner cause emitted to the React shell
+/// (R-4.3..R-4.6). `Adopted` is not a refusal, so it maps to `None`.
+fn handshake_refusal_cause(o: HandshakeOutcome) -> Option<&'static str> {
+    match o {
+        HandshakeOutcome::Adopted => None,
+        HandshakeOutcome::RefusedDev => Some("DevModeDetected"),
+        HandshakeOutcome::Refused401 | HandshakeOutcome::RefusedUnknown => Some("UnknownProcess"),
+        HandshakeOutcome::RefusedTimeout => Some("NotResponding"),
+    }
+}
+
+/// Payload for the `handshake-refused` event consumed by the React banner
+/// (Unit 6). `cause` is one of the typed strings from `handshake_refusal_cause`.
+#[derive(Serialize, Clone)]
+pub(crate) struct HandshakeRefusalPayload {
+    pub cause: &'static str,
+}
+
+/// R-4.3..R-4.6: when the supervisor refused adoption, set the tray to Error
+/// and emit a typed `handshake-refused` event carrying the cause so the React
+/// shell can render the recovery banner. No-op in any non-refusal mode.
+pub(crate) fn notify_refusal<R: Runtime>(app: &AppHandle<R>) {
+    let outcome = {
+        let Some(state) = app.try_state::<Mutex<SupervisorState>>() else {
+            return;
+        };
+        let s = state.lock().unwrap_or_else(|p| p.into_inner());
+        match s.mode {
+            SupervisionMode::RefusedAdoption(o) => o,
+            _ => return,
+        }
+    };
+    if let Some(cause) = handshake_refusal_cause(outcome) {
+        let _ = crate::tray::set_state(app, crate::tray::IconState::Error);
+        if let Err(e) = app.emit("handshake-refused", HandshakeRefusalPayload { cause }) {
+            tracing::warn!(error = %e, "failed to emit handshake-refused event");
+        } else {
+            tracing::info!(cause, "handshake refused; banner event emitted");
+        }
+    }
 }
 
 /// Stable `tracing` label for a handshake outcome (R-4.10).
@@ -298,9 +341,9 @@ pub(crate) fn spawn_or_adopt<R: Runtime>(
 /// backend is ready, or Error if the budget is exceeded.
 pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
     // R-4.7: a refused adoption is terminal. Never issue /api/me (or any other
-    // request) to the squatter. Surface the error state and bail.
+    // request) to the squatter. Surface the error state + banner cause and bail.
     if is_refused_adoption(app) {
-        let _ = crate::tray::set_state(app, crate::tray::IconState::Error);
+        notify_refusal(app);
         return false;
     }
     let client = match build_client() {
@@ -615,6 +658,20 @@ mod tests {
         let mut s = SupervisorState::new();
         s.mode = SupervisionMode::RefusedAdoption(HandshakeOutcome::Refused401);
         assert!(is_degraded_state(&s));
+    }
+
+    // ── Refusal-cause mapping (R-4.3..R-4.6) ─────────────────────────────────
+
+    #[test]
+    fn refusal_cause_maps_each_outcome() {
+        assert_eq!(handshake_refusal_cause(HandshakeOutcome::RefusedDev), Some("DevModeDetected"));
+        assert_eq!(handshake_refusal_cause(HandshakeOutcome::Refused401), Some("UnknownProcess"));
+        assert_eq!(
+            handshake_refusal_cause(HandshakeOutcome::RefusedUnknown),
+            Some("UnknownProcess")
+        );
+        assert_eq!(handshake_refusal_cause(HandshakeOutcome::RefusedTimeout), Some("NotResponding"));
+        assert_eq!(handshake_refusal_cause(HandshakeOutcome::Adopted), None);
     }
 
     #[test]

@@ -120,7 +120,7 @@ Mutex tags:
     - Unit test in `backend_supervisor.rs`: mock the HTTP call and assert each branch maps to the right `HandshakeOutcome`.
     - Manual: `nc -l 3939 &` then launch Squirrel — must NOT issue `/api/me` or any other call (verify by watching netcat's stdout — only the `/api/_handshake` request appears, nothing else).
 
-- [ ] **4.2** Emit typed refusal-cause events on adoption refusal (deps: 4.1, est: ~30m)
+- [x] **4.2** Emit typed refusal-cause events on adoption refusal (deps: 4.1, est: ~30m)
   - acceptance:
     - R-4.3 — `mode: dev` response → emit `handshake-refused` with payload `{"cause": "DevModeDetected"}`.
     - R-4.4 — `401` → `{"cause": "UnknownProcess"}`.
