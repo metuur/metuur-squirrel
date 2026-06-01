@@ -300,6 +300,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
+    ("POST", re.compile(r"^/api/reveal$"),                            "api_reveal"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
     ("GET",  re.compile(r"^/api/search$"),                            "api_search"),
@@ -594,7 +595,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             break
                         except ValueError:
                             continue
-                pressing.append({
+                # Classify the entity behind this pressing entry so the
+                # frontend can render a Project/Task/Note badge and route a
+                # project-page hit to /projects/{slug} instead of /notes/{id}.
+                kind = "note"
+                project_slug: Optional[str] = None
+                path_str = item.get("path")
+                if path_str:
+                    try:
+                        kind = _classify_kind(ctx.active.path, pathlib.Path(path_str))
+                        if kind == "project":
+                            project_slug = pathlib.Path(path_str).stem
+                    except Exception:
+                        pass
+                entry = {
                     "id": item.get("id", ""),
                     "title": item.get("title", item.get("id", "")),
                     "deadline": item.get("deadline", ""),
@@ -604,7 +618,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "hours_left": item.get("hours_left"),
                     "days_overdue": item.get("days_overdue"),
                     "last_worked": last_worked,
-                })
+                    "kind": kind,
+                }
+                if project_slug:
+                    entry["slug"] = project_slug
+                pressing.append(entry)
 
         projects = []
         for p in status.get("wip", {}).get("projects", []):
@@ -616,6 +634,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "deadline": p.get("deadline"),
                 "last_activity": p.get("last_activity"),
                 "active_intent": p.get("active_intent"),
+                "kind": "project",
             })
 
         try:
@@ -1174,6 +1193,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id, "snoozed_until": until})
 
+    def api_reveal(self) -> None:
+        # The server already binds to 127.0.0.1 by default; this extra check
+        # makes the contract explicit so a future --lan toggle can't silently
+        # expose a shell-out endpoint to the network.
+        client_host = self.client_address[0] if self.client_address else ""
+        if client_host not in ("127.0.0.1", "::1"):
+            raise _UserError(403, "Reveal only works on localhost.")
+        ctx, _ = self._context()
+        payload = self._read_json_body()
+        note_id = (payload.get("id") or "").strip()
+        target = _find_note(ctx.active.path, note_id)
+        if target is None:
+            raise _UserError(404, "We could not find that item.")
+        parent = target.parent
+        if not is_path_inside(parent, ctx.active.path):
+            raise _UserError(400, "Path is outside the active vault.")
+        try:
+            if sys.platform == "darwin":
+                subprocess.run(["open", str(parent)], check=False)
+            elif sys.platform.startswith("win"):
+                subprocess.run(["explorer", str(parent)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(parent)], check=False)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not open the folder.")
+        self._send_json({"success": True, "path": str(parent)})
+
     def api_deadlines(self) -> None:
         ctx, _ = self._context()
         from deadline_scanner import scan_vault_deadlines
@@ -1581,6 +1628,32 @@ def _find_note(vault_path: pathlib.Path, note_id: str) -> Optional[pathlib.Path]
         if is_path_inside(md, vault_path):
             return md
     return None
+
+
+_PROJECT_PARENT_DIRS = frozenset({
+    "01-Proyectos-Activos",
+    "02-Parking-Lot",
+    "06-Archive",
+})
+
+
+def _classify_kind(vault_path: pathlib.Path, md_path: pathlib.Path) -> str:
+    """Return 'project' | 'project-task' | 'note' based on the vault layout.
+
+    Mirrors the rule used by api_history (a project page is the .md file whose
+    stem equals its parent folder name and sits one level inside a known
+    projects directory). Anything else in those folders is a project-task;
+    files outside them are notes.
+    """
+    try:
+        rel = md_path.relative_to(vault_path)
+    except ValueError:
+        return "note"
+    parts = rel.parts
+    if len(parts) >= 3 and parts[0] in _PROJECT_PARENT_DIRS:
+        folder = parts[-2]
+        return "project" if md_path.stem == folder else "project-task"
+    return "note"
 
 
 def _first_title(text: str) -> Optional[str]:

@@ -75,27 +75,44 @@ compose_deeplink() {
 # Emit a banner via terminal-notifier (R-1.5/R-1.6).
 # Args: title subtitle body url
 # -sender is intentionally omitted (R-1.10 v1 deferral).
+# notification-sound R-2.2 / R-2.3: $SOUND is set from config; when Silent the
+# -sound flag is omitted entirely so terminal-notifier produces no audio.
 show_notification_terminal_notifier() {
     local title="$1" subtitle="$2" body="$3" url="$4"
-    terminal-notifier \
-        -group org.squirrel.reminders \
-        -title "$title" \
-        -subtitle "$subtitle" \
-        -message "$body" \
-        -open "$url" \
-        -sound Submarine
+    if [ "$SOUND" = "Silent" ]; then
+        terminal-notifier \
+            -group org.squirrel.reminders \
+            -title "$title" \
+            -subtitle "$subtitle" \
+            -message "$body" \
+            -open "$url"
+    else
+        terminal-notifier \
+            -group org.squirrel.reminders \
+            -title "$title" \
+            -subtitle "$subtitle" \
+            -message "$body" \
+            -open "$url" \
+            -sound "$SOUND"
+    fi
 }
 
 # Emit a banner via osascript display notification (R-2.3).
 # Args: title subtitle body
 # URL is NOT passed — osascript cannot open custom schemes as a click handler.
+# notification-sound R-2.2 / R-2.3: $SOUND drives the audio; when Silent the
+# `sound name "..."` clause is dropped so AppleScript produces no audio.
 show_notification_osascript() {
     local title="$1" subtitle="$2" body="$3"
     local esc_t esc_s esc_b
     esc_t=$(printf '%s' "$title"    | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
     esc_s=$(printf '%s' "$subtitle" | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
     esc_b=$(printf '%s' "$body"     | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
-    osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"Submarine\""
+    if [ "$SOUND" = "Silent" ]; then
+        osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\""
+    else
+        osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"${SOUND}\""
+    fi
 }
 
 # Last-resort fallback: osascript display dialog (R-2.5/R-2.6).
@@ -213,6 +230,18 @@ WORKDAY_START=$(read_config "workday_start" "$WORKDAY_START")
 WORKDAY_END=$(read_config "workday_end" "$WORKDAY_END")
 CADENCE_MINUTES=$(read_config "cadence_minutes" "$CADENCE_MINUTES")
 MAX_DIALOGS_PER_DAY=$(read_config "max_dialogs_per_day" "$MAX_DIALOGS_PER_DAY")
+
+# notification-sound R-2.2: read the user-configured sound (Glass | Funk | Silent).
+# Default Glass on missing or unknown value (R-1.3). Silent is handled at emit
+# time by omitting the -sound / sound-name argument entirely.
+SOUND=$(read_config "sound" "Glass")
+case "$SOUND" in
+    Glass|Funk|Silent) ;;
+    *)
+        log "Invalid sound '$SOUND' in config — defaulting to Glass"
+        SOUND="Glass"
+        ;;
+esac
 
 STATE_FILE="${VAULT_PATH}/.squirrel/reminders-state.json"
 mkdir -p "${VAULT_PATH}/.squirrel"
@@ -356,7 +385,11 @@ show_notification() {
     esc_s=$(printf '%s' "$subtitle" | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
     esc_b=$(printf '%s' "$body"     | python3 -c 'import sys; print(sys.stdin.read().replace("\\","\\\\").replace("\"","\\\""), end="")')
 
-    osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"Submarine\"" 2>/dev/null || true
+    if [ "$SOUND" = "Silent" ]; then
+        osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\"" 2>/dev/null || true
+    else
+        osascript -e "display notification \"${esc_b}\" with title \"${esc_t}\" subtitle \"${esc_s}\" sound name \"${SOUND}\"" 2>/dev/null || true
+    fi
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────

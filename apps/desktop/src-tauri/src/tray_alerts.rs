@@ -137,16 +137,40 @@ fn open_cached_notif_conn(db_path: &Path) -> rusqlite::Result<rusqlite::Connecti
 // ── Story 2.1: notification settings ─────────────────────────────────────────
 
 /// R-3.3/R-3.4: Settings read from `/api/me` every poll cycle.
-/// Default `in_app=true, os_popups=false` when backend is unreachable.
+/// Default `in_app=true, os_popups=false, sound=Glass` when backend is unreachable.
 #[derive(Debug, Clone, Copy)]
 struct NotifSettings {
     in_app: bool,
     os_popups: bool,
+    sound: NotificationSound,
 }
 
 impl Default for NotifSettings {
     fn default() -> Self {
-        NotifSettings { in_app: true, os_popups: false }
+        NotifSettings { in_app: true, os_popups: false, sound: NotificationSound::Glass }
+    }
+}
+
+/// notification-sound R-1.1: curated set of three audio cues. `Glass` is the
+/// default; `Silent` suppresses audio while leaving visual cues unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+enum NotificationSound {
+    Glass,
+    Funk,
+    Silent,
+}
+
+impl Default for NotificationSound {
+    fn default() -> Self { NotificationSound::Glass }
+}
+
+impl NotificationSound {
+    fn sound_file(self) -> Option<&'static str> {
+        match self {
+            NotificationSound::Glass  => Some("/System/Library/Sounds/Glass.aiff"),
+            NotificationSound::Funk   => Some("/System/Library/Sounds/Funk.aiff"),
+            NotificationSound::Silent => None,
+        }
     }
 }
 
@@ -154,6 +178,8 @@ impl Default for NotifSettings {
 struct MeNotifSection {
     in_app: bool,
     os_popups: bool,
+    #[serde(default)]
+    sound: NotificationSound,
 }
 
 #[derive(Deserialize)]
@@ -174,12 +200,36 @@ async fn fetch_notif_settings(client: &reqwest::Client) -> NotifSettings {
                 .await
                 .ok()
                 .and_then(|me| me.notifications)
-                .map(|n| NotifSettings { in_app: n.in_app, os_popups: n.os_popups })
+                .map(|n| NotifSettings { in_app: n.in_app, os_popups: n.os_popups, sound: n.sound })
                 .unwrap_or_default(),
             Err(_) => NotifSettings::default(),
         },
         Err(_) => NotifSettings::default(),
     }
+}
+
+/// notification-sound R-2.1 / R-2.3 / R-2.4: spawn detached `afplay` for the
+/// configured sound. `Silent` is a no-op. Non-macOS is also a no-op (the
+/// daemon's sound path is the macOS-only complement and bash takes care of
+/// itself). Spawn failure → warn and return; audio must NEVER block
+/// notification delivery.
+#[cfg(target_os = "macos")]
+fn play_notification_sound(sound: NotificationSound) {
+    if let Some(file) = sound.sound_file() {
+        if let Err(e) = std::process::Command::new("afplay")
+            .arg(file)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+        {
+            tracing::warn!(error = %e, ?sound, "tray-alerts: afplay spawn failed");
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn play_notification_sound(_sound: NotificationSound) {
+    // R-2.4: non-macOS builds compile but audio is a no-op.
 }
 
 // ── Story 2.2: dedup INSERT ───────────────────────────────────────────────────
@@ -746,7 +796,10 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                                 )
                             });
                             match result {
-                                Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
+                                Ok(true) => {
+                                    update_badge_and_emit(&app, &db_path); // R-2.4/R-2.5/R-2.6/R-2.7
+                                    play_notification_sound(settings.sound); // notification-sound R-2.1
+                                }
                                 Ok(false) => {}
                                 Err(e) => tracing::warn!(error = %e, item_id = %alert.id, "tray-alerts: notif insert failed"),
                             }
@@ -761,7 +814,10 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                                 )
                             });
                             match result {
-                                Ok(true) => update_badge_and_emit(&app, &db_path), // R-2.4/R-2.5/R-2.6/R-2.7
+                                Ok(true) => {
+                                    update_badge_and_emit(&app, &db_path); // R-2.4/R-2.5/R-2.6/R-2.7
+                                    play_notification_sound(settings.sound); // notification-sound R-2.1
+                                }
                                 Ok(false) => {}
                                 Err(e) => tracing::warn!(error = %e, reminder_id = %reminder.id, "tray-alerts: reminder notif insert failed"),
                             }
@@ -834,6 +890,27 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // notification-sound R-1.1: enum maps to expected system sound files.
+    #[test]
+    fn test_notification_sound_file_mapping() {
+        assert_eq!(NotificationSound::Glass.sound_file(),  Some("/System/Library/Sounds/Glass.aiff"));
+        assert_eq!(NotificationSound::Funk.sound_file(),   Some("/System/Library/Sounds/Funk.aiff"));
+        assert_eq!(NotificationSound::Silent.sound_file(), None);
+    }
+
+    #[test]
+    fn test_notification_sound_default_is_glass() {
+        assert_eq!(NotificationSound::default(), NotificationSound::Glass);
+    }
+
+    #[test]
+    fn test_notif_settings_default_uses_glass() {
+        let s = NotifSettings::default();
+        assert_eq!(s.in_app, true);
+        assert_eq!(s.os_popups, false);
+        assert_eq!(s.sound, NotificationSound::Glass);
+    }
 
     #[test]
     fn test_init_notif_db_creates_table_and_index() {

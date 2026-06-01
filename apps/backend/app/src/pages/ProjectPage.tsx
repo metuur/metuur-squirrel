@@ -73,6 +73,14 @@ export default function ProjectPage() {
             <span className="material-icons text-base">edit</span> Edit
           </Link>
           <button
+            onClick={() => { api.reveal(slug).catch(() => {}); }}
+            title="Reveal in Finder"
+            aria-label="Reveal in Finder"
+            className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
+          >
+            <span className="material-icons text-base">folder_open</span> Reveal
+          </button>
+          <button
             onClick={() => openCapture(slug)}
             className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
           >

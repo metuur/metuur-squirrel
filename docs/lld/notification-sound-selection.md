@@ -80,21 +80,15 @@ update_badge_and_emit():     SOUND=$(read_config "sound" "Glass")
 
 ### Rust changes
 
-`apps/desktop/src-tauri/src/notification_sound.rs` (new):
-- The `NotificationSound` enum shown above.
-- `pub async fn fetch_configured_sound(app: &AppHandle) -> NotificationSound` — performs `GET http://127.0.0.1:<backend_port>/api/me`, parses `notifications.sound`, returns `Glass` on any error. Reuses the backend HTTP client already in the supervisor module.
-- `pub fn play(sound: NotificationSound)` — `#[cfg(target_os = "macos")]` only; spawns detached `afplay <file>`; no-op for `Silent` or non-macOS; on spawn failure, `tracing::warn!` and return.
+All Rust changes live inline in `apps/desktop/src-tauri/src/tray_alerts.rs`, reusing the existing `fetch_notif_settings` function (which already calls `GET /api/me` once per 30s poll cycle and caches the result in a `NotifSettings` struct):
 
-`apps/desktop/src-tauri/src/tray_alerts.rs` `update_badge_and_emit` (lines 283–302):
-- After the existing `app.emit("squirrel:notif-updated", count)`, if `count > 0`, fire-and-forget:
-  ```rust
-  let app2 = app.clone();
-  tauri::async_runtime::spawn(async move {
-      let s = notification_sound::fetch_configured_sound(&app2).await;
-      notification_sound::play(s);
-  });
-  ```
-- Detached spawn keeps the badge-update path non-blocking.
+- **Extend `NotifSettings`** (currently `{in_app, os_popups}`) with `sound: NotificationSound`.
+- **Extend `MeNotifSection`** (the JSON deserialize struct) with `sound: NotificationSound` (defaulting via `#[serde(default)]`).
+- **Add `NotificationSound` enum**: `Glass | Funk | Silent` with `Default = Glass` and a `sound_file(&self) -> Option<&'static str>` helper.
+- **Add `play_notification_sound(sound)`** helper: `#[cfg(target_os = "macos")]` spawns detached `afplay`; non-macOS is a no-op; spawn failure logs a warning.
+- **Wire into the polling loop**: at the two existing `Ok(true) => update_badge_and_emit(...)` sites (one for pressing alerts, one for active reminders), also call `play_notification_sound(settings.sound)`. The `settings` variable is already in scope and reflects the fresh `/api/me` response.
+
+This is simpler than the originally-planned `notification_sound.rs` module: no per-notification HTTP round-trip (settings are already fetched once per poll cycle), no new `tauri::async_runtime::spawn`, and the sound enum lives next to the existing notification structs.
 
 (Note: preview is handled by the Python backend over HTTP — see "Preview endpoint" below — not by a Tauri command, to keep the React app's invocation model consistent with the rest of the SPA.)
 

@@ -57,12 +57,22 @@ export default function NotePage() {
             <div className="text-[10px] font-mono text-ink-4 mb-1">{note.id}</div>
             <h1 className="text-2xl font-bold text-ink leading-tight">{note.title}</h1>
           </div>
-          <Link
-            to={`/notes/${id}/edit`}
-            className="btn shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
-          >
-            <span className="material-icons text-base">edit</span> Edit
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => { api.reveal(id).catch(() => {}); }}
+              title="Reveal in Finder"
+              aria-label="Reveal in Finder"
+              className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
+            >
+              <span className="material-icons text-base">folder_open</span> Reveal
+            </button>
+            <Link
+              to={`/notes/${id}/edit`}
+              className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
+            >
+              <span className="material-icons text-base">edit</span> Edit
+            </Link>
+          </div>
         </div>
         <div className="px-6 py-5">
           {note.body ? (

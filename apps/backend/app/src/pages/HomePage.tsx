@@ -1,7 +1,7 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { useFetch } from '@/hooks/useFetch';
-import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick } from '@/api/client';
+import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick, type EntityKind } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { PromptPanel } from '@/components/PromptPanel';
 import { RemindersWidget } from '@/components/RemindersWidget';
@@ -10,6 +10,56 @@ import { FocusPickerModal } from '@/components/FocusPickerModal';
 type Ctx = { viewMode: 'List' | 'Board' };
 
 const FOCUS_POLL_MS = 5000;
+
+const KIND_META: Record<EntityKind, { icon: string; label: string }> = {
+  'project':      { icon: 'folder',        label: 'Project' },
+  'project-task': { icon: 'task_alt',      label: 'Task'    },
+  'note':         { icon: 'sticky_note_2', label: 'Note'    },
+};
+
+function KindBadge({ kind }: { kind: EntityKind }) {
+  const meta = KIND_META[kind];
+  return (
+    <span className="chip chip-count" title={meta.label}>
+      <span className="material-icons" style={{ fontSize: 12 }}>{meta.icon}</span>
+      {meta.label}
+    </span>
+  );
+}
+
+function RevealButton({ id }: { id: string }) {
+  const onClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    api.reveal(id).catch(() => { /* best-effort: the OS will surface its own error */ });
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Reveal in Finder"
+      aria-label="Reveal in Finder"
+      className="text-ink-4 hover:text-accent shrink-0"
+    >
+      <span className="material-icons" style={{ fontSize: 14 }}>folder_open</span>
+    </button>
+  );
+}
+
+/** Map a deadline date string ('YYYY-MM-DD') to a board urgency bucket so
+ *  ProjectCard can render the same red alarm chip as PressingCard when the
+ *  project itself is overdue or imminently due. */
+function classifyDeadline(deadline: string | null | undefined): 'overdue' | 'critical' | 'urgent' | null {
+  if (!deadline) return null;
+  const dl = new Date(deadline);
+  if (Number.isNaN(dl.getTime())) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((dl.getTime() - today.getTime()) / 86400000);
+  if (diffDays < 0) return 'overdue';
+  if (diffDays === 0) return 'critical';
+  if (diffDays <= 1) return 'urgent';
+  return null;
+}
 
 export default function HomePage() {
   const { viewMode } = useOutletContext<Ctx>();
@@ -326,12 +376,22 @@ function BoardView({ projects, pressing }: { projects: ProjectListItem[]; pressi
 }
 
 function PressingCard({ item }: { item: PressingItem }) {
+  const linkTarget = item.kind === 'project' && item.slug
+    ? `/projects/${item.slug}`
+    : `/notes/${item.id}`;
+  const revealId = item.kind === 'project' && item.slug ? item.slug : item.id;
   return (
     <Link
-      to={`/notes/${item.id}`}
+      to={linkTarget}
       className="block panel p-4 hover:shadow-md transition-all group"
     >
-      <div className="text-[10px] font-mono text-ink-4 mb-1">{item.id}</div>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="text-[10px] font-mono text-ink-4 truncate">{item.id}</div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <KindBadge kind={item.kind} />
+          <RevealButton id={revealId} />
+        </div>
+      </div>
       <h4 className="text-sm font-bold text-ink leading-tight mb-2 group-hover:text-accent">
         {item.title}
       </h4>
@@ -349,12 +409,19 @@ function PressingCard({ item }: { item: PressingItem }) {
 
 function ProjectCard({ p }: { p: ProjectListItem }) {
   const pct = p.percent_done ?? 0;
+  const urgency = classifyDeadline(p.deadline);
   return (
     <Link
       to={`/projects/${p.slug}`}
       className="block panel p-4 hover:shadow-md transition-all group"
     >
-      <div className="text-[10px] font-mono text-ink-4 mb-1">{p.slug}</div>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="text-[10px] font-mono text-ink-4 truncate">{p.slug}</div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <KindBadge kind="project" />
+          <RevealButton id={p.slug} />
+        </div>
+      </div>
       <h4 className="text-sm font-bold text-ink leading-tight mb-3 group-hover:text-accent">
         {p.title}
       </h4>
@@ -364,10 +431,21 @@ function ProjectCard({ p }: { p: ProjectListItem }) {
           {pct}%
         </span>
         {p.deadline && (
-          <span className="inline-flex items-center gap-1">
-            <span className="material-icons text-sm">event</span>
-            {p.deadline}
-          </span>
+          urgency
+            ? (
+              <span className="inline-flex items-center gap-1 text-critical font-medium">
+                <span className="material-icons text-sm">alarm</span>
+                {urgency === 'overdue'
+                  ? `${Math.abs(Math.floor((new Date(p.deadline).getTime() - new Date().setHours(0,0,0,0)) / 86400000))}d overdue`
+                  : p.deadline}
+              </span>
+            )
+            : (
+              <span className="inline-flex items-center gap-1">
+                <span className="material-icons text-sm">event</span>
+                {p.deadline}
+              </span>
+            )
         )}
       </div>
       {p.last_activity && (
@@ -384,27 +462,39 @@ function ListView({ projects, pressing }: { projects: ProjectListItem[]; pressin
         <section>
           <h2 className="eyebrow mb-3">Pressing</h2>
           <div className="space-y-2">
-            {pressing.map((it) => (
-              <Link
-                key={it.id}
-                to={`/notes/${it.id}`}
-                className="block panel p-4 group hover:shadow-md transition-all stripe stripe-critical"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-mono text-ink-4 mb-0.5">{it.id}</div>
-                    <h3 className="font-semibold text-ink group-hover:text-accent">{it.title}</h3>
-                    {it.deadline && (
-                      <div className="text-xs text-ink-3 mt-1">Due {it.deadline}</div>
-                    )}
+            {pressing.map((it) => {
+              const linkTarget = it.kind === 'project' && it.slug
+                ? `/projects/${it.slug}`
+                : `/notes/${it.id}`;
+              const revealId = it.kind === 'project' && it.slug ? it.slug : it.id;
+              return (
+                <Link
+                  key={it.id}
+                  to={linkTarget}
+                  className="block panel p-4 group hover:shadow-md transition-all stripe stripe-critical"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <div className="text-[10px] font-mono text-ink-4 truncate">{it.id}</div>
+                        <KindBadge kind={it.kind} />
+                      </div>
+                      <h3 className="font-semibold text-ink group-hover:text-accent">{it.title}</h3>
+                      {it.deadline && (
+                        <div className="text-xs text-ink-3 mt-1">Due {it.deadline}</div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="chip chip-critical whitespace-nowrap">
+                        <span className="material-icons text-sm">alarm</span>
+                        {it.urgency_label}
+                      </span>
+                      <RevealButton id={revealId} />
+                    </div>
                   </div>
-                  <span className="chip chip-critical whitespace-nowrap">
-                    <span className="material-icons text-sm">alarm</span>
-                    {it.urgency_label}
-                  </span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
@@ -417,41 +507,59 @@ function ListView({ projects, pressing }: { projects: ProjectListItem[]; pressin
           </div>
         ) : (
           <div className="space-y-3">
-            {projects.map((p) => (
-              <Link
-                key={p.slug}
-                to={`/projects/${p.slug}`}
-                className="block panel p-5 group hover:shadow-md transition-all"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[10px] font-mono text-ink-4 mb-1">{p.slug}</div>
-                    <h3 className="text-lg font-semibold text-ink mb-2 group-hover:text-accent">
-                      {p.title}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-ink-3">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="material-icons text-sm">trending_up</span>
-                        {p.percent_done ?? 0}%
-                      </span>
-                      {p.deadline && (
+            {projects.map((p) => {
+              const urgency = classifyDeadline(p.deadline);
+              return (
+                <Link
+                  key={p.slug}
+                  to={`/projects/${p.slug}`}
+                  className="block panel p-5 group hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-[10px] font-mono text-ink-4 truncate">{p.slug}</div>
+                        <KindBadge kind="project" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-ink mb-2 group-hover:text-accent">
+                        {p.title}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-ink-3">
                         <span className="inline-flex items-center gap-1">
-                          <span className="material-icons text-sm">event</span>
-                          Deadline: {p.deadline}
+                          <span className="material-icons text-sm">trending_up</span>
+                          {p.percent_done ?? 0}%
                         </span>
-                      )}
-                      {p.last_activity && (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="material-icons text-sm">history</span>
-                          {fromNow(p.last_activity as any)}
-                        </span>
-                      )}
+                        {p.deadline && (
+                          urgency
+                            ? (
+                              <span className="inline-flex items-center gap-1 text-critical font-medium">
+                                <span className="material-icons text-sm">alarm</span>
+                                Deadline: {p.deadline}
+                              </span>
+                            )
+                            : (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="material-icons text-sm">event</span>
+                                Deadline: {p.deadline}
+                              </span>
+                            )
+                        )}
+                        {p.last_activity && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="material-icons text-sm">history</span>
+                            {fromNow(p.last_activity as any)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 shrink-0">
+                      <RevealButton id={p.slug} />
+                      <span className="material-icons text-ink-4 group-hover:text-accent">arrow_forward</span>
                     </div>
                   </div>
-                  <span className="material-icons text-ink-4 group-hover:text-accent mt-1">arrow_forward</span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

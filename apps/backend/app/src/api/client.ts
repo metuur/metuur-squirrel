@@ -61,6 +61,7 @@ export interface FocusItem {
   next_action: string;
   reason: string;
 }
+export type EntityKind = 'project' | 'project-task' | 'note';
 export interface PressingItem {
   id: string;
   title: string;
@@ -70,6 +71,10 @@ export interface PressingItem {
   is_overdue: boolean;
   hours_left: number | null;
   days_overdue: number | null;
+  kind: EntityKind;
+  /** Present only when `kind === 'project'` — the project's folder/slug,
+   *  so the UI can route to `/projects/{slug}` instead of `/notes/{id}`. */
+  slug?: string;
 }
 export interface ProjectListItem {
   slug: string;
@@ -78,6 +83,7 @@ export interface ProjectListItem {
   deadline?: string | null;
   active_intent?: string | null;
   last_activity?: string | null;
+  kind: 'project';
 }
 export interface ManualPick {
   project_slug: string;
@@ -256,6 +262,11 @@ export const api = {
     call<NewIntentResult>('/intents', {
       method: 'POST',
       body: JSON.stringify(req),
+    }),
+  reveal: (id: string) =>
+    call<{ success: true; path: string }>('/reveal', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
     }),
   reminders: () => call<RemindersPayload>('/reminders'),
   reminderDismiss: (id: string) =>

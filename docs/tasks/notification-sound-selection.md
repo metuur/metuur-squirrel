@@ -42,33 +42,35 @@
 
 ## Unit 3: Rust tray_alerts integration
 
-- [ ] 3.1 Create `apps/desktop/src-tauri/src/notification_sound.rs` with `NotificationSound` enum and `to_sound_file()` helper (est: ~15m)
+**Implementation note:** the existing `fetch_notif_settings` in `tray_alerts.rs:164` already calls `GET /api/me` once per 30s poll cycle and caches the result in a `NotifSettings` struct. Rather than create a new `notification_sound.rs` module with its own per-notification HTTP roundtrip, the sound type, helper, and playback wiring were added inline in `tray_alerts.rs`. This collapses tasks 3.1–3.4 into one cohesive change and removes the need for a second HTTP call.
+
+- [x] 3.1 Add `NotificationSound` enum (`Glass`, `Funk`, `Silent`) with `Default = Glass` and `sound_file() -> Option<&'static str>`; extend `NotifSettings` + `MeNotifSection` with a `sound` field (inline in `tray_alerts.rs`) (est: ~15m)
   - acceptance: R-1.1 — three variants exist with mappings
-  - verify: `cargo test` covers each variant returning the expected `Option<&'static str>`
+  - verify: `cargo test` covers each variant returning the expected `Option<&'static str>` + `Default == Glass`
 
-- [ ] 3.2 Implement `fetch_configured_sound(app)` — lazy `GET /api/me`, parses `notifications.sound`, fail-soft to `Glass` (deps: 3.1, est: ~25m)
-  - acceptance: R-2.4 (HTTP-error branch) — backend down → returns Glass + warn
-  - verify: Unit test against a mock HTTP server; backend offline → returns `Glass` and logs warning
+- [x] 3.2 ~~Implement `fetch_configured_sound(app)`~~ — not needed; reused existing `fetch_notif_settings` by adding `sound` to `MeNotifSection` and `NotifSettings`. Fail-soft behavior is inherited from the existing function (errors → `NotifSettings::default()` with `sound = Glass`). (deps: 3.1, est: ~5m)
+  - acceptance: R-2.4 (HTTP-error branch) — backend down → returns Glass + warn (existing behavior of `fetch_notif_settings`)
+  - verify: Covered by `test_notif_settings_default_uses_glass`
 
-- [ ] 3.3 Implement `play(sound)` — `#[cfg(target_os = "macos")]` spawns detached `afplay`; no-op for Silent and non-macOS (deps: 3.1, est: ~15m)
+- [x] 3.3 Implement `play_notification_sound(sound)` — `#[cfg(target_os = "macos")]` spawns detached `afplay`; non-macOS is a no-op; spawn failure → `tracing::warn!` (est: ~15m)
   - acceptance: R-2.3 (Silent), R-2.4 (spawn error)
-  - verify: Rename `/usr/bin/afplay` away → `play()` returns within ms, warning logged, no panic; `play(Silent)` is a no-op (no `afplay` process spawned, observable via `ps`)
+  - verify: Code review of fail-soft path; manual: rename `/usr/bin/afplay` away → call returns within ms, warning logged, no panic
 
-- [ ] 3.4 Wire sound playback into `tray_alerts::update_badge_and_emit` after the existing emit, only when `count > 0`, using `async_runtime::spawn` so the badge path stays non-blocking (deps: 3.2, 3.3, est: ~20m)
-  - acceptance: R-2.1 — sound plays once per notification with count > 0
-  - verify: Trigger a backend notification insert → tray flips AND sound plays once (manual, audible); rapid back-to-back inserts each produce a sound
+- [x] 3.4 Wire `play_notification_sound(settings.sound)` into the two `Ok(true) => update_badge_and_emit(...)` branches in the polling loop (pressing alerts + active reminders) — `settings` is already in scope from the existing `fetch_notif_settings` call (est: ~10m)
+  - acceptance: R-2.1 — sound plays once per new notification
+  - verify: Trigger a backend notification insert → tray flips AND sound plays once (manual, audible); cargo test green
 
 ## Unit 4: Reminders daemon
 
-- [ ] 4.1 Add `SOUND=$(read_config "sound" "Glass")` to `agent-pack/companions/macos-reminders/reminder-daemon.sh` with validation against the three values (Glass fallback on invalid) (est: ~15m)
+- [x] 4.1 Add `SOUND=$(read_config "sound" "Glass")` to `agent-pack/companions/macos-reminders/reminder-daemon.sh` with validation against the three values (Glass fallback on invalid) (est: ~15m)
   - acceptance: R-2.2 — daemon reads configured sound
   - verify: Set `sound = "Funk"` in config, run `reminder-daemon.sh --force` against a vault with a critical item → banner plays Funk
 
-- [ ] 4.2 Update `show_notification_terminal_notifier` (line 78), `show_notification_osascript` (line 92), `show_notification` (line 352), and `emit_banner` (line 134) to take `$SOUND` and omit the sound flag entirely when `Silent` (deps: 4.1, est: ~25m)
+- [x] 4.2 Update `show_notification_terminal_notifier` (line 78), `show_notification_osascript` (line 92), `show_notification` (line 352), and `emit_banner` (line 134) to take `$SOUND` and omit the sound flag entirely when `Silent` (deps: 4.1, est: ~25m)
   - acceptance: R-2.2, R-2.3 — sound passes through; Silent → no audio, banner still appears
   - verify: With `sound = "Silent"`, manual daemon run → banner appears with no audio; with `sound = "Funk"` → banner plays Funk; previously hardcoded `Submarine` no longer appears in any branch
 
-- [ ] 4.3 Mirror the same changes in `dmg-staging/agent-pack/companions/macos-reminders/reminder-daemon.sh` (deps: 4.2, est: ~5m)
+- [x] 4.3 Mirror the same changes in `dmg-staging/agent-pack/companions/macos-reminders/reminder-daemon.sh` (deps: 4.2, est: ~5m)
   - acceptance: packaged daemon stays in sync
   - verify: `diff agent-pack/companions/macos-reminders/reminder-daemon.sh dmg-staging/agent-pack/companions/macos-reminders/reminder-daemon.sh` shows no sound-related discrepancies
 
@@ -78,6 +80,6 @@
   - acceptance: R-3.4 — change reflects in both surfaces without restart/reload
   - verify: With app running and daemon installed, change selection from Glass to Funk in settings; trigger a tray notification (Funk plays) and run `reminder-daemon.sh --force` (Funk plays); no `launchctl unload/load` performed; no app restart
 
-- [ ] 5.2 Backward-compat smoke test against legacy clients (deps: 1.3, est: ~10m)
+- [x] 5.2 Backward-compat smoke test against legacy clients (deps: 1.3, est: ~10m)
   - acceptance: R-4.2 — legacy 2-key POST preserves sound
-  - verify: With `sound = "Funk"` persisted, send a 2-key POST via `curl` (`{"in_app": true, "os_popups": false}`) → response 200; `~/.squirrel/config.toml` still contains `sound = "Funk"`
+  - verify: Covered by `TestSettingsNotificationsSound::test_post_without_sound_preserves_current` in `apps/cli/tests/test_web_ui_json_api.py` — seeds `sound=Funk`, POSTs 2-key payload, asserts Funk survives

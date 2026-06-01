@@ -78,6 +78,8 @@ export interface FocusItem {
   reason: string;
 }
 
+export type EntityKind = "project" | "project-task" | "note";
+
 export interface PressingItem {
   id: string;
   title: string;
@@ -93,6 +95,12 @@ export interface PressingItem {
    *  this" semantic — much more meaningful than file mtime, which fires
    *  on every save. */
   last_worked?: number | null;
+  /** Vault classification: project page, project-task (intent), or a free
+   *  standalone note. Present on every response since the kind-badge work
+   *  on 2026-05-31; older builds may omit it, hence optional here. */
+  kind?: EntityKind;
+  /** Present only when `kind === 'project'` — the project's folder/slug. */
+  slug?: string;
 }
 
 export interface ProjectListItem {
@@ -102,6 +110,7 @@ export interface ProjectListItem {
   deadline?: string | null;
   active_intent?: string | null;
   last_activity?: string | null;
+  kind?: "project";
 }
 
 export interface ManualPick {
