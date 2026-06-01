@@ -300,5 +300,94 @@ class TestIntentCreate(_ServerCase):
         self.assertEqual(r.status, 422)
 
 
+# ─── Story 2.1 — token / token-file argparse + dev mode (R-2.1..R-2.5) ────────
+
+
+class TestTokenConfig(unittest.TestCase):
+    """Unit tests for server.configure_auth + _load_token_from_file. These
+    exercise the five branches without spawning a process: --token, valid
+    --token-file, the three R-2.3 file failures, mutual exclusion, and the
+    no-flags dev-mode path."""
+
+    GOOD = "a" * 64  # 64 hex chars — readable test fixture per the plan
+
+    def setUp(self):
+        sys.path.insert(0, str(MONOREPO / "apps" / "backend"))
+        import server
+        self.server = server
+        # Reset auth state so tests don't leak into one another.
+        server.TOKEN = None
+        server.DEV_MODE = False
+        self._tmp = tempfile.TemporaryDirectory()
+        self._dir = pathlib.Path(self._tmp.name)
+
+    def tearDown(self):
+        self.server.TOKEN = None
+        self.server.DEV_MODE = False
+        self._tmp.cleanup()
+
+    def _write_token_file(self, content: str, mode: int = 0o600) -> pathlib.Path:
+        p = self._dir / "launchd-token"
+        p.write_text(content, encoding="utf-8")
+        os.chmod(p, mode)
+        return p
+
+    # R-2.1 — --token loads TOKEN, dev mode off.
+    def test_token_flag_sets_token_and_disables_dev_mode(self):
+        self.server.configure_auth(self.GOOD, None)
+        self.assertEqual(self.server.TOKEN, self.GOOD)
+        self.assertFalse(self.server.DEV_MODE)
+
+    # R-2.2 — valid --token-file loads TOKEN, dev mode off.
+    def test_token_file_valid_loads_token(self):
+        p = self._write_token_file(self.GOOD + "\n")  # trailing newline allowed
+        self.server.configure_auth(None, str(p))
+        self.assertEqual(self.server.TOKEN, self.GOOD)
+        self.assertFalse(self.server.DEV_MODE)
+
+    # R-2.3 — missing file → exit 2.
+    def test_token_file_missing_exits_2(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.server.configure_auth(None, str(self._dir / "nope"))
+        self.assertEqual(cm.exception.code, 2)
+
+    # R-2.3 — wrong mode → exit 2.
+    def test_token_file_wrong_mode_exits_2(self):
+        p = self._write_token_file(self.GOOD, mode=0o644)
+        with self.assertRaises(SystemExit) as cm:
+            self.server.configure_auth(None, str(p))
+        self.assertEqual(cm.exception.code, 2)
+
+    # R-2.3 — wrong owner → exit 2 (simulate by faking geteuid).
+    def test_token_file_wrong_owner_exits_2(self):
+        from unittest import mock
+        p = self._write_token_file(self.GOOD)
+        fake_uid = os.geteuid() + 1
+        with mock.patch.object(self.server.os, "geteuid", return_value=fake_uid):
+            with self.assertRaises(SystemExit) as cm:
+                self.server.configure_auth(None, str(p))
+        self.assertEqual(cm.exception.code, 2)
+
+    # R-2.3 — malformed content → exit 2.
+    def test_token_file_malformed_exits_2(self):
+        p = self._write_token_file("not-hex-garbage")
+        with self.assertRaises(SystemExit) as cm:
+            self.server.configure_auth(None, str(p))
+        self.assertEqual(cm.exception.code, 2)
+
+    # R-2.4 — both flags → exit 2.
+    def test_both_flags_exit_2(self):
+        p = self._write_token_file(self.GOOD)
+        with self.assertRaises(SystemExit) as cm:
+            self.server.configure_auth(self.GOOD, str(p))
+        self.assertEqual(cm.exception.code, 2)
+
+    # R-2.5 — neither flag → dev mode, no token.
+    def test_neither_flag_enters_dev_mode(self):
+        self.server.configure_auth(None, None)
+        self.assertIsNone(self.server.TOKEN)
+        self.assertTrue(self.server.DEV_MODE)
+
+
 if __name__ == "__main__":
     unittest.main()

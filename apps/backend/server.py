@@ -60,6 +60,14 @@ DEFAULT_PORT = 3939
 DEFAULT_HOST = "127.0.0.1"
 LAN_HOST = "0.0.0.0"
 
+# ─── Runtime Trust Handshake auth state (docs/ears/runtime-trust-handshake.md) ─
+# Set once at startup by configure_auth(). TOKEN holds the per-process shared
+# secret (hex). DEV_MODE is True only when the backend was started with neither
+# --token nor --token-file, meaning loopback requests are served without auth.
+TOKEN: Optional[str] = None
+DEV_MODE: bool = False
+_TOKEN_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+
 # The SPA build output. When frozen (PyInstaller bundle) the dist/ folder is
 # extracted alongside the lib modules under sys._MEIPASS. In dev it lives at
 # apps/backend/app/dist/ relative to this file.
@@ -1749,6 +1757,65 @@ def build_server(host: str, port: int) -> _Threaded:
 WebUIHandler = Handler
 
 
+def _auth_fail(check: str) -> "Any":
+    """Print the failed token-file check to stderr and exit non-zero (R-2.3,
+    R-2.4). Never echoes the token value itself (R-2.9)."""
+    print(f"squirrel-web-ui: token auth error: {check}", file=sys.stderr)
+    sys.exit(2)
+
+
+def _load_token_from_file(path: pathlib.Path) -> str:
+    """Read a hex token from a token-file, enforcing the R-2.2/R-2.3 checks:
+    file present, owned by the running user, mode 0600, and exactly 64 hex
+    chars (optionally one trailing newline). Any failure exits non-zero with a
+    stderr message naming the specific check. The token value is never logged."""
+    try:
+        st = path.stat()
+    except FileNotFoundError:
+        return _auth_fail(f"--token-file not found: {path}")
+    except OSError as exc:
+        return _auth_fail(f"--token-file unreadable ({exc.strerror}): {path}")
+    mode = st.st_mode & 0o777
+    if mode != 0o600:
+        return _auth_fail(f"--token-file must be mode 0600, found {oct(mode)}: {path}")
+    if st.st_uid != os.geteuid():
+        return _auth_fail(
+            f"--token-file must be owned by uid {os.geteuid()}, found {st.st_uid}: {path}"
+        )
+    token = path.read_text(encoding="utf-8").rstrip("\n")
+    if not _TOKEN_HEX_RE.match(token):
+        return _auth_fail(f"--token-file must contain exactly 64 hex chars: {path}")
+    return token
+
+
+def configure_auth(token: Optional[str], token_file: Optional[str]) -> None:
+    """Resolve the process auth mode from the parsed CLI flags and set the
+    module-level TOKEN / DEV_MODE state (R-2.1, R-2.2, R-2.4, R-2.5).
+
+    - both flags        → exit 2 (mutually exclusive).
+    - --token <hex>     → store the token, leave dev mode off.
+    - --token-file <p>  → load+verify the file, store the token, dev mode off.
+    - neither           → dev mode: warn once, serve loopback without auth.
+    """
+    global TOKEN, DEV_MODE
+    if token and token_file:
+        print(
+            "squirrel-web-ui: --token and --token-file are mutually exclusive",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    if token:
+        TOKEN = token
+        DEV_MODE = False
+    elif token_file:
+        TOKEN = _load_token_from_file(pathlib.Path(token_file))
+        DEV_MODE = False
+    else:
+        TOKEN = None
+        DEV_MODE = True
+        logging.getLogger("squirrel.server").warning("dev mode, no token auth")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="squirrel-web-ui",
@@ -1757,7 +1824,14 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--lan", action="store_true",
                         help="Bind 0.0.0.0 (LAN-reachable). DANGEROUS — no auth.")
+    parser.add_argument("--token",
+                        help="64-char hex shared secret (Runtime Trust Handshake). "
+                             "Mutually exclusive with --token-file.")
+    parser.add_argument("--token-file",
+                        help="Path to a mode-0600 file holding the hex token. "
+                             "Mutually exclusive with --token.")
     args = parser.parse_args()
+    configure_auth(args.token, args.token_file)
     host = LAN_HOST if args.lan else DEFAULT_HOST
     if args.lan:
         print(

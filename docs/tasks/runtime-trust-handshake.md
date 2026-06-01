@@ -54,7 +54,7 @@ Mutex tags:
 
 ## Unit 2: Backend token acceptance
 
-- [ ] **2.1** Add `--token`/`--token-file` argparse and dev-mode warning (est: ~45m)
+- [x] **2.1** Add `--token`/`--token-file` argparse and dev-mode warning (est: ~45m)
   - acceptance:
     - R-2.1 — `--token <hex>` loads token into module-level `TOKEN` constant for process lifetime.
     - R-2.2 — `--token-file <path>` reads single line of hex, verifies file is mode `0600` and owned by `os.geteuid()`.
