@@ -613,6 +613,17 @@ fn is_refused_adoption<R: Runtime>(app: &AppHandle<R>) -> bool {
     matches!(s.mode, SupervisionMode::RefusedAdoption(_))
 }
 
+/// The banner cause string when adoption was refused, else `None`. Drives the
+/// tray "Why?" item and the re-emit on click (R-6.1).
+pub(crate) fn refused_adoption_cause<R: Runtime>(app: &AppHandle<R>) -> Option<&'static str> {
+    let state = app.try_state::<Mutex<SupervisorState>>()?;
+    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+    match s.mode {
+        SupervisionMode::RefusedAdoption(o) => handshake_refusal_cause(o),
+        _ => None,
+    }
+}
+
 /// True when the tray UI should show a backend-error message instead of
 /// the normal "No pressing items" empty state. Used by `tray::build_menu`.
 /// Returns false if the supervisor state hasn't been registered yet

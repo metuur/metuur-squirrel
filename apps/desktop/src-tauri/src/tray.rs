@@ -46,6 +46,10 @@ pub mod ids {
     pub const REMINDER_PREFIX: &str = "reminder:";
     pub const NO_RADAR: &str = "no_radar";
     pub const VIEW_NOTIFICATIONS: &str = "view_notifications";
+    /// Shown only when the backend_supervisor refused adoption (Runtime Trust
+    /// Handshake, R-6.1). Opens the dashboard and re-emits the refusal cause so
+    /// the blocking banner renders with recovery instructions.
+    pub const WHY: &str = "why_blocked";
     /// Replaces NO_PRESSING when the backend_supervisor reports the
     /// backend as degraded (Failed mode or 3+ consecutive health-check
     /// failures), so the user sees the actual failure instead of the
@@ -103,12 +107,28 @@ fn build_menu<R: Runtime>(
     let sep_bot = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, ids::QUIT, "Quit Squirrel", true, None::<&str>)?;
 
+    // R-6.1: when adoption was refused, surface a "Why?" item near the top that
+    // opens the dashboard with the refusal banner.
+    let why_item = match crate::backend_supervisor::refused_adoption_cause(app) {
+        Some(_) => Some(MenuItem::with_id(
+            app,
+            ids::WHY,
+            "Why is Squirrel blocked?",
+            true,
+            None::<&str>,
+        )?),
+        None => None,
+    };
+
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
         &open_item,
         &open_web_ui_item,
         &sep_top,
         &pressing_header,
     ];
+    if let Some(ref w) = why_item {
+        items.insert(2, w); // between Open Web UI and the top separator
+    }
 
     let alert_items: Vec<MenuItem<R>> = alerts
         .iter()
@@ -218,6 +238,13 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     app.exit(0);
                 }
                 ids::VIEW_NOTIFICATIONS => show_main_window(app),
+                ids::WHY => {
+                    // R-6.1: open the dashboard, then re-emit the refusal cause
+                    // so the banner renders even if the React listener wasn't
+                    // mounted when the original event fired at startup.
+                    show_main_window(app);
+                    crate::backend_supervisor::notify_refusal(app);
+                }
                 ids::PRESSING_HEADER
                 | ids::NO_PRESSING
                 | ids::BACKEND_ERROR

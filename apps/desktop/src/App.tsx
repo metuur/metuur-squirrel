@@ -10,6 +10,7 @@ import { useDeepLink } from "./hooks/useDeepLink";
 import { useNotifications } from "./hooks/useNotifications";
 import { BACKEND_ORIGIN } from "./api/client";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
+import { HandshakeBanner } from "./components/HandshakeBanner";
 import { FocusWidget } from "./components/FocusWidget";
 import { FocusPickerModal } from "./components/FocusPickerModal";
 import { DeadlinesWidget } from "./components/DeadlinesWidget";
@@ -119,6 +120,8 @@ export default function App() {
 
   return (
     <main className="h-screen flex flex-col overflow-hidden">
+      {/* R-6.2: window-blocking overlay above all content on refused adoption. */}
+      <HandshakeBanner />
       <BackendStatusBanner status={status} />
 
       {/* Sticky header — never scrolls out of view */}

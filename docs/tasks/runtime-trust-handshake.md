@@ -186,7 +186,7 @@ Mutex tags:
 
 ## Unit 6: User-visible state and recovery
 
-- [ ] **6.1** Tray "Why?" item + window-blocking banner shell (deps: 4.2, est: ~45m)
+- [x] **6.1** Tray "Why?" item + window-blocking banner shell (deps: 4.2, est: ~45m)
   - acceptance:
     - R-6.1 — When tray is in Error state due to refused adoption, the tray menu shows a "Why?" item that triggers showing the dashboard with the banner.
     - R-6.2 — While the tray is in Error state from refused adoption, the dashboard renders the banner above all other content, with a "Quit Squirrel" button as the primary action.
