@@ -73,8 +73,10 @@ export function FocusPickerModal({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState<PendingIntent | null>(null);
+  const [note, setNote] = useState("");
+  const NOTE_MAX = 280;
 
-  const onStep2 = slot === "today" && pending !== null;
+  const onStep2 = pending !== null;
   const hasAM = !!currentAmPick;
   const hasPM = !!currentPmPick;
   const isAllDay = !!(
@@ -112,11 +114,13 @@ export function FocusPickerModal({
 
   const handleIntentClick = (p: ProjectListItem, intent: ProjectNote) => {
     if (submitting) return;
-    if (slot === "week") {
-      submitFocus("week", p.slug, intent.id);
-    } else {
-      setPending({ projectSlug: p.slug, projectTitle: p.title, intentSlug: intent.id, intentTitle: intent.title });
-    }
+    setNote("");
+    setPending({ projectSlug: p.slug, projectTitle: p.title, intentSlug: intent.id, intentTitle: intent.title });
+  };
+
+  const handleWeekSubmit = () => {
+    if (!pending) return;
+    submitFocus("week", pending.projectSlug, pending.intentSlug);
   };
 
   const submitFocus = async (
@@ -126,25 +130,27 @@ export function FocusPickerModal({
   ) => {
     setSubmitting(true);
     setError(null);
+    const trimmed = note.trim();
+    const noteValue = trimmed ? trimmed : null;
     try {
       if (focusSlot === "all_day") {
         // Explicitly clear both slots first, then set both to the new task.
         // This ensures a clean transition from any previous state.
         await api.focusSet("today", { clear: true });
         await api.focusSet("today_pm", { clear: true });
-        await api.focusSet("today", { project_slug: projectSlug, intent_slug: intentSlug });
-        const result = await api.focusSet("today_pm", { project_slug: projectSlug, intent_slug: intentSlug });
+        await api.focusSet("today", { project_slug: projectSlug, intent_slug: intentSlug, note: noteValue });
+        const result = await api.focusSet("today_pm", { project_slug: projectSlug, intent_slug: intentSlug, note: noteValue });
         onPicked?.(result);
       } else if (focusSlot === "today") {
         // AM only: set AM. PM is left untouched (additive).
-        const result = await api.focusSet("today", { project_slug: projectSlug, intent_slug: intentSlug });
+        const result = await api.focusSet("today", { project_slug: projectSlug, intent_slug: intentSlug, note: noteValue });
         onPicked?.(result);
       } else if (focusSlot === "today_pm") {
         // PM only: set PM. AM is left untouched (additive).
-        const result = await api.focusSet("today_pm", { project_slug: projectSlug, intent_slug: intentSlug });
+        const result = await api.focusSet("today_pm", { project_slug: projectSlug, intent_slug: intentSlug, note: noteValue });
         onPicked?.(result);
       } else {
-        const result = await api.focusSet(focusSlot, { project_slug: projectSlug, intent_slug: intentSlug });
+        const result = await api.focusSet(focusSlot, { project_slug: projectSlug, intent_slug: intentSlug, note: noteValue });
         onPicked?.(result);
       }
       onClose();
@@ -197,7 +203,9 @@ export function FocusPickerModal({
       >
         <div className={cardClass}>
           <div className="px-4 py-3 border-b border-hairline">
-            <h2 className="title text-sm">When will you work on this?</h2>
+            <h2 className="title text-sm">
+              {slot === "week" ? "Add a note for this week's focus" : "When will you work on this?"}
+            </h2>
           </div>
           <div className="px-4 py-4 flex flex-col gap-3">
             {error && (
@@ -213,6 +221,47 @@ export function FocusPickerModal({
               {" — "}
               {pending.intentTitle}
             </p>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wide text-ink-3 font-semibold">
+                Note <span className="text-ink-4 font-normal normal-case">(optional)</span>
+              </span>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
+                disabled={submitting}
+                rows={2}
+                maxLength={NOTE_MAX}
+                placeholder="e.g. wrap up the auth refactor before lunch"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-hairline bg-surface text-xs text-ink resize-none focus:outline-none focus:border-accent disabled:opacity-50"
+              />
+              <span className="text-[10px] text-ink-4 self-end tabular-nums">
+                {note.length}/{NOTE_MAX}
+              </span>
+            </label>
+            {slot === "week" ? (
+              <button
+                type="button"
+                onClick={handleWeekSubmit}
+                disabled={submitting}
+                className="w-full px-3 py-2.5 rounded-xl border-2 text-left disabled:opacity-50 transition-colors"
+                style={SLOT_NEUTRAL_BG}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-ink inline-flex items-center gap-1.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <rect x="3" y="4" width="18" height="17" rx="2" />
+                      <path d="M3 9h18" />
+                      <path d="M8 2v4" />
+                      <path d="M16 2v4" />
+                    </svg>
+                    Set this week's focus
+                  </span>
+                </div>
+                <div className="text-[10px] text-ink-3 mt-0.5">
+                  Pins this intent as the focus until the week rolls over
+                </div>
+              </button>
+            ) : (
             <div className="flex flex-col gap-2">
               {/* All day */}
               <button
@@ -306,6 +355,7 @@ export function FocusPickerModal({
                 </button>
               </div>
             </div>
+            )}
           </div>
           <div className="px-4 py-3 bg-surface-2 border-t border-hairline-2 flex justify-end">
             <button

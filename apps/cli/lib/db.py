@@ -76,4 +76,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_notifications_item_day
           ON notifications(item_id, date(fired_at));
     """)
+    # Additive migration: focus_picks.note (idempotent — ignore "duplicate column").
+    try:
+        conn.execute("ALTER TABLE focus_picks ADD COLUMN note TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()

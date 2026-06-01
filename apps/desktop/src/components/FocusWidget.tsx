@@ -33,6 +33,11 @@ const OK_DOT_STYLE: React.CSSProperties = {
   background: "var(--color-ok)",
   boxShadow: "0 0 0 3px rgba(47, 107, 79, 0.12)",
 };
+const WEEK_CHIP_STYLE: React.CSSProperties = {
+  background: "rgba(47, 107, 79, 0.10)",
+  borderColor: "rgba(47, 107, 79, 0.18)",
+  color: "var(--color-ok)",
+};
 
 function FocusPill({ slot, label, online, dotStyle, onPick, onClear }: PillProps) {
   const pickLabel = slot === "today" ? "Pick today's focus" : "Pick this week's focus";
@@ -42,7 +47,7 @@ function FocusPill({ slot, label, online, dotStyle, onPick, onClear }: PillProps
       <div className="quick-action" style={{ opacity: 0.5, cursor: "default" }}>
         <span className="dot" style={dotStyle}></span>
         <span>
-          {slot === "today" ? "today's focus" : "this week's focus"}:{" "}
+          {slot === "today" ? "What matters today:" : "What matters this week:"}{" "}
           <span className="text-ink-4">—</span>
         </span>
       </div>
@@ -110,8 +115,18 @@ function ManualFocusRow({ badge, chipStyle, pick, separator }: FocusRowProps) {
         {badge}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="slug truncate mb-1">{slugText}</p>
-        <p className="title text-[14.5px] leading-snug">{titleText}</p>
+        <p className="slug truncate mb-0.5">{slugText}</p>
+        <div className="flex items-baseline gap-2 min-w-0">
+          <p className="title text-[13px] leading-tight truncate min-w-0">{titleText}</p>
+          {pick.note && (
+            <span
+              className="text-[10.5px] text-ink-3 italic leading-tight truncate min-w-0"
+              title={pick.note}
+            >
+              “{pick.note}”
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -141,8 +156,8 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
 
   return (
     <section className={`px-4 pt-3 ${dimmed ? "opacity-50" : ""}`}>
-      <div className="card-focus p-3.5">
-        <div className="eyebrow mb-2">Today's focus</div>
+      <div className="card-focus p-2.5">
+        <div className="eyebrow mb-1">Today's focus</div>
 
         {hasManualToday ? (
           isAllDay ? (
@@ -172,9 +187,9 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
           )
         ) : focus ? (
           <>
-            <h2 className="title text-[14.5px] leading-snug">{focus.title}</h2>
+            <h2 className="title text-[13px] leading-tight">{focus.title}</h2>
             {focus.next_action && (
-              <p className="mt-1 text-xs text-ink-3 leading-relaxed">
+              <p className="mt-0.5 text-[11px] text-ink-3 leading-snug">
                 {focus.next_action}
               </p>
             )}
@@ -188,7 +203,19 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
         )}
       </div>
 
-      <div className="mt-2 flex flex-col gap-1">
+      {weekPick && (
+        <div className="card-focus p-2.5 mt-1.5">
+          <div className="eyebrow mb-1">This week</div>
+          <ManualFocusRow
+            badge="Week"
+            chipStyle={WEEK_CHIP_STYLE}
+            pick={weekPick}
+            separator={false}
+          />
+        </div>
+      )}
+
+      <div className="mt-2 flex flex-row flex-wrap items-center gap-x-4 gap-y-1">
         <FocusPill
           slot="today"
           label={todayPillLabel}
