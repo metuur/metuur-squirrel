@@ -17,8 +17,11 @@ const KIND_META: Record<EntityKind, { icon: string; label: string }> = {
   'note':         { icon: 'sticky_note_2', label: 'Note'    },
 };
 
-function KindBadge({ kind }: { kind: EntityKind }) {
-  const meta = KIND_META[kind];
+function KindBadge({ kind }: { kind: EntityKind | undefined }) {
+  // Fall back to 'note' if the backend hasn't been redeployed yet (older
+  // /api/home payloads omit `kind`) or if a future server adds a value we
+  // don't know about. Better a neutral chip than a render crash.
+  const meta = KIND_META[kind ?? 'note'] ?? KIND_META['note'];
   return (
     <span className="chip chip-count" title={meta.label}>
       <span className="material-icons" style={{ fontSize: 12 }}>{meta.icon}</span>
@@ -31,7 +34,11 @@ function RevealButton({ id }: { id: string }) {
   const onClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    api.reveal(id).catch(() => { /* best-effort: the OS will surface its own error */ });
+    api.reveal(id).catch((err: unknown) => {
+      console.error('Reveal failed for id=' + id + ':', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      window.alert('Could not reveal in Finder: ' + msg);
+    });
   };
   return (
     <button

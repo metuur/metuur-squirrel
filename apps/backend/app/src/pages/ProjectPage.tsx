@@ -73,7 +73,13 @@ export default function ProjectPage() {
             <span className="material-icons text-base">edit</span> Edit
           </Link>
           <button
-            onClick={() => { api.reveal(slug).catch(() => {}); }}
+            onClick={() => {
+              api.reveal(slug).catch((err: unknown) => {
+                console.error('Reveal failed for slug=' + slug + ':', err);
+                const msg = err instanceof Error ? err.message : 'Unknown error';
+                window.alert('Could not reveal in Finder: ' + msg);
+              });
+            }}
             title="Reveal in Finder"
             aria-label="Reveal in Finder"
             className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"

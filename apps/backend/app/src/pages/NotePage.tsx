@@ -59,7 +59,13 @@ export default function NotePage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => { api.reveal(id).catch(() => {}); }}
+              onClick={() => {
+                api.reveal(id).catch((err: unknown) => {
+                  console.error('Reveal failed for id=' + id + ':', err);
+                  const msg = err instanceof Error ? err.message : 'Unknown error';
+                  window.alert('Could not reveal in Finder: ' + msg);
+                });
+              }}
               title="Reveal in Finder"
               aria-label="Reveal in Finder"
               className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
