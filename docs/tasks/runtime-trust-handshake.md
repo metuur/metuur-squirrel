@@ -69,7 +69,7 @@ Mutex tags:
     - `pytest apps/cli/tests/test_web_ui_server.py -k token` — new tests covering all five branches.
     - Manual: `python apps/backend/server.py --token deadbeef…` (64 chars) → no warning; `--token X --token-file Y` → exits 2; no flags → "dev mode" warning on stderr.
 
-- [ ] **2.2** Enforce `X-Squirrel-Token` on every non-handshake route (deps: 2.1, est: ~60m) `(mutex: server-routes)`
+- [x] **2.2** Enforce `X-Squirrel-Token` on every non-handshake route (deps: 2.1, est: ~60m) `(mutex: server-routes)`
   - acceptance:
     - R-2.6 — Reject `401` empty body when header missing/mismatched AND NOT dev mode AND route != `/api/_handshake`.
     - R-2.7 — Comparison via `hmac.compare_digest`.

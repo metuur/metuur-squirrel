@@ -144,9 +144,10 @@ class TestServerScaffold(unittest.TestCase):
             "reminder_writer", "cache",
         }
         stdlib = {
-            "__future__", "argparse", "datetime", "html", "http", "io", "json",
-            "logging", "os", "pathlib", "re", "shutil", "socket", "socketserver",
-            "sys", "threading", "traceback", "urllib", "typing",
+            "__future__", "argparse", "datetime", "hmac", "html", "http", "io",
+            "json", "logging", "os", "pathlib", "re", "shutil", "socket",
+            "socketserver", "subprocess", "sys", "threading", "traceback",
+            "urllib", "typing",
         }
         leftover = names - own - stdlib
         self.assertSetEqual(leftover, set(), f"unexpected third-party imports: {leftover}")
@@ -298,6 +299,68 @@ class TestIntentCreate(_ServerCase):
             "title": "bad tag test",
         })
         self.assertEqual(r.status, 422)
+
+
+# ─── Story 2.2 — X-Squirrel-Token enforcement (R-2.6..R-2.9) ─────────────────
+
+
+class TestTokenEnforcement(_ServerCase):
+    """Spins up a server, then marks it as token-configured by setting the
+    module globals (build_server does not call configure_auth). Exercises the
+    auth gate on a real request path."""
+
+    GOOD = "b" * 64
+
+    def setUp(self):
+        super().setUp()
+        import server
+        self.server_mod = server
+        server.TOKEN = self.GOOD
+        server.DEV_MODE = False
+
+    def tearDown(self):
+        self.server_mod.TOKEN = None
+        self.server_mod.DEV_MODE = False
+        super().tearDown()
+
+    def test_missing_header_returns_401(self):
+        r = self._get("/api/me")
+        self.assertEqual(r.status, 401)
+
+    def test_bad_header_returns_401(self):
+        r = self._get("/api/me", headers={"X-Squirrel-Token": "c" * 64})
+        self.assertEqual(r.status, 401)
+
+    def test_matching_header_returns_200(self):
+        r = self._get("/api/me", headers={"X-Squirrel-Token": self.GOOD})
+        self.assertEqual(r.status, 200)
+
+    def test_static_asset_is_also_gated(self):
+        # R-2.6 decision: the SPA shell / static routes are gated too, so a
+        # squatter cannot serve a hostile bundle.
+        r = self._get("/")
+        self.assertEqual(r.status, 401)
+
+    def test_handshake_path_is_exempt_from_gate(self):
+        # The handshake must never be 401'd by the generic gate — it runs its
+        # own contract (added in 3.1). Until then it 404s; the point is it is
+        # NOT blocked by the token gate.
+        r = self._get("/api/_handshake")
+        self.assertNotEqual(r.status, 401)
+
+    def test_dev_mode_bypasses_enforcement(self):
+        # R-2.8 — flip to dev mode: requests succeed with no header.
+        self.server_mod.TOKEN = None
+        self.server_mod.DEV_MODE = True
+        r = self._get("/api/me")
+        self.assertEqual(r.status, 200)
+
+    def test_token_value_never_appears_in_log(self):
+        # R-2.9 — a refused request must not leak the token into the log.
+        self._get("/api/me")  # no header → 401
+        log_path = self.home / ".squirrel" / "web-ui.log"
+        if log_path.is_file():
+            self.assertNotIn(self.GOOD, log_path.read_text(encoding="utf-8"))
 
 
 # ─── Story 2.1 — token / token-file argparse + dev mode (R-2.1..R-2.5) ────────

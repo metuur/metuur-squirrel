@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hmac
 import http.server
 import json
 import logging
@@ -67,6 +68,18 @@ LAN_HOST = "0.0.0.0"
 TOKEN: Optional[str] = None
 DEV_MODE: bool = False
 _TOKEN_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+
+
+def _auth_required() -> bool:
+    """True when requests must carry a valid X-Squirrel-Token (R-2.6, R-2.8).
+
+    Enforcement is active only when a token is configured AND dev mode is off.
+    The (TOKEN=None, DEV_MODE=False) state happens only when configure_auth was
+    never called — i.e. the server is embedded in-process (tests, library use)
+    — and is treated as unenforced. In production main() always calls
+    configure_auth, which sets either TOKEN (enforce) or DEV_MODE=True (bypass).
+    """
+    return TOKEN is not None and not DEV_MODE
 
 # The SPA build output. When frozen (PyInstaller bundle) the dist/ folder is
 # extracted alongside the lib modules under sys._MEIPASS. In dev it lives at
@@ -395,11 +408,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
 
+    def _token_ok(self) -> bool:
+        """Constant-time compare of the X-Squirrel-Token header to the stored
+        token (R-2.7). False when the header is absent. The token value is
+        never logged or echoed (R-2.9)."""
+        presented = self.headers.get("X-Squirrel-Token")
+        if presented is None or TOKEN is None:
+            return False
+        return hmac.compare_digest(presented, TOKEN)
+
+    def _send_unauthorized(self, method: str) -> None:
+        """401 with an empty body (R-2.6). Logs the refusal without the token
+        value (R-2.9)."""
+        _log_request(method, self.path, 401)
+        self.send_response(401)
+        self._send_common_headers(no_store=True)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _dispatch(self, method: str) -> None:
         path = self.path
         if not is_safe_request_path(path):
             return self._send_plain_error(400, "Bad path.")
         bare = path.split("?", 1)[0]
+        # R-2.6/R-2.7/R-2.8: gate every route except the handshake (which runs
+        # its own contract) on a constant-time token match. Static assets are
+        # gated too — a squatter must not be able to serve a hostile bundle.
+        if bare != "/api/_handshake" and _auth_required() and not self._token_ok():
+            return self._send_unauthorized(method)
         for m, pattern, fn_name in ROUTES:
             if m != method:
                 continue
