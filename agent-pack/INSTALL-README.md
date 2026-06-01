@@ -20,6 +20,8 @@ Per-agent shortcuts (scripted / CI):
 ./scripts/install-claude.sh
 ./scripts/install-codex.sh
 ./scripts/install-cursor.sh
+./scripts/install-copilot.sh          # user-level (default)
+./scripts/install-copilot.sh --workspace  # workspace-level (.github/)
 ./scripts/install-standalone.sh
 ```
 
@@ -44,6 +46,9 @@ Five distinct components. Every installer installs **all** of them by default.
 │     Claude:    nothing extra (canonical IS the Claude install)       │
 │     Codex:     ~/.codex/{skills,commands}/ + AGENTS.md patched       │
 │     Cursor:    ~/.cursor/rules/squirrel/ + manual rule pointer       │
+│     Copilot:   ~/.copilot/{agents,prompts,hooks}/ +                  │
+│                copilot-instructions.md patched (user-level default)  │
+│                OR .github/{agents,prompts,hooks}/ (--workspace)      │
 │     Standalone: nothing                                              │
 ├──────────────────────────────────────────────────────────────────────┤
 │  3. CLI ON PATH — the standalone terminal binary                     │
@@ -197,6 +202,13 @@ What lands where, for each combination of agent + components:
 │   ├── commands/                           (mirrors of commands/*.md)
 │   └── AGENTS.md                           (patched with Context Bridge block)
 │
+├── .copilot/                               ⬅ Only if --agent copilot (user-level)
+│   ├── agents/                             (squirrel-<name>.agent.md files)
+│   ├── prompts/                            (sq-<cmd>.prompt.md files)
+│   ├── copilot-instructions.md            (Squirrel manifest block appended)
+│   └── hooks/
+│       └── squirrel.json                  (hook registration)
+│
 ├── .cursor/                                ⬅ Only if --agent cursor
 │   └── rules/
 │       └── squirrel/                       (mirrors of skills/)
@@ -314,6 +326,8 @@ Or via flags:
 | Canonical plugin | `rm -rf ~/.claude/plugins/squirrel/` |
 | Codex integration | `rm -rf ~/.codex/skills/{brief,capture,…} ~/.codex/commands/sq-*.md` + edit `~/.codex/AGENTS.md` |
 | Cursor integration | `rm -rf ~/.cursor/rules/squirrel/` + remove rule pointer in Cursor settings |
+| Copilot integration (user) | `rm -rf ~/.copilot/agents/squirrel-* ~/.copilot/prompts/sq-*.prompt.md ~/.copilot/hooks/squirrel.json` + remove Squirrel block from `~/.copilot/copilot-instructions.md` |
+| Copilot integration (workspace) | delete `.github/agents/squirrel-*`, `.github/prompts/sq-*.prompt.md`, `.github/hooks/squirrel.json`; remove Squirrel block from `.github/copilot-instructions.md` |
 | CLI symlink | `rm ~/.local/bin/squirrel` |
 | Config | `rm -rf ~/.squirrel/` ⚠ deletes your settings |
 | macOS daemon | `bash <repo>/companions/macos-reminders/install.sh --uninstall` |

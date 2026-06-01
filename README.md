@@ -15,12 +15,12 @@ For the **Squirrel.app** path, see [`docs/install.md`](docs/install.md) — drag
 
 The instructions below cover the **full installer DMG** path.
 
-**Prerequisites:** Claude Code, Codex, Cursor, or Windsurf — plus a folder to use as your vault. Nothing else.
+**Prerequisites:** Claude Code, Codex, Cursor, Copilot, or Windsurf — plus a folder to use as your vault. Nothing else.
 
 1. Download `squirrel-installer-macos.dmg`
 2. Open it and double-click **Install Squirrel**
 3. Answer two questions:
-   - Which agent? (Claude Code / Codex / Cursor / Windsurf)
+   - Which agent? (Claude Code / Codex / Cursor / Copilot / Windsurf)
    - Where is your vault? (existing folder or press Enter to create `~/squirrel-vault`)
 4. Allow the notification permission prompt
 5. Open your agent and type `/sq-status`
@@ -31,7 +31,7 @@ The installer places two self-contained binaries on your machine and registers t
 |------|-------|
 | `squirrel` CLI | `~/.local/bin/squirrel` |
 | `squirrel-backend` (API + web UI) | `~/.local/bin/squirrel-backend` |
-| Agent skills & commands | `~/.claude/plugins/squirrel/` (or Codex/Cursor/Windsurf equivalent) |
+| Agent skills & commands | `~/.claude/plugins/squirrel/` (or Codex/Cursor/Copilot/Windsurf equivalent) |
 | Config | `~/.squirrel/config.toml` |
 | Background service | `~/Library/LaunchAgents/org.squirrel.web-ui.plist` |
 
@@ -125,6 +125,42 @@ cd apps/desktop && pnpm tauri:prebuild-backend   # rebuilds just the sidecar
 ```
 
 Full code-signing + notarization setup for non-technical end-user distribution is documented in [`docs/release.md`](docs/release.md).
+
+---
+
+## Installing for GitHub Copilot
+
+Squirrel integrates with GitHub Copilot by placing files on disk — no GitHub App or cloud service needed. Both VS Code Copilot Chat and the Copilot CLI are supported.
+
+### User-level install (default — applies to all workspaces)
+
+```bash
+./agent-pack/scripts/install-copilot.sh --yes
+```
+
+Skills land at `~/.copilot/agents/squirrel-<name>.agent.md`, slash-command prompts at `~/.copilot/prompts/sq-<cmd>.prompt.md`, and hook registration at `~/.copilot/hooks/squirrel.json`. A manifest block is appended to `~/.copilot/copilot-instructions.md`.
+
+You can override the destination with the `COPILOT_HOME` env var.
+
+### Workspace-level install (files committed to the repo)
+
+```bash
+./agent-pack/scripts/install-copilot.sh --workspace --yes
+```
+
+Writes to `.github/agents/`, `.github/prompts/`, `.github/copilot-instructions.md`, and `.github/hooks/squirrel.json`. Commit the generated files so teammates pick up the Squirrel integration automatically.
+
+### Key flags
+
+| Flag | Effect |
+|------|--------|
+| `--workspace` | Write to `.github/` instead of `~/.copilot/` |
+| `--link` | Create symlinks instead of copies (auto-updates on `git pull`) |
+| `--dry-run` | Preview without writing anything |
+| `--yes` / `-y` | Non-interactive |
+| `--no-config` | Skip seeding `~/.squirrel/config.toml` |
+
+After install, restart VS Code and try `/sq-where-am-i` in Copilot Chat.
 
 ---
 

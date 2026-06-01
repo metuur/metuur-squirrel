@@ -241,6 +241,295 @@ squirrel skills installed at ~/.codex/skills/. The main entry points are:
 Configuration lives at ~/.squirrel/config.toml.
 """
 
+_COPILOT_INSTRUCTIONS_BLOCK = """\
+# Squirrel — Copilot Agent Manifest
+
+squirrel is a session-management plugin for engineers with ADHD. It persists
+cognitive state across sessions, projects, and air-gapped environments via a
+Markdown vault.
+
+## Skill index
+
+Skills are installed at `~/.copilot/agents/` (user-level) or `.github/agents/`
+(workspace-level). Invoke them when the user's request matches the trigger
+phrases below.
+
+| Skill | Trigger phrases | File |
+|---|---|---|
+| `session-start` | "vamos a trabajar en X", "retomemos Y", "what was I doing", `/sq-start` | `squirrel-session-start.agent.md` |
+| `session-end` | "cerramos por hoy", "shutdown", "voy a pausar", `/sq-end` | `squirrel-session-end.agent.md` |
+| `brief` | "dame el brief", "status update", "resumí el proyecto", `/sq-brief` | `squirrel-brief.agent.md` |
+| `capture` | "guardá esto", "anotá", "save this", `/sq-capture` | `squirrel-capture.agent.md` |
+| `decision` | "decidimos usar X", "vamos a hacer Y", `/sq-decision` | `squirrel-decision.agent.md` |
+| `where-am-i` | "¿en qué estoy?", "where am I", `/sq-where-am-i` | `squirrel-where-am-i.agent.md` |
+| `sync-out` | "exportar contexto", `/sq-sync-out` | `squirrel-sync-out.agent.md` |
+| `sync-in` | pastes a `<!-- SQUIRREL-PACKAGE` block, `/sq-sync-in` | `squirrel-sync-in.agent.md` |
+| `parakeet` | "¿cuáles son mis deadlines?", `/sq-parakeet` | `squirrel-parakeet.agent.md` |
+
+## Slash commands
+
+Commands are installed at `~/.copilot/prompts/` (user-level) or `.github/prompts/`
+(workspace-level). All are prefixed `/sq-`.
+
+```
+/sq-start [TAG]          — load project context
+/sq-end [--quick]        — save shutdown notes
+/sq-brief [TAG]          — 6-section project brief
+/sq-status               — vault health dashboard
+/sq-where-am-i           — focus snapshot
+/sq-capture <content>    — save a note
+/sq-decision <topic>     — record an ADR
+/sq-recover              — recover interrupted session
+/sq-sync-out             — export context package
+/sq-sync-in              — apply pasted package
+```
+
+## Configuration
+
+Edit `~/.squirrel/config.toml` to set your vault path and active projects.
+"""
+
+
+def _parse_skill_frontmatter(body: str) -> dict:
+    """Extract YAML frontmatter fields from a Markdown file (no PyYAML needed)."""
+    if not body.startswith("---"):
+        return {}
+    end = body.find("\n---", 3)
+    if end == -1:
+        return {}
+    fm_block = body[3:end].strip()
+    result: dict = {}
+    for line in fm_block.splitlines():
+        if ":" in line:
+            key, _, val = line.partition(":")
+            result[key.strip()] = val.strip().strip('"').strip("'")
+    return result
+
+
+def _inject_copilot_frontmatter(body: str, source_meta: dict) -> str:
+    """Prepend Copilot-compatible frontmatter if the body does not already have it.
+
+    Returns the body unchanged if it already contains all required Copilot fields.
+    """
+    required = {"description", "name", "agent", "model", "tools", "argument-hint"}
+    existing = _parse_skill_frontmatter(body)
+    if required.issubset(existing.keys()):
+        return body
+
+    name = source_meta.get("name", "")
+    description = source_meta.get("description", "")
+    if not description and name:
+        description = f"Squirrel {name} skill"
+
+    header = (
+        "---\n"
+        f"description: \"{description}\"\n"
+        f"name: \"{name}\"\n"
+        "agent: copilot\n"
+        "model: gpt-4o\n"
+        "tools: []\n"
+        "argument-hint: \"\"\n"
+        "---\n"
+    )
+    # Remove existing Claude-style frontmatter so we don't double-stack headers.
+    stripped = body
+    if body.startswith("---"):
+        end = body.find("\n---", 3)
+        if end != -1:
+            stripped = body[end + 4:].lstrip("\n")
+    return header + stripped
+
+
+def _copy_skill_for_copilot(
+    src_skill_dir: Path, dst_agents_dir: Path, link: bool, dry: bool
+) -> None:
+    """Copy/link a single skill to the Copilot agents directory.
+
+    src_skill_dir — e.g. agent-pack/skills/session-start/
+    dst_agents_dir — e.g. ~/.copilot/agents/
+    Renames SKILL.md → squirrel-<skill-name>.agent.md and injects frontmatter.
+    """
+    skill_name = src_skill_dir.name
+    src_file = src_skill_dir / "SKILL.md"
+    if not src_file.exists():
+        return
+    dst_file = dst_agents_dir / f"squirrel-{skill_name}.agent.md"
+
+    if dry:
+        print(f"  [copilot-skill] {skill_name} → {dst_file}")
+        return
+
+    dst_agents_dir.mkdir(parents=True, exist_ok=True)
+    if link:
+        if dst_file.is_symlink() or dst_file.is_file():
+            dst_file.unlink()
+        dst_file.symlink_to(src_file.resolve())
+    else:
+        body = src_file.read_text(encoding="utf-8")
+        meta = _parse_skill_frontmatter(body)
+        if not meta.get("name"):
+            meta["name"] = f"squirrel-{skill_name}"
+        patched = _inject_copilot_frontmatter(body, meta)
+        dst_file.write_text(patched, encoding="utf-8")
+
+
+def _copy_prompt_for_copilot(
+    src_cmd_file: Path, dst_prompts_dir: Path, link: bool, dry: bool
+) -> None:
+    """Copy/link a single command file to the Copilot prompts directory.
+
+    src_cmd_file — e.g. agent-pack/commands/sq-start.md
+    dst_prompts_dir — e.g. ~/.copilot/prompts/
+    Renames sq-<cmd>.md → sq-<cmd>.prompt.md and injects frontmatter.
+    """
+    cmd_stem = src_cmd_file.stem  # e.g. sq-start
+    dst_file = dst_prompts_dir / f"{cmd_stem}.prompt.md"
+
+    if dry:
+        print(f"  [copilot-prompt] {src_cmd_file.name} → {dst_file}")
+        return
+
+    dst_prompts_dir.mkdir(parents=True, exist_ok=True)
+    if link:
+        if dst_file.is_symlink() or dst_file.is_file():
+            dst_file.unlink()
+        dst_file.symlink_to(src_cmd_file.resolve())
+    else:
+        body = src_cmd_file.read_text(encoding="utf-8")
+        meta = _parse_skill_frontmatter(body)
+        if not meta.get("name"):
+            meta["name"] = cmd_stem
+        if not meta.get("description"):
+            meta["description"] = f"Squirrel {cmd_stem} slash command"
+        patched = _inject_copilot_frontmatter(body, meta, kind="prompt")
+        dst_file.write_text(patched, encoding="utf-8")
+
+
+def _patch_copilot_instructions_md(dest: Path, dry: bool) -> None:
+    """Ensure dest contains the Squirrel manifest block.
+
+    Mirrors _patch_codex_agents_md() but targets copilot-instructions.md.
+    Prints 'created', 'patched', or 'skipped (already present)'.
+    """
+    marker = "# Squirrel — Copilot Agent Manifest"
+    if dest.exists():
+        content = dest.read_text(encoding="utf-8")
+        if marker in content:
+            print(f"  skipped (already present)  {dest}")
+            return
+        if dry:
+            print(f"  [patch] {dest}")
+            return
+        dest.write_text(content.rstrip() + "\n\n" + _COPILOT_INSTRUCTIONS_BLOCK, encoding="utf-8")
+        print(f"  patched  {dest}")
+    else:
+        if dry:
+            print(f"  [create] {dest}")
+            return
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(_COPILOT_INSTRUCTIONS_BLOCK, encoding="utf-8")
+        print(f"  created  {dest}")
+
+
+def _emit_copilot_hooks_json(dest: Path, adapter_dir: Path, dry: bool) -> None:
+    """Write ~/.copilot/hooks/squirrel.json (or .github/hooks/squirrel.json).
+
+    R-6.6: If the file exists and contains non-Squirrel hooks, warn and skip.
+    R-6.5: Otherwise, overwrite entirely (generated content).
+    """
+    import json as _json
+
+    # Resolve hook body from hooks.json. When run from canonical install
+    # (~/.claude/plugins/squirrel/) the file is at hooks/hooks.json. When run
+    # from the repo (apps/cli/squirrel), fall back to agent-pack/hooks/hooks.json.
+    _script_dir = Path(__file__).resolve().parent
+    hooks_json_path = _script_dir / "hooks" / "hooks.json"
+    if not hooks_json_path.exists():
+        hooks_json_path = _script_dir.parent.parent / "agent-pack" / "hooks" / "hooks.json"
+    post_tool_body = ""
+    session_start_body = ""
+    user_prompt_bodies: list[str] = []
+    stop_body = ""
+    if hooks_json_path.exists():
+        try:
+            hdata = _json.loads(hooks_json_path.read_text(encoding="utf-8"))
+            hooks = hdata.get("hooks", {})
+            ss_hooks = hooks.get("SessionStart", [{}])[0].get("hooks", [])
+            if ss_hooks:
+                session_start_body = ss_hooks[0].get("command", "")
+            up_hooks = hooks.get("UserPromptSubmit", [{}])[0].get("hooks", [])
+            user_prompt_bodies = [h.get("command", "") for h in up_hooks if h.get("command")]
+            stop_hooks = hooks.get("Stop", [{}])[0].get("hooks", [])
+            if stop_hooks:
+                stop_body = stop_hooks[0].get("command", "")
+            pt_hooks = hooks.get("PostToolUse", [{}])[0].get("hooks", [])
+            if pt_hooks:
+                post_tool_body = pt_hooks[0].get("command", "")
+        except Exception:
+            pass
+
+    adapter = str(adapter_dir / "hook-adapter.sh")
+
+    def _cmd(event: str, body: str) -> str:
+        escaped = body.replace("'", "'\\''")
+        return f"bash '{adapter}' {event} '{escaped}'"
+
+    entries = []
+
+    if session_start_body:
+        entries.append({
+            "event": "sessionStart",
+            "squirrel_event": "SessionStart",
+            "command": _cmd("SessionStart", session_start_body),
+        })
+
+    for body in user_prompt_bodies:
+        entries.append({
+            "event": "userPromptSubmitted",
+            "squirrel_event": "UserPromptSubmit",
+            "command": _cmd("UserPromptSubmit", body),
+        })
+
+    if stop_body:
+        entries.append({
+            "event": "sessionEnd",
+            "squirrel_event": "Stop",
+            "command": _cmd("Stop", stop_body),
+        })
+
+    if post_tool_body:
+        entries.append({
+            "event": "postToolUse",
+            "squirrel_event": "PostToolUse",
+            "command": _cmd("PostToolUse", post_tool_body),
+        })
+
+    payload = _json.dumps(entries, indent=2, ensure_ascii=False)
+
+    if dry:
+        print(f"  [hooks-json] {dest}  ({len(entries)} entries)")
+        return
+
+    # R-6.6: detect non-Squirrel entries in an existing file.
+    if dest.exists():
+        try:
+            existing = _json.loads(dest.read_text(encoding="utf-8"))
+            if isinstance(existing, list):
+                for item in existing:
+                    cmd = item.get("command", "")
+                    if cmd and "hook-adapter.sh" not in cmd and "squirrel" not in cmd.lower():
+                        print(
+                            f"  ⚠️  {dest} contains non-Squirrel hooks — skipping overwrite.\n"
+                            "     Move those entries to a separate file, then re-run."
+                        )
+                        return
+        except Exception:
+            pass
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(payload + "\n", encoding="utf-8")
+    print(f"  ✅  hooks → {dest}  ({len(entries)} entries)")
+
 
 def _copy_or_link(src: Path, dst: Path, link: bool, dry: bool) -> None:
     import shutil
@@ -395,6 +684,8 @@ def cmd_install(args):
             agent = "codex"
         elif Path("~/.cursor").expanduser().exists():
             agent = "cursor"
+        elif Path("~/.copilot").expanduser().exists():
+            agent = "copilot"
         else:
             agent = "standalone"
 
@@ -425,6 +716,61 @@ def cmd_install(args):
                 _copy_or_link(skill_dir, rules_dst / skill_dir.name, link, dry)
         print(f"  ✅  Rules → {rules_dst}")
 
+    elif agent == "copilot":
+        workspace = getattr(args, "workspace", False)
+        if workspace:
+            import subprocess as _sp
+            result = _sp.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                import sys as _sys
+                print(
+                    "❌  --workspace requires a git repository, but the current "
+                    "directory is not inside one.",
+                    file=_sys.stderr,
+                )
+                _sys.exit(1)
+            dest_root = Path(result.stdout.strip()) / ".github"
+            print(f"  ℹ️   Workspace-level install → {dest_root}")
+            print("  ℹ️   Remember to commit the generated .github/ files.")
+        else:
+            dest_root = Path(
+                __import__("os").environ.get("COPILOT_HOME", "~/.copilot")
+            ).expanduser()
+
+        agents_dst = dest_root / "agents"
+        prompts_dst = dest_root / "prompts"
+        hooks_dst = dest_root / "hooks"
+
+        if not dry:
+            for d in (agents_dst, prompts_dst, hooks_dst):
+                d.mkdir(parents=True, exist_ok=True)
+
+        skills_src = plugin_root / "skills"
+        if skills_src.exists():
+            for skill_dir in sorted(skills_src.iterdir()):
+                if skill_dir.is_dir() and not skill_dir.name.startswith("{"):
+                    _copy_skill_for_copilot(skill_dir, agents_dst, link, dry)
+        elif dry:
+            print("  [skills] (source dir not found — run from canonical install)")
+
+        cmds_src = plugin_root / "commands"
+        if cmds_src.exists():
+            for cmd_file in sorted(cmds_src.glob("*.md")):
+                _copy_prompt_for_copilot(cmd_file, prompts_dst, link, dry)
+        elif dry:
+            print("  [commands] (source dir not found — run from canonical install)")
+
+        print(f"  ✅  Agents → {agents_dst}")
+        print(f"  ✅  Prompts → {prompts_dst}")
+
+        _patch_copilot_instructions_md(dest_root / "copilot-instructions.md", dry)
+
+        adapter_dir = Path("~/.claude/plugins/squirrel/companions/copilot").expanduser()
+        _emit_copilot_hooks_json(hooks_dst / "squirrel.json", adapter_dir, dry)
+
     # standalone: no agent files — config dir only
     cfg_dir = Path("~/.squirrel").expanduser()
     if dry:
@@ -446,6 +792,7 @@ def cmd_install(args):
         "claude": "Restart Claude Code, then /sq-where-am-i",
         "codex": "Run: codex, then /sq-where-am-i",
         "cursor": "Update Settings → Rules for AI to include squirrel",
+        "copilot": "Restart VS Code / Copilot, then /sq-where-am-i",
         "standalone": "Run: cb status --help",
     }
     print(f"     Next: {hints.get(agent, '')}")
@@ -712,13 +1059,15 @@ def main():
     dash.add_argument("--vault", metavar="NAME",
                       help="Operate on the named vault (default: configured default)")
 
-    inst = sub.add_parser("install", help="Install squirrel for your agent (Claude Code, Codex, Cursor)")
-    inst.add_argument("--agent", choices=["claude", "codex", "cursor", "standalone"],
+    inst = sub.add_parser("install", help="Install squirrel for your agent (Claude Code, Codex, Cursor, Copilot)")
+    inst.add_argument("--agent", choices=["claude", "codex", "cursor", "copilot", "standalone"],
                       help="Target agent (auto-detected if omitted)")
     inst.add_argument("--link", action="store_true",
                       help="Create symlinks instead of copying (stays updatable from repo)")
     inst.add_argument("--dry-run", action="store_true", dest="dry_run",
                       help="Show what would be done without making changes")
+    inst.add_argument("--workspace", action="store_true",
+                      help="(Copilot only) install to <repo-root>/.github/ instead of ~/.copilot/")
 
     # vaults subcommand group
     v = sub.add_parser("vaults", help="Manage configured vaults")

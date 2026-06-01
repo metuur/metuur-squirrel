@@ -13,7 +13,7 @@ Step-by-step guide to install and configure the plugin across different agents.
 
 2. **An Obsidian vault** (or any Markdown folder) with the ADHD system structure. If you do not have one, unzip `vault-tdah-obsidian.zip` first.
 
-3. **A compatible coding agent**: Claude Code, Codex CLI, Cursor, or equivalent.
+3. **A compatible coding agent**: Claude Code, Codex CLI, Cursor, GitHub Copilot, or equivalent.
 
 ---
 
@@ -182,6 +182,55 @@ EOF
 codex
 > /sq-where-am-i
 ```
+
+---
+
+## 🚀 Installing for GitHub Copilot
+
+Squirrel integrates with Copilot by placing files on disk. Supported surfaces: VS Code Copilot Chat, JetBrains Copilot, and the Copilot CLI.
+
+### One-command install (user-level — applies to all workspaces)
+
+```bash
+cd <squirrel-repo>
+./scripts/install-copilot.sh --yes
+```
+
+| Component | Destination |
+|-----------|-------------|
+| Skill agents | `~/.copilot/agents/squirrel-<name>.agent.md` |
+| Slash-command prompts | `~/.copilot/prompts/sq-<cmd>.prompt.md` |
+| Manifest | `~/.copilot/copilot-instructions.md` (block appended) |
+| Hooks | `~/.copilot/hooks/squirrel.json` |
+
+Override the destination with the `COPILOT_HOME` environment variable.
+
+### Workspace-level install (files tracked in Git)
+
+```bash
+./scripts/install-copilot.sh --workspace --yes
+```
+
+Files land under `.github/` in the current git repository. **Commit them** so teammates pick up the Squirrel integration automatically. The installer prints a reminder.
+
+### Flag reference
+
+| Flag | Effect |
+|------|--------|
+| `--workspace` | Write to `<repo-root>/.github/` instead of `~/.copilot/` |
+| `--link` | Create symlinks (auto-update on `git pull`) |
+| `--dry-run` | Preview without writing |
+| `--yes` / `-y` | Non-interactive |
+| `--no-config` | Skip `~/.squirrel/config.toml` seed |
+| `--no-cli` | Skip `squirrel` CLI symlink |
+| `--no-reminders` | Skip macOS launchd daemon |
+| `--prefix=PATH` | CLI symlink destination (default `~/.local/bin`) |
+
+### After install
+
+1. Restart VS Code (or reload the Copilot extension).
+2. Set your vault path: `$EDITOR ~/.squirrel/config.toml`
+3. In Copilot Chat: `/sq-where-am-i`
 
 ---
 

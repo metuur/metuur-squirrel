@@ -113,6 +113,106 @@ def _group_manifest_entries(entries: list[dict]) -> list[dict]:
 # Claude JSONL fallback
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _parse_copilot_jsonl_row(line: str) -> "dict | None":
+    """Extract file-path and project-hint from a Copilot session-state JSONL row.
+
+    Returns None if the row is empty, malformed, or has an unrecognised schema.
+    Only the two fields /sq-recover needs are extracted; everything else is ignored.
+    """
+    line = line.strip()
+    if not line:
+        return None
+    try:
+        row = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(row, dict):
+        return None
+    # Copilot session-state rows may use different field names across versions.
+    # Try the most likely candidates; skip the row if neither is found.
+    file_path = (
+        row.get("file")
+        or row.get("filePath")
+        or row.get("file_path")
+        or ""
+    )
+    project = (
+        row.get("project")
+        or row.get("project_tag")
+        or row.get("projectTag")
+        or row.get("workspace")
+        or ""
+    )
+    if not file_path and not project:
+        return None
+    return {"file": file_path, "project": project}
+
+
+def _read_copilot_jsonl_sessions(cutoff: datetime.datetime) -> list[dict]:
+    """Scan $COPILOT_HOME/session-state/ for recently modified JSONL files."""
+    import os
+    session_state_dir = (
+        pathlib.Path(os.environ.get("COPILOT_HOME", "~/.copilot")).expanduser()
+        / "session-state"
+    )
+    if not session_state_dir.exists():
+        return []
+
+    sessions = []
+    cutoff_ts = cutoff.timestamp()
+
+    for jsonl in session_state_dir.glob("*.jsonl"):
+        try:
+            if jsonl.stat().st_mtime < cutoff_ts:
+                continue
+        except OSError:
+            continue
+
+        files_edited = []
+        project = ""
+        last_ts = None
+        first_ts = None
+        line_count = 0
+        try:
+            for line in jsonl.read_text(encoding="utf-8", errors="replace").splitlines():
+                parsed = _parse_copilot_jsonl_row(line)
+                if parsed is None:
+                    continue
+                line_count += 1
+                fp = parsed.get("file", "")
+                if fp and fp not in files_edited:
+                    files_edited.append(fp)
+                proj = parsed.get("project", "")
+                if proj and not project:
+                    project = proj
+                # Copilot rows may not carry a timestamp field; use file mtime.
+        except OSError:
+            continue
+
+        if line_count == 0:
+            continue
+
+        try:
+            mtime = jsonl.stat().st_mtime
+        except OSError:
+            mtime = 0.0
+
+        ts_str = datetime.datetime.utcfromtimestamp(mtime).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        sessions.append({
+            "source": "copilot_jsonl",
+            "session_id": jsonl.stem,
+            "cwd": project,
+            "jsonl_path": str(jsonl),
+            "files_edited": files_edited,
+            "first_seen": ts_str,
+            "last_seen": ts_str,
+            "entry_count": line_count,
+        })
+
+    return sessions
+
+
 def _read_claude_jsonl_sessions(cutoff: datetime.datetime) -> list[dict]:
     """Scan ~/.claude/projects/ for recently modified JSONL session files."""
     projects_dir = pathlib.Path("~/.claude/projects").expanduser()
@@ -228,7 +328,9 @@ def scan_sessions(vault: pathlib.Path, max_age_hours: int, config: dict) -> list
     sessions = _group_manifest_entries(manifest_entries)
 
     if not sessions:
-        sessions = _read_claude_jsonl_sessions(cutoff)
+        claude_sessions = _read_claude_jsonl_sessions(cutoff)
+        copilot_sessions = _read_copilot_jsonl_sessions(cutoff)
+        sessions = claude_sessions + copilot_sessions
 
     sessions = _filter_by_environment(sessions, config)
     sessions.sort(key=lambda s: s.get("last_seen", ""), reverse=True)
