@@ -159,7 +159,7 @@ Mutex tags:
     - `launchctl unload && launchctl load` → backend stderr log contains no "dev mode" warning.
   - skip TDD; verify block is the test (template substitution).
 
-- [ ] **5.3** Tauri reads `~/.squirrel/launchd-token` when port is bound and file exists (deps: 1.1, 4.1, 5.1, est: ~30m)
+- [x] **5.3** Tauri reads `~/.squirrel/launchd-token` when port is bound and file exists (deps: 1.1, 4.1, 5.1, est: ~30m)
   - acceptance:
     - R-5.4 — When `spawn_or_adopt` finds the port bound AND `~/.squirrel/launchd-token` exists AND passes the R-2.3 file checks, use that token (instead of the in-memory runtime token) for the handshake probe.
     - R-5.5 — File exists but fails checks → emit `handshake-refused` with `{"cause": "LaunchdTokenInvalid"}` and refuse adoption.

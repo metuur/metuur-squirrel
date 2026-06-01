@@ -74,6 +74,18 @@ pub(crate) enum HandshakeOutcome {
     RefusedUnknown,
     /// connect/send/read exceeded the 3s budget (R-4.6).
     RefusedTimeout,
+    /// `~/.squirrel/launchd-token` exists but failed the R-2.3 file checks, so
+    /// it could not be used for the probe (R-5.5). Set before any probe runs.
+    RefusedLaunchdToken,
+}
+
+/// Why a present `~/.squirrel/launchd-token` could not be trusted (R-5.5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LaunchdTokenError {
+    BadMode,
+    BadOwner,
+    Malformed,
+    Unreadable,
 }
 
 /// Map a refusal outcome to the typed banner cause emitted to the React shell
@@ -84,6 +96,7 @@ fn handshake_refusal_cause(o: HandshakeOutcome) -> Option<&'static str> {
         HandshakeOutcome::RefusedDev => Some("DevModeDetected"),
         HandshakeOutcome::Refused401 | HandshakeOutcome::RefusedUnknown => Some("UnknownProcess"),
         HandshakeOutcome::RefusedTimeout => Some("NotResponding"),
+        HandshakeOutcome::RefusedLaunchdToken => Some("LaunchdTokenInvalid"),
     }
 }
 
@@ -126,6 +139,7 @@ fn handshake_outcome_label(o: HandshakeOutcome) -> &'static str {
         HandshakeOutcome::Refused401 => "refused_401",
         HandshakeOutcome::RefusedUnknown => "refused_unknown",
         HandshakeOutcome::RefusedTimeout => "refused_timeout",
+        HandshakeOutcome::RefusedLaunchdToken => "refused_launchd_token",
     }
 }
 
@@ -301,12 +315,66 @@ fn ct_eq(a: &[u8], b: &[u8]) -> bool {
     a.ct_eq(b).into()
 }
 
+/// Path to the launchd-provisioned token (`~/.squirrel/launchd-token`).
+fn launchd_token_path() -> std::path::PathBuf {
+    crate::logging::squirrel_dir().join("launchd-token")
+}
+
+/// R-5.4/R-5.5: read the launchd token if present. `Ok(None)` means the file is
+/// absent — a legitimate signal to fall back to the in-memory runtime token.
+/// `Err` means the file is present but failed the R-2.3 checks (mode 0600,
+/// owner == euid, 64 hex chars), which must refuse adoption rather than probe.
+fn read_launchd_token() -> Result<Option<String>, LaunchdTokenError> {
+    read_launchd_token_at(&launchd_token_path())
+}
+
+fn read_launchd_token_at(path: &std::path::Path) -> Result<Option<String>, LaunchdTokenError> {
+    use std::os::unix::fs::MetadataExt;
+    let meta = match std::fs::metadata(path) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err(LaunchdTokenError::Unreadable),
+    };
+    if meta.mode() & 0o777 != 0o600 {
+        return Err(LaunchdTokenError::BadMode);
+    }
+    // SAFETY: geteuid() is always-safe and never fails.
+    let euid = unsafe { libc::geteuid() };
+    if meta.uid() != euid {
+        return Err(LaunchdTokenError::BadOwner);
+    }
+    let raw = std::fs::read_to_string(path).map_err(|_| LaunchdTokenError::Unreadable)?;
+    let token = raw.trim_end_matches('\n');
+    if token.len() != 64 || !token.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(LaunchdTokenError::Malformed);
+    }
+    Ok(Some(token.to_string()))
+}
+
 pub(crate) fn spawn_or_adopt<R: Runtime>(
     app: &AppHandle<R>,
 ) -> (SupervisionMode, Option<CommandChild>) {
     if port_in_use(BACKEND_PORT) {
         // R-4.1: something is on 3939. Don't blindly adopt — prove it's ours.
-        let token = app.state::<crate::RuntimeToken>().0.clone();
+        // R-5.4/R-5.5: prefer the launchd-provisioned token when the file is
+        // present and valid; a present-but-invalid file refuses immediately.
+        let token = match read_launchd_token() {
+            Ok(Some(launchd)) => launchd,
+            Ok(None) => app.state::<crate::RuntimeToken>().0.clone(),
+            Err(e) => {
+                tracing::warn!(error = ?e, "launchd-token present but invalid; refusing adoption");
+                tracing::info!(
+                    target: "handshake",
+                    outcome = handshake_outcome_label(HandshakeOutcome::RefusedLaunchdToken),
+                    elapsed_ms = 0u64,
+                    "handshake_attempt"
+                );
+                return (
+                    SupervisionMode::RefusedAdoption(HandshakeOutcome::RefusedLaunchdToken),
+                    None,
+                );
+            }
+        };
         let started = Instant::now();
         let outcome = probe_handshake(&token);
         tracing::info!(
@@ -671,7 +739,63 @@ mod tests {
             Some("UnknownProcess")
         );
         assert_eq!(handshake_refusal_cause(HandshakeOutcome::RefusedTimeout), Some("NotResponding"));
+        assert_eq!(
+            handshake_refusal_cause(HandshakeOutcome::RefusedLaunchdToken),
+            Some("LaunchdTokenInvalid")
+        );
         assert_eq!(handshake_refusal_cause(HandshakeOutcome::Adopted), None);
+    }
+
+    // ── launchd-token reading (R-5.4, R-5.5) ─────────────────────────────────
+
+    #[cfg(unix)]
+    fn write_mode(path: &std::path::Path, content: &str, mode: u32) {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::write(path, content).unwrap();
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn launchd_token_absent_is_ok_none() {
+        let dir = std::env::temp_dir().join(format!("sq-lt-absent-{}", std::process::id()));
+        let path = dir.join("launchd-token");
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(read_launchd_token_at(&path), Ok(None));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn launchd_token_valid_is_ok_some() {
+        let dir = std::env::temp_dir().join(format!("sq-lt-valid-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("launchd-token");
+        let tok = "a".repeat(64);
+        write_mode(&path, &format!("{tok}\n"), 0o600); // trailing newline tolerated
+        assert_eq!(read_launchd_token_at(&path), Ok(Some(tok)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn launchd_token_bad_mode_is_err() {
+        let dir = std::env::temp_dir().join(format!("sq-lt-mode-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("launchd-token");
+        write_mode(&path, &"a".repeat(64), 0o644);
+        assert_eq!(read_launchd_token_at(&path), Err(LaunchdTokenError::BadMode));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn launchd_token_malformed_is_err() {
+        let dir = std::env::temp_dir().join(format!("sq-lt-bad-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("launchd-token");
+        write_mode(&path, "not-hex-and-too-short", 0o600);
+        assert_eq!(read_launchd_token_at(&path), Err(LaunchdTokenError::Malformed));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
