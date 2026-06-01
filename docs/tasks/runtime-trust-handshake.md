@@ -135,7 +135,7 @@ Mutex tags:
 
 ## Unit 5: Launchd-supervised path
 
-- [ ] **5.1** Installer mints `~/.squirrel/launchd-token` with chmod 0600 (deps: 2.1, est: ~30m)
+- [x] **5.1** Installer mints `~/.squirrel/launchd-token` with chmod 0600 (deps: 2.1, est: ~30m)
   - acceptance:
     - R-5.1 — Generate 32 bytes from `openssl rand -hex 32`, write to `~/.squirrel/launchd-token`, `chmod 600`, owner = `$USER`. Token value NEVER printed to stdout/stderr.
     - R-5.2 — If file already exists at install time AND passes R-2.3 checks, preserve it; if it exists but fails R-2.3 checks, exit non-zero with a clear message.
