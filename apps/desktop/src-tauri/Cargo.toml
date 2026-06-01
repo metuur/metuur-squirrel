@@ -39,6 +39,11 @@ dirs = "5"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 tokio = { version = "1", features = ["time"] }
+# Runtime Trust Handshake (docs/ears/runtime-trust-handshake.md, R-1.1, R-2.7).
+# rand: CSPRNG via OsRng for the per-launch token.
+# subtle: constant-time token comparison on the adoption probe (Unit 4).
+rand = "0.8"
+subtle = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"

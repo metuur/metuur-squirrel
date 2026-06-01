@@ -12,6 +12,12 @@ use tauri::Manager;
 /// registers its listener, causing the event to be silently dropped.
 pub(crate) struct PendingDeepLink(pub(crate) Mutex<Option<deep_link::FocusProjectPayload>>);
 
+/// Per-launch shared-secret token (Runtime Trust Handshake, R-1.1/R-1.2). Held
+/// in process memory only — never written to disk by the Tauri runtime. Passed
+/// to the spawned sidecar via `--token` (R-1.3) and used to authenticate the
+/// adoption probe against a backend already on port 3939 (Unit 4).
+pub(crate) struct RuntimeToken(pub(crate) String);
+
 #[tauri::command]
 fn drain_pending_deep_link(
     state: tauri::State<PendingDeepLink>,
@@ -75,6 +81,9 @@ pub fn run() {
         .manage(PendingDeepLink(Mutex::new(None)))
         .manage(Mutex::new(tray_alerts::TauriNotificationState::new()))
         .manage(Mutex::new(backend_supervisor::SupervisorState::new()))
+        // R-1.1: mint the per-launch runtime token before any supervisor code
+        // runs, so spawn_or_adopt can read it from managed state.
+        .manage(RuntimeToken(backend_supervisor::mint_runtime_token()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())

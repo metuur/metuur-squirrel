@@ -41,6 +41,23 @@ const MAX_RESPAWNS_PER_HOUR: u32 = 5;
 const STRIKES_BEFORE_ERROR: u32 = 3;
 const SIDECAR_NAME: &str = "squirrel-backend";
 
+/// Mint a per-launch shared-secret token used to authenticate the Tauri shell
+/// to the backend it spawns or adopts (Runtime Trust Handshake, R-1.1, R-1.2,
+/// R-1.5). Returns 64 lowercase ASCII hex characters drawn from 32 bytes of
+/// OS-provided entropy. Caller is expected to store the value in `RuntimeToken`
+/// process state; this function does not persist it.
+pub(crate) fn mint_runtime_token() -> String {
+    use rand::RngCore;
+    use std::fmt::Write;
+    let mut bytes = [0u8; 32];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    let mut s = String::with_capacity(64);
+    for b in bytes {
+        write!(s, "{:02x}", b).expect("writing to a String never fails");
+    }
+    s
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SupervisionMode {
     Adopted,
@@ -352,6 +369,24 @@ async fn probe_health(client: &reqwest::Client) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Runtime Trust Handshake token minting (R-1.1, R-1.5) ────────────────
+
+    #[test]
+    fn mint_runtime_token_is_64_lowercase_hex_chars() {
+        let t = mint_runtime_token();
+        assert_eq!(t.len(), 64, "token must be 64 hex chars (32 bytes)");
+        assert!(
+            t.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+            "token must be lowercase ASCII hex only, got {t:?}"
+        );
+    }
+
+    #[test]
+    fn mint_runtime_token_two_calls_differ() {
+        // CSPRNG draw — collision probability is 2^-256, effectively never.
+        assert_ne!(mint_runtime_token(), mint_runtime_token());
+    }
 
     #[test]
     fn supervisor_state_starts_in_failed_mode_with_no_child() {
