@@ -27,153 +27,154 @@ pnpm install
 For the Tauri path you also need Rust + `xcode-select --install` (for the
 `codesign` and `hdiutil` CLIs used by Tauri's bundler).
 
-## Building the Tauri `.app`
+## Building the Tauri `.app` (signed universal)
+
+Export your signing credentials in your shell profile or a gitignored `.envrc`
+(never commit these values):
+
+```bash
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+export APPLE_ID="your-apple-id@example.com"
+export APPLE_PASSWORD="xxxx-xxxx-xxxx-xxxx"   # app-specific password
+export APPLE_TEAM_ID="TEAMID"                  # 10-char team ID
+```
+
+Then build from `apps/desktop/`:
 
 ```bash
 cd apps/desktop
-pnpm tauri build
+pnpm tauri:build
 ```
 
-Tauri runs in this order:
+`pnpm tauri:build` is a wrapper (`apps/desktop/scripts/tauri-build.sh`) that:
+1. Checks the keychain for a Developer ID Application cert
+2. Checks the required env vars (`APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`)
+3. Invokes `pnpm tauri build -- --target universal-apple-darwin`
+
+Tauri then runs in this order:
 1. `pnpm build` (desktop SPA → `dist/`)
-2. `pnpm tauri:prebuild-backend` (PyInstaller → `src-tauri/bin/squirrel-backend-<TARGET_TRIPLE>`)
-3. `cargo build --release`
-4. Bundle: `.app` → `.dmg`
+2. `pnpm tauri:prebuild-backend` — PyInstaller builds arm64 + x86_64 slices,
+   strips extended attributes, lipo's them into a universal Mach-O, places it
+   at `src-tauri/bin/squirrel-backend-<host-triple>`
+3. `cargo build --release` (universal Rust binary)
+4. Bundle: sign `.app` (including the sidecar) → notarize → staple → package `.dmg`
 
 Artifacts land at:
-- `apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app`
-- `apps/desktop/src-tauri/target/release/bundle/dmg/Squirrel_<version>_<arch>.dmg`
+- `apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Squirrel.app`
+- `apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/Squirrel_<version>_universal.dmg`
 
-## Current state — UNSIGNED distribution
+Both are signed and stapled. The build emits a `signed: <path> identity=<authority> stapled=yes`
+line per artifact on completion.
 
-The Tauri `.app` is **not** code-signed or notarized. End users hit a
-Gatekeeper warning on first launch and must use the right-click → Open
-bypass documented in [`install.md`](install.md). This is intentional for
-now — Apple Developer Program ($99/year) hasn't been set up.
+**Dev iteration (no signing):** omit `APPLE_SIGNING_IDENTITY` (or leave it unset) and run
+`pnpm tauri:build`. The wrapper emits a `WARN` line and produces an unsigned `.app` — suitable
+for local testing only. End users will see a Gatekeeper warning.
 
-What you LOSE without signing:
-- "Just works" UX for non-technical end users
-- Auto-updates over the air (Tauri's updater requires signed bundles)
-- Distribution via App Store (separate signing tier anyway)
+### Verify a signed build
 
-What you DON'T lose:
-- The app runs after the one-time bypass — all features work
-- The bundled backend + supervisor + tray are unaffected
+```bash
+# Signing chain
+codesign -dv --verbose=4 apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Squirrel.app
+# Notarization staple
+xcrun stapler validate Squirrel.app
+# Gatekeeper assessment
+spctl --assess --type execute --verbose Squirrel.app
+# Expected: accepted source=Notarized Developer ID
+```
 
-## Future — adding Developer ID signing + notarization
+Also verify the embedded sidecar:
 
-When you're ready to ship to non-technical end users, this is the
-checklist. Estimated effort: ~2 hours of setup once, zero touch per
-release after.
+```bash
+codesign -dv --verbose=4 Squirrel.app/Contents/Resources/squirrel-backend-*-apple-darwin
+# Should show the same Developer ID Application authority as the .app
+```
+
+## Building the installer DMG (signed universal)
+
+```bash
+./scripts/build-dmg.sh
+```
+
+With `APPLE_SIGNING_IDENTITY` set (plus `APPLE_ID`, `APPLE_PASSWORD`,
+`APPLE_TEAM_ID`), the script:
+
+1. Builds universal (arm64 + x86_64) `squirrel` CLI and `squirrel-backend`
+   via PyInstaller (Rosetta for the x86_64 slice on Apple Silicon)
+2. Strips extended attributes (`xattr -cr`) before signing
+3. Signs both staged binaries with `codesign --force --options runtime --timestamp`
+4. Verifies both signatures (`codesign --verify --strict --deep`) before packaging
+5. Creates the DMG via `hdiutil`
+6. Signs the DMG
+7. Notarizes via `xcrun notarytool submit --wait`; fails the build on any non-Accepted verdict
+8. Staples via `xcrun stapler staple`
+9. Asserts Gatekeeper state via `spctl --assess`
+
+Output: `squirrel-installer-macos.dmg` — signed, notarized, stapled.
+
+**Dev iteration:** omit `APPLE_SIGNING_IDENTITY` and run `./scripts/build-dmg.sh`. All
+signing/notarization steps are skipped; the script emits
+`WARN: APPLE_SIGNING_IDENTITY unset — producing unsigned installer (dev iteration mode)`.
+The resulting DMG is unsigned and `installer/install.sh` will refuse to install from it.
+
+## One-time developer setup (signing credentials)
 
 ### 1. Apple Developer Program enrollment ($99/year)
 
 - Enroll at https://developer.apple.com/programs/
 - Individual is fine (no D-U-N-S number, faster approval — ~24h)
-- This gives you the right to issue Developer ID certificates
+- Grants the right to issue Developer ID certificates
 
 ### 2. Create a "Developer ID Application" certificate
 
-This is the cert type for **outside-the-App-Store** distribution (which is
-what Squirrel does). NOT the Mac App Store / Mac Installer cert types.
+Outside-the-App-Store distribution requires this specific cert type.
 
 - Easiest path: Xcode → Settings → Accounts → your Apple ID → Manage
   Certificates → `+` → **Developer ID Application**
 - Alternative: developer.apple.com/account/resources/certificates → `+` →
-  **Developer ID Application** → Continue → upload a CSR generated by
-  Keychain Access → download the resulting `.cer` → double-click to
-  install into Keychain
-- Confirm it's there: `security find-identity -v -p codesigning` should
-  list a line like:
+  **Developer ID Application** → upload a CSR from Keychain Access
+- Confirm: `security find-identity -v -p codesigning` should list
   `1) ABCD1234... "Developer ID Application: Your Name (TEAMID)"`
 
-The 10-character `TEAMID` (the part in parens) is your Apple Developer
-team identifier. You'll need it again for notarization.
+Copy the 10-character `TEAMID` (the part in parentheses) to your password manager.
 
 ### 3. App-specific password for `notarytool`
 
-`notarytool` is Apple's CLI for submitting bundles for notarization. It
-authenticates via an app-specific password (separate from your Apple ID
-password — Apple's recommendation, prevents leaks of your main credential).
+- Go to https://appleid.apple.com → Sign-In and Security → App-Specific Passwords → `+`
+- Label it `tauri-notarize`
+- Copy the generated password (`xxxx-xxxx-xxxx-xxxx`) to your password manager
 
-- Go to https://appleid.apple.com → Sign-In and Security → App-Specific
-  Passwords → `+`
-- Label it `tauri-notarize` (or similar)
-- Copy the generated password — looks like `xxxx-xxxx-xxxx-xxxx`. You
-  cannot retrieve it again, so paste it into a password manager now.
+### 4. Export credentials
 
-### 4. Wire it into Tauri
-
-Edit `apps/desktop/src-tauri/tauri.conf.json`:
-
-```json
-"bundle": {
-  "macOS": {
-    "minimumSystemVersion": "12.0",
-    "signingIdentity": "Developer ID Application: Your Name (TEAMID)"
-  }
-}
-```
-
-Then set environment variables when building (don't commit these — put
-them in a `.envrc` or shell profile):
+Create a gitignored `.envrc` or add to your shell profile:
 
 ```bash
+# .envrc (never commit this file)
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 export APPLE_ID="your-apple-id@example.com"
-export APPLE_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # the app-specific password
-export APPLE_TEAM_ID="TEAMID"                 # the 10-char team id
+export APPLE_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+export APPLE_TEAM_ID="TEAMID"
 ```
 
-Now `pnpm tauri build` will:
-1. Sign `Squirrel.app` AND every Mach-O binary inside `Contents/Resources/`
-   (including our PyInstaller sidecar — Tauri handles this automatically
-   because the sidecar is declared in `bundle.externalBin`)
-2. Submit the `.app` to Apple's notary service via `notarytool submit`
-3. Wait for the verdict (usually 1–5 minutes)
-4. Staple the notarization ticket to the `.app` (`xcrun stapler staple`)
-
-The resulting `.dmg` opens cleanly on any Mac with no Gatekeeper warning.
-
-### 5. Verify signing on a different Mac (recommended)
-
-After the first signed build, copy the `.dmg` to a Mac you haven't built
-on (or use a fresh user account). Install. Double-click. If you see no
-warning, you're done. If you still see Gatekeeper complaints:
+Verify:
 
 ```bash
-# Inspect the signing chain
-codesign -dv --verbose=4 /Applications/Squirrel.app
-# Confirm notarization staple is attached
-xcrun stapler validate /Applications/Squirrel.app
-# Confirm Gatekeeper assessment
-spctl --assess --type execute --verbose /Applications/Squirrel.app
+echo "$APPLE_TEAM_ID" | wc -c          # should print 11 (10 chars + newline)
+security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID"
 ```
 
-The last command should print: `accepted source=Notarized Developer ID`.
+### 5. Common gotchas
 
-### 6. Common gotchas
-
-- **Two Mach-O binaries to sign** — Squirrel.app itself AND
-  `squirrel-backend-<TARGET_TRIPLE>` inside `Contents/Resources/`. If the
-  sidecar isn't signed with the same identity, Gatekeeper rejects the
-  whole bundle. Tauri's bundler handles this correctly when the sidecar
-  is declared via `externalBin`, but verify with `codesign -dv` on the
-  inner binary if you see "code object is not signed at all" errors.
-- **Hardened runtime + entitlements** — Apple requires `--options=runtime`
-  for notarization. Tauri sets this by default. If you start using
-  APIs that need entitlements (e.g. camera, microphone), declare them in
-  a `.entitlements` file referenced from `tauri.conf.json`'s `macOS`
-  block.
-- **PyInstaller binaries and ad-hoc signing** — PyInstaller produces an
-  ad-hoc signed binary by default (signing identity `-`). Tauri's bundler
-  re-signs it with your Developer ID during bundling, but if you ever see
-  "resource fork, Finder information, or similar detritus not allowed"
-  errors, run `xattr -cr <binary>` on the PyInstaller output before
-  Tauri picks it up. (`xattr -cr` strips extended attributes that
-  PyInstaller sometimes adds and that codesign refuses.)
-- **CI environment** — for headless signing (GitHub Actions etc.), export
-  the certificate as a base64 `.p12` and import into a temporary keychain
-  at the start of the workflow. See Tauri's signing CI guide.
+- **PyInstaller extended attributes** — `xattr -cr` runs automatically on every slice
+  before `codesign`. If you ever see "resource fork, Finder information, or similar
+  detritus not allowed", re-run the build script; it cleans up automatically.
+- **Two binaries to sign in the Tauri path** — the `.app` itself and
+  `squirrel-backend-<TARGET_TRIPLE>` inside `Contents/Resources/`. Tauri's bundler
+  re-signs the sidecar automatically when it's declared via `externalBin`.
+- **Hardened runtime** — required for notarization. Tauri sets `--options=runtime`
+  by default; `build-dmg.sh` uses `--options runtime` explicitly. No `.entitlements`
+  file is needed for the current capability set.
+- **CI (Phase 2)** — headless signing via GitHub Actions is a separate change.
+  See `docs/tasks/app-signing-and-notarization.md` Unit 7 for scope.
 
 ## Auto-updates
 

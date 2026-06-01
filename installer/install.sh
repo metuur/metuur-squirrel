@@ -156,7 +156,13 @@ if (( IS_UPGRADE )) && [[ -f "$PLIST_PATH" ]]; then
 fi
 
 # ─── 3. Install CLI binary ────────────────────────────────────────────────────
+# R-4.1: verify signature before copying; R-4.4: log success; R-4.3/4.6: abort on failure
 info "Installing squirrel CLI..."
+if ! codesign --verify --strict --deep "$BIN_DIR/squirrel" 2>/dev/null; then
+  printf 'error: codesign verification failed for squirrel — refusing to install. Re-download the DMG from https://github.com/metuur/squirrel/releases.\n' >&2
+  exit 1
+fi
+ok "codesign verified: squirrel"
 [[ -f "$CLI_BIN" ]] && { OLD_CLI_BAK="${CLI_BIN}.bak"; cp "$CLI_BIN" "$OLD_CLI_BAK"; }
 cp "$BIN_DIR/squirrel" "${CLI_BIN}.new"
 mv "${CLI_BIN}.new" "$CLI_BIN"
@@ -164,7 +170,13 @@ chmod +x "$CLI_BIN"
 ok "squirrel → $CLI_BIN"
 
 # ─── 4. Install backend binary ───────────────────────────────────────────────
+# R-4.2: verify signature before copying; R-4.4: log success; R-4.3/4.6: abort on failure
 info "Installing squirrel-backend..."
+if ! codesign --verify --strict --deep "$BIN_DIR/squirrel-backend" 2>/dev/null; then
+  printf 'error: codesign verification failed for squirrel-backend — refusing to install. Re-download the DMG from https://github.com/metuur/squirrel/releases.\n' >&2
+  exit 1
+fi
+ok "codesign verified: squirrel-backend"
 [[ -f "$BACKEND_BIN" ]] && { OLD_BACKEND_BAK="${BACKEND_BIN}.bak"; cp "$BACKEND_BIN" "$OLD_BACKEND_BAK"; }
 cp "$BIN_DIR/squirrel-backend" "${BACKEND_BIN}.new"
 mv "${BACKEND_BIN}.new" "$BACKEND_BIN"

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:prebuild-backend": "bash scripts/build-backend-sidecar.sh",
+    "tauri:build": "bash scripts/tauri-build.sh",
     "test": "vitest run"
   },
   "dependencies": {
