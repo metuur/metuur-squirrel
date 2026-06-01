@@ -88,6 +88,11 @@ ok "backend SPA present at apps/backend/app/dist/"
 mkdir -p "$PYINSTALLER_DIST" "$PYINSTALLER_BUILD"
 
 info "running pyinstaller..."
+# Silence the `pkg_resources is deprecated as an API` UserWarning. It originates
+# in PyInstaller's own dependency (altgraph importing pkg_resources), not in our
+# code, and isn't actionable here. The filter is scoped to this invocation and
+# matched by message+category so it can't mask warnings from server.py itself.
+PYTHONWARNINGS="ignore:pkg_resources is deprecated:UserWarning" \
 pyinstaller \
   --onefile \
   --name squirrel-backend \

@@ -44,7 +44,6 @@ pub mod ids {
     pub const RADAR_HEADER: &str = "radar_header";
     pub const REMINDER_HEADER: &str = "reminder_header";
     pub const REMINDER_PREFIX: &str = "reminder:";
-    pub const NO_RADAR: &str = "no_radar";
     pub const VIEW_NOTIFICATIONS: &str = "view_notifications";
     /// Shown only when the backend_supervisor refused adoption (Runtime Trust
     /// Handshake, R-6.1). Opens the dashboard and re-emits the refusal cause so
