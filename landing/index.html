@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Squirrel — task management for attention-hyperactive minds</title>
+<meta name="description" content="Squirrel is a local-first task companion for attention-hyperactive minds. Capture the scatter, chunk the overwhelm, and pick up the trail after every distraction. Lives in your menu bar and your terminal." />
+<link rel="icon" href="squirrel.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400..600&family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ambient warm glow -->
+<div class="ambient" aria-hidden="true">
+  <span class="blob blob-1"></span>
+  <span class="blob blob-2"></span>
+  <span class="blob blob-3"></span>
+  <span class="grain"></span>
+</div>
+
+<!-- ── Nav ─────────────────────────────────────────────── -->
+<header id="hdr">
+  <nav>
+    <a class="brand" href="#top">
+      <span class="chip"><img src="squirrel.svg" alt="Squirrel" /></span>
+      <span class="bn"><span class="nm">Squirrel</span><span class="sub">for attention-hyperactive minds</span></span>
+    </a>
+    <div class="navlinks">
+      <a href="#why">Why</a>
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#privacy">Privacy</a>
+    </div>
+    <div class="navcta">
+      <a href="#how" class="btn btn-ghost ghost-sm">See how it works</a>
+      <a href="#download" class="btn btn-primary">Download</a>
+    </div>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ── Hero ──────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+
+      <div class="hero-copy">
+        <span class="eyebrow">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.7L18.6 9l-4.7 1.9L12 15.6 10.1 10.9 5.4 9l4.7-1.3L12 3z"/></svg></span>
+          <span>LOCAL-FIRST · ATTENTION-HYPERACTIVE</span>
+        </span>
+
+        <h1>
+          <span class="ln">Your brain jumps.</span>
+          <span class="ln">Squirrel keeps</span>
+          <span class="ln">the <span class="hl">trail.</span></span>
+        </h1>
+
+        <p class="lede">A calm, local-first focus companion for attention that scatters — capture the noise, break the overwhelm into chunks, and pick up exactly where you left off after every distraction.</p>
+
+        <div class="cta">
+          <a href="#download" class="btn btn-primary btn-lg">Download for Mac
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="#how" class="btn btn-ghost btn-lg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
+            See how it works
+          </a>
+        </div>
+
+        <div class="trust">
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg> Private by design</span>
+          <span class="sep"></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l3 3 3-3v6"/></svg> Plain Markdown vault</span>
+          <span class="sep"></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z"/></svg> Works with your agent</span>
+        </div>
+      </div>
+
+      <!-- Product: light app window glowing on dark, with post-its -->
+      <div class="device">
+        <span class="glow" aria-hidden="true"></span>
+
+        <div class="postit p-cap">captured ✓<small>filed to @home</small></div>
+        <div class="postit p-chunk">chunk 2 / 5<small>~20 min · doable</small></div>
+
+        <div class="winlight">
+          <div class="wlights"><i></i><i></i><i></i></div>
+          <div class="wbody">
+            <div class="day">TODAY · SUN, MAY 31</div>
+            <h3>Your focus is set.</h3>
+
+            <div class="lrow peach">
+              <span class="lico terra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span>
+              <div class="lt"><div class="ltt">Pasaportes vigentes</div><div class="lss">VISA-FAMILIA · today</div></div>
+              <span class="lpill am">AM</span>
+            </div>
+
+            <div class="lrow">
+              <span class="lico sage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h7"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
+              <div class="lt"><div class="ltt">Declaración impuestos 2025</div><div class="lss">pressing · 45d overdue</div></div>
+              <span class="lpill due">due</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Problem ───────────────────────────────────────── -->
+  <section class="section" id="why">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span><span>THE ATTENTION TAX</span></span>
+        <h2>Most task apps assume you'll <span class="hl">remember to come back.</span></h2>
+        <p>Squirrel is built for the way attention actually behaves — it does the remembering so you don't have to.</p>
+      </div>
+
+      <div class="prob-grid">
+        <div class="prob glass reveal d1"><div class="ic" style="background:var(--amber-soft);color:var(--amber-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg></div><h3>"Wait, where was I?"</h3><p>One ping and the whole mental stack is gone. Rebuilding it costs 20 minutes you didn't have.</p></div>
+        <div class="prob glass reveal d2"><div class="ic" style="background:var(--sage-soft);color:var(--sage)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l14 14M19 5 5 19"/><circle cx="12" cy="12" r="9"/></svg></div><h3>The task won't start</h3><p>It's too big to look at. So it sits, and it stares, and the guilt grows louder than the task.</p></div>
+        <div class="prob glass reveal d3"><div class="ic" style="background:var(--amber-soft);color:var(--amber-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></div><h3>Ideas everywhere</h3><p>Sticky notes, three apps, the back of a receipt. Capture is easy — finding it again is not.</p></div>
+        <div class="prob glass reveal d4"><div class="ic" style="background:var(--rose-soft);color:var(--rose)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg></div><h3>Deadlines ambush you</h3><p>"Due Friday" feels infinitely far away — right up until it's Friday at 4pm.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Features ──────────────────────────────────────── -->
+  <section class="section" id="features">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z"/></svg></span><span>WHAT IT DOES</span></span>
+        <h2>A companion that <span class="hl">catches what you drop.</span></h2>
+        <p>Squirrel doesn't nag you to be more disciplined. It handles the remembering, the chunking, and the context-rebuilding so your attention is free for the work.</p>
+      </div>
+
+      <div class="feat-grid">
+        <div class="feat glass reveal d1"><div class="ic" style="background:var(--amber-soft);color:var(--amber-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div><h3>Pick up the trail</h3><p>Pulled away? One command reloads your last session — what you were doing, why, and the exact next step — so re-entry takes seconds.</p><code>/sq-start</code></div>
+        <div class="feat glass reveal d2"><div class="ic" style="background:var(--sage-soft);color:var(--sage)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13H11l-1 9 8.5-11H12l1-9z"/></svg></div><h3>Capture the scatter</h3><p>Brain-dump a thought the instant it appears, mid-task, without losing focus. It lands in the right pile automatically.</p><code>/sq-capture</code></div>
+        <div class="feat glass reveal d3"><div class="ic" style="background:var(--amber-soft);color:var(--amber-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.5 15.5M20 20L8.5 8.5"/></svg></div><h3>Chunk the overwhelm</h3><p>Hand Squirrel a task that feels impossible. It splits it into 20-minute pieces and hands you the very first one.</p><code>/sq-chunk</code></div>
+        <div class="feat glass reveal d1"><div class="ic" style="background:var(--sage-soft);color:var(--sage)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/></svg></div><h3>Guard the hyperfocus</h3><p>When you finally lock in, Squirrel protects the flow — and nudges you toward breaks before the day disappears.</p><code>hyperfocus-guardian</code></div>
+        <div class="feat glass reveal d2"><div class="ic" style="background:var(--rose-soft);color:var(--rose)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div><h3>Deadlines that surface</h3><p>Due dates rise to the top before they bite. Squirrel reads the urgency and tells you what genuinely can't wait.</p><code>/sq-deadlines</code></div>
+        <div class="feat glass reveal d3"><div class="ic" style="background:var(--amber-soft);color:var(--amber-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></div><h3>Instant briefs</h3><p>Need to tell a lead where things stand? Get a clean six-section brief of every project in seconds.</p><code>/sq-brief</code></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How it works ──────────────────────────────────── -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span>THE LOOP</span></span>
+        <h2>Three moves. <span class="hl">That's the whole system.</span></h2>
+        <p>No elaborate methodology to abandon by Tuesday. Just a rhythm loose enough to actually keep.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step glass reveal d1">
+          <span class="n">01</span><h3>Dump it</h3>
+          <p>Whatever's rattling around — a task, a worry, a half-idea — throw it at Squirrel and keep moving.</p>
+          <div class="term"><span class="pr">›</span> /sq-capture<br><span class="cm"># "email the landlord re: lease"</span><br>→ filed under <span class="ok">@home</span> ✓</div>
+        </div>
+        <div class="step glass reveal d2">
+          <span class="n">02</span><h3>Break it down</h3>
+          <p>When something feels too heavy to start, ask Squirrel to slice it into a first step you can't say no to.</p>
+          <div class="term"><span class="pr">›</span> /sq-chunk "quarterly report"<br><span class="cm"># 5 chunks · ~20 min each</span><br>→ start: <span class="ok">open last quarter's doc</span></div>
+        </div>
+        <div class="step glass reveal d3">
+          <span class="n">03</span><h3>Re-enter</h3>
+          <p>Distracted? Tomorrow? Next week? One command rebuilds the full picture and points you at the next thing.</p>
+          <div class="term"><span class="pr">›</span> /sq-start report<br><span class="cm"># last touched 2 days ago</span><br>→ you're on <span class="ok">chunk 3 of 5</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Privacy / local-first ─────────────────────────── -->
+  <section class="section" id="privacy">
+    <div class="wrap local">
+      <div class="reveal">
+        <span class="eyebrow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span><span>YOURS, ACTUALLY</span></span>
+        <h2 style="margin-top:18px">No cloud. No account.<br>No watching you.</h2>
+        <p class="intro">Squirrel is a vault of plain Markdown files on your own machine. It runs offline — there's no server holding your half-formed thoughts hostage, and nothing to subscribe to.</p>
+        <ul class="checks">
+          <li><span class="ck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><b>Plain Markdown vault.</b> Read it, grep it, back it up, or edit it in any other app. It's just files.</div></li>
+          <li><span class="ck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><b>Runs on localhost.</b> The backend serves only <code>127.0.0.1</code> — nothing leaves your laptop.</div></li>
+          <li><span class="ck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><div><b>Lives in your menu bar.</b> A native macOS popup, plus a CLI for when you want it.</div></li>
+        </ul>
+      </div>
+
+      <div class="vault glass reveal d2">
+        <div class="vh"><span>~/squirrel-vault</span><span>plain text</span></div>
+        <div class="d">📁 projects/</div>
+        <div class="mut">&nbsp;&nbsp;📁 migration/</div>
+        <div class="f">&nbsp;&nbsp;&nbsp;&nbsp;📄 intent.md</div>
+        <div class="f">&nbsp;&nbsp;&nbsp;&nbsp;📄 chunks.md</div>
+        <div class="f">&nbsp;&nbsp;&nbsp;&nbsp;📄 decisions.md</div>
+        <div class="d">📁 captures/</div>
+        <div class="f">&nbsp;&nbsp;📄 inbox.md</div>
+        <div class="d">📁 sessions/</div>
+        <div class="f">&nbsp;&nbsp;📄 2026-05-31-shutdown.md</div>
+        <div class="mut">config.toml</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Final CTA ─────────────────────────────────────── -->
+  <section class="section" id="download" style="padding-top:0">
+    <div class="wrap">
+      <div class="cta-final reveal">
+        <span class="eyebrow" style="margin-bottom:22px"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.7L18.6 9l-4.7 1.9L12 15.6 10.1 10.9 5.4 9l4.7-1.3L12 3z"/></svg></span><span>FREE · OPEN · LOCAL</span></span>
+        <h2>Stop losing <span class="hl">the thread.</span></h2>
+        <p>Install Squirrel, point it at a folder, and tell your agent <code>/sq-status</code>. That's the whole setup.</p>
+        <div class="cta">
+          <a href="#" class="btn btn-primary btn-lg">Download for Mac <span class="kbd">.dmg</span></a>
+          <a href="https://github.com" class="btn btn-ghost btn-lg">View on GitHub</a>
+        </div>
+        <p class="note">macOS · unsigned beta — right-click → Open on first launch</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <span class="chip"><img src="squirrel.svg" alt="Squirrel" /></span>
+      <span class="bn"><span class="nm">Squirrel</span><span class="sub">for attention-hyperactive minds</span></span>
+    </a>
+    <div class="fl">
+      <a href="#why">Why</a>
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#download">Download</a>
+    </div>
+    <small>Built for brains that bounce · v0.x</small>
+  </div>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>

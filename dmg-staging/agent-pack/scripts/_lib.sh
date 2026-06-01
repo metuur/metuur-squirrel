@@ -86,11 +86,15 @@ parse_common_args() {
       --yes|-y)       ASSUME_YES=1     ;;
       --prefix=*)     CLI_PREFIX="${arg#--prefix=}" ;;
       --prefix)       die "Use --prefix=PATH (with =, no space)" ;;
+      --workspace)    EXTRA_ARGS+=(--workspace); WORKSPACE_INSTALL=1 ;;
       -h|--help)      print_help_and_exit ;;
       *)              LEFTOVER_ARGS+=("$arg") ;;
     esac
   done
 }
+
+# Export WORKSPACE_INSTALL so install scripts can reference it in their summary.
+WORKSPACE_INSTALL=0
 
 # ─── Step 1: canonical install (full repo → ~/.claude/plugins/squirrel/) ─────
 # Every install does this. It's the location every slash command's `find`
@@ -117,6 +121,11 @@ install_agent_integration() {
       step "Installing $agent integration"
       info "Running: python3 squirrel install --agent $agent ${EXTRA_ARGS[*]:-}"
       python3 "$root/squirrel" install --agent "$agent" "${EXTRA_ARGS[@]}"
+      ;;
+    copilot)
+      step "Installing copilot integration"
+      info "Running: python3 squirrel install --agent copilot ${EXTRA_ARGS[*]:-}"
+      python3 "$root/squirrel" install --agent copilot "${EXTRA_ARGS[@]}"
       ;;
     standalone)
       # Nothing extra

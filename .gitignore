@@ -68,6 +68,10 @@ graphify-out/manifest.json
 .uncle-dev/
 .devlocal/
 
+
+dmg-staging/bin/
+
+
 # Logs
 *.log
 
@@ -82,3 +86,4 @@ Thumbs.db
 
 
 .claude/skills/ui-ux-pro-max/
+.playwright-mcp

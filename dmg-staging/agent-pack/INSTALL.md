@@ -13,7 +13,7 @@ Step-by-step guide to install and configure the plugin across different agents.
 
 2. **An Obsidian vault** (or any Markdown folder) with the ADHD system structure. If you do not have one, unzip `vault-tdah-obsidian.zip` first.
 
-3. **A compatible coding agent**: Claude Code, Codex CLI, Cursor, or equivalent.
+3. **A compatible coding agent**: Claude Code, Codex CLI, Cursor, GitHub Copilot, or equivalent.
 
 ---
 
@@ -185,6 +185,55 @@ codex
 
 ---
 
+## 🚀 Installing for GitHub Copilot
+
+Squirrel integrates with Copilot by placing files on disk. Supported surfaces: VS Code Copilot Chat, JetBrains Copilot, and the Copilot CLI.
+
+### One-command install (user-level — applies to all workspaces)
+
+```bash
+cd <squirrel-repo>
+./scripts/install-copilot.sh --yes
+```
+
+| Component | Destination |
+|-----------|-------------|
+| Skill agents | `~/.copilot/agents/squirrel-<name>.agent.md` |
+| Slash-command prompts | `~/.copilot/prompts/sq-<cmd>.prompt.md` |
+| Manifest | `~/.copilot/copilot-instructions.md` (block appended) |
+| Hooks | `~/.copilot/hooks/squirrel.json` |
+
+Override the destination with the `COPILOT_HOME` environment variable.
+
+### Workspace-level install (files tracked in Git)
+
+```bash
+./scripts/install-copilot.sh --workspace --yes
+```
+
+Files land under `.github/` in the current git repository. **Commit them** so teammates pick up the Squirrel integration automatically. The installer prints a reminder.
+
+### Flag reference
+
+| Flag | Effect |
+|------|--------|
+| `--workspace` | Write to `<repo-root>/.github/` instead of `~/.copilot/` |
+| `--link` | Create symlinks (auto-update on `git pull`) |
+| `--dry-run` | Preview without writing |
+| `--yes` / `-y` | Non-interactive |
+| `--no-config` | Skip `~/.squirrel/config.toml` seed |
+| `--no-cli` | Skip `squirrel` CLI symlink |
+| `--no-reminders` | Skip macOS launchd daemon |
+| `--prefix=PATH` | CLI symlink destination (default `~/.local/bin`) |
+
+### After install
+
+1. Restart VS Code (or reload the Copilot extension).
+2. Set your vault path: `$EDITOR ~/.squirrel/config.toml`
+3. In Copilot Chat: `/sq-where-am-i`
+
+---
+
 ## 🚀 Installing in Cursor / VSCode
 
 Cursor uses `.cursor/rules/` to load rules and skills.
@@ -251,6 +300,122 @@ Useful for automation (cron, scripts) or if you want to use the protocol without
 
 ---
 
+## 🛡️ Manual install from DMG (Gatekeeper blocked)
+
+Use this path when macOS blocks the `Install Squirrel` script with a "can't be opened because it is from an unidentified developer" error, or when you need a quick install during development without waiting for a signed build.
+
+### Why the normal installer fails
+
+macOS attaches a `com.apple.quarantine` flag to every file downloaded from the internet (including DMG contents). The `Install Squirrel` script is a shell script, not a notarized binary, so Gatekeeper refuses to run it. Additionally, the installer runs `codesign --verify --strict --deep` on the binaries before copying them — this also fails on unsigned dev builds.
+
+### Step-by-step manual install
+
+**1. Mount the DMG**
+
+Double-click the `.dmg` file in Finder, or from the terminal:
+
+```bash
+hdiutil attach ~/Downloads/Squirrel.dmg
+# Note the mount path printed — usually /Volumes/Squirrel
+```
+
+**2. Strip the quarantine flag from all DMG contents**
+
+```bash
+xattr -cr /Volumes/Squirrel/
+```
+
+This removes `com.apple.quarantine` recursively so macOS stops blocking the files.
+
+**3. Copy the binaries** (skipping the codesign check)
+
+```bash
+mkdir -p ~/.local/bin
+
+cp /Volumes/Squirrel/bin/squirrel           ~/.local/bin/squirrel
+cp /Volumes/Squirrel/bin/squirrel-backend   ~/.local/bin/squirrel-backend
+chmod +x ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
+
+# Remove quarantine from the copied binaries too
+xattr -d com.apple.quarantine ~/.local/bin/squirrel          2>/dev/null || true
+xattr -d com.apple.quarantine ~/.local/bin/squirrel-backend  2>/dev/null || true
+```
+
+**4. Ensure `~/.local/bin` is on your PATH**
+
+```bash
+echo $PATH | grep -q "$HOME/.local/bin" || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**5. Install the agent-pack**
+
+```bash
+mkdir -p ~/.claude/plugins/squirrel
+rsync -a --delete /Volumes/Squirrel/agent-pack/ ~/.claude/plugins/squirrel/
+```
+
+**6. Seed the config** (skip if `~/.squirrel/config.toml` already exists)
+
+```bash
+mkdir -p ~/.squirrel
+cp /Volumes/Squirrel/resources/squirrel.toml.example ~/.squirrel/config.toml
+$EDITOR ~/.squirrel/config.toml   # set vault path
+```
+
+**7. Install and start the background service**
+
+```bash
+BACKEND_BIN="$HOME/.local/bin/squirrel-backend"
+PLIST_PATH="$HOME/Library/LaunchAgents/org.squirrel.web-ui.plist"
+mkdir -p "$HOME/Library/LaunchAgents"
+
+plist="$(cat /Volumes/Squirrel/resources/plist.template)"
+plist="${plist//__BINARY__/$BACKEND_BIN}"
+plist="${plist//__PORT__/3939}"
+plist="${plist//__HOME__/$HOME}"
+printf '%s\n' "$plist" > "$PLIST_PATH"
+
+launchctl load "$PLIST_PATH"
+```
+
+**8. Verify**
+
+```bash
+squirrel --help
+curl -s http://127.0.0.1:3939/health   # should return {"status":"ok"}
+```
+
+Then inside Claude Code:
+
+```
+/sq-status
+```
+
+### Potential issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `zsh: killed squirrel` or binary crashes silently | macOS Gatekeeper killed the unsigned binary | `xattr -d com.apple.quarantine ~/.local/bin/squirrel` |
+| `command not found: squirrel` | `~/.local/bin` not on PATH | Add `export PATH="$HOME/.local/bin:$PATH"` to `~/.zshrc` and re-open the terminal |
+| `launchctl: service already loaded` | Previous install left the plist registered | `launchctl unload "$PLIST_PATH" && launchctl load "$PLIST_PATH"` |
+| `curl` to port 3939 times out | Backend plist still points to old binary path | Check the plist: `cat ~/Library/LaunchAgents/org.squirrel.web-ui.plist` — rerun step 7 if the `__BINARY__` placeholder was not replaced |
+| `/sq-*` commands missing in Claude Code | agent-pack not installed or wrong destination | Verify `~/.claude/plugins/squirrel/` exists and contains `SKILL.md` files; re-run step 5 |
+| `rsync: No such file or directory` | DMG not mounted | Run `hdiutil attach ~/Downloads/Squirrel.dmg` first |
+
+### Uninstalling
+
+```bash
+launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.plist 2>/dev/null || true
+rm -f ~/Library/LaunchAgents/org.squirrel.web-ui.plist
+rm -f ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
+rm -rf ~/.claude/plugins/squirrel
+# Optionally remove config and vault:
+# rm -rf ~/.squirrel
+```
+
+---
+
 ## 🔧 Advanced configuration
 
 ### Multiple environments (more than 2)
@@ -308,6 +473,19 @@ The other side decrypts with `/sq-sync-in` if it has the private key.
 ---
 
 ## ❓ Troubleshooting
+
+### "`Install Squirrel` is blocked by macOS / codesign error"
+
+macOS quarantines every file from the internet, including DMG contents. The installer also runs `codesign --verify --strict --deep` on the binaries — this fails on unsigned dev builds.
+
+**Quick fix** — strip the quarantine flag before running the installer:
+
+```bash
+xattr -cr /Volumes/Squirrel/
+"/Volumes/Squirrel/Install Squirrel"
+```
+
+If that still fails (e.g. the binaries are unsigned), follow the **Manual install from DMG** section above — it skips the codesign check entirely.
 
 ### "Slash commands do not appear in Claude Code"
 - Verify the directory is at `~/.claude/plugins/squirrel/`

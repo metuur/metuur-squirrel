@@ -12,8 +12,9 @@
 #   DMG will be refused by installer/install.sh.
 #
 # Usage:
-#   ./scripts/build-dmg.sh            # build squirrel-installer-macos.dmg
-#   ./scripts/build-dmg.sh --dry-run  # print steps without executing
+#   ./scripts/build-dmg.sh                       # build universal squirrel-installer-macos.dmg
+#   ./scripts/build-dmg.sh --arm64-only          # arm64 slice only (no Rosetta/lipo, dev build)
+#   ./scripts/build-dmg.sh --dry-run             # print steps without executing
 #
 # Required env vars for signing:
 #   APPLE_SIGNING_IDENTITY   — "Developer ID Application: Name (TEAMID)"
@@ -34,10 +35,12 @@ BUILD="$ROOT/build/pyinstaller"
 STAGING="$ROOT/dmg-staging"
 DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
 DRY_RUN=0
+ARM64_ONLY=0
 
 for arg in "$@"; do
   case "$arg" in
-    --dry-run) DRY_RUN=1 ;;
+    --dry-run)    DRY_RUN=1 ;;
+    --arm64-only) ARM64_ONLY=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
@@ -68,7 +71,8 @@ fi
 VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
 say ""
 printf '%s🐿  Building Squirrel v%s installer%s\n' "$C_BOLD" "$VERSION" "$C_RESET"
-(( DRY_RUN )) && printf '%s    (dry-run — no files written)%s\n' "$C_BOLD" "$C_RESET"
+(( DRY_RUN ))    && printf '%s    (dry-run — no files written)%s\n'  "$C_BOLD" "$C_RESET"
+(( ARM64_ONLY )) && warn "arm64-only mode — skipping x86_64 slice and lipo (dev build, not universal)"
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
 hdr "Preflight"
@@ -82,7 +86,7 @@ if (( SIGNING )); then
 fi
 
 HOST_ARCH="$(uname -m)"
-if [[ "$HOST_ARCH" == "arm64" ]] && (( ! DRY_RUN )); then
+if [[ "$HOST_ARCH" == "arm64" ]] && (( ! DRY_RUN )) && (( ! ARM64_ONLY )); then
   if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
     die "Rosetta is not available — run 'softwareupdate --install-rosetta' to install it"
   fi
@@ -241,21 +245,26 @@ CLI_X86_DIST="$DIST/slices/cli/x86_64"
 CLI_X86_BUILD="$BUILD/cli-x86_64"
 
 _pyinstaller_slice arm64  squirrel "$ROOT/apps/cli/squirrel" "$CLI_ARM64_DIST" "$CLI_ARM64_BUILD"
-_pyinstaller_slice x86_64 squirrel "$ROOT/apps/cli/squirrel" "$CLI_X86_DIST"  "$CLI_X86_BUILD"
+if (( ! ARM64_ONLY )); then
+  _pyinstaller_slice x86_64 squirrel "$ROOT/apps/cli/squirrel" "$CLI_X86_DIST"  "$CLI_X86_BUILD"
+fi
 
 if (( ! DRY_RUN )); then
   [[ -f "$CLI_ARM64_DIST/squirrel" ]] || die "CLI arm64 slice missing"
-  [[ -f "$CLI_X86_DIST/squirrel"   ]] || die "CLI x86_64 slice missing"
-  # R-1.5: strip extended attributes before lipo
   xattr -cr "$CLI_ARM64_DIST/squirrel"
-  xattr -cr "$CLI_X86_DIST/squirrel"
   mkdir -p "$DIST"
-  lipo -create -output "$DIST/squirrel" "$CLI_ARM64_DIST/squirrel" "$CLI_X86_DIST/squirrel"
-  ARCHS="$(lipo -archs "$DIST/squirrel")"
-  [[ "$ARCHS" == "arm64 x86_64" ]] \
-    || die "CLI binary has unexpected archs: '$ARCHS' (expected 'arm64 x86_64')"
+  if (( ARM64_ONLY )); then
+    cp "$CLI_ARM64_DIST/squirrel" "$DIST/squirrel"
+  else
+    [[ -f "$CLI_X86_DIST/squirrel" ]] || die "CLI x86_64 slice missing"
+    xattr -cr "$CLI_X86_DIST/squirrel"
+    lipo -create -output "$DIST/squirrel" "$CLI_ARM64_DIST/squirrel" "$CLI_X86_DIST/squirrel"
+    ARCHS="$(lipo -archs "$DIST/squirrel")"
+    [[ "$ARCHS" == "arm64 x86_64" ]] \
+      || die "CLI binary has unexpected archs: '$ARCHS' (expected 'arm64 x86_64')"
+  fi
 fi
-ok "CLI binary → dist/squirrel (universal)"
+(( ARM64_ONLY )) && ok "CLI binary → dist/squirrel (arm64)" || ok "CLI binary → dist/squirrel (universal)"
 
 # ─── Step 3: Backend binary — universal (R-1.4, R-1.5) ───────────────────────
 hdr "Step 3 — Compile backend binary (squirrel-backend) — universal"
@@ -268,22 +277,27 @@ BE_X86_BUILD="$BUILD/backend-x86_64"
 
 _pyinstaller_slice arm64  squirrel-backend "$ROOT/apps/backend/server.py" \
   "$BE_ARM64_DIST" "$BE_ARM64_BUILD" --add-data "$SPA_DIST:app/dist"
-_pyinstaller_slice x86_64 squirrel-backend "$ROOT/apps/backend/server.py" \
-  "$BE_X86_DIST"  "$BE_X86_BUILD"  --add-data "$SPA_DIST:app/dist"
+if (( ! ARM64_ONLY )); then
+  _pyinstaller_slice x86_64 squirrel-backend "$ROOT/apps/backend/server.py" \
+    "$BE_X86_DIST"  "$BE_X86_BUILD"  --add-data "$SPA_DIST:app/dist"
+fi
 
 if (( ! DRY_RUN )); then
   [[ -f "$BE_ARM64_DIST/squirrel-backend" ]] || die "backend arm64 slice missing"
-  [[ -f "$BE_X86_DIST/squirrel-backend"   ]] || die "backend x86_64 slice missing"
-  # R-1.5: strip extended attributes before lipo
   xattr -cr "$BE_ARM64_DIST/squirrel-backend"
-  xattr -cr "$BE_X86_DIST/squirrel-backend"
-  lipo -create -output "$DIST/squirrel-backend" \
-    "$BE_ARM64_DIST/squirrel-backend" "$BE_X86_DIST/squirrel-backend"
-  ARCHS="$(lipo -archs "$DIST/squirrel-backend")"
-  [[ "$ARCHS" == "arm64 x86_64" ]] \
-    || die "backend binary has unexpected archs: '$ARCHS' (expected 'arm64 x86_64')"
+  if (( ARM64_ONLY )); then
+    cp "$BE_ARM64_DIST/squirrel-backend" "$DIST/squirrel-backend"
+  else
+    [[ -f "$BE_X86_DIST/squirrel-backend" ]] || die "backend x86_64 slice missing"
+    xattr -cr "$BE_X86_DIST/squirrel-backend"
+    lipo -create -output "$DIST/squirrel-backend" \
+      "$BE_ARM64_DIST/squirrel-backend" "$BE_X86_DIST/squirrel-backend"
+    ARCHS="$(lipo -archs "$DIST/squirrel-backend")"
+    [[ "$ARCHS" == "arm64 x86_64" ]] \
+      || die "backend binary has unexpected archs: '$ARCHS' (expected 'arm64 x86_64')"
+  fi
 fi
-ok "Backend binary → dist/squirrel-backend (universal)"
+(( ARM64_ONLY )) && ok "Backend binary → dist/squirrel-backend (arm64)" || ok "Backend binary → dist/squirrel-backend (universal)"
 
 # ─── Step 4: Assemble DMG staging ────────────────────────────────────────────
 hdr "Step 4 — Assemble DMG staging"

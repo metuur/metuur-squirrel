@@ -1,0 +1,20 @@
+# Copilot-compatible frontmatter template for Squirrel skill and prompt files.
+# The installer reads this file, picks the appropriate section (skill or prompt),
+# and renders it with values from the source SKILL.md / sq-*.md frontmatter.
+# Placeholders: {{name}}, {{description}}.
+
+skill:
+  description: "{{description}}"
+  name: "{{name}}"
+  agent: copilot
+  model: gpt-4o
+  tools: []
+  argument-hint: ""
+
+prompt:
+  description: "{{description}}"
+  name: "{{name}}"
+  agent: copilot
+  model: gpt-4o
+  tools: []
+  argument-hint: ""

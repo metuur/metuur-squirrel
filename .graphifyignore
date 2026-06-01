@@ -5,8 +5,10 @@
 **/build/
 **/.next/
 
+.playwright-mcp/
 **/.pytest_cache/
 **/**pycache**/
+dmg-staging/bin/
 
 # Exclude framework configs and rules
 
