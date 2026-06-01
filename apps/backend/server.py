@@ -696,10 +696,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if body.get("clear") is True:
             clear_manual_focus(ctx.active.path, slot)
         elif body.get("project_slug") and body.get("intent_slug"):
+            note_raw = body.get("note")
+            note = note_raw if isinstance(note_raw, str) else None
             try:
                 set_manual_focus(
                     ctx.active.path, slot,
                     body["project_slug"], body["intent_slug"],
+                    note=note,
                 )
             except IntentNotFound:
                 self._send_json_error(404, "intent_not_found")
@@ -732,7 +735,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         db.init_schema(conn)
         try:
             picks = conn.execute(
-                "SELECT id, vault, slot, date, project_slug, intent_slug, picked_at, cleared_at"
+                "SELECT id, vault, slot, date, project_slug, intent_slug, picked_at, cleared_at, note"
                 " FROM focus_picks WHERE date BETWEEN ? AND ? ORDER BY picked_at DESC",
                 (from_d, to_d),
             ).fetchall()
@@ -746,7 +749,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             ).fetchall()
         finally:
             conn.close()
-        pick_keys = ("id", "vault", "slot", "date", "project_slug", "intent_slug", "picked_at", "cleared_at")
+        pick_keys = ("id", "vault", "slot", "date", "project_slug", "intent_slug", "picked_at", "cleared_at", "note")
         session_keys = ("id", "vault", "slot", "date", "project_slug", "intent_slug", "checkin_at", "checkout_at", "duration_minutes")
         self._send_json({
             "picks": [dict(zip(pick_keys, r)) for r in picks],

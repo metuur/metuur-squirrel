@@ -120,6 +120,7 @@ export interface ManualPick {
   intent_title: string;
   next_action: string | null;
   picked_on: string;
+  note: string | null;
 }
 
 export interface ManualFocusPayload {
@@ -200,7 +201,7 @@ export const api = {
   focusSet: (
     slot: "today" | "today_pm" | "week",
     body:
-      | { project_slug: string; intent_slug: string }
+      | { project_slug: string; intent_slug: string; note?: string | null }
       | { clear: true },
   ) => {
     if (slot === "week") {

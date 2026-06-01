@@ -26,6 +26,7 @@ from using local-wall-clock by default.
 from __future__ import annotations
 
 import datetime
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -91,6 +92,30 @@ def _slot_key(slot: str) -> str:
     if slot == "week":
         return "focus_week"
     raise ValueError(f"unknown slot: {slot!r}")
+
+
+def _note_key(slot: str) -> str:
+    """Frontmatter key for a slot's optional user note."""
+    return f"{_slot_key(slot)}_note"
+
+
+# Note sanitization — keep it a single-line plain YAML scalar that the
+# in-house subset parser (intent_parser._parse_yaml_subset) can round-trip
+# without confusion. Quotes/backticks are stripped because the parser does a
+# naive .strip('"').strip("'") on read and would corrupt embedded quotes.
+_NOTE_MAX_LEN = 280
+_NOTE_DROP_CHARS = re.compile(r'["\'`]')
+
+def _sanitize_note(note: Optional[str]) -> Optional[str]:
+    if note is None:
+        return None
+    s = _NOTE_DROP_CHARS.sub("", note)
+    s = re.sub(r"\s+", " ", s).strip()
+    if not s:
+        return None
+    if len(s) > _NOTE_MAX_LEN:
+        s = s[:_NOTE_MAX_LEN].rstrip()
+    return s or None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -166,6 +191,8 @@ def _build_pick(
         next_action = notes[0].get("next_action")
 
     key = _slot_key(slot)
+    note_raw = fm.get(_note_key(slot))
+    note = note_raw if isinstance(note_raw, str) and note_raw else None
     return {
         "project_slug": project_slug,
         "project_title": project_title,
@@ -174,6 +201,7 @@ def _build_pick(
         "next_action": next_action,
         "picked_on": fm.get(key, ""),
         "time_invested_minutes": int(fm.get("time_invested_minutes") or 0),
+        "note": note,
     }
 
 
@@ -187,6 +215,7 @@ def set_manual_focus(
     project_slug: str,
     intent_slug: str,
     now: Optional[datetime.datetime] = None,
+    note: Optional[str] = None,
 ) -> None:
     """Pin a single intent as the manual focus for `slot`.
 
@@ -196,8 +225,11 @@ def set_manual_focus(
       3. Strip pass (R-2.1, R-2.2, R-2.5): scan every intent and remove the
          key wherever its value equals the CURRENT token. Stale tokens are
          left alone. This includes the target file — the subsequent upsert
-         puts the key back (R-2.4 idempotent set).
-      4. Write pass: upsert `key: token` on the target file.
+         puts the key back (R-2.4 idempotent set). The companion note key
+         (`<key>_note`) is dropped on the same pass so notes don't outlive
+         their pick.
+      4. Write pass: upsert `key: token` on the target file, and either
+         upsert the sanitized note or delete the stale note key.
 
     R-2.3: the OTHER slot's key is never touched.
     R-1.8: all I/O stays inside `vault`.
@@ -207,7 +239,9 @@ def set_manual_focus(
         raise IntentNotFound(project_slug, intent_slug)
 
     key = _slot_key(slot)
+    nkey = _note_key(slot)
     token = _token_now(slot, now=now)
+    clean_note = _sanitize_note(note)
 
     # Strip pass — bounded to the current token (R-2.5).
     for _project_md, intent_path in _iter_intent_paths(vault):
@@ -217,10 +251,12 @@ def set_manual_focus(
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:
-            write_frontmatter(intent_path, {key: _DELETE})
+            write_frontmatter(intent_path, {key: _DELETE, nkey: _DELETE})
 
-    # Write pass — idempotent upsert (R-2.4).
-    write_frontmatter(target, {key: token})
+    # Write pass — idempotent upsert (R-2.4). The note key is either set
+    # to the new value or explicitly deleted, so toggling a note off works.
+    updates: dict = {key: token, nkey: clean_note if clean_note else _DELETE}
+    write_frontmatter(target, updates)
     if _HAS_DB:
         try:
             _now = (now or datetime.datetime.now(datetime.timezone.utc)).isoformat()
@@ -229,9 +265,9 @@ def set_manual_focus(
             _db.init_schema(_conn)
             try:
                 _conn.execute(
-                    "INSERT INTO focus_picks (vault, slot, date, project_slug, intent_slug, picked_at)"
-                    " VALUES (?, ?, ?, ?, ?, ?)",
-                    (vault.name, slot, _today, project_slug, intent_slug, _now),
+                    "INSERT INTO focus_picks (vault, slot, date, project_slug, intent_slug, picked_at, note)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (vault.name, slot, _today, project_slug, intent_slug, _now, clean_note),
                 )
                 _conn.commit()
             finally:
@@ -251,6 +287,7 @@ def clear_manual_focus(
     (R-3.5 semantics, scoped to the cli helper layer).
     """
     key = _slot_key(slot)
+    nkey = _note_key(slot)
     token = _token_now(slot, now=now)
 
     for _project_md, intent_path in _iter_intent_paths(vault):
@@ -260,7 +297,7 @@ def clear_manual_focus(
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:
-            write_frontmatter(intent_path, {key: _DELETE})
+            write_frontmatter(intent_path, {key: _DELETE, nkey: _DELETE})
             if _HAS_DB:
                 try:
                     _cleared = (now or datetime.datetime.now(datetime.timezone.utc)).isoformat()
