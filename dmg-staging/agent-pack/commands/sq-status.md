@@ -1,16 +1,16 @@
 ---
-description: Estado global del vault. Ejecuta status_aggregator.py y renderiza el JSON resultante. Acepta `--vault NAME` opcional.
+description: Global vault status. Runs status_aggregator.py and renders the resulting JSON. Accepts an optional `--vault NAME`.
 allowed-tools: [Bash, Read]
 ---
 
 # /sq-status
 
-Estado global del vault. No genera nada nuevo — solo reporta.
+Global vault status. Generates nothing new — it only reports.
 
-Argumentos opcionales:
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--vault NAME` — operate on a specific vault (default if omitted)
 
-## Paso 0: Parsear `--vault NAME` y resolver VAULT_PATH (multi-vault)
+## Step 0: Parse `--vault NAME` and resolve VAULT_PATH (multi-vault)
 
 ```bash
 # Parse --vault NAME from $ARGUMENTS (R-6.1, R-6.2)
@@ -36,7 +36,7 @@ except ConfigError as e:
 [ $? -ne 0 ] && echo "❌ $VAULT_PATH" >&2 && exit 1
 ```
 
-## Paso 1: Ubicar el script
+## Step 1: Locate the script
 
 ```bash
 
@@ -48,19 +48,19 @@ for candidate in \
     "$(find "${HOME}/others" -name 'status_aggregator.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCRIPT="$candidate" && break
 done
-[ -z "$SCRIPT" ] && echo "❌ No se encontró status_aggregator.py. Verificá la instalación del plugin." && exit 1
+[ -z "$SCRIPT" ] && echo "❌ status_aggregator.py not found. Check the plugin installation." && exit 1
 ```
 
-## Paso 2: Ejecutar el script
+## Step 2: Run the script
 
 ```bash
 STATUS_JSON=$(python3 "$SCRIPT" --vault "$VAULT_PATH" --pretty 2>&1)
 EXIT_CODE=$?
 ```
 
-**Si `EXIT_CODE != 0`**: mostrar el contenido de `STATUS_JSON` como mensaje de error y detener. No inventar datos.
+**If `EXIT_CODE != 0`**: show the contents of `STATUS_JSON` as an error message and stop. Don't make up data.
 
-## Paso 2.5: Escanear deadlines críticos y urgentes (ATTN-007)
+## Step 2.5: Scan critical and urgent deadlines (ATTN-007)
 
 ```bash
 SCANNER=""
@@ -76,46 +76,46 @@ if [ -n "$SCANNER" ]; then
 fi
 ```
 
-Si `SCANNER` no se encontró, omitir la sección de deadlines en el render (no es un error fatal).
+If `SCANNER` wasn't found, omit the deadlines section in the render (it's not a fatal error).
 
-## Paso 3: Renderizar el JSON
+## Step 3: Render the JSON
 
-Con el JSON devuelto, renderizar en este formato:
+With the returned JSON, render in this format:
 
 ```
-📊 Vault Status — <scanned_at, solo fecha>
+📊 Vault Status — <scanned_at, date only>
 
-🟢 WIP (<wip.count>/<wip.max> — máximo permitido: <wip.max>)
+🟢 WIP (<wip.count>/<wip.max> — max allowed: <wip.max>)
   1. <project.id> — <intents.percent_done>% — Deadline: <project.deadline> — Last: <active_intent>
   2. ...
 
-🚧 PARKING LOT (<parking_lot.count> proyectos)
+🚧 PARKING LOT (<parking_lot.count> projects)
   • <id>
 
-🏛️ ÁREAS
+🏛️ AREAS
   • <id>
 
-⚠️ ALERTAS
-  • <alert.project>: <alert.message>  [nivel: <alert.level>]
+⚠️ ALERTS
+  • <alert.project>: <alert.message>  [level: <alert.level>]
 
 ⏰ DEADLINES
-  {FOR each item in by_urgency.critical where is_overdue=true (mostrar como overdue):}
-    🔴 [OVERDUE] <item.id> — <item.title> — hace <item.days_overdue>d
+  {FOR each item in by_urgency.critical where is_overdue=true (show as overdue):}
+    🔴 [OVERDUE] <item.id> — <item.title> — <item.days_overdue>d ago
   {FOR each item in by_urgency.critical where is_overdue is falsy:}
-    🔴 <item.id> — <item.title> — HOY (<item.hours_left>h restantes)
+    🔴 <item.id> — <item.title> — TODAY (<item.hours_left>h left)
   {FOR each item in by_urgency.urgent:}
     🟠 <item.id> — <item.title> — <item.days_left>d / <item.hours_left>h
 
-  Para ver todos los niveles: `/sq-deadlines`
+  To see all levels: `/sq-deadlines`
 
-🎯 FOCO RECOMENDADO
+🎯 RECOMMENDED FOCUS
   <recommended_focus.project> — <recommended_focus.reason>
   Next: <recommended_focus.next_action>
 ```
 
-Omitir secciones vacías (sin items). No agregar datos que no estén en el JSON.
+Omit empty sections (no items). Don't add data that isn't in the JSON.
 
-La sección `⏰ DEADLINES` se omite completamente si:
-- `SCANNER` no fue encontrado, O
-- `DEADLINES_JSON` contiene un error, O
-- `by_urgency.critical` y `by_urgency.urgent` están ambos vacíos (count = 0)
+The `⏰ DEADLINES` section is omitted entirely if:
+- `SCANNER` was not found, OR
+- `DEADLINES_JSON` contains an error, OR
+- `by_urgency.critical` and `by_urgency.urgent` are both empty (count = 0)

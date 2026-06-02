@@ -1,6 +1,6 @@
 ---
 name: squirrel-session-start
-description: Load context from the local Markdown vault to start a coding session on a specific project. Use this skill when the user runs /sq-start, says "vamos a trabajar en X", "retomemos Y", "abrí el proyecto Z", "what was I doing", or at the beginning of any session when a project tag can be inferred. Reads the most recent shutdown notes, current intents, and produces a structured "loading note" so the user re-enters the project quickly without re-reading 20 files. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
+description: Load context from the local Markdown vault to start a coding session on a specific project. Use this skill when the user runs /sq-start, says "let's work on X", "let's pick up Y", "I opened project Z", "what was I doing", or at the beginning of any session when a project tag can be inferred. Reads the most recent shutdown notes, current intents, and produces a structured "loading note" so the user re-enters the project quickly without re-reading 20 files. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
 ---
 
 # squirrel:session-start
@@ -9,28 +9,28 @@ description: Load context from the local Markdown vault to start a coding sessio
 Solve the context-switching problem. When the user returns to a project (after hours, days, or weeks), this skill rebuilds the cognitive context FAST by reading the vault's structured notes.
 
 ## When to invoke
-- Explicit: `/sq-start [PROJECT-TAG]`, "let's work on X", "retomemos Y"
+- Explicit: `/sq-start [PROJECT-TAG]`, "let's work on X", "let's pick up Y"
 - At hook `SessionStart` if the previous session was bound to a project
 - When the user opens a file path that matches a known project's working directory
-- When the user says "what was I doing", "¿en qué estaba?", "where did I leave off"
+- When the user says "what was I doing", "where did I leave off"
 
 ## Workflow
 
 <!-- @spec SESSION-004 -->
 ### Step 1: Identify the project
 Resolution order:
-1. Explicit argument: `/sq-start TRABAJO-PROYECTO-A` → use that
+1. Explicit argument: `/sq-start WORK-PROJECT-A` → use that
 2. Recent activity: read `~/.squirrel/state.json` for `last_active_project`
 3. Working directory inference: if cwd matches a path declared in any Project Page → use that
 4. Ask the user: list WIP projects from config and ask which one
 
 **SESSION-004 guard**: If resolution reaches step 4 (no unambiguous project found), stop immediately. Present the WIP project list and ask the user to pick one. Do NOT produce any loading summary until exactly one project is confirmed. Example prompt:
 ```
-No pude determinar el proyecto activo. ¿Cuál querés retomar?
-1. PROYECTO-A
-2. PROYECTO-B
-3. PROYECTO-C
-Respondé con el número o el tag exacto.
+Could not determine the active project. Which one do you want to pick up?
+1. PROJECT-A
+2. PROJECT-B
+3. PROJECT-C
+Reply with the number or the exact tag.
 ```
 
 ### Step 1.5: Record context switch (ATTN-002)
@@ -121,31 +121,31 @@ Look for stashes named with the project tag.
 Produce a structured brief, MAX 200 words, 5–7 lines of actual content, with these sections (in this order):
 
 ```markdown
-## 🔵 Sesión: <PROJECT-TAG>
-Última actividad: <date> (<X días/horas atrás>)
+## 🔵 Session: <PROJECT-TAG>
+Last activity: <date> (<X days/hours ago>)
 
-### 🎯 Estás haciendo
+### 🎯 What you're working on
 <from latest intent + shutdown note, 1-2 sentences>
 
-### ✅ Lo último que hiciste
+### ✅ What you last did
 <from latest shutdown note + recent commits, 2-3 bullets>
 
-### 🎬 Próximo paso físico
+### 🎬 Next physical action
 <the "next physical action" from latest shutdown note>
 
-### 💡 Decisiones clave
-<key decisions from latest shutdown note's `decisiones_hoy` field, 1-3 bullets; "Ninguna" if empty>
+### 💡 Key decisions
+<key decisions from latest shutdown note's `decisiones_hoy` field, 1-3 bullets; "None" if empty>
 
-### 🚧 Bloqueos / preguntas abiertas
+### 🚧 Blockers / open questions
 <from latest intent's open questions + blockers, if any>
 
-### 🔧 Sugerencia de apertura
+### 🔧 Opening suggestion
 1. <very concrete first action — open file X line Y / run command Z>
 2. <second concrete action>
 3. <third — usually a 25-min pomodoro target>
 
 ---
-¿Empezamos por 1?
+Shall we start with 1?
 ```
 
 ### Step 5: Update state
@@ -173,10 +173,10 @@ python3 lib/focus_cli.py checkin \
 Non-fatal: if the script exits non-zero, log a one-line warning (`⚠️ checkin failed — continuing`) and continue. Do NOT abort the session or delay the loading note.
 
 ### Step 6: Offer one shortcut
-After producing the brief, offer a single concrete action the user can confirm with "sí":
-- "¿Abro auth.controller.ts línea 47?"
-- "¿Corro el último test que dejaste fallando?"
-- "¿Muestro el diff completo?"
+After producing the brief, offer a single concrete action the user can confirm with "yes":
+- "Shall I open auth.controller.ts at line 47?"
+- "Shall I run the last failing test you left?"
+- "Shall I show the full diff?"
 
 ## Special modes
 
@@ -187,34 +187,34 @@ Before generating a new loading note, check `~/.squirrel/state.json` for `sessio
 - If the dates match AND `last_active_project` equals the requested project AND no new shutdown note exists since `session_started_at`:
   - **Re-use the same loading note**: re-read the same shutdown note the previous call used (same `active_intent`, same `shutdown_notes[0]`) and produce an identical summary
   - Do NOT generate a fresh/different summary
-  - Optionally note: "_(sesión ya iniciada hoy — mostrando el mismo contexto de entrada)_"
-- This makes `/sq-start PROYECTO` idempotent: calling it twice on the same day with the same state returns the same output
+  - Optionally note: "_(session already started today — showing the same entry context)_"
+- This makes `/sq-start PROJECT` idempotent: calling it twice on the same day with the same state returns the same output
 
 ### Multi-day gap (>3 days since last activity)
-- Add a "📅 Han pasado X días desde la última sesión" header
+- Add a "📅 X days have passed since the last session" header
 - Be MORE explicit about reloading context (mention 2-3 lines extra from context_dump)
 - Suggest redrawing the architecture in the user's physical notebook
 
 ### First session ever for a project
 - If the JSON has `shutdown_notes: []` on all intents and `active_intent: null`, this is a first session
-- Frame the brief as "primer setup" using `objective` + `intent_list` from the JSON
+- Frame the brief as "first setup" using `objective` + `intent_list` from the JSON
 - Suggest creating the first intent
 
 ### Project in PARKING-LOT
-- Refuse politely: "Este proyecto está en Parking Lot. Para reactivarlo necesitás:
-  (1) mover a `01-Proyectos-Activos/`, (2) confirmar que WIP < 3, (3) explicitar deadline."
+- Refuse politely: "This project is in Parking Lot. To reactivate it you need to:
+  (1) move it to `01-Active-Projects/`, (2) confirm that WIP < 3, (3) set an explicit deadline."
 
 ### Foyer Family special case (Finishing Tax)
 If the project is `SIDEPROJECT-FOYER-FAMILY` and its frontmatter has `prioridad: finishing-tax`, add to the brief:
 ```
-⚠️ FINISHING TAX: Este proyecto está al 90% y llevás <N> semanas sin lanzarlo.
-   Compromiso: no empezás otro side project hasta cerrar este.
-   Si querés ver la idea nueva que dejaste esperando: ver [[02-Parking-Lot/SIDEPROJECT-NUEVA-IDEA]]
+⚠️ FINISHING TAX: This project is 90% done and you've gone <N> weeks without launching it.
+   Commitment: don't start another side project until this one is closed.
+   If you want to see the new idea you left waiting: see [[02-Parking-Lot/SIDEPROJECT-NEW-IDEA]]
 ```
 
 ## Output style
 - Crisp, action-oriented, NO motivational fluff
-- Use the user's preferred language (Spanish by default for this user)
+- Use the user's preferred language (English by default)
 - If you have to make inferences (which intent is active), state them briefly
 - ALWAYS end with one concrete proposed first action
 

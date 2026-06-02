@@ -1,16 +1,16 @@
 ---
-description: Configuración inicial del plugin. Crea ~/.squirrel/config.toml y estructura mínima del vault si no existe. Acepta `--add-vault` para añadir un vault adicional a una config existente.
+description: Initial plugin setup. Creates ~/.squirrel/config.toml and a minimal vault structure if none exists. Accepts `--add-vault` to add an additional vault to an existing config.
 allowed-tools: [Read, Write, Bash, AskUserQuestion]
 ---
 
 # /sq-init
 
-Configuración inicial de squirrel.
+Initial setup for squirrel.
 
-Argumentos opcionales:
-- `--add-vault` — añade un vault adicional a una config existente en lugar de correr el setup inicial completo (R-6.4)
+Optional arguments:
+- `--add-vault` — adds an additional vault to an existing config instead of running the full initial setup (R-6.4)
 
-## Paso 0: Detectar `--add-vault` y rutear
+## Step 0: Detect `--add-vault` and route
 
 ```bash
 ADD_VAULT=0
@@ -19,47 +19,47 @@ for arg in $ARGUMENTS; do
 done
 ```
 
-Si `ADD_VAULT == 1`, saltar directamente al **Paso A — Add-vault subflow** al final de este archivo. La rama de setup inicial (Pasos 1–6) NO se ejecuta en ese caso.
+If `ADD_VAULT == 1`, jump directly to **Step A — Add-vault subflow** at the end of this file. The initial-setup branch (Steps 1–6) does NOT run in that case.
 
-Si `ADD_VAULT == 0`, continuar con el flujo de setup inicial estándar (Pasos 1–6).
+If `ADD_VAULT == 0`, continue with the standard initial-setup flow (Steps 1–6).
 
 ---
 
-Pasos (flujo de setup inicial, sólo cuando `--add-vault` NO está presente):
-1. Localizar el directorio de instalación del plugin:
+Steps (initial-setup flow, only when `--add-vault` is NOT present):
+1. Locate the plugin installation directory:
 ```bash
 SQUIRREL_DIR=$(find "${HOME}/.claude/plugins" "${HOME}/others" \
     -maxdepth 4 -name "plugin.json" -path "*squirrel*" 2>/dev/null \
     | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null)
-[ -z "$SQUIRREL_DIR" ] && echo "❌ No se encontró el directorio del plugin squirrel." && exit 1
+[ -z "$SQUIRREL_DIR" ] && echo "❌ squirrel plugin directory not found." && exit 1
 ```
 
-1b. Preguntar al usuario:
-   - `vault_path`: ruta absoluta al vault (default `~/vault-squirrel`)
-   - `environment_name`: `personal` o `work` (u otro custom)
-   - `default_email`: dirección de email para mailto: drafts
-   - `active_projects`: lista de tags de proyectos WIP actuales
+1b. Ask the user:
+   - `vault_path`: absolute path to the vault (default `~/vault-squirrel`)
+   - `environment_name`: `personal` or `work` (or another custom value)
+   - `default_email`: email address for mailto: drafts
+   - `active_projects`: list of current WIP project tags
 
 <!-- @spec INT-005 -->
-2. Crear `~/.squirrel/config.toml` desde la plantilla si no existe:
+2. Create `~/.squirrel/config.toml` from the template if it doesn't exist:
 ```bash
 mkdir -p ~/.squirrel
 if [ ! -f ~/.squirrel/config.toml ]; then
     cp "$SQUIRREL_DIR/config/squirrel.toml.example" ~/.squirrel/config.toml
-    echo "✅ config.toml creado desde plantilla."
+    echo "✅ config.toml created from template."
 else
-    echo "ℹ️  config.toml ya existe — no se sobreescribió."
+    echo "ℹ️  config.toml already exists — not overwritten."
 fi
 ```
 
-2b. Referencia: estructura del config.toml generado:
+2b. Reference: structure of the generated config.toml:
 ```toml
 vault_path = "~/vault-squirrel"
 environment_name = "personal"
 default_email = "user@example.com"
 
 [projects]
-active = ["TRABAJO-PROYECTO-A", "SIDEPROJECT-FOYER-FAMILY", "VISA-FAMILIA"]
+active = ["WORK-PROJECT-A", "SIDEPROJECT-FOYER-FAMILY", "VISA-FAMILIA"]
 
 [compliance]
 strict = false
@@ -76,78 +76,78 @@ default_folder = "99-Resources/Captures"
 auto_link_project_page = true
 ```
 
-3. Crear estructura mínima en el vault si no existe:
+3. Create a minimal structure in the vault if it doesn't exist:
    - `<vault>/.squirrel/outgoing/`
    - `<vault>/.squirrel/applied/`
    - `<vault>/.squirrel/incoming/`
    - `<vault>/.squirrel/audit-logs/`   ← audit trail (VAULT-006)
    - `<vault>/.squirrel/switches.jsonl` ← empty file, switches ledger (VAULT-006)
 
-4. Verificar que existan las carpetas PARA del vault (VAULT-001 + VAULT-006):
+4. Verify that the vault's PARA folders exist (VAULT-001 + VAULT-006):
    - `01-Proyectos-Activos/`   ← PARA: Projects
    - `02-Areas/`               ← PARA: Areas
    - `03-Recursos/`            ← PARA: Resources
    - `04-Archivo/`             ← PARA: Archive
 
-   También crear carpetas auxiliares si no existen:
+   Also create auxiliary folders if they don't exist:
    - `00-Dashboard/`
    - `02-Parking-Lot/`
    - `04-Daily/`
    - `99-Resources/`
 
-   Si faltan, crear con stub README.
+   If any are missing, create them with a stub README.
 
-4b. Escribir una intent de muestra desde `templates/intent.md` (VAULT-006):
-   - Destino: `<vault>/01-Proyectos-Activos/DEMO-INICIO/DEMO-INICIO-SETUP-001.md`
-   - Rellenar `<TAG>` → `DEMO-INICIO-SETUP-001`, `<PROJECT>` → `DEMO-INICIO`, `<YYYY-MM-DD>` → fecha de hoy.
-   - Crear también la página de proyecto `<vault>/01-Proyectos-Activos/DEMO-INICIO/DEMO-INICIO.md` con frontmatter mínimo:
+4b. Write a sample intent from `templates/intent.md` (VAULT-006):
+   - Destination: `<vault>/01-Proyectos-Activos/DEMO-INICIO/DEMO-INICIO-SETUP-001.md`
+   - Fill in `<TAG>` → `DEMO-INICIO-SETUP-001`, `<PROJECT>` → `DEMO-INICIO`, `<YYYY-MM-DD>` → today's date.
+   - Also create the project page `<vault>/01-Proyectos-Activos/DEMO-INICIO/DEMO-INICIO.md` with minimal frontmatter:
      ```yaml
      ---
      id: DEMO-INICIO
-     tipo: C
-     estado: wip
-     creado: <YYYY-MM-DD>
-     tags: [proyecto, demo]
+     type: C
+     status: wip
+     created: <YYYY-MM-DD>
+     tags: [project, demo]
      ---
      # DEMO-INICIO
-     Proyecto de demostración generado por /sq-init.
+     Demo project generated by /sq-init.
      ```
-   - No sobreescribir si ya existen — avisar y saltar.
+   - Don't overwrite if they already exist — warn and skip.
 
-5. Ofrecer instalar los dashboards de Obsidian:
-   - Preguntar: "¿Querés copiar los dashboards de Dataview a `vault/00-Dashboard/`? (s/n)"
-   - Si sí: copiar `templates/dashboard/Dashboard.md` y `templates/dashboard/Dashboard-Kanban.md`
-     a `<vault>/00-Dashboard/`. No sobreescribir si ya existen — avisar y saltar.
-   - Si no: mencionar que pueden instalarse manualmente desde `templates/dashboard/`.
-   - Tip: "En Obsidian podés fijar el panel del Dashboard para tenerlo siempre visible."
+5. Offer to install the Obsidian dashboards:
+   - Ask: "Want to copy the Dataview dashboards to `vault/00-Dashboard/`? (y/n)"
+   - If yes: copy `templates/dashboard/Dashboard.md` and `templates/dashboard/Dashboard-Kanban.md`
+     to `<vault>/00-Dashboard/`. Don't overwrite if they already exist — warn and skip.
+   - If no: mention they can be installed manually from `templates/dashboard/`.
+   - Tip: "In Obsidian you can pin the Dashboard panel to keep it always visible."
 
-6. Confirmar setup y sugerir próximo paso: `/sq-where-am-i` para empezar.
+6. Confirm setup and suggest the next step: `/sq-where-am-i` to get started.
 
 ---
 
-## Paso A — `--add-vault` subflow (R-6.4)
+## Step A — `--add-vault` subflow (R-6.4)
 
-Solo se ejecuta cuando el usuario invoca `/sq-init --add-vault`. No toca el vault ni la
-estructura PARA; sólo añade una nueva entrada `[[vaults]]` a `~/.squirrel/config.toml`.
+Runs only when the user invokes `/sq-init --add-vault`. It doesn't touch the vault or the
+PARA structure; it only adds a new `[[vaults]]` entry to `~/.squirrel/config.toml`.
 
-### A.1 — Pre-requisitos
+### A.1 — Prerequisites
 
-Verificar que `~/.squirrel/config.toml` ya existe. Si no existe, decirle al usuario que
-corra `/sq-init` (sin flag) primero y detener.
+Verify that `~/.squirrel/config.toml` already exists. If it doesn't, tell the user to
+run `/sq-init` (without the flag) first and stop.
 
 ```bash
 [ ! -f ~/.squirrel/config.toml ] && \
-  echo "❌ No existe ~/.squirrel/config.toml. Corré /sq-init (sin --add-vault) primero." && \
+  echo "❌ ~/.squirrel/config.toml does not exist. Run /sq-init (without --add-vault) first." && \
   exit 1
 ```
 
-Mostrar los vaults ya configurados para que el usuario tenga contexto:
+Show the already-configured vaults so the user has context:
 
 ```bash
 SQUIRREL_DIR=$(find "${HOME}/.claude/plugins" "${HOME}/others" \
     -maxdepth 4 -name "plugin.json" -path "*squirrel*" 2>/dev/null \
     | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null)
-[ -z "$SQUIRREL_DIR" ] && echo "❌ No se encontró el directorio del plugin squirrel." && exit 1
+[ -z "$SQUIRREL_DIR" ] && echo "❌ squirrel plugin directory not found." && exit 1
 
 python3 -c "
 import sys, pathlib
@@ -158,29 +158,29 @@ try:
         marker = '  (default)' if v.default else ''
         print(f'  {v.name:<20} {v.path}{marker}')
 except NoVaultsConfiguredError:
-    print('  (ningún vault configurado todavía)')
+    print('  (no vault configured yet)')
 "
 ```
 
-### A.2 — Preguntar nombre, path, y set-as-default
+### A.2 — Ask for name, path, and set-as-default
 
-Preguntar al usuario, una por vez (usando `AskUserQuestion` si está disponible, o un
-prompt simple en chat). Los tres campos son obligatorios:
+Ask the user, one at a time (using `AskUserQuestion` if available, or a simple chat
+prompt). All three fields are required:
 
-1. **`name`** — short name del vault (e.g. `work`, `personal`, `client-a`). Sin espacios,
-   minúsculas + guiones recomendado. Debe ser único entre los vaults existentes.
-2. **`path`** — ruta absoluta al directorio del vault. Tilde (`~`) se expande. El
-   directorio debe existir.
-3. **`set-as-default? (y/n)`** — si el usuario responde `y`, este vault pasa a ser el
-   default y los demás se marcan `default = false`. Si responde `n`, el default actual
-   no cambia.
+1. **`name`** — the vault's short name (e.g. `work`, `personal`, `client-a`). No spaces,
+   lowercase + hyphens recommended. Must be unique among existing vaults.
+2. **`path`** — absolute path to the vault directory. A tilde (`~`) is expanded. The
+   directory must exist.
+3. **`set-as-default? (y/n)`** — if the user answers `y`, this vault becomes the
+   default and the others are marked `default = false`. If they answer `n`, the current
+   default doesn't change.
 
-Guardar las respuestas como `$VAULT_NAME`, `$VAULT_PATH`, `$SET_DEFAULT` (`y` o `n`).
+Save the answers as `$VAULT_NAME`, `$VAULT_PATH`, `$SET_DEFAULT` (`y` or `n`).
 
-### A.3 — Validar y escribir al config
+### A.3 — Validate and write to the config
 
-Toda la validación (nombre duplicado, path inexistente, path que no es directorio) vive
-en `config_loader.add_vault` (R-6.4 / D3). El handler aquí es un wrapper delgado:
+All validation (duplicate name, nonexistent path, path that isn't a directory) lives
+in `config_loader.add_vault` (R-6.4 / D3). The handler here is a thin wrapper:
 
 ```bash
 RESULT=$(python3 -c "
@@ -202,23 +202,22 @@ except ConfigError as e:
 EXIT_CODE=$?
 ```
 
-- `EXIT_CODE == 0` → confirmar al usuario:
+- `EXIT_CODE == 0` → confirm to the user:
   ```
-  ✅ Vault '<name>' añadido (<path>)
-     ¿Default actualizado? <sí/no>
-  Próximo paso: probá `squirrel vaults list` o corré algún comando con `--vault <name>`.
+  ✅ Vault '<name>' added (<path>)
+     Default updated? <yes/no>
+  Next step: try `squirrel vaults list` or run a command with `--vault <name>`.
   ```
-- `EXIT_CODE != 0` → mostrar el mensaje de error (de `RESULT` o stderr) y sugerir
-  arreglar el nombre / path antes de reintentar. NO continuar con más pasos.
+- `EXIT_CODE != 0` → show the error message (from `RESULT` or stderr) and suggest
+  fixing the name / path before retrying. Do NOT continue with further steps.
 
 ### A.4 — Anti-patterns
 
-- ❌ No editar `config.toml` a mano desde este flujo — siempre pasar por
-  `config_loader.add_vault` y `config_loader.set_default` para que la validación
-  (path existe, nombre único, exactamente un default) se aplique uniformemente.
-- ❌ No tocar la estructura del vault recién agregado — el usuario es responsable de
-  que ya esté inicializada con las carpetas PARA. Si quiere setup completo, debe
-  correr `/sq-init` apuntando al nuevo vault como default temporal.
-- ❌ No correr los pasos 1–6 del setup inicial cuando `--add-vault` está presente —
-  ese flujo asume primera instalación.
-
+- ❌ Don't edit `config.toml` by hand from this flow — always go through
+  `config_loader.add_vault` and `config_loader.set_default` so the validation
+  (path exists, unique name, exactly one default) is applied uniformly.
+- ❌ Don't touch the structure of the newly added vault — the user is responsible for
+  it already being initialized with the PARA folders. If they want a full setup, they
+  should run `/sq-init` pointing at the new vault as the temporary default.
+- ❌ Don't run steps 1–6 of the initial setup when `--add-vault` is present —
+  that flow assumes a first install.

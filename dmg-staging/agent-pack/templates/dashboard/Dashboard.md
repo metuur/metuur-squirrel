@@ -16,11 +16,11 @@ updated: daily
 TABLE WITHOUT ID
   "⚠️ " + file.link AS Intent,
   deadline AS Deadline,
-  estado AS Estado,
-  proyecto AS Proyecto
+  status AS Status,
+  project AS Project
 FROM "01-Proyectos-Activos"
 WHERE deadline < date(today)
-  AND estado != "done" AND estado != "completado" AND estado != "archived"
+  AND status != "done" AND status != "done" AND status != "archived"
 SORT deadline ASC
 ```
 
@@ -30,11 +30,11 @@ SORT deadline ASC
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  prioridad AS Prioridad,
-  proyecto AS Proyecto
+  priority AS Priority,
+  project AS Project
 FROM "01-Proyectos-Activos"
 WHERE deadline >= date(today) AND deadline <= date(today) + dur(1 day)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 ```
 
@@ -43,11 +43,11 @@ SORT deadline ASC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   deadline AS Deadline,
   file.mtime AS "Last Touch"
 FROM "01-Proyectos-Activos"
-WHERE estado = "in-progress" OR estado = "en-progreso"
+WHERE status = "in-progress"
 SORT file.mtime DESC
 LIMIT 5
 ```
@@ -58,12 +58,12 @@ LIMIT 5
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  estado AS Estado,
-  proyecto AS Proyecto
+  status AS Status,
+  project AS Project
 FROM "01-Proyectos-Activos"
 WHERE deadline > date(today) + dur(1 day)
   AND deadline <= date(today) + dur(7 days)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 ```
 
@@ -72,10 +72,10 @@ SORT deadline ASC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Since"
 FROM "01-Proyectos-Activos"
-WHERE estado = "blocked" OR estado = "bloqueado"
+WHERE status = "blocked"
 SORT file.mtime ASC
 ```
 
@@ -84,11 +84,11 @@ SORT file.mtime ASC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Last Modified",
   deadline AS Deadline
 FROM "01-Proyectos-Activos"
-WHERE (estado = "in-progress" OR estado = "en-progreso")
+WHERE (status = "in-progress")
   AND file.mtime < date(today) - dur(7 days)
 SORT file.mtime ASC
 ```
@@ -98,10 +98,10 @@ SORT file.mtime ASC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Completed"
 FROM "01-Proyectos-Activos" OR "04-Archivo"
-WHERE (estado = "done" OR estado = "completado")
+WHERE (status = "done")
   AND file.mtime >= date(today) - dur(7 days)
 SORT file.mtime DESC
 LIMIT 10

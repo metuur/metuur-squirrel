@@ -1,20 +1,20 @@
 ---
-description: Aplica el buffer de foco a una estimación de tiempo. Uso: /sq-estimate <duración>
+description: Applies the focus buffer to a time estimate. Usage: /sq-estimate <duration>
 allowed-tools: [Bash]
 ---
 
 # /sq-estimate
 
-Argumentos: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-Aplica el multiplicador de foco a la estimación provista ejecutando `estimate_buffer.py`.
+Applies the focus multiplier to the provided estimate by running `estimate_buffer.py`.
 
-## Paso 1: Validar argumento
+## Step 1: Validate the argument
 
-`$ARGUMENTS` es la estimación del usuario (ej: `2h`, `30 min`, `1.5 hours`, `90`).
-Si está vacío, preguntar: "¿Cuánto estimás que va a llevar?"
+`$ARGUMENTS` is the user's estimate (e.g. `2h`, `30 min`, `1.5 hours`, `90`).
+If empty, ask: "How long do you estimate this will take?"
 
-## Paso 2: Localizar el script
+## Step 2: Locate the script
 
 ```bash
 SCRIPT=""
@@ -24,30 +24,30 @@ for candidate in \
     "$(find "${HOME}/others" -name 'estimate_buffer.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCRIPT="$candidate" && break
 done
-[ -z "$SCRIPT" ] && echo "❌ No se encontró estimate_buffer.py. Verificá la instalación del plugin." && exit 1
+[ -z "$SCRIPT" ] && echo "❌ estimate_buffer.py not found. Check the plugin installation." && exit 1
 ```
 
-## Paso 3: Ejecutar el script
+## Step 3: Run the script
 
 ```bash
 RESULT=$(python3 "$SCRIPT" --estimate "$ARGUMENTS" --pretty 2>&1)
 EXIT_CODE=$?
 ```
 
-Si `EXIT_CODE != 0`, mostrar el error y detener.
+If `EXIT_CODE != 0`, show the error and stop.
 
-## Paso 4: Renderizar el resultado
+## Step 4: Render the result
 
-Con el JSON devuelto, renderizar:
+With the returned JSON, render:
 
 ```
-⏱️  Estimación con buffer de foco
+⏱️  Estimate with focus buffer
 
-  Tu estimación:  <user_estimate_human>
-  Multiplicador:  ×<multiplier>
-  Estimación real: <adjusted_human>
+  Your estimate:   <user_estimate_human>
+  Multiplier:      ×<multiplier>
+  Real estimate:   <adjusted_human>
 
   💡 <explanation>
 ```
 
-Luego ofrecer: "¿Querés que divida <adjusted_human> en chunks manejables? Corrés /sq-chunk <adjusted_human>."
+Then offer: "Want me to break <adjusted_human> into manageable chunks? Run /sq-chunk <adjusted_human>."

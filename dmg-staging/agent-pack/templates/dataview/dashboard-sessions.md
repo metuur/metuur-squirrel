@@ -10,11 +10,11 @@ type: dashboard
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Last Touched",
   deadline AS Deadline
 FROM "01-Proyectos-Activos"
-WHERE estado = "in-progress" OR estado = "en-progreso"
+WHERE status = "in-progress"
 SORT file.mtime DESC
 ```
 
@@ -23,8 +23,8 @@ SORT file.mtime DESC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
-  estado AS Estado,
+  project AS Project,
+  status AS Status,
   file.mtime AS Modified
 FROM "01-Proyectos-Activos"
 WHERE file.mtime >= date(today) - dur(7 days)
@@ -37,10 +37,10 @@ LIMIT 15
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Last Modified"
 FROM "01-Proyectos-Activos"
-WHERE estado = "blocked" OR estado = "bloqueado"
+WHERE status = "blocked"
 SORT file.mtime DESC
 ```
 
@@ -49,11 +49,11 @@ SORT file.mtime DESC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Last Modified",
   deadline AS Deadline
 FROM "01-Proyectos-Activos"
-WHERE (estado = "in-progress" OR estado = "en-progreso")
+WHERE (status = "in-progress")
   AND file.mtime < date(today) - dur(7 days)
 SORT file.mtime ASC
 ```
@@ -62,14 +62,14 @@ SORT file.mtime ASC
 
 ```dataview
 TABLE WITHOUT ID
-  proyecto AS Proyecto,
-  length(filter(rows, (r) => r.estado = "done" OR r.estado = "completado")) AS Done,
-  length(filter(rows, (r) => r.estado = "in-progress" OR r.estado = "en-progreso")) AS Active,
-  length(filter(rows, (r) => r.estado = "pending")) AS Pending
+  project AS Project,
+  length(filter(rows, (r) => r.status = "done")) AS Done,
+  length(filter(rows, (r) => r.status = "in-progress")) AS Active,
+  length(filter(rows, (r) => r.status = "pending")) AS Pending
 FROM "01-Proyectos-Activos"
-WHERE proyecto != null
-GROUP BY proyecto
-SORT length(filter(rows, (r) => r.estado = "in-progress")) DESC
+WHERE project != null
+GROUP BY project
+SORT length(filter(rows, (r) => r.status = "in-progress")) DESC
 ```
 
 ---

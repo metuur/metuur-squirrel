@@ -26,7 +26,7 @@
         {
           "name": "squirrel-backend",
           "sidecar": true,
-          "args": ["--port", "3939"]
+          "args": ["--port", "3939", "--token", { "validator": "[0-9a-f]{64}" }]
         }
       ]
     }

@@ -81,7 +81,7 @@ else
 fi
 
 # ─── Agent selection (fresh install only) ────────────────────────────────────
-AGENT_IDX=""
+AGENT_INDICES=()
 VAULT_PATH=""
 
 AGENT_NAMES=("Claude Code" "Codex" "Cursor" "Windsurf")
@@ -94,16 +94,13 @@ AGENT_PACK_DESTS=(
 )
 
 if (( ! IS_UPGRADE )); then
-  hdr "Which AI agent do you use?"
+  hdr "Which AI agent(s) do you use?"
 
   if (( AUTO_MODE )); then
     for i in "${!AGENT_CHECK_DIRS[@]}"; do
-      if [[ -d "${AGENT_CHECK_DIRS[$i]}" ]]; then
-        AGENT_IDX="$i"
-        break
-      fi
+      [[ -d "${AGENT_CHECK_DIRS[$i]}" ]] && AGENT_INDICES+=("$i")
     done
-    [[ -n "$AGENT_IDX" ]] || die "No supported agent detected. Install Claude Code, Codex, Cursor, or Windsurf first."
+    (( ${#AGENT_INDICES[@]} > 0 )) || die "No supported agent detected. Install Claude Code, Codex, Cursor, or Windsurf first."
   else
     for i in "${!AGENT_NAMES[@]}"; do
       label=""
@@ -111,12 +108,23 @@ if (( ! IS_UPGRADE )); then
       printf '  %d)  %s%s\n' "$((i+1))" "${AGENT_NAMES[$i]}" "$label"
     done
     say ""
-    ask "Enter number [1-4]:"
-    AGENT_IDX="$((REPLY - 1))"
-    (( AGENT_IDX >= 0 && AGENT_IDX < 4 )) || die "Invalid choice: $REPLY"
+    ask "Enter numbers separated by spaces or commas (e.g. 1 2):"
+    # Normalise commas → spaces, then parse
+    IFS=', ' read -ra _picks <<< "${REPLY//,/ }"
+    for _p in "${_picks[@]}"; do
+      [[ -z "$_p" ]] && continue
+      _idx="$(( _p - 1 ))"
+      (( _idx >= 0 && _idx < ${#AGENT_NAMES[@]} )) || die "Invalid choice: $_p"
+      AGENT_INDICES+=("$_idx")
+    done
+    (( ${#AGENT_INDICES[@]} > 0 )) || die "No agents selected."
   fi
 
-  say "Agent: ${C_BOLD}${AGENT_NAMES[$AGENT_IDX]}${C_RESET}"
+  _selected_labels=()
+  for _i in "${AGENT_INDICES[@]}"; do
+    _selected_labels+=("${AGENT_NAMES[$_i]}")
+  done
+  say "Agent(s): ${C_BOLD}$(IFS=', '; echo "${_selected_labels[*]}")${C_RESET}"
 
   # ─── Vault path ────────────────────────────────────────────────────────────
   hdr "Where is your vault?"
@@ -223,23 +231,24 @@ printf '%s\n' "$VERSION_IN_DMG" > "$VERSION_FILE"
 # ─── 10. Install agent-pack (LAST — commit step) ─────────────────────────────
 hdr "Installing agent-pack"
 
-AGENT_PACK_DEST=""
+AGENT_PACK_DESTS_SELECTED=()
 if (( IS_UPGRADE )); then
-  # Re-detect from what's present on disk
+  # Re-detect all agents present on disk
   for i in "${!AGENT_CHECK_DIRS[@]}"; do
-    if [[ -d "${AGENT_CHECK_DIRS[$i]}" ]]; then
-      AGENT_PACK_DEST="${AGENT_PACK_DESTS[$i]}"
-      break
-    fi
+    [[ -d "${AGENT_CHECK_DIRS[$i]}" ]] && AGENT_PACK_DESTS_SELECTED+=("${AGENT_PACK_DESTS[$i]}")
   done
 else
-  AGENT_PACK_DEST="${AGENT_PACK_DESTS[$AGENT_IDX]}"
+  for _i in "${AGENT_INDICES[@]}"; do
+    AGENT_PACK_DESTS_SELECTED+=("${AGENT_PACK_DESTS[$_i]}")
+  done
 fi
 
-if [[ -n "$AGENT_PACK_DEST" ]]; then
-  mkdir -p "$AGENT_PACK_DEST"
-  rsync -a --delete "$AGENT_PACK/" "$AGENT_PACK_DEST/"
-  ok "agent-pack → $AGENT_PACK_DEST"
+if (( ${#AGENT_PACK_DESTS_SELECTED[@]} > 0 )); then
+  for dest in "${AGENT_PACK_DESTS_SELECTED[@]}"; do
+    mkdir -p "$dest"
+    rsync -a --delete "$AGENT_PACK/" "$dest/"
+    ok "agent-pack → $dest"
+  done
 else
   warn "No agent directory found — skipping agent-pack install"
   warn "Run the installer again after installing Claude Code, Codex, Cursor, or Windsurf"

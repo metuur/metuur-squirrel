@@ -1,25 +1,25 @@
 ---
-description: Muestra todos los deadlines del vault agrupados por urgencia. Uso: /sq-deadlines [--level critical,urgent,soon,upcoming,eventual,distant] [--vault NAME]
+description: Shows all vault deadlines grouped by urgency. Usage: /sq-deadlines [--level critical,urgent,soon,upcoming,eventual,distant] [--vault NAME]
 allowed-tools: [Bash]
 ---
 
 # /sq-deadlines
 
-Argumentos: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-Argumentos opcionales:
-- `--level <levels>` — filtrar por urgencia (ej: `--level critical,urgent`)
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--level <levels>` — filter by urgency (e.g. `--level critical,urgent`)
+- `--vault NAME` — operate on a specific vault (default if omitted)
 
-Muestra deadlines del vault agrupados por nivel de urgencia ejecutando `deadline_scanner.py`.
+Shows vault deadlines grouped by urgency level by running `deadline_scanner.py`.
 
-## Paso 1: Parsear argumentos
+## Step 1: Parse arguments
 
-De `$ARGUMENTS` extraer `--level <levels>` y `--vault NAME` si están presentes.
-Si no se especifica `--level`, mostrar todos los niveles.
-Si no se especifica `--vault`, usar el vault default.
+From `$ARGUMENTS` extract `--level <levels>` and `--vault NAME` if present.
+If `--level` is not specified, show all levels.
+If `--vault` is not specified, use the default vault.
 
-## Paso 2: Resolver VAULT_PATH (multi-vault)
+## Step 2: Resolve VAULT_PATH (multi-vault)
 
 ```bash
 # Parse --vault NAME from $ARGUMENTS (R-6.1, R-6.2)
@@ -45,7 +45,7 @@ except ConfigError as e:
 [ $? -ne 0 ] && echo "❌ $VAULT_PATH" >&2 && exit 1
 ```
 
-## Paso 3: Localizar el script
+## Step 3: Locate the script
 
 ```bash
 SCRIPT=""
@@ -55,49 +55,49 @@ for candidate in \
     "$(find "${HOME}/others" -name 'deadline_scanner.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCRIPT="$candidate" && break
 done
-[ -z "$SCRIPT" ] && echo "❌ No se encontró deadline_scanner.py. Verificá la instalación del plugin." && exit 1
+[ -z "$SCRIPT" ] && echo "❌ deadline_scanner.py not found. Check the plugin installation." && exit 1
 ```
 
-## Paso 4: Ejecutar el script
+## Step 4: Run the script
 
-Sin filtro de nivel:
+Without level filter:
 ```bash
 RESULT=$(python3 "$SCRIPT" --vault "$VAULT_PATH" --pretty 2>&1)
 ```
 
-Con filtro (si `--level` fue especificado):
+With filter (if `--level` was specified):
 ```bash
 RESULT=$(python3 "$SCRIPT" --vault "$VAULT_PATH" --level "<levels>" --pretty 2>&1)
 ```
 
-Si `EXIT_CODE != 0`, mostrar el error y detener.
+If `EXIT_CODE != 0`, show the error and stop.
 
-## Paso 5: Renderizar el resultado
+## Step 5: Render the result
 
-Con el JSON devuelto, renderizar cada nivel que tenga ítems:
+With the returned JSON, render each level that has items:
 
 ```
-📅 Deadlines — <scanned_at, solo fecha>
+📅 Deadlines — <scanned_at, date only>
 
-🔴 CRITICAL (<N>) — vencidos o < 4 horas
-  • [OVERDUE] <project>/<intent> — vencido hace <days_overdue> día(s)   ← si is_overdue=true
-  • <project>/<intent> — <hours_left>h restantes                        ← si inminente
+🔴 CRITICAL (<N>) — overdue or < 4 hours
+  • [OVERDUE] <project>/<intent> — overdue by <days_overdue> day(s)   ← if is_overdue=true
+  • <project>/<intent> — <hours_left>h left                          ← if imminent
 
-🟠 URGENT (<N>) — hoy (≥4 h) o mañana
-  • <project>/<intent> — <hours_left>h restantes / mañana
+🟠 URGENT (<N>) — today (≥4 h) or tomorrow
+  • <project>/<intent> — <hours_left>h left / tomorrow
 
-🟡 SOON (<N>) — 2-3 días
-  • <project>/<intent> — <days_left> día(s)
+🟡 SOON (<N>) — 2-3 days
+  • <project>/<intent> — <days_left> day(s)
 
-🔵 UPCOMING (<N>) — 4-7 días
-  • <project>/<intent> — <days_left> día(s)
+🔵 UPCOMING (<N>) — 4-7 days
+  • <project>/<intent> — <days_left> day(s)
 
-🟢 EVENTUAL (<N>) — 8-30 días
-  • <project>/<intent> — <days_left> día(s)
+🟢 EVENTUAL (<N>) — 8-30 days
+  • <project>/<intent> — <days_left> day(s)
 
-⚪ DISTANT (<N>) — más de 30 días
-  • <project>/<intent> — <days_left> día(s)
+⚪ DISTANT (<N>) — more than 30 days
+  • <project>/<intent> — <days_left> day(s)
 ```
 
-Omitir completamente las secciones con cero ítems.
-Si ningún nivel tiene ítems: mostrar "✅ No deadlines encontrados en el vault."
+Omit sections with zero items entirely.
+If no level has items: show "✅ No deadlines found in the vault."

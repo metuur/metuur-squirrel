@@ -1,6 +1,6 @@
 ---
 name: squirrel-recover
-description: Recover lost session context when the user forgot to run /sq-end. Reads session-manifest.jsonl (primary) or Claude's own JSONL history (fallback), generates a 5-line summary via claude -p, and asks the user what to do with it. Use when the user says "perdí la sesión", "me olvidé de /sq-end", "qué hice ayer", "recover", or runs /sq-recover. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
+description: Recover lost session context when the user forgot to run /sq-end. Reads session-manifest.jsonl (primary) or Claude's own JSONL history (fallback), generates a 5-line summary via claude -p, and asks the user what to do with it. Use when the user says "I lost the session", "I forgot to run /sq-end", "what did I do yesterday", "recover", or runs /sq-recover. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
 ---
 
 # squirrel:recover
@@ -11,7 +11,7 @@ Recover cognitive context from a forgotten session. The user closed Claude witho
 
 ## When to invoke
 
-- Explicit: `/sq-recover`, "perdí la sesión", "me olvidé el sq-end", "qué hice ayer"
+- Explicit: `/sq-recover`, "I lost the session", "I forgot to run sq-end", "what did I do yesterday"
 - When `SessionStart` finds no recent shutdown note for the active project AND the manifest has entries within 72 h
 
 ## Workflow
@@ -36,7 +36,7 @@ except ConfigError as e:
 [ $? -ne 0 ] && echo "❌ $VAULT_PATH" >&2 && exit 1
 
 SCANNER=$(find "${HOME}/.claude" "${HOME}/others" -name session_scanner.py -path "*/squirrel/*" 2>/dev/null | head -1)
-[ -z "$SCANNER" ] && echo "❌ session_scanner.py no encontrado. Verificá la instalación." && exit 1
+[ -z "$SCANNER" ] && echo "❌ session_scanner.py not found. Check your installation." && exit 1
 ```
 
 <!-- @spec SESSION-007, SESSION-008 -->
@@ -47,19 +47,19 @@ SESSIONS=$(python3 "$SCANNER" --vault "$VAULT_PATH" --max-age-hours 72 --pretty 
 EXIT_CODE=$?
 ```
 
-If `EXIT_CODE != 0` or `SESSIONS` is `[]`, tell the user: "No encontré sesiones recuperables en las últimas 72 h." and stop.
+If `EXIT_CODE != 0` or `SESSIONS` is `[]`, tell the user: "No recoverable sessions found in the last 72 h." and stop.
 
 ### Step 3: Present session list to the user
 
 Show a numbered list:
 ```
-🔍 Sesiones recuperables (últimas 72 h):
+🔍 Recoverable sessions (last 72 h):
 
-  1. <cwd>  —  <last_seen date>  —  <entry_count> edits  —  fuente: <source>
+  1. <cwd>  —  <last_seen date>  —  <entry_count> edits  —  source: <source>
   2. ...
 ```
 
-Ask: "¿Cuál querés recuperar? (número o Enter para cancelar)"
+Ask: "Which one do you want to recover? (number or Enter to cancel)"
 
 If the user cancels, stop.
 
@@ -84,14 +84,14 @@ If `strict = true` AND any file in `files_edited` matches a corporate domain pat
 
 Build prompt:
 ```
-Sesión de trabajo recuperada. Lista de archivos editados:
+Recovered work session. List of edited files:
 <files_edited — one per line, redacted if needed>
 
-Directorio de trabajo: <cwd>
-Desde: <first_seen>  Hasta: <last_seen>
+Working directory: <cwd>
+From: <first_seen>  To: <last_seen>
 
-Generá un resumen de 5 líneas de lo que probablemente pasó en esta sesión de trabajo.
-Sé concreto sobre qué archivos fueron modificados y qué tipo de trabajo representan.
+Generate a 5-line summary of what likely happened in this work session.
+Be specific about which files were modified and what kind of work they represent.
 ```
 
 ```bash
@@ -102,7 +102,7 @@ echo "$SUMMARY" > "$CACHE_FILE"
 
 Display the summary:
 ```
-📋 Resumen de sesión (<last_seen>):
+📋 Session summary (<last_seen>):
 
 <SUMMARY>
 ```
@@ -112,13 +112,13 @@ Display the summary:
 
 Ask the user:
 ```
-¿Qué hacemos con este resumen?
+What should we do with this summary?
 
-  a) append-to-shutdown  → agregarlo como shutdown note al intent activo
-  b) inbox              → guardarlo en vault/99-Resources/Captures/
-  c) project            → guardarlo en el proyecto (<infered_project>)
-  d) raw                → mostrarlo en pantalla (ya está hecho)
-  e) discard            → descartarlo (sin guardar)
+  a) append-to-shutdown  → add it as a shutdown note to the active intent
+  b) inbox              → save it in vault/99-Resources/Captures/
+  c) project            → save it in the project (<infered_project>)
+  d) raw                → display it on screen (already done)
+  e) discard            → discard it (without saving)
 ```
 
 Handle each option:
@@ -129,9 +129,9 @@ Handle each option:
 
 **project**: Ask which project, then write to `<vault>/01-Proyectos-Activos/<PROJECT>/RECOVERED-<date>-<hash>.md`.
 
-**raw**: Already displayed — confirm "Listo, solo se mostró."
+**raw**: Already displayed — confirm "Done, only displayed."
 
-**discard**: Confirm "Descartado. El resumen en caché se mantiene para referencia futura."
+**discard**: Confirm "Discarded. The cached summary is kept for future reference."
 
 ## Anti-patterns
 

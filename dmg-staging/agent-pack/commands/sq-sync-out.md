@@ -1,30 +1,30 @@
 ---
-description: Genera un paquete SQUIRREL para transferir manualmente al otro entorno (personal↔trabajo) vía email o clipboard.
+description: Generates a SQUIRREL package to manually transfer to the other environment (personal↔work) via email or clipboard.
 allowed-tools: [Read, Glob, Grep, Bash]
 ---
 
 # /sq-sync-out
 
-Genera paquete para transferir al otro entorno. Argumentos: $ARGUMENTS
+Generates a package to transfer to the other environment. Arguments: $ARGUMENTS
 
-Invoca el skill `squirrel:sync-out` que:
-1. Determina scope (intent / proyecto / research / decisiones / manual)
-2. Recolecta archivos del vault local
-3. Ejecuta compliance check (escaneo de secretos, validación de dirección)
-4. Compone paquete Markdown con header, hash SHA-256, payload
-5. Muestra el paquete en pantalla
-6. Ofrece: copiar al clipboard / abrir mailto: / guardar a archivo / solo mostrar
-7. Loguea el export en `<vault>/.squirrel/outgoing/log.jsonl`
+Invokes the `squirrel:sync-out` skill, which:
+1. Determines the scope (intent / project / research / decisions / manual)
+2. Collects files from the local vault
+3. Runs a compliance check (secret scanning, address validation)
+4. Composes a Markdown package with header, SHA-256 hash, payload
+5. Shows the package on screen
+6. Offers: copy to clipboard / open mailto: / save to file / just show
+7. Logs the export in `<vault>/.squirrel/outgoing/log.jsonl`
 
-Scopes válidos:
-- `--scope=<TAG>` — un intent específico
-- `--scope=<PROJECT>:research` — toda la investigación de un proyecto
-- `--scope=<PROJECT>:decisions` — solo decisiones
-- `--scope=<PROJECT>:*` — proyecto completo
-- `--since=<DATE>` — modificado desde fecha
-- `--manual` — selección interactiva
+Valid scopes:
+- `--scope=<TAG>` — a specific intent
+- `--scope=<PROJECT>:research` — all of a project's research
+- `--scope=<PROJECT>:decisions` — decisions only
+- `--scope=<PROJECT>:*` — the entire project
+- `--since=<DATE>` — modified since a date
+- `--manual` — interactive selection
 
-Flags adicionales:
-- `--encrypt` — pasar por GPG (si configurado)
-- `--no-shutdown-notes` — excluir shutdown notes (paquete más liviano)
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Additional flags:
+- `--encrypt` — pass through GPG (if configured)
+- `--no-shutdown-notes` — exclude shutdown notes (lighter package)
+- `--vault NAME` — operate on a specific vault (default if omitted)

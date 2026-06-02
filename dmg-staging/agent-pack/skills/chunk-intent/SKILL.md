@@ -1,6 +1,6 @@
 ---
 name: squirrel-chunk-intent
-description: Decompose a large or overwhelming intent into focus-friendly chunks with time estimates. Use when the user says "este intent es muy grande", "I don't know how to attack this", "this is too much", "how do I start X", "break down X for me", "chunk this task", runs /sq-chunk [INTENT-TAG], or when task-initiation Protocol 3 redirects here. Also offers automatically when an intent's estimate exceeds 3 hours.
+description: Decompose a large or overwhelming intent into focus-friendly chunks with time estimates. Use when the user says "this intent is too large", "I don't know how to attack this", "this is too much", "how do I start X", "break down X for me", "chunk this task", runs /sq-chunk [INTENT-TAG], or when task-initiation Protocol 3 redirects here. Also offers automatically when an intent's estimate exceeds 3 hours.
 metadata:
   category: task-decomposition
   pairs-with: [squirrel-task-initiation, squirrel-estimate, squirrel-session-start]
@@ -41,7 +41,7 @@ Extract:
 ### Step 2: Get or confirm the time estimate
 
 If the intent has an `estimate` in frontmatter, use it.
-If not, ask: "¿Cuánto tiempo estimás que toma en total? (minutos o horas)"
+If not, ask: "How long do you estimate this will take in total? (minutes or hours)"
 
 Run the estimate buffer to apply the focus multiplier:
 
@@ -51,11 +51,11 @@ python3 "$SCRIPT_DIR/estimate_buffer.py" --estimate "$USER_ESTIMATE" --pretty
 
 Show the user the adjusted estimate:
 ```
-Tu estimación: [RAW]
-Con buffer de foco (×[MULTIPLIER]): [ADJUSTED]
-Motivo: [EXPLANATION]
+Your estimate: [RAW]
+With focus buffer (×[MULTIPLIER]): [ADJUSTED]
+Reason: [EXPLANATION]
 
-¿Usamos [ADJUSTED] para el chunk plan?
+Shall we use [ADJUSTED] for the chunk plan?
 ```
 
 Wait for confirmation or let them override.
@@ -121,7 +121,7 @@ line for each chunk. Without it, the chunk is just a time box without an exit co
 
 ### Step 6: Update the intent (with user confirmation)
 
-Ask: "¿Actualizo el intent [TAG] con estas tareas? (las agrego como checkboxes)"
+Ask: "Shall I update intent [TAG] with these tasks? (I'll add them as checkboxes)"
 
 If yes, append the chunk list as checkboxes to the intent file:
 
@@ -155,7 +155,7 @@ Ready to start?
 → First chunk: [FIRST_CHUNK_NAME] — [MIN] min
    Done when: [done condition]
 
-¿Arrancamos? (responde "sí" y te ayudo con el inicio)
+Shall we begin? (reply "yes" and I'll help you get started)
 ```
 
 If they say yes, invoke task-initiation Protocol 1 with the first chunk as the specific task.
@@ -165,9 +165,9 @@ If they say yes, invoke task-initiation Protocol 1 with the first chunk as the s
 If the total adjusted estimate exceeds 8 hours:
 
 1. First apply chunking normally
-2. Then note: "Este intent es grande. Considerá crear sub-intents para cada sesión:
-   - [SESSION_1_NAME] — intent separado
-   - [SESSION_2_NAME] — intent separado"
+2. Then note: "This intent is large. Consider creating sub-intents for each session:
+   - [SESSION_1_NAME] — separate intent
+   - [SESSION_2_NAME] — separate intent"
 3. Offer to create the sub-intents from the template
 
 Don't force the split — some users prefer one large intent. Just surface the option.

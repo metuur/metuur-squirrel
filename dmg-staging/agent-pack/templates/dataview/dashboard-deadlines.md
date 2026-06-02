@@ -11,11 +11,11 @@ type: dashboard
 TABLE WITHOUT ID
   "💀 " + file.link AS Intent,
   deadline AS Deadline,
-  estado AS Estado,
-  proyecto AS Proyecto
+  status AS Status,
+  project AS Project
 FROM "01-Proyectos-Activos" OR "03-Areas"
 WHERE deadline < date(today)
-  AND estado != "done" AND estado != "completado" AND estado != "archived"
+  AND status != "done" AND status != "done" AND status != "archived"
 SORT deadline ASC
 ```
 
@@ -25,10 +25,10 @@ SORT deadline ASC
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  prioridad AS Prioridad
+  priority AS Priority
 FROM "01-Proyectos-Activos" OR "03-Areas"
 WHERE deadline = date(today)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 ```
 
@@ -38,11 +38,11 @@ SORT deadline ASC
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  proyecto AS Proyecto,
-  prioridad AS Prioridad
+  project AS Project,
+  priority AS Priority
 FROM "01-Proyectos-Activos" OR "03-Areas"
 WHERE deadline > date(today) AND deadline <= date(today) + dur(1 day)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 ```
 
@@ -52,11 +52,11 @@ SORT deadline ASC
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  proyecto AS Proyecto
+  project AS Project
 FROM "01-Proyectos-Activos" OR "03-Areas"
 WHERE deadline > date(today) + dur(1 day)
   AND deadline <= date(today) + dur(3 days)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 ```
 
@@ -66,12 +66,12 @@ SORT deadline ASC
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  proyecto AS Proyecto,
-  estado AS Estado
+  project AS Project,
+  status AS Status
 FROM "01-Proyectos-Activos" OR "03-Areas"
 WHERE deadline > date(today) + dur(3 days)
   AND deadline <= date(today) + dur(7 days)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 ```
 
@@ -81,11 +81,11 @@ SORT deadline ASC
 TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
-  proyecto AS Proyecto,
-  estado AS Estado
+  project AS Project,
+  status AS Status
 FROM "01-Proyectos-Activos" OR "03-Areas"
 WHERE deadline > date(today) + dur(7 days)
-  AND estado != "done" AND estado != "completado"
+  AND status != "done" AND status != "done"
 SORT deadline ASC
 LIMIT 10
 ```
@@ -98,7 +98,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   file.mtime AS "Completed Around"
 FROM "01-Proyectos-Activos" OR "03-Areas"
-WHERE (estado = "done" OR estado = "completado") AND deadline != null
+WHERE (status = "done") AND deadline != null
 SORT file.mtime DESC
 LIMIT 5
 ```

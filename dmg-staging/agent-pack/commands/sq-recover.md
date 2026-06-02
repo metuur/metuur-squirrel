@@ -1,15 +1,15 @@
 ---
-description: Recupera el contexto de una sesión olvidada (sin /sq-end). Usa session-manifest.jsonl o historial de Claude. Uso: /sq-recover [--scope TAG]
+description: Recovers the context of a forgotten session (without /sq-end). Uses session-manifest.jsonl or Claude history. Usage: /sq-recover [--scope TAG]
 allowed-tools: [Bash, Read, Write]
 ---
 
 # /sq-recover
 
-Argumentos: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-Argumentos opcionales:
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--vault NAME` — operate on a specific vault (default if omitted)
 
-Recupera una sesión perdida (cuando se olvidó `/sq-end`).
+Recovers a lost session (when `/sq-end` was forgotten).
 
-Invoca el skill `squirrel:recover` con los argumentos recibidos.
+Invokes the `squirrel:recover` skill with the received arguments.

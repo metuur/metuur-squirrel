@@ -325,6 +325,13 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
         if let Err(e) = window.show() {
             tracing::warn!(error = %e, "failed to show main window");
         }
+        // Reset window level to normal — windows created while the app is in
+        // Accessory mode may receive a floating NSWindowLevel on macOS. Switching
+        // the activation policy to Regular does not retroactively lower it, so we
+        // must do it explicitly each time the window is shown.
+        if let Err(e) = window.set_always_on_top(false) {
+            tracing::warn!(error = %e, "failed to reset window level on main window");
+        }
         if let Err(e) = window.set_focus() {
             tracing::warn!(error = %e, "failed to focus main window");
         }

@@ -13,17 +13,17 @@
 
 # 📦 Context Bridge Package
 
-**De**: {{from_env}}  →  **Para**: {{to_env}}
-**Generado**: {{human_date}}
+**From**: {{from_env}}  →  **To**: {{to_env}}
+**Generated**: {{human_date}}
 **Scope**: {{scope}}
-**Archivos**: {{count}}
+**Files**: {{count}}
 
-> 📋 Para aplicar: en el otro entorno, abrí Claude Code / Codex y pegá ESTE bloque completo
-> en el chat. El skill `squirrel:sync-in` lo procesará automáticamente.
+> 📋 To apply: in the other environment, open Claude Code / Codex and paste THIS entire block
+> into the chat. The `squirrel:sync-in` skill will process it automatically.
 
 ---
 
-## 📑 Resumen del paquete
+## 📑 Package Summary
 
 {{#each files}}
 - `{{target_path}}` — {{operation}} — {{description}}
@@ -31,15 +31,15 @@
 
 ---
 
-## 📂 Archivos a aplicar
+## 📂 Files to Apply
 
 {{#each files}}
 
-### Archivo {{index}}: {{target_path}}
+### File {{index}}: {{target_path}}
 
-**Operación**: {{operation}}
+**Operation**: {{operation}}
 **Tag**: `{{tag}}`
-**Conflicto si existe**: {{conflict_policy}}
+**Conflict if exists**: {{conflict_policy}}
 
 ```markdown
 {{content}}

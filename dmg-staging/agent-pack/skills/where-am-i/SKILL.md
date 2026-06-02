@@ -1,6 +1,6 @@
 ---
 name: squirrel-where-am-i
-description: Show "where was I?" — full vault status with recommended focus. Use when user runs /sq-where-am-i, asks "what was I doing", "¿en qué estaba?", "where did I leave off", or at session start when the previous activity is unclear. Accepts an optional `vault_name` argument; when omitted, the default vault is used (R-7.1, R-7.3).
+description: Show "where was I?" — full vault status with recommended focus. Use when user runs /sq-where-am-i, asks "what was I doing", "what was I working on?", "where did I leave off", or at session start when the previous activity is unclear. Accepts an optional `vault_name` argument; when omitted, the default vault is used (R-7.1, R-7.3).
 token_budget: 120
 ---
 

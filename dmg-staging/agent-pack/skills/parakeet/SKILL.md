@@ -1,6 +1,6 @@
 ---
 name: squirrel-parakeet
-description: Deadline reminder with tone calibrated to urgency level. Use when the user runs /sq-parakeet, at the start of any session (embedded in session-start), when the user asks "qué tengo pendiente", "what's due", "any deadlines?", "cuándo es lo de X", or after sq-status returns items with critical/urgent deadlines. Also triggers automatically when any loaded project has a deadline within 24 hours. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
+description: Deadline reminder with tone calibrated to urgency level. Use when the user runs /sq-parakeet, at the start of any session (embedded in session-start), when the user asks "what do I have pending", "what's due", "any deadlines?", "when is the thing about X", or after sq-status returns items with critical/urgent deadlines. Also triggers automatically when any loaded project has a deadline within 24 hours. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
 metadata:
   category: proactive-reminders
   pairs-with: [squirrel-session-start, squirrel-where-am-i, squirrel-brief]
@@ -184,7 +184,7 @@ Compact format:
 ## Special behaviors
 
 ### "I know, I know" pattern
-If the user dismisses a deadline ("sí, ya sé", "I'll deal with it later"):
+If the user dismisses a deadline ("yeah, I know", "I'll deal with it later"):
 - Acknowledge: "Noted. I'll mention it again next session if it's still open."
 - Don't argue or repeat immediately
 - Log the dismissal mentally (don't literally write to a file)

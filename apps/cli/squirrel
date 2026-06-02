@@ -885,6 +885,22 @@ def _web_server_script() -> Path:
     raise FileNotFoundError("backend server.py not found (checked monorepo + plugin paths)")
 
 
+def _find_backend_binary() -> "Path | None":
+    """Locate the compiled squirrel-backend binary for installed (non-dev) runs."""
+    import shutil
+    cli_dir = Path(__file__).resolve().parent
+    candidates = [
+        cli_dir / "squirrel-backend",          # sibling of squirrel binary (~/.local/bin/)
+        Path("~/.local/bin/squirrel-backend").expanduser(),
+    ]
+    for cand in candidates:
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return cand
+    # Last resort: PATH lookup
+    found = shutil.which("squirrel-backend")
+    return Path(found) if found else None
+
+
 def _web_running_pid() -> int:
     """Return the PID from the pid file if the process is alive, else 0."""
     if not _WEB_PID_PATH.is_file():
@@ -931,10 +947,16 @@ def _web_start(port: int, lan: bool) -> None:
         return
     try:
         server = _web_server_script()
-    except FileNotFoundError as e:
-        print(f"❌  {e}", file=sys.stderr)
-        sys.exit(1)
-    cmd = [sys.executable, str(server), "--port", str(port)]
+        cmd = [sys.executable, str(server), "--port", str(port)]
+    except FileNotFoundError:
+        backend_bin = _find_backend_binary()
+        if backend_bin is None:
+            print(
+                "❌  backend not found — install squirrel-backend or run from the monorepo",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        cmd = [str(backend_bin), "--port", str(port)]
     if lan:
         cmd.append("--lan")
     _WEB_PID_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -990,10 +1012,8 @@ def _web_status() -> None:
 
 
 def _web_open(port: int) -> None:
-    if not _web_running_pid():
-        _web_start(port, False)
-    import webbrowser
-    webbrowser.open(f"http://127.0.0.1:{port}")
+    # Delegate to open-web: TCP probe works for both launchd and manually started backends.
+    _web_open_browser(port)
 
 
 def _port_listening(port: int) -> bool:

@@ -194,9 +194,13 @@ else
   xattr -cr "$X86_BIN"
 
   # ─── Lipo — create universal binary ──────────────────────────────────────────
+  # The Tauri universal build target is `universal-apple-darwin`, so Tauri's
+  # externalBin resolution looks for `squirrel-backend-universal-apple-darwin`
+  # in src-tauri/bin/. Using the host triple (e.g. aarch64-apple-darwin) causes
+  # the sidecar to be silently omitted from the .app bundle.
   info "creating universal binary..."
   mkdir -p "$BIN_OUT_DIR"
-  OUT_BIN="$BIN_OUT_DIR/squirrel-backend-$TARGET_TRIPLE"
+  OUT_BIN="$BIN_OUT_DIR/squirrel-backend-universal-apple-darwin"
 
   lipo -create -output "$OUT_BIN" "$ARM64_BIN" "$X86_BIN"
   chmod +x "$OUT_BIN"
@@ -205,7 +209,7 @@ else
   [[ "$ACTUAL_ARCHS" == "arm64 x86_64" ]] \
     || die "unexpected archs in universal binary: '$ACTUAL_ARCHS' (expected 'arm64 x86_64')"
 
-  ok "universal sidecar at apps/desktop/src-tauri/bin/squirrel-backend-$TARGET_TRIPLE (archs: $ACTUAL_ARCHS)"
+  ok "universal sidecar at apps/desktop/src-tauri/bin/squirrel-backend-universal-apple-darwin (archs: $ACTUAL_ARCHS)"
   say ""
   ok "backend sidecar ready for tauri bundle"
 fi
