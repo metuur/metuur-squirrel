@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-estimate_buffer.py — Aplica el multiplicador ADHD a estimaciones de tiempo.
+estimate_buffer.py — Aplica el multiplicador de foco a estimaciones de tiempo.
 
-Basado en Executive Function Toolkit: las estimaciones ADHD típicamente se
+Basado en Executive Function Toolkit: las estimaciones típicamente se
 quedan cortas por factor 2-3×. Este script aplica el multiplicador apropiado
 según el tamaño de la tarea.
 
@@ -67,7 +67,7 @@ def humanize_minutes(minutes: float) -> str:
 
 # @spec ATTN-003, ATTN-006, ATTN-013
 def adjust_estimate(minutes: float) -> dict:
-    """Apply ADHD multiplier and return structured info."""
+    """Apply focus multiplier and return structured info."""
     multiplier = get_multiplier(minutes)
     adjusted = minutes * multiplier
 

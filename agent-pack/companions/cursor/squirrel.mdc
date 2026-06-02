@@ -1,5 +1,5 @@
 ---
-description: Squirrel — session management for ADHD engineers. Persists cognitive state across sessions via a Markdown vault. Apply this rule when the user mentions sessions, projects, shutdown notes, context switches, or any /sq- command.
+description: Squirrel — session management for engineers. Persists cognitive state across sessions via a Markdown vault. Apply this rule when the user mentions sessions, projects, shutdown notes, context switches, or any /sq- command.
 globs: ["**/*.md", ".squirrel/**"]
 alwaysApply: false
 ---
@@ -37,12 +37,12 @@ when the user's request matches the trigger.
 `~/.squirrel/config.toml` must exist before skills work. Minimum:
 
 ```toml
-vault_path = "~/vault-tdah"
+vault_path = "~/vault-squirrel"
 environment_name = "personal"
 ```
 
 Run `sq install --agent cursor` from the squirrel repo to set up skills.
-Run `python3 /path/to/squirrel/lib/status_aggregator.py --vault ~/vault-tdah --pretty`
+Run `python3 /path/to/squirrel/lib/status_aggregator.py --vault ~/vault-squirrel --pretty`
 to verify vault connectivity.
 
 ## Vault conventions
@@ -75,8 +75,8 @@ deadline: 2026-06-01
 Run directly or invoke from skills:
 
 ```bash
-python3 lib/status_aggregator.py --vault ~/vault-tdah --pretty
-python3 lib/deadline_scanner.py --vault ~/vault-tdah --level critical,urgent
+python3 lib/status_aggregator.py --vault ~/vault-squirrel --pretty
+python3 lib/deadline_scanner.py --vault ~/vault-squirrel --level critical,urgent
 python3 lib/estimate_buffer.py --hours 3
 python3 lib/chunk_helper.py --hours 8 --pretty
 ```
@@ -86,7 +86,7 @@ python3 lib/chunk_helper.py --hours 8 --pretty
 ```bash
 cb status          # vault health
 cb deadlines       # urgency-sorted deadlines
-cb chunk --hours 4 # ADHD-friendly decomposition
+cb chunk --hours 4 # focus-friendly decomposition
 cb estimate --hours 2
 cb install --agent cursor --dry-run
 ```

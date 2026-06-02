@@ -1,26 +1,26 @@
 ---
-description: "Muestra o cambia el manual focus pick (hoy / hoy PM / esta semana). Uso: /sq-focus | /sq-focus today TAG/SLUG | /sq-focus pm TAG/SLUG | /sq-focus week TAG/SLUG | /sq-focus today --clear | /sq-focus pm --clear | /sq-focus week --clear | /sq-focus history [YYYY-MM-DD]"
+description: "Shows or changes the manual focus pick (today / today PM / this week). Usage: /sq-focus | /sq-focus today TAG/SLUG | /sq-focus pm TAG/SLUG | /sq-focus week TAG/SLUG | /sq-focus today --clear | /sq-focus pm --clear | /sq-focus week --clear | /sq-focus history [YYYY-MM-DD]"
 allowed-tools: [Bash]
 ---
 
 # /sq-focus
 
-Argumentos: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-Gestiona el **manual focus pick** del usuario para hoy, hoy PM y esta semana, usando `focus_cli.py` sobre el vault.
+Manages the user's **manual focus pick** for today, today PM, and this week, using `focus_cli.py` over the vault.
 
-Formas válidas de invocación:
+Valid invocation forms:
 
-- `/sq-focus` — muestra el foco actual de hoy, hoy PM y esta semana.
-- `/sq-focus today TAG/SLUG` — fija el foco de hoy.
-- `/sq-focus pm TAG/SLUG` — fija el foco de hoy PM.
-- `/sq-focus week TAG/SLUG` — fija el foco de esta semana.
-- `/sq-focus today --clear` — limpia el foco de hoy.
-- `/sq-focus pm --clear` — limpia el foco de hoy PM.
-- `/sq-focus week --clear` — limpia el foco de esta semana.
-- `/sq-focus history [YYYY-MM-DD]` — muestra el historial de focus picks.
+- `/sq-focus` — shows the current focus for today, today PM, and this week.
+- `/sq-focus today TAG/SLUG` — sets today's focus.
+- `/sq-focus pm TAG/SLUG` — sets today PM's focus.
+- `/sq-focus week TAG/SLUG` — sets this week's focus.
+- `/sq-focus today --clear` — clears today's focus.
+- `/sq-focus pm --clear` — clears today PM's focus.
+- `/sq-focus week --clear` — clears this week's focus.
+- `/sq-focus history [YYYY-MM-DD]` — shows the focus pick history.
 
-## Paso 1: Parsear argumentos
+## Step 1: Parse arguments
 
 ```bash
 set -- $ARGUMENTS
@@ -28,18 +28,18 @@ SUBCMD="${1:-}"
 TARGET="${2:-}"
 ```
 
-Casos:
+Cases:
 
-- Sin `$1` → branch GET (Paso 3).
-- `$1` = `today`, `pm`, o `week` y `$2` = `--clear` → branch CLEAR (Paso 5).
-- `$1` = `today`, `pm`, o `week` y `$2` con forma `TAG/SLUG` → branch SET (Paso 4).
-- `$1` = `history`, `$2` opcional con forma `YYYY-MM-DD` → branch HISTORY (Paso 6).
-- Cualquier otra combinación → mostrar uso y exit 1:
+- No `$1` → GET branch (Step 3).
+- `$1` = `today`, `pm`, or `week` and `$2` = `--clear` → CLEAR branch (Step 5).
+- `$1` = `today`, `pm`, or `week` and `$2` of the form `TAG/SLUG` → SET branch (Step 4).
+- `$1` = `history`, optional `$2` of the form `YYYY-MM-DD` → HISTORY branch (Step 6).
+- Any other combination → show usage and exit 1:
   ```
   Usage: /sq-focus | /sq-focus today TAG/SLUG | /sq-focus pm TAG/SLUG | /sq-focus week TAG/SLUG | /sq-focus today --clear | /sq-focus pm --clear | /sq-focus week --clear | /sq-focus history [YYYY-MM-DD]
   ```
 
-## Paso 2: Resolver VAULT_PATH y localizar script
+## Step 2: Resolve VAULT_PATH and locate the script
 
 ```bash
 # Resolve VAULT_PATH via config_loader (multi-vault aware)
@@ -55,7 +55,7 @@ except ConfigError as e:
 " 2>&1)
 [ $? -ne 0 ] && echo "❌ $VAULT_PATH" >&2 && exit 1
 
-# Localizar focus_cli.py
+# Locate focus_cli.py
 SCRIPT=""
 for candidate in \
     "${HOME}/.claude/plugins/squirrel/lib/focus_cli.py" \
@@ -63,16 +63,16 @@ for candidate in \
     "$(find "${HOME}/others" -name 'focus_cli.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCRIPT="$candidate" && break
 done
-[ -z "$SCRIPT" ] && echo "❌ No se encontró focus_cli.py." && exit 1
+[ -z "$SCRIPT" ] && echo "❌ focus_cli.py not found." && exit 1
 ```
 
-## Paso 3: Bare invocation — GET
+## Step 3: Bare invocation — GET
 
 ```bash
 RAW=$(python3 "$SCRIPT" get --vault "$VAULT_PATH")
 RC=$?
 if [ "$RC" -ne 0 ]; then
-  echo "$RAW" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('error', 'Error desconocido'))" 2>/dev/null || echo "$RAW"
+  echo "$RAW" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('error', 'Unknown error'))" 2>/dev/null || echo "$RAW"
   exit 1
 fi
 
@@ -93,7 +93,7 @@ print(fmt('week', 'This week'))
 exit 0
 ```
 
-Salida esperada (exactamente tres líneas):
+Expected output (exactly three lines):
 
 ```
 Today: {project} / {intent}
@@ -101,11 +101,11 @@ Today PM: {project} / {intent}
 This week: {project} / {intent}
 ```
 
-Cada línea muestra `(none)` cuando el slot no está fijado.
+Each line shows `(none)` when the slot is not set.
 
-## Paso 4: SET
+## Step 4: SET
 
-Cuando `$SUBCMD` es `today`, `pm`, o `week` y `$TARGET` tiene forma `TAG/SLUG`:
+When `$SUBCMD` is `today`, `pm`, or `week` and `$TARGET` has the form `TAG/SLUG`:
 
 ```bash
 case "$SUBCMD" in
@@ -157,9 +157,9 @@ esac
 exit 0
 ```
 
-## Paso 5: CLEAR
+## Step 5: CLEAR
 
-Cuando `$SUBCMD` es `today`, `pm`, o `week` y `$TARGET` es `--clear`:
+When `$SUBCMD` is `today`, `pm`, or `week` and `$TARGET` is `--clear`:
 
 ```bash
 case "$SUBCMD" in
@@ -171,7 +171,7 @@ esac
 RAW=$(python3 "$SCRIPT" clear --vault "$VAULT_PATH" --slot "$SLOT")
 RC=$?
 if [ "$RC" -ne 0 ]; then
-  echo "$RAW" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('error', 'Error desconocido'))" 2>/dev/null || echo "$RAW"
+  echo "$RAW" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('error', 'Unknown error'))" 2>/dev/null || echo "$RAW"
   exit 1
 fi
 
@@ -183,9 +183,9 @@ esac
 exit 0
 ```
 
-## Paso 6: HISTORY
+## Step 6: HISTORY
 
-Cuando `$SUBCMD` es `history`, con `$TARGET` opcional (`YYYY-MM-DD`):
+When `$SUBCMD` is `history`, with optional `$TARGET` (`YYYY-MM-DD`):
 
 ```bash
 if [ -n "$TARGET" ]; then
@@ -195,7 +195,7 @@ else
 fi
 RC=$?
 if [ "$RC" -ne 0 ]; then
-  echo "$RAW" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('error', 'Error desconocido'))" 2>/dev/null || echo "$RAW"
+  echo "$RAW" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print(d.get('error', 'Unknown error'))" 2>/dev/null || echo "$RAW"
   exit 1
 fi
 
@@ -225,10 +225,10 @@ for e in entries:
 exit 0
 ```
 
-## Notas
+## Notes
 
-- **intent_not_found (R-1.9):** cuando `focus_cli.py set` sale con código 1 y el JSON contiene un error relacionado con intent, se imprime `No such intent: TAG/SLUG` y se sale con 1.
-- **Sin HTTP:** toda comunicación va por `focus_cli.py` que opera directamente sobre el vault — no hay llamadas de red.
-- **Sin jq:** las respuestas JSON se parsean con `python3 -c` (stdlib).
-- **pm slot:** `$1 = pm` mapea a `--slot today_pm` en `focus_cli.py`.
-- **history:** muestra picks y sesiones por día en formato tabla simple.
+- **intent_not_found (R-1.9):** when `focus_cli.py set` exits with code 1 and the JSON contains an intent-related error, it prints `No such intent: TAG/SLUG` and exits with 1.
+- **No HTTP:** all communication goes through `focus_cli.py`, which operates directly on the vault — there are no network calls.
+- **No jq:** JSON responses are parsed with `python3 -c` (stdlib).
+- **pm slot:** `$1 = pm` maps to `--slot today_pm` in `focus_cli.py`.
+- **history:** shows picks and sessions per day in a simple table format.

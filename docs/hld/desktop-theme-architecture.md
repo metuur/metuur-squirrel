@@ -22,7 +22,7 @@ visual + design-system change only.
 
 ## Stakeholders & Impact
 
-**Primary user:** Javier (single-user ADHD productivity tool). The current
+**Primary user:** Javier (single-user focus & productivity tool). The current
 v0.5 blue/slate web-UI parity look is utilitarian and generic; the warm-paper
 palette + editorial type pair (Manrope / JetBrains Mono / Fraunces) is
 intended to reduce visual noise and make the morning glance at "Today's

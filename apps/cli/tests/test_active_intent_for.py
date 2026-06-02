@@ -23,8 +23,8 @@ from status_aggregator import active_intent_for  # noqa: E402
 PROJECT_PAGE = """\
 ---
 id: PROJECT-A
-tipo: A
-estado: in-progress
+type: A
+status: in-progress
 ---
 # PROJECT-A
 """
@@ -32,7 +32,7 @@ estado: in-progress
 INTENT_TEMPLATE = """\
 ---
 id: {intent_id}
-estado: in-progress
+status: in-progress
 ---
 # {intent_id} title
 
@@ -46,7 +46,7 @@ estado: in-progress
 INTENT_NO_NOTES = """\
 ---
 id: {intent_id}
-estado: pending
+status: pending
 ---
 # {intent_id} title
 

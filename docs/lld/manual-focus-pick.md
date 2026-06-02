@@ -128,7 +128,7 @@ Manual Focus Pick — touched components only
 
 ### D-3 — Lazy cleanup, no background sweeper
 **Decision**: Stale entries are ignored on read; only pruned when the user picks a new focus.
-**Rationale**: No daemon, no cron, no launchd. ADHD-friendly: nothing silently mutates the vault behind the user's back. Obsidian git-sync stays predictable.
+**Rationale**: No daemon, no cron, no launchd. Focus-friendly: nothing silently mutates the vault behind the user's back. Obsidian git-sync stays predictable.
 **Rejected alternative**: Sweep on every `GET /api/home`. Rejected — performs writes on a GET, breaks request idempotence, and touches files the user might be editing in Obsidian (sync conflict risk).
 
 ### D-4 — Single-pick invariant enforced at write

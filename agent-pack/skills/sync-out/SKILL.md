@@ -1,6 +1,6 @@
 ---
 name: squirrel-sync-out
-description: Generate a SQUIRREL-PACKAGE — a self-contained Markdown block containing notes, research, decisions, or context that the user wants to transfer between air-gapped environments (e.g., personal computer to work computer, or vice versa). Use when user says "exportar", "necesito llevarme esto", "generar paquete", "/sq-sync-out", "preparar transferencia", or before they need to switch environments. The output is a hash-signed Markdown block that can be copied or emailed; the receiving side uses sync-in to apply it. Accepts an optional `vault_name` argument to choose which vault to export from; when omitted, exports from the default vault (R-7.1, R-7.3).
+description: Generate a SQUIRREL-PACKAGE — a self-contained Markdown block containing notes, research, decisions, or context that the user wants to transfer between air-gapped environments (e.g., personal computer to work computer, or vice versa). Use when user says "export", "I need to take this with me", "generate package", "/sq-sync-out", "prepare transfer", or before they need to switch environments. The output is a hash-signed Markdown block that can be copied or emailed; the receiving side uses sync-in to apply it. Accepts an optional `vault_name` argument to choose which vault to export from; when omitted, exports from the default vault (R-7.1, R-7.3).
 ---
 
 # squirrel:sync-out
@@ -11,8 +11,8 @@ Bridge two air-gapped environments (personal/corporate) by generating a self-con
 NEVER attempt to send data automatically. The user is the only network.
 
 ## When to invoke
-- Explicit: `/sq-sync-out`, "necesito llevarme esto al trabajo", "exportar para personal"
-- After research session (suggest): "¿Querés generar paquete para llevarte esta investigación?"
+- Explicit: `/sq-sync-out`, "I need to take this to work", "export for personal"
+- After research session (suggest): "Do you want to generate a package to take this research with you?"
 - After session-end (offer if it looks like cross-environment work)
 
 ## Workflow
@@ -28,12 +28,12 @@ ASK the user (or accept arguments):
 
 If no scope provided, show a menu:
 ```
-¿Qué incluir en el paquete?
-  1) Solo el intent activo: <INTENT-TAG>
-  2) Toda la investigación de <PROJECT> (últimas N notas)
-  3) Las decisiones de <PROJECT>
-  4) Selección manual
-  5) Todo lo modificado en las últimas 24h
+What to include in the package?
+  1) Only the active intent: <INTENT-TAG>
+  2) All research for <PROJECT> (last N notes)
+  3) The decisions for <PROJECT>
+  4) Manual selection
+  5) Everything modified in the last 24h
 ```
 
 <!-- @spec SYNC-002 -->
@@ -57,13 +57,13 @@ Before including ANY file, run these checks:
 
 If any sensitive content is found:
 ```
-⚠️ Detectado contenido sensible en <file>:
-   Línea N: <redacted preview>
+⚠️ Sensitive content detected in <file>:
+   Line N: <redacted preview>
 
-¿Cómo proceder?
-  a) Excluir este archivo del paquete
-  b) Redactar las líneas detectadas y continuar
-  c) Cancelar paquete entero
+How to proceed?
+  a) Exclude this file from the package
+  b) Redact the detected lines and continue
+  c) Cancel the entire package
 ```
 
 3. **Direction check**: Read `~/.squirrel/config.toml` for the `direction` field:
@@ -92,32 +92,32 @@ Use this EXACT format (the receiver parses it strictly):
 
 # 📦 Context Bridge Package
 
-**De**: <from-env>  →  **Para**: <to-env>
-**Generado**: <human-readable date>
+**From**: <from-env>  →  **To**: <to-env>
+**Generated**: <human-readable date>
 **Scope**: <scope>
-**Archivos**: <count>
+**Files**: <count>
 
-> 📋 Para aplicar: en el otro entorno, abrí Claude Code / Codex y pegá ESTE bloque completo
-> en el chat. El skill `squirrel:sync-in` lo procesará automáticamente.
+> 📋 To apply: in the other environment, open Claude Code / Codex and paste THIS entire block
+> into the chat. The `squirrel:sync-in` skill will process it automatically.
 
 ---
 
-## 📑 Resumen del paquete
+## 📑 Package summary
 
 <For each file, one line:>
 - `<file-target-path>` — <operation> — <one-line description>
 
 ---
 
-## 📂 Archivos a aplicar
+## 📂 Files to apply
 
 <For each file:>
 
-### Archivo 1: <target-path-relative-to-vault>
+### File 1: <target-path-relative-to-vault>
 
-**Operación**: <create | update | append | merge>
+**Operation**: <create | update | append | merge>
 **Tag**: `<TAG>`
-**Conflicto si existe**: <ask | overwrite | skip>
+**Conflict if exists**: <ask | overwrite | skip>
 
 ```markdown
 <exact content of the file, including frontmatter>
@@ -125,7 +125,7 @@ Use this EXACT format (the receiver parses it strictly):
 
 ---
 
-### Archivo 2: ...
+### File 2: ...
 
 <repeat>
 
@@ -151,13 +151,13 @@ Show the full Markdown block to the user.
 
 Then offer delivery options:
 ```
-✅ Paquete generado (<N> archivos, <X> KB)
+✅ Package generated (<N> files, <X> KB)
 
-¿Cómo lo querés transferir?
-  1) Copiar al clipboard
-  2) Abrir como draft de email (mailto:)
-  3) Guardar a archivo local: <vault>/.squirrel/outgoing/<timestamp>.md
-  4) Solo mostrar (lo copiás manualmente)
+How do you want to transfer it?
+  1) Copy to clipboard
+  2) Open as email draft (mailto:)
+  3) Save to local file: <vault>/.squirrel/outgoing/<timestamp>.md
+  4) Just show it (copy manually)
 ```
 
 For option 2, construct a `mailto:` URI:
@@ -177,15 +177,15 @@ This gives you an audit trail of what left this environment.
 
 ### Step 8: Suggest next steps
 ```
-✅ Paquete listo.
+✅ Package ready.
 
-Próximos pasos sugeridos:
-  • En tu otro entorno, abrí Claude Code/Codex
-  • Pegá el bloque completo en el chat
-  • El skill sync-in te pedirá confirmación antes de aplicar
+Suggested next steps:
+  • In your other environment, open Claude Code/Codex
+  • Paste the entire block into the chat
+  • The sync-in skill will ask for confirmation before applying
 
-📋 Si el paquete contiene tareas pendientes, también podés:
-  → /sq-brief <PROJECT> antes de aplicar del otro lado, para tener contexto
+📋 If the package contains pending tasks, you can also:
+  → /sq-brief <PROJECT> before applying on the other side, to have context
 ```
 
 ## Special modes
@@ -209,7 +209,7 @@ This is advanced — skip for MVP.
 ### Selective shutdown notes
 If the scope includes intents, the user may want to include OR exclude the shutdown notes (they're verbose):
 ```
-¿Incluir shutdown notes en el paquete? (sí: más contexto / no: paquete más liviano)
+Include shutdown notes in the package? (yes: more context / no: lighter package)
 ```
 
 ## Anti-patterns
@@ -230,4 +230,3 @@ If the scope includes intents, the user may want to include OR exclude the shutd
 - Saltzer & Schroeder (1975): complete mediation — every export must be reviewed before leaving the boundary
 - Rivest, Shamir & Adleman (1978): public-key cryptography — GPG-based optional encryption for sensitive vaults
 - Allen, D. (2001): GTD "trusted system" — the export must be verifiable (hash) to be trusted on the receiving end
-- Barkley, R.A. (2015): ADHD hyperfocus risk — scope guard prevents exporting entire vault when only one project was intended

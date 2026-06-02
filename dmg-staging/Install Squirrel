@@ -52,7 +52,7 @@ cat <<'BANNER'
 
   ╔══════════════════════════════════════════════════════╗
   ║                                                      ║
-  ║   🐿  Squirrel  —  ADHD Productivity Companion      ║
+  ║   🐿  Squirrel  —  Focus & Productivity Companion   ║
   ║                                                      ║
   ╚══════════════════════════════════════════════════════╝
 
@@ -215,7 +215,7 @@ ok "squirrel-backend running on http://127.0.0.1:3939"
 
 # ─── 8. Request notification permission ──────────────────────────────────────
 info "Requesting notification permission..."
-osascript -e 'display notification "Squirrel is ready" with title "Squirrel" subtitle "ADHD Productivity Companion"' 2>/dev/null || true
+osascript -e 'display notification "Squirrel is ready" with title "Squirrel" subtitle "Focus & Productivity Companion"' 2>/dev/null || true
 
 # ─── 9. Write version stamp ───────────────────────────────────────────────────
 printf '%s\n' "$VERSION_IN_DMG" > "$VERSION_FILE"

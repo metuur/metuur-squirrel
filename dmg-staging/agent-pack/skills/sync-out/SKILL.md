@@ -230,4 +230,3 @@ If the scope includes intents, the user may want to include OR exclude the shutd
 - Saltzer & Schroeder (1975): complete mediation — every export must be reviewed before leaving the boundary
 - Rivest, Shamir & Adleman (1978): public-key cryptography — GPG-based optional encryption for sensitive vaults
 - Allen, D. (2001): GTD "trusted system" — the export must be verifiable (hash) to be trusted on the receiving end
-- Barkley, R.A. (2015): ADHD hyperfocus risk — scope guard prevents exporting entire vault when only one project was intended

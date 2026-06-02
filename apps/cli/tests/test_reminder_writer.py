@@ -33,7 +33,7 @@ FIXTURE_CONTENT = """\
 ---
 id: TEST-001
 title: Test Item
-estado: wip
+status: wip
 ---
 
 # Test Item
@@ -45,7 +45,7 @@ FIXTURE_NO_HEADING = """\
 ---
 id: TEST-002
 title: No Heading
-estado: wip
+status: wip
 ---
 
 Some body text with no heading here.

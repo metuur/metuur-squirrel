@@ -1,11 +1,11 @@
 ---
 id: TEST-PROJECT-AUTH-002
-proyecto: TEST-PROJECT
-estado: in-progress
-prioridad: alta
-creado: 2026-05-20
+project: TEST-PROJECT
+status: in-progress
+priority: high
+created: 2026-05-20
 deadline: 2026-05-25
-tags: [intent, proyecto/TEST-PROJECT, estado/wip, componente/auth]
+tags: [intent, project/TEST-PROJECT, status/wip, component/auth]
 ---
 
 # TEST-PROJECT-AUTH-002 — Validación de state CSRF

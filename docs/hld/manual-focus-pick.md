@@ -2,9 +2,9 @@
 
 ## Overview
 
-Today, the focus shown in `FocusWidget` is 100% automatic: `_recommend_focus()` (`apps/cli/lib/status_aggregator.py:340–386`) runs a 3-rule heuristic (critical → urgent → most-recent activity) at every `GET /api/home` call. The user has no way to say "I know there's an overdue thing, but *today* I'm working on something else." This is the wrong default for an ADHD-targeted tool: forcing the user back onto the heuristic's overdue choice when they have already decided otherwise is exactly the kind of friction that triggers task avoidance.
+Today, the focus shown in `FocusWidget` is 100% automatic: `_recommend_focus()` (`apps/cli/lib/status_aggregator.py:340–386`) runs a 3-rule heuristic (critical → urgent → most-recent activity) at every `GET /api/home` call. The user has no way to say "I know there's an overdue thing, but *today* I'm working on something else." This is the wrong default for a focus-targeted tool: forcing the user back onto the heuristic's overdue choice when they have already decided otherwise is exactly the kind of friction that triggers task avoidance.
 
-This change adds a **manual focus pick** for two independent slots — *today* and *this week* — without weakening the heuristic. The overdue/critical signal continues to win the primary focus card; the user's pick is rendered alongside it with a clear visual indicator. The pick is stored as YAML frontmatter on the chosen intent file (visible in Obsidian) and auto-expires daily/weekly so the user re-commits each day/week — a deliberate ADHD-friendly forcing function, not a UX bug.
+This change adds a **manual focus pick** for two independent slots — *today* and *this week* — without weakening the heuristic. The overdue/critical signal continues to win the primary focus card; the user's pick is rendered alongside it with a clear visual indicator. The pick is stored as YAML frontmatter on the chosen intent file (visible in Obsidian) and auto-expires daily/weekly so the user re-commits each day/week — a deliberate focus-friendly forcing function, not a UX bug.
 
 The architectural commitment: **the vault is the source of truth, the heuristic is unchanged, and the pick is additive surface area**. No existing endpoint changes its semantics. No existing field in `/api/home.focus` changes shape. CLI, REST, and desktop UI all converge on the same YAML-on-intent-file storage.
 
@@ -41,7 +41,7 @@ When this ships, the following are observable and true:
 Out of scope for this change:
 
 - **Replacing or weakening the 3-rule heuristic.** Overdue still wins the primary focus card.
-- **Suppressing overdue alerts when a manual focus is set.** The PRESSING section, deadline daemon, and `prioridad: finishing-tax` logic all keep their current behaviour.
+- **Suppressing overdue alerts when a manual focus is set.** The PRESSING section, deadline daemon, and `priority: finishing-tax` logic all keep their current behaviour.
 - **A "focus history" log.** Each pick overwrites the previous one; we do not record the sequence of past picks.
 - **Multi-user / vault-merge semantics.** Single-user, single-vault remains the assumption. If two vaults are synced, last-write-wins per file (standard Obsidian sync behaviour).
 - **A "month" or "quarter" focus slot.** Only today + week in this change.

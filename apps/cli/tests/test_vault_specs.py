@@ -84,15 +84,15 @@ class TestVault003TagParser:
     def test_parse_returns_correct_keys(self):
         result = self.tp.parse("PROJ-SUB-COMP-001")
         assert result is not None
-        assert set(result.keys()) == {"proyecto", "subarea", "componente", "numero"}
+        assert set(result.keys()) == {"project", "subarea", "component", "number"}
 
     # @spec VAULT-003
     def test_parse_values_are_correct(self):
         result = self.tp.parse("VISA-FAMILIA-TRAMITE-007")
-        assert result["proyecto"] == "VISA"
+        assert result["project"] == "VISA"
         assert result["subarea"] == "FAMILIA"
-        assert result["componente"] == "TRAMITE"
-        assert result["numero"] == 7
+        assert result["component"] == "TRAMITE"
+        assert result["number"] == 7
 
     # @spec VAULT-003
     def test_parse_invalid_returns_none(self):
@@ -103,8 +103,8 @@ class TestVault003TagParser:
     # @spec VAULT-003
     def test_parse_numero_is_integer(self):
         result = self.tp.parse("TEST-SUB-COMP-042")
-        assert isinstance(result["numero"], int)
-        assert result["numero"] == 42
+        assert isinstance(result["number"], int)
+        assert result["number"] == 42
 
     # @spec VAULT-003
     def test_validate_suggestion_for_recoverable_tag(self):

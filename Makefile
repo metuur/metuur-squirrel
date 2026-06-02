@@ -81,3 +81,15 @@ build-installers:
 
 build-installers-dry:
 	bash $(ROOT)/scripts/build-dmg.sh --dry-run
+
+# Produces squirrel-manual-install-<version>.zip (no signing required).
+# Compiles all three apps (CLI, backend, desktop) and bundles install-manual.sh.
+build-manual-zip:
+	bash $(ROOT)/scripts/build-manual-zip.sh
+
+# Re-use existing artifacts (faster, for re-packaging after a dmg build).
+build-manual-zip-fast:
+	bash $(ROOT)/scripts/build-manual-zip.sh --skip-build
+
+build-manual-zip-dry:
+	bash $(ROOT)/scripts/build-manual-zip.sh --dry-run

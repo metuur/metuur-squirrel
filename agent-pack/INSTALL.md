@@ -11,7 +11,7 @@ Step-by-step guide to install and configure the plugin across different agents.
    python3 --version  # must be 3.9 or later
    ```
 
-2. **An Obsidian vault** (or any Markdown folder) with the ADHD system structure. If you do not have one, unzip `vault-tdah-obsidian.zip` first.
+2. **An Obsidian vault** (or any Markdown folder) with the Squirrel system structure. If you do not have one, unzip `vault-squirrel-obsidian.zip` first.
 
 3. **A compatible coding agent**: Claude Code, Codex CLI, Cursor, GitHub Copilot, or equivalent.
 
@@ -56,7 +56,7 @@ Inside Claude Code:
 ```
 
 It will ask for:
-- `vault_path`: absolute path to your vault (example: `/home/user/vault-tdah`)
+- `vault_path`: absolute path to your vault (example: `/home/user/vault-squirrel`)
 - `environment_name`: `personal` or `work`
 - `default_email`: your email for drafts
 - `active_projects`: list of WIP tags (example: `TRABAJO-PROYECTO-A,SIDEPROJECT-FOYER-FAMILY,VISA-FAMILIA`)
@@ -75,7 +75,7 @@ default_email = "you@example.com"
 
 [[vaults]]
 name = "personal"
-path = "~/vault-tdah"
+path = "~/vault-squirrel"
 default = true
 
 [[vaults]]
@@ -160,7 +160,7 @@ config manually:
 ```bash
 mkdir -p ~/.squirrel
 cat > ~/.squirrel/config.toml << 'EOF'
-vault_path = "/home/user/vault-tdah"
+vault_path = "/home/user/vault-squirrel"
 environment_name = "personal"
 default_email = "your-email@example.com"
 
@@ -281,7 +281,7 @@ The Python script works completely on its own:
 ```bash
 # Generate package
 python3 squirrel/lib/package_protocol.py generate \
-  --vault ~/vault-tdah \
+  --vault ~/vault-squirrel \
   --scope TRABAJO-PROYECTO-A:research \
   --from-env personal \
   --to-env work \
@@ -381,7 +381,7 @@ The other side decrypts with `/sq-sync-in` if it has the private key.
 ### "The vault does not have the expected structure"
 - The skills assume `01-Proyectos-Activos/`, `02-Parking-Lot/`, etc.
 - If your vault uses a different structure, edit the relevant skills (for example `session-start/SKILL.md` line X)
-- Or migrate your vault to the ADHD system (unzip `vault-tdah-obsidian.zip` as a reference)
+- Or migrate your vault to the Squirrel system (unzip `vault-squirrel-obsidian.zip` as a reference)
 
 ---
 

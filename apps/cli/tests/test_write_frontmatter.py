@@ -24,10 +24,10 @@ from intent_parser import write_frontmatter, _DELETE  # noqa: E402
 FIXTURE_WITH_FOCUS_TODAY = """---
 id: TAG-001
 # tracked by spec R-1.6
-estado: activo
+status: active
 deadline: 2026-06-01
 focus_today: 2026-05-01
-tags: [intent, proyecto/X]
+tags: [intent, project/X]
 ---
 # Title
 
@@ -44,9 +44,9 @@ Some body content.
 FIXTURE_WITHOUT_FOCUS_TODAY = """---
 id: TAG-002
 # tracked by spec R-1.6
-estado: activo
+status: active
 deadline: 2026-06-01
-tags: [intent, proyecto/Y]
+tags: [intent, project/Y]
 ---
 # Title
 
@@ -126,9 +126,9 @@ class TestWriteFrontmatter(unittest.TestCase):
 
         # Other keys preserved
         self.assertIn("id: TAG-001", new_content)
-        self.assertIn("estado: activo", new_content)
+        self.assertIn("status: active", new_content)
         self.assertIn("deadline: 2026-06-01", new_content)
-        self.assertIn("tags: [intent, proyecto/X]", new_content)
+        self.assertIn("tags: [intent, project/X]", new_content)
 
         # Body preserved
         self.assertIn("# Title", new_content)

@@ -1,6 +1,6 @@
 ---
 name: squirrel-focus
-description: Show or change the user's manual focus pick for today or this week from the chat. Use when the user says "what's my focus", "set focus to X", "switch focus", "clear focus", "qué tengo en foco", "cambiá el foco", or invokes /sq-focus. All mutations flow through the backend's /api/focus/* endpoints — never touch vault files directly. Mirrors the heuristic FocusWidget but is user-driven.
+description: Show or change the user's manual focus pick for today or this week from the chat. Use when the user says "what's my focus", "set focus to X", "switch focus", "clear focus", "what's my focus for today", "change the focus", or invokes /sq-focus. All mutations flow through the backend's /api/focus/* endpoints — never touch vault files directly. Mirrors the heuristic FocusWidget but is user-driven.
 ---
 
 # squirrel:focus
@@ -20,12 +20,12 @@ Read-time semantics (handled server-side):
 
 **Explicit triggers:**
 - `/sq-focus` slash command (any form)
-- "what's my focus", "qué tengo en foco", "cuál es el foco de hoy"
-- "set focus to X", "pin X as today's focus", "fijá X como foco", "cambiá el foco a X"
-- "clear focus", "limpiá el foco", "no tengo foco hoy"
+- "what's my focus", "what's my focus for today", "what's today's focus"
+- "set focus to X", "pin X as today's focus", "pin X as focus", "change the focus to X"
+- "clear focus", "clear my focus", "I have no focus today"
 
 **Implicit triggers (offer, don't auto-execute):**
-- User says "hoy vamos a trabajar en X" / "today I'm focusing on X" — offer to pin via `/sq-focus today TAG/INTENT-SLUG`.
+- User says "today I'm focusing on X" / "today I'm working on X" — offer to pin via `/sq-focus today TAG/INTENT-SLUG`.
 - User pivots mid-session and explicitly drops the current focus — offer `/sq-focus today --clear` or `today --clear` + set the new one.
 
 Do **not** trigger:
@@ -39,8 +39,8 @@ The actual execution lives in the slash command `/sq-focus` (see `agent-pack/com
 When triggered:
 
 1. **Identify the slot.** Did the user mean *today* or *this week*?
-   - "hoy", "today", "esta tarde" → `today`
-   - "esta semana", "this week", "para la semana" → `week`
+   - "today", "this afternoon", "right now" → `today`
+   - "this week", "for the week" → `week`
    - Ambiguous → default to `today` and confirm.
 
 2. **Identify the action.**

@@ -37,13 +37,13 @@ PRE_CHANGE_TEST_COUNT = 204
 #   find tests/fixtures -type f | sort | xargs shasum -a 256
 FIXTURE_HASHES = {
     "vault-minimal/01-Proyectos-Activos/SIDEPROJECT-STALE/SIDEPROJECT-STALE.md":
-        "f154b1dd57e303357c977a27b1e83ab1b9e376b8a41541eb9add966f0d11200d",
+        "a212962324cac2826d431c9ea10adebf7d274e8e64fb55f9919abff5f8763a99",
     "vault-minimal/01-Proyectos-Activos/TEST-PROJECT/TEST-PROJECT-AUTH-001.md":
-        "5c146ae99fb7342d12d534c449e5d7f4b3a10c69ef9a42c741dba751ee47987c",
+        "cd35ec09444b0e97c9101beca85deec6e08ecb3487242ec1e56860445968a0a3",
     "vault-minimal/01-Proyectos-Activos/TEST-PROJECT/TEST-PROJECT-AUTH-002.md":
-        "c4c20ddc38c0daed0fe13ec46fca0bcc39fedae601c41bafa53282b7357b29e6",
+        "9b80d10f5e67e0398f9152a786ee29ccc1a83fe4c0f034947ad12b5a5547c157",
     "vault-minimal/01-Proyectos-Activos/TEST-PROJECT/TEST-PROJECT.md":
-        "b2813e002b79f6a1439d255fb3ddc212ae2638061ca13fd9eb06419adad0746f",
+        "2c755e7d21df55a8b01ef39d3e888564261aef2292c06db89cb7ca8c9f8a64cc",
 }
 
 

@@ -59,7 +59,7 @@ class TestForbiddenTerms(unittest.TestCase):
     """R-4.2 / R-4.3 / R-4.4 — words that must never reach user HTML."""
 
     def test_frontmatter_concepts_never_user_visible(self):
-        for term in ("frontmatter", "tipo", "estado", "proyecto", "wiki-link"):
+        for term in ("frontmatter", "type", "status", "project", "wiki-link"):
             with self.subTest(term=term):
                 self.assertIsNone(translate(term))
 
@@ -89,9 +89,9 @@ class TestForbiddenTerms(unittest.TestCase):
             "intent",
             "wiki-link",
             ".md",
-            "proyecto",
-            "tipo",
-            "estado",
+            "project",
+            "type",
+            "status",
             "01-Proyectos-Activos",
             "02-Areas",
             "03-Recursos",

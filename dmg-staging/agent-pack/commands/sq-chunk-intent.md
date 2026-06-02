@@ -1,5 +1,5 @@
 ---
-description: Descompone un intent grande en chunks ADHD-friendly (≤60 min cada uno) con nombres específicos del dominio y condiciones de done.
+description: Descompone un intent grande en chunks manejables (≤60 min cada uno) con nombres específicos del dominio y condiciones de done.
 allowed-tools: [Bash, Read, Write]
 ---
 
@@ -14,7 +14,7 @@ Invoca el skill `squirrel-chunk-intent` (ver `skills/chunk-intent/SKILL.md`).
 El skill:
 1. Lee el intent del vault (si se pasa TAG)
 2. Pide o confirma la estimación de tiempo total
-3. Corre `estimate_buffer.py` para aplicar multiplicador ADHD
+3. Corre `estimate_buffer.py` para aplicar multiplicador de foco
 4. Corre `chunk_helper.py` para calcular la estructura de fases
 5. Rellena nombres específicos del dominio (trabajo del LLM)
 6. Presenta el plan con "Done when" por cada chunk

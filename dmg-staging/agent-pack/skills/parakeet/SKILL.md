@@ -11,12 +11,12 @@ metadata:
 
 ## Purpose
 
-ADHD brains don't feel time passing — deadlines arrive as surprises. Parakeet is the friendly
+Some brains don't feel time passing — deadlines arrive as surprises. Parakeet is the friendly
 but persistent voice that keeps deadlines visible without shame, escalating tone only when
 urgency truly warrants it.
 
-The key insight from research: most ADHD deadline failures aren't from not caring but from
-**time blindness** (Barkley 2015). A well-timed, well-toned reminder can bridge that gap.
+The key insight from research: most deadline failures aren't from not caring but from
+**time blindness**. A well-timed, well-toned reminder can bridge that gap.
 A nagging one creates anxiety and avoidance.
 
 ## Urgency levels and tones
@@ -205,7 +205,7 @@ Treat as urgent/critical, not as fully overdue. Tone: "This just tipped over —
 
 - Max 8 deadline items total before truncation
 - Never mention the same deadline twice in the same session (track in conversation context)
-- If ADHD-specific framing doesn't fit culturally for the user, default to neutral factual tone
+- If this framing doesn't fit culturally for the user, default to neutral factual tone
 - Always end overdue/critical blocks with one concrete action option
 
 ## Anti-patterns
@@ -219,6 +219,4 @@ Treat as urgent/critical, not as fully overdue. Tone: "This just tipped over —
 
 ## References
 
-- Barkley, R.A. (2015): time blindness as core ADHD deficit, not motivation failure
-- Hallowell & Ratey (2021): deadline proximity as primary ADHD motivational trigger
 - Mark et al. (2008): reminder fatigue when alerts fire too frequently

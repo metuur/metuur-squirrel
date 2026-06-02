@@ -35,7 +35,7 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     Parse YAML frontmatter and return (frontmatter_dict, body_content).
     Supports:
       - scalar values: id: TAG-001
-      - lists inline: tags: [intent, proyecto/X]
+      - lists inline: tags: [intent, project/X]
       - lists block: see below
       - quoted strings
       - dates as strings (no conversion)
@@ -395,16 +395,15 @@ def parse_shutdown_notes(text: str) -> list[dict]:
         for fm in BULLET_FIELD_PATTERN.finditer(chunk):
             field_name = fm.group(1).strip().lower().replace(" ", "_")
             value = fm.group(2).strip()
-            # Map common Spanish field names to English
+            # Map shutdown-note bullet labels to canonical keys
             field_map = {
-                "estado": "state",
                 "next_physical_action": "next_action",
                 "next": "next_action",
-                "hipótesis_activa": "hypothesis",
-                "hipótesis": "hypothesis",
-                "bloqueado_por": "blocked_by",
-                "decisiones_tomadas_hoy": "decisions",
-                "decisiones": "decisions",
+                "active_hypothesis": "hypothesis",
+                "hypothesis": "hypothesis",
+                "blocked_by": "blocked_by",
+                "decisions_made_today": "decisions",
+                "decisions": "decisions",
                 "open_loops": "open_loops",
                 "hemingway": "hemingway",
             }
@@ -478,7 +477,7 @@ def compute_stats(frontmatter: dict, sections: dict, body: str) -> dict:
         "deadline": deadline_str,
         "days_to_deadline": days_to_deadline,
         "deadline_passed": deadline_passed,
-        "estado": frontmatter.get("estado", "unknown"),
+        "status": frontmatter.get("status", "unknown"),
     }
 
 

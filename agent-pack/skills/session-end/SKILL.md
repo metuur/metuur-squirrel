@@ -1,15 +1,15 @@
 ---
 name: squirrel-session-end
-description: Write a structured shutdown note to the active intent in the Markdown vault, so the next session can resume quickly. Use when the user says "termino", "guardamos progreso", "shutdown", "cerremos esto", runs /sq-end, or at hook Stop. Also applies the Hemingway trick — encourages stopping mid-task at a known continuation point. Accepts an optional `vault_name` argument; when omitted, writes to the default vault (R-7.1, R-7.3).
+description: Write a structured shutdown note to the active intent in the Markdown vault, so the next session can resume quickly. Use when the user says "I'm done", "let's save progress", "shutdown", "let's close this", runs /sq-end, or at hook Stop. Also applies the Hemingway trick — encourages stopping mid-task at a known continuation point. Accepts an optional `vault_name` argument; when omitted, writes to the default vault (R-7.1, R-7.3).
 ---
 
 # squirrel:session-end
 
 ## Purpose
-Prevent ADHD context loss between sessions. Every time the user closes a coding session, capture the cognitive state in a structured shutdown note. This is the SINGLE MOST IMPORTANT skill — without it, the system fails.
+Prevent context loss between sessions. Every time the user closes a coding session, capture the cognitive state in a structured shutdown note. This is the SINGLE MOST IMPORTANT skill — without it, the system fails.
 
 ## When to invoke
-- Explicit: `/sq-end`, "termino", "shutdown", "cerremos", "guardemos"
+- Explicit: `/sq-end`, "I'm done", "shutdown", "let's close", "let's save"
 - Hook `Stop` (when the agent session ends naturally)
 - If the user has been working for >90 min and shows signs of fatigue/disengagement, OFFER (don't force) to do a session-end
 
@@ -43,24 +43,24 @@ Compose this structure (TIMESTAMP is the current local time):
 
 ```markdown
 ### <YYYY-MM-DD HH:MM>
-- **Estado**: <what's the current state of the work — done/half-done/stuck/etc.>
-                <be specific: file:line if relevant, function name, what works, what doesn't>
+- **Status**: <what's the current state of the work — done/half-done/stuck/etc.>
+               <be specific: file:line if relevant, function name, what works, what doesn't>
 
 - **Next physical action**: <THE most important field. Concrete verb + object.>
-                            <Example: "abrir auth.controller.ts línea 47 y agregar await>
-                                       <antes de la verificación del state">
+                            <Example: "open auth.controller.ts line 47 and add await>
+                                       <before the state verification">
                             <NOT abstract: NOT "continue work on auth" — be physical>
 
-- **Hipótesis activa**: <what theory am I currently testing? what do I believe is true>
-                        <that I'm trying to validate? If none, write "ninguna explícita">
+- **Active hypothesis**: <what theory am I currently testing? what do I believe is true>
+                         <that I'm trying to validate? If none, write "none explicit">
 
-- **Bloqueado por**: <nothing | waiting for X | need decision from Y | technical blocker Z>
+- **Blocked by**: <nothing | waiting for X | need decision from Y | technical blocker Z>
 
-- **Decisiones tomadas hoy**: <list of decisions made during the session, with brief rationale>
-                              <If a decision is significant, suggest also creating a separate>
-                              <decision note via squirrel:decision skill>
+- **Decisions made today**: <list of decisions made during the session, with brief rationale>
+                             <If a decision is significant, suggest also creating a separate>
+                             <decision note via squirrel:decision skill>
 
-- **Open loops (pendientes para revisar)**: <questions raised but not answered, things to revisit>
+- **Open loops (pending review)**: <questions raised but not answered, things to revisit>
 
 - **Hemingway**: <where am I stopping? Is it a "going good" point or a stuck point?>
                  <If stuck: suggest backing up to a known-good state for tomorrow's start>
@@ -69,21 +69,21 @@ Compose this structure (TIMESTAMP is the current local time):
 <!-- @spec SESSION-003 -->
 ### Step 5: Hemingway offer (SESSION-003)
 Before finalising the note, ask unconditionally:
-> "¿Querés dejar una tarea intencionalmente incompleta para facilitar el re-inicio?
->  El truco de Hemingway: parar en un punto «going good» hace que mañana sea más fácil arrancar.
->  ¿Hay algo que querés dejar a medias a propósito? (sí — describí cuál / no)"
+> "Do you want to leave a task intentionally incomplete to make it easier to restart?
+>  The Hemingway trick: stopping at a 'going good' point makes it easier to start tomorrow.
+>  Is there something you want to leave half-done on purpose? (yes — describe which one / no)"
 
-If the user says yes, capture the deliberately-incomplete item and include it in the `Hemingway` field of the shutdown note with the label `[intencional]`. If no, proceed normally.
+If the user says yes, capture the deliberately-incomplete item and include it in the `Hemingway` field of the shutdown note with the label `[intentional]`. If no, proceed normally.
 
 ### Step 6: Show draft and ask for confirmation
-Present the draft. Ask: "¿Aplico al intent <INTENT-TAG>? (sí / ajustá / cancelar)"
+Present the draft. Ask: "Apply to intent <INTENT-TAG>? (yes / adjust / cancel)"
 
 If the user wants to adjust, accept their corrections inline.
 
 ### Step 7: Apply to the intent file
-Open `<vault>/01-Proyectos-Activos/<PROJECT>/<INTENT-TAG>.md`.
+Open `<vault>/01-Active-Projects/<PROJECT>/<INTENT-TAG>.md`.
 
-Find or create the `## 🔄 Shutdown notes (más reciente arriba)` section.
+Find or create the `## 🔄 Shutdown notes (most recent first)` section.
 
 Insert the new shutdown note AT THE TOP of that section (so the most recent is first).
 
@@ -99,18 +99,18 @@ If during the session new components/intents were discovered, suggest adding the
 Look at the intent's `Definition of Done` checkboxes. If any criteria were completed during this session, propose checking them off:
 
 ```
-Veo que durante la sesión:
-✓ Implementaste validación de state CSRF → marco "validación state" como hecho?
-✓ Agregaste test unitario → marco "test unitario" como hecho?
+I see that during the session:
+✓ You implemented CSRF state validation → mark "state validation" as done?
+✓ You added a unit test → mark "unit test" as done?
 ```
 
 ### Step 10: Suggest commit
 If code was modified, suggest a commit message using the tag pattern:
 ```
-Sugerencia de commit:
-  wip(auth): implementar state CSRF — <INTENT-TAG>
+Commit suggestion:
+  wip(auth): implement CSRF state — <INTENT-TAG>
 
-¿Lo aplico con git commit?
+Apply it with git commit?
 ```
 
 ### Step 11: Hemingway check
@@ -146,19 +146,19 @@ Parse the result:
 ### Step 13: Confirm
 Brief output:
 ```
-✅ Shutdown note guardada en <INTENT-TAG>
+✅ Shutdown note saved to <INTENT-TAG>
    Next: <next physical action>
 
-¿Algo más antes de cerrar?
+Anything else before closing?
 ```
 
 Include the `⏱` line only when Step 12.5 produced a valid checkout result:
 ```
-✅ Shutdown note guardada en <INTENT-TAG>
+✅ Shutdown note saved to <INTENT-TAG>
    Next: <next physical action>
-   ⏱ Sesión: {duration_minutes} min   |   Total invertido: {time_invested_minutes} min
+   ⏱ Session: {duration_minutes} min   |   Total invested: {time_invested_minutes} min
 
-¿Algo más antes de cerrar?
+Anything else before closing?
 ```
 
 ## Special cases
@@ -167,7 +167,7 @@ Include the `⏱` line only when Step 12.5 produced a valid checkout result:
 Skip the elaborate shutdown. Write a 2-line note:
 ```
 ### <timestamp>
-- Sesión corta. <one-line summary>. Sin cambios significativos al estado.
+- Short session. <one-line summary>. No significant changes to state.
 ```
 
 ### Session crossed multiple intents
@@ -179,7 +179,7 @@ Generate shutdown notes for EACH intent touched. The user might have been multit
 - Suggest creating a research note via `squirrel:capture` for the findings
 
 ### Significant blockers discovered
-If the session ended because of a blocker (waiting for someone, missing info), set the intent's frontmatter `estado: blocked` and add a `bloqueado_por` field with details.
+If the session ended because of a blocker (waiting for someone, missing info), set the intent's frontmatter `status: blocked` and add a `blocked_by` field with details.
 
 ## Anti-patterns
 - ❌ Don't write generic shutdown notes ("worked on the project, made some progress")
@@ -191,11 +191,10 @@ If the session ended because of a blocker (waiting for someone, missing info), s
 ## Output style
 - Concise, factual
 - The shutdown note itself is the deliverable; minimal commentary around it
-- If asking for confirmation, make it easy (sí / no / ajustá)
+- If asking for confirmation, make it easy (yes / no / adjust)
 
 ## References
 
 - Hemingway, E.: stop mid-sentence — cognitive re-entry is cheaper than starting cold (source of Hemingway technique)
-- Barkley, R.A. (2015): working memory deficit in ADHD makes task state invisible across sessions — external capture is prosthetic memory
 - Allen, D. (2001): GTD "next physical action" — the concrete next step is the unit of cognitive handoff
 - Forte, T. (2022): PARA — project notes as "thinking residue" that survives context switches

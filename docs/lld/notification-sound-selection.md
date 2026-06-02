@@ -131,7 +131,7 @@ This is simpler than the originally-planned `notification_sound.rs` module: no p
 - **Backend is the single writer; both surfaces read independently** — reuses the existing settings flow (React → backend → TOML) without introducing a second writer. The daemon reads the TOML directly because it cannot depend on the backend being up.
 - **Lazy `GET /api/me` from Rust on each notification (option A)** — minimal code, automatic propagation when the user changes the sound, no manual cache or invalidation. Per-notification HTTP roundtrip is local and sub-ms.
 - **No helper script** — the daemon already plays sound natively via `terminal-notifier -sound` / `osascript sound name`; we only need to substitute the value. The Rust side uses `afplay` directly. A wrapper script would be dead weight given both readers already have native mechanisms.
-- **Three sounds (Glass / Funk / Silent), nothing more** — ADHD-friendly default + alternative + off. Decision fatigue is the enemy; no file picker, no per-surface sound.
+- **Three sounds (Glass / Funk / Silent), nothing more** — focus-friendly default + alternative + off. Decision fatigue is the enemy; no file picker, no per-surface sound.
 - **Optional `sound` in API payload with preserve-on-missing** — protects existing tests in `apps/cli/tests/test_notifications_settings.py` and any CLI / scripted clients that still post the 2-key payload. Required-everywhere would break compatibility.
 - **Silent omits the sound flag entirely in the daemon** (rather than passing an empty string) — terminal-notifier and osascript both treat omission as "no sound", but treat an empty string as an invalid argument.
 

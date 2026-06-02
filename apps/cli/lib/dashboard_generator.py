@@ -6,9 +6,9 @@ No external dependencies. Embeds all CSS. Reads status + deadlines and renders
 a static HTML file that can be opened in any browser.
 
 Uso CLI:
-    python3 dashboard_generator.py --vault ~/vault-tdah
-    python3 dashboard_generator.py --vault ~/vault-tdah --out ~/dashboard.html
-    python3 dashboard_generator.py --vault ~/vault-tdah --open
+    python3 dashboard_generator.py --vault ~/vault-squirrel
+    python3 dashboard_generator.py --vault ~/vault-squirrel --out ~/dashboard.html
+    python3 dashboard_generator.py --vault ~/vault-squirrel --open
 """
 
 import argparse

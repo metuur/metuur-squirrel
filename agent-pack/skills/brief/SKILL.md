@@ -1,6 +1,6 @@
 ---
 name: squirrel-brief
-description: Produce a structured 6-section brief of the current state of a project for stakeholders or for the user to review. Use when the user asks "dame el brief", "qué estoy haciendo", "resumí el proyecto", "status update", "necesito un resumen para el lead", "what's the status of X", or before any communication round. Outputs Markdown ready to copy-paste into email, Slack, or stand-up. The 6 sections are NOW, DONE, NEXT, DECISIONS, STEPS, CONTEXT. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
+description: Produce a structured 6-section brief of the current state of a project for stakeholders or for the user to review. Use when the user asks "give me the brief", "what am I doing", "summarize the project", "status update", "I need a summary for the lead", "what's the status of X", or before any communication round. Outputs Markdown ready to copy-paste into email, Slack, or stand-up. The 6 sections are NOW, DONE, NEXT, DECISIONS, STEPS, CONTEXT. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
 ---
 
 # squirrel:brief
@@ -13,8 +13,8 @@ Generate a clear, structured status of a project that the user can:
 - Include in a sync-out package
 
 ## When to invoke
-- Explicit: `/sq-brief [PROJECT-TAG]`, "give me a brief", "dame el resumen"
-- Before user communicates with stakeholders (detect "le voy a mandar update a X")
+- Explicit: `/sq-brief [PROJECT-TAG]`, "give me a brief", "give me the summary"
+- Before user communicates with stakeholders (detect "I'm going to send an update to X")
 - Weekly review prep
 - When user is overwhelmed and needs to re-anchor
 
@@ -24,7 +24,7 @@ Generate a clear, structured status of a project that the user can:
 Resolution:
 1. Explicit project tag in argument
 2. `active_intent.project` from state
-3. Ask: "¿Brief de qué proyecto?" with WIP list
+3. Ask: "Brief of which project?" with WIP list
 
 ### Step 2: Load project data (script-driven)
 
@@ -56,11 +56,11 @@ The JSON already aggregates everything. Read directly from it:
 - **Total/done/in-progress/pending/blocked intents**: from `intents.total`, `intents.done`, etc.
 - **Most recent activity**: `last_activity` + `days_since_activity`
 - **Active intent + next action**: `active_intent` + `next_physical_action`
-- **Done intents list**: `intent_list[]` where `estado` is `done` or `completado`
-- **In-progress list**: `intent_list[]` where `estado` is `in-progress` / `wip`
+- **Done intents list**: `intent_list[]` where `status` is `done` or `completed`
+- **In-progress list**: `intent_list[]` where `status` is `in-progress` / `wip`
 - **Decisions**: from each intent's `decisions` field (non-empty entries)
 - **Context**: `context_dump` + `open_questions`
-- **Stakeholders / deadline / tipo**: top-level project fields
+- **Stakeholders / deadline / type**: top-level project fields
 
 ### Step 4: Produce the 6-section brief
 
@@ -69,42 +69,42 @@ Use this EXACT structure (the user explicitly asked for these 6 sections):
 ```markdown
 # 📊 Brief: <PROJECT-TAG>
 
-**Tipo**: <A|B|C>  •  **Deadline**: <date>  •  **Avance**: <X%>
-**Última actividad**: <date> (<N días atrás>)
+**Type**: <A|B|C>  •  **Deadline**: <date>  •  **Progress**: <X%>
+**Last activity**: <date> (<N days ago>)
 **Stakeholders**: <list>
 
 ---
 
-## 🎯 1. Lo que estoy haciendo (NOW)
+## 🎯 1. What I'm doing (NOW)
 
 <2-3 lines max. The current active intent + the immediate next action.>
 <Be specific: not "working on auth" but "implementing CSRF state validation in auth.controller.ts">
 
-**Intent activo**: `<INTENT-TAG>`
+**Active intent**: `<INTENT-TAG>`
 **Next physical action**: <from latest shutdown note>
 
 ---
 
-## ✅ 2. Lo que ya hice (DONE)
+## ✅ 2. What I've done (DONE)
 
 <List of completed intents and major milestones, most recent first. Up to 7 items.>
 
-- [x] `<INTENT-TAG>` <one-line description> (completado <date>)
+- [x] `<INTENT-TAG>` <one-line description> (completed <date>)
 - [x] `<INTENT-TAG>` <one-line description>
 - ...
 
-<Si hay más, agregar "...y N más">
+<If there are more, add "...and N more">
 
 ---
 
-## 🎬 3. Lo que falta (NEXT)
+## 🎬 3. What's left (NEXT)
 
 <List of pending and in-progress intents, grouped by status.>
 
-### En progreso
+### In progress
 - 🔵 `<INTENT-TAG>` <description> — <next action>
 
-### Próximos
+### Upcoming
 - ⏳ `<INTENT-TAG>` <description>
 - ⏳ `<INTENT-TAG>` <description>
 
@@ -113,16 +113,16 @@ Use this EXACT structure (the user explicitly asked for these 6 sections):
 
 ---
 
-## 🧠 4. Decisiones tomadas (DECISIONS)
+## 🧠 4. Decisions made (DECISIONS)
 
 <Pull from each intent's `decisions` field in the JSON. Most relevant 3-5, most recent first.>
 
-- **<Date>**: <Decision in one line>. Justificación: <one-line rationale>.
-- **<Date>**: <Decision>. Justificación: <rationale>.
+- **<Date>**: <Decision in one line>. Rationale: <one-line rationale>.
+- **<Date>**: <Decision>. Rationale: <rationale>.
 
 ---
 
-## 🚦 5. Próximos pasos (STEPS)
+## 🚦 5. Next steps (STEPS)
 
 <The 3-5 concrete things that will happen next in chronological order.>
 
@@ -130,11 +130,11 @@ Use this EXACT structure (the user explicitly asked for these 6 sections):
 2. <Concrete action>
 3. <Concrete action>
 
-**ETA realista**: <date>
+**Realistic ETA**: <date>
 
 ---
 
-## 🌐 6. Contexto importante (CONTEXT)
+## 🌐 6. Important context (CONTEXT)
 
 <Critical context for anyone (including future-self) to understand the state.>
 <Pull from `context_dump` and `open_questions` JSON fields.>
@@ -146,16 +146,16 @@ Use this EXACT structure (the user explicitly asked for these 6 sections):
 ### Blockers
 - 🚧 <blocker> — waiting on <person/event>
 
-### Decisiones pendientes
+### Pending decisions
 - ⚖️ <decision needed> — <when>
 
-### Detalles que importan
+### Details that matter
 <2-3 lines of critical context from the project notes>
 
 ---
 
-*Brief generado: <ISO timestamp>*
-*Generado por: squirrel:brief*
+*Brief generated: <ISO timestamp>*
+*Generated by: squirrel:brief*
 ```
 
 ### Step 5: Adapt to context
@@ -165,9 +165,9 @@ The brief above is the DEFAULT format. Adapt based on who it's for:
 Compress to:
 ```
 **<PROJECT-TAG>** [<date>]
-- Ayer: <done>
-- Hoy: <now>
-- Bloqueos: <blockers or "none">
+- Yesterday: <done>
+- Today: <now>
+- Blockers: <blockers or "none">
 ```
 
 #### For email to lead (medium)
@@ -177,17 +177,17 @@ Keep sections 1-3 + 6. Skip detailed decisions list. Add salutation.
 Full 6 sections.
 
 #### For sync-out package
-Full 6 sections + paquete header.
+Full 6 sections + package header.
 
-ASK the user: "¿Brief completo o versión corta (email/slack)?"
+ASK the user: "Full brief or short version (email/slack)?"
 
 ### Step 6: Offer to send
 After generating:
 ```
-¿Querés que:
-  a) Lo abra como draft de email para <stakeholder>
-  b) Lo copie al clipboard
-  c) Genere paquete sync-out (si vas a llevarlo a otro entorno)
+Would you like me to:
+  a) Open it as an email draft for <stakeholder>
+  b) Copy it to the clipboard
+  c) Generate a sync-out package (if you're taking it to another environment)
 ```
 
 ## Special cases
@@ -199,10 +199,10 @@ After generating:
 
 ### Project has intents but no shutdown notes
 - Means the user hasn't been using session-end
-- Soft nudge: "Veo que no hay shutdown notes. Si querés un brief más rico, considera correr /sq-end al cerrar sesiones futuras."
+- Soft nudge: "I see there are no shutdown notes. If you want a richer brief, consider running /sq-end when closing future sessions."
 
 ### Brief across multiple projects (e.g., for weekly review)
-- If user asks `/sq-brief --all` or "brief de todos mis proyectos"
+- If user asks `/sq-brief --all` or "brief of all my projects"
 - Generate ONE brief per WIP project, sequential
 - Add a top-level summary table
 

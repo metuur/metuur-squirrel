@@ -15,8 +15,8 @@ Suppression rules (R-2.2–R-2.4):
 Scans 01-Proyectos-Activos and 03-Areas (same as deadline_scanner).
 
 Usage CLI:
-    python3 reminder_scanner.py --vault ~/vault-tdah
-    python3 reminder_scanner.py --vault ~/vault-tdah --pretty
+    python3 reminder_scanner.py --vault ~/vault-squirrel
+    python3 reminder_scanner.py --vault ~/vault-squirrel --pretty
 """
 
 import argparse
@@ -49,8 +49,8 @@ def scan_vault_reminders(vault_path: Path) -> dict:
         {
             "scanned_at": ISO timestamp string,
             "vault_path": str,
-            "approaching": [{"id", "title", "path", "reminder_date", "proyecto"}, ...],
-            "active":      [{"id", "title", "path", "reminder_date", "proyecto"}, ...],
+            "approaching": [{"id", "title", "path", "reminder_date", "project"}, ...],
+            "active":      [{"id", "title", "path", "reminder_date", "project"}, ...],
         }
     """
     today = datetime.date.today()
@@ -77,8 +77,8 @@ def scan_vault_reminders(vault_path: Path) -> dict:
             fm = data["frontmatter"]
 
             # R-2.2: skip done/completado/archived
-            estado = str(fm.get("estado", "")).lower()
-            if estado in ("done", "completado", "archived"):
+            estado = str(fm.get("status", "")).lower()
+            if estado in ("done", "completed", "archived"):
                 continue
 
             # Must have reminder_date
@@ -108,7 +108,7 @@ def scan_vault_reminders(vault_path: Path) -> dict:
                 "title": data["title"],
                 "path": data["path"],
                 "reminder_date": reminder_date.isoformat(),
-                "proyecto": fm.get("proyecto"),
+                "project": fm.get("project"),
             }
 
             days_ahead = (reminder_date - today).days

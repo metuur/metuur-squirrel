@@ -55,11 +55,11 @@ def normalize(tag: str) -> str:
 
 # @spec VAULT-003
 def parse(tag: str) -> Optional[dict]:
-    """Return {"proyecto", "subarea", "componente", "numero"} or None if not 4-part schema."""
+    """Return {"project", "subarea", "component", "number"} or None if not 4-part schema."""
     if not _TAG_RE.match(tag):
         return None
     p, s, c, n = tag.split("-")
-    return {"proyecto": p, "subarea": s, "componente": c, "numero": int(n)}
+    return {"project": p, "subarea": s, "component": c, "number": int(n)}
 
 
 # ── internal ──────────────────────────────────────────────────────────────────

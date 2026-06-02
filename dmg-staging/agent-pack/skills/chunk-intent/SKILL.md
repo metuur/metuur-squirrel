@@ -1,6 +1,6 @@
 ---
 name: squirrel-chunk-intent
-description: Decompose a large or overwhelming intent into ADHD-friendly chunks with time estimates. Use when the user says "este intent es muy grande", "I don't know how to attack this", "this is too much", "how do I start X", "break down X for me", "chunk this task", runs /sq-chunk [INTENT-TAG], or when task-initiation Protocol 3 redirects here. Also offers automatically when an intent's estimate exceeds 3 hours.
+description: Decompose a large or overwhelming intent into focus-friendly chunks with time estimates. Use when the user says "este intent es muy grande", "I don't know how to attack this", "this is too much", "how do I start X", "break down X for me", "chunk this task", runs /sq-chunk [INTENT-TAG], or when task-initiation Protocol 3 redirects here. Also offers automatically when an intent's estimate exceeds 3 hours.
 metadata:
   category: task-decomposition
   pairs-with: [squirrel-task-initiation, squirrel-estimate, squirrel-session-start]
@@ -12,7 +12,7 @@ metadata:
 ## Purpose
 
 A single large intent labeled "implement auth" or "refactor database layer" is invisible to the
-ADHD brain — too abstract to start. This skill converts it into a concrete sequence of chunks,
+The brain — too abstract to start. This skill converts it into a concrete sequence of chunks,
 each ≤60 min, with domain-specific names the user recognizes.
 
 The **script** (chunk_helper.py) calculates the time distribution and phase structure.
@@ -43,7 +43,7 @@ Extract:
 If the intent has an `estimate` in frontmatter, use it.
 If not, ask: "¿Cuánto tiempo estimás que toma en total? (minutos o horas)"
 
-Run the estimate buffer to apply the ADHD multiplier:
+Run the estimate buffer to apply the focus multiplier:
 
 ```bash
 python3 "$SCRIPT_DIR/estimate_buffer.py" --estimate "$USER_ESTIMATE" --pretty
@@ -52,7 +52,7 @@ python3 "$SCRIPT_DIR/estimate_buffer.py" --estimate "$USER_ESTIMATE" --pretty
 Show the user the adjusted estimate:
 ```
 Tu estimación: [RAW]
-Con buffer ADHD (×[MULTIPLIER]): [ADJUSTED]
+Con buffer de foco (×[MULTIPLIER]): [ADJUSTED]
 Motivo: [EXPLANATION]
 
 ¿Usamos [ADJUSTED] para el chunk plan?
@@ -94,7 +94,7 @@ Replace generic names with names that match the actual work. Examples:
 ```markdown
 ## 📦 Chunk plan: [INTENT-TITLE]
 
-Total: [ADJUSTED_TIME] ([RAW_TIME] × [MULTIPLIER] ADHD buffer)
+Total: [ADJUSTED_TIME] ([RAW_TIME] × [MULTIPLIER] focus buffer)
 Chunks: [N] chunks across [M] session(s)
 
 ### Session 1 — [TOTAL_MIN] min
@@ -116,7 +116,7 @@ Chunks: [N] chunks across [M] session(s)
 **Estimated: [N] days at ~2 sessions/day**
 ```
 
-The "Done when" line is critical for ADHD — it converts abstract work into a concrete finish
+The "Done when" line is critical — it converts abstract work into a concrete finish
 line for each chunk. Without it, the chunk is just a time box without an exit condition.
 
 ### Step 6: Update the intent (with user confirmation)

@@ -1,6 +1,6 @@
 ---
 name: squirrel-capture
-description: Capture and persist context, notes, ideas, or research findings to the local Markdown vault with semantic tags. Use this skill whenever the user says "capture this", "save this", "anotá", "guarda", or whenever a piece of information emerges that should outlive the current conversation (research findings, requirements, constraints, decisions, side observations, links). Always assigns a semantic tag (PROJECT-SUBAREA-COMPONENT-NNN) and writes to the vault root configured in ~/.squirrel/config.toml. Accepts an optional `vault_name` argument; when omitted, writes to the default vault (R-7.1, R-7.3).
+description: Capture and persist context, notes, ideas, or research findings to the local Markdown vault with semantic tags. Use this skill whenever the user says "capture this", "save this", "take note", "save this", or whenever a piece of information emerges that should outlive the current conversation (research findings, requirements, constraints, decisions, side observations, links). Always assigns a semantic tag (PROJECT-SUBAREA-COMPONENT-NNN) and writes to the vault root configured in ~/.squirrel/config.toml. Accepts an optional `vault_name` argument; when omitted, writes to the default vault (R-7.1, R-7.3).
 ---
 
 # squirrel:capture
@@ -9,7 +9,7 @@ description: Capture and persist context, notes, ideas, or research findings to 
 Persist transient context from the agent session into the local Markdown vault so it survives session boundaries, model context windows, and machine restarts. This is the primary "external memory" entry point for the user.
 
 ## When to invoke
-- Explicit triggers: "capture this", "save this", "anotá", "guarda esto", "agregalo al vault"
+- Explicit triggers: "capture this", "save this", "take note", "save this", "add it to the vault"
 - Implicit triggers (be proactive):
   - User shares a research finding that informs a project
   - User mentions a constraint or requirement ("we can't use X because Y")
@@ -17,7 +17,7 @@ Persist transient context from the agent session into the local Markdown vault s
   - User finishes a debugging session with a non-obvious root cause
   - User mentions a link or resource that should be archived
 
-If the trigger is implicit, ASK before capturing: "¿Querés que guarde esto como nota en el vault? Tag sugerido: X."
+If the trigger is implicit, ASK before capturing: "Do you want me to save this as a note in the vault? Suggested tag: X."
 
 ## Workflow
 
@@ -87,11 +87,11 @@ Based on the content, choose ONE type:
 
 | Type | When | Folder |
 |---|---|---|
-| `intent` | A task / requirement to accomplish | `01-Proyectos-Activos/<PROJECT>/` |
-| `research` | Findings from investigation | `01-Proyectos-Activos/<PROJECT>/` |
-| `decision` | Architectural / design decision (use `squirrel:decision` skill instead) | `01-Proyectos-Activos/<PROJECT>/` |
+| `intent` | A task / requirement to accomplish | `01-Active-Projects/<PROJECT>/` |
+| `research` | Findings from investigation | `01-Active-Projects/<PROJECT>/` |
+| `decision` | Architectural / design decision (use `squirrel:decision` skill instead) | `01-Active-Projects/<PROJECT>/` |
 | `reference` | Snippet, link, doc | `99-Resources/Captures/` |
-| `constraint` | Something that constrains the project | `01-Proyectos-Activos/<PROJECT>/` |
+| `constraint` | Something that constrains the project | `01-Active-Projects/<PROJECT>/` |
 | `loose` | Untagged thought to triage later | `99-Resources/Captures/inbox.md` (append) |
 
 <!-- @spec CAPTURE-001 -->
@@ -101,11 +101,11 @@ Use the template at `templates/intent.md` (see plugin templates), or for non-int
 ```markdown
 ---
 id: <TAG>
-proyecto: <PROJECT_PREFIX>
-tipo: <type>
-estado: <pending|in-progress|done|archived>
-creado: <YYYY-MM-DDTHH:MM:SS±HH:MM>
-tags: [<type>, proyecto/<PROJECT>, <other-tags>]
+project: <PROJECT_PREFIX>
+type: <type>
+status: <pending|in-progress|done|archived>
+created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
+tags: [<type>, project/<PROJECT>, <other-tags>]
 ---
 
 # <TAG> — <Short title>
@@ -126,7 +126,7 @@ tags: [<type>, proyecto/<PROJECT>, <other-tags>]
 - Related: ...
 ```
 
-**`creado` MUST be a full ISO-8601 datetime with timezone offset** (e.g. `2025-05-24T14:32:00-03:00`), never a date-only value.
+**`created` MUST be a full ISO-8601 datetime with timezone offset** (e.g. `2025-05-24T14:32:00-03:00`), never a date-only value.
 
 ### Step 5: Write to disk
 Use the `Write` tool. Path: `<vault_path>/<folder>/<TAG>.md`.
@@ -136,7 +136,7 @@ If the file already exists, do NOT overwrite — instead:
 2. Offer to: (a) update (append new section), (b) create with `-002` suffix, (c) cancel
 
 ### Step 6: Link from Project Page
-If the project has a root file `<PROJECT>.md`, append a link entry under the appropriate `## Componentes e Intents` section:
+If the project has a root file `<PROJECT>.md`, append a link entry under the appropriate `## Components and Intents` section:
 
 ```markdown
 - [[<TAG>]] <Short title> — <one-line status>
@@ -159,9 +159,9 @@ If the user is just chatting and captures something untethered: put it in `99-Re
 Split into multiple captures with sequential NNN.
 
 <!-- @spec CAPTURE-002 -->
-### Captures that look like decisions (CAPTURE-002 — ADR-ligero flow)
+### Captures that look like decisions (CAPTURE-002 — lightweight ADR flow)
 
-When the content matches decision language — "voy a usar X", "decidí Y", "elegí Z porque", "going to use X", "I decided Y" — activate the ADR-ligero flow:
+When the content matches decision language — "going to use X", "I decided Y", "I chose Z because", "going to use X", "I decided Y" — activate the lightweight ADR flow:
 
 1. **Propose** a structured note draft to the user with these sections:
    ```markdown
@@ -177,8 +177,8 @@ When the content matches decision language — "voy a usar X", "decidí Y", "ele
    ## Consequences
    <expected outcomes, trade-offs, risks>
    ```
-2. **Ask for explicit confirmation** before writing: "¿Confirmo y guardo esta decisión como `<TAG>`?" (or equivalent in conversation language). Do NOT write the note until the user confirms.
-3. Set `tipo: decision` in frontmatter.
+2. **Ask for explicit confirmation** before writing: "Shall I confirm and save this decision as `<TAG>`?" (or equivalent in conversation language). Do NOT write the note until the user confirms.
+3. Set `type: decision` in frontmatter.
 4. Continue with Steps 2–7 above (tag validation, dedup check, write, link).
 
 ### Conflicting tags

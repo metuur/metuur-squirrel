@@ -35,7 +35,7 @@ SQUIRREL_DIR=$(find "${HOME}/.claude/plugins" "${HOME}/others" \
 ```
 
 1b. Preguntar al usuario:
-   - `vault_path`: ruta absoluta al vault (default `~/vault-tdah`)
+   - `vault_path`: ruta absoluta al vault (default `~/vault-squirrel`)
    - `environment_name`: `personal` o `work` (u otro custom)
    - `default_email`: dirección de email para mailto: drafts
    - `active_projects`: lista de tags de proyectos WIP actuales
@@ -54,7 +54,7 @@ fi
 
 2b. Referencia: estructura del config.toml generado:
 ```toml
-vault_path = "~/vault-tdah"
+vault_path = "~/vault-squirrel"
 environment_name = "personal"
 default_email = "user@example.com"
 

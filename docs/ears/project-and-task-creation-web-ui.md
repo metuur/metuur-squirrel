@@ -4,10 +4,10 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-1.1 | WHEN the user submits the New Project form with a valid `tag` and `tipo`, THE SYSTEM SHALL call `POST /api/projects` with all provided fields and navigate to the new project page on success. |
+| R-1.1 | WHEN the user submits the New Project form with a valid `tag` and `type`, THE SYSTEM SHALL call `POST /api/projects` with all provided fields and navigate to the new project page on success. |
 | R-1.2 | WHEN the optional fields `deadline`, `stakeholders`, `description`, `first_intent_tag`, or `first_intent_title` are filled, THE SYSTEM SHALL include them in the `POST /api/projects` request payload. |
 | R-1.3 | IF `tag` does not match `^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$`, THE SYSTEM SHALL display an inline validation error on the `tag` field and block form submission without making a network call. |
-| R-1.4 | IF `tipo` is not one of `A`, `B`, or `C`, THE SYSTEM SHALL display an inline validation error on the `tipo` field and block form submission. |
+| R-1.4 | IF `type` is not one of `A`, `B`, or `C`, THE SYSTEM SHALL display an inline validation error on the `type` field and block form submission. |
 | R-1.5 | IF `first_intent_tag` is filled and `first_intent_title` is empty, THE SYSTEM SHALL display an inline validation error on `first_intent_title` and block form submission. |
 | R-1.6 | WHEN `POST /api/projects` returns a non-2xx response, THE SYSTEM SHALL display the backend error message inline in the form and retain all entered field values. |
 | R-1.7 | WHEN `POST /api/projects` succeeds, THE SYSTEM SHALL navigate to the newly created project's page within the SPA. |

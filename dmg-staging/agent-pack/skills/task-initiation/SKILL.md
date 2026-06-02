@@ -11,7 +11,7 @@ metadata:
 
 ## Purpose
 
-Task initiation is one of the most debilitating ADHD executive function deficits. The **Wall
+Task initiation is one of the most debilitating executive function deficits. The **Wall
 of Awful** (Mahan 2017) — the accumulated emotional weight around a task — can make starting
 feel physically impossible even when the user knows exactly what to do.
 
@@ -112,7 +112,7 @@ Your 2-minute task:
 Timer set?
 ```
 
-Research basis: task initiation is the hardest moment. Once started, ADHD momentum often 
+Research basis: task initiation is the hardest moment. Once started, momentum often 
 carries the session forward. The 2-minute commitment removes the "but I have to do the whole 
 thing" cognitive load.
 
@@ -202,7 +202,7 @@ Only offer once per session. Don't push.
 
 ## Anti-patterns
 
-- ❌ Don't explain why ADHD makes starting hard (they know, it doesn't help)
+- ❌ Don't explain why starting is hard (they know, it doesn't help)
 - ❌ Don't offer 3 protocols at once — choose the most likely and offer alternatives after
 - ❌ Don't say "you can do it!" — hollow motivation, zero traction
 - ❌ Don't launch into the full task plan before the first micro-action
@@ -213,5 +213,4 @@ Only offer once per session. Don't push.
 
 - Mahan, B. (2017): Wall of Awful — accumulated emotional weight blocking task entry
 - Barkley, R.A. (2015): task initiation as distinct executive function deficit from motivation
-- Volkow et al. (2011): dopamine deficiency in ADHD's reward anticipation circuit
 - Deci & Ryan (1985): autonomy support vs control — why "just do it" commands fail

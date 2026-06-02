@@ -1,5 +1,5 @@
 ---
-description: Aplica el buffer ADHD a una estimación de tiempo. Uso: /sq-estimate <duración>
+description: Aplica el buffer de foco a una estimación de tiempo. Uso: /sq-estimate <duración>
 allowed-tools: [Bash]
 ---
 
@@ -7,7 +7,7 @@ allowed-tools: [Bash]
 
 Argumentos: `$ARGUMENTS`
 
-Aplica el multiplicador ADHD a la estimación provista ejecutando `estimate_buffer.py`.
+Aplica el multiplicador de foco a la estimación provista ejecutando `estimate_buffer.py`.
 
 ## Paso 1: Validar argumento
 
@@ -41,7 +41,7 @@ Si `EXIT_CODE != 0`, mostrar el error y detener.
 Con el JSON devuelto, renderizar:
 
 ```
-⏱️  Estimación ADHD-buffered
+⏱️  Estimación con buffer de foco
 
   Tu estimación:  <user_estimate_human>
   Multiplicador:  ×<multiplier>

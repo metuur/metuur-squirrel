@@ -1,10 +1,10 @@
 ---
-proyecto: TEST-PROJECT
-tipo: A
+project: TEST-PROJECT
+type: A
 deadline: 2026-06-15
-estado: WIP
+status: WIP
 stakeholders: [lead, PM]
-tags: [proyecto/activo, tipo/A]
+tags: [project/active, type/A]
 ---
 
 # TEST-PROJECT

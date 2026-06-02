@@ -1,18 +1,18 @@
 ---
-description: Captura una nota, idea, research finding, o contexto al vault con tag semántico.
+description: Captures a note, idea, research finding, or context into the vault with a semantic tag.
 allowed-tools: [Read, Write, Glob]
 ---
 
 # /sq-capture
 
-Captura: $ARGUMENTS
+Capture: $ARGUMENTS
 
-Argumentos opcionales:
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--vault NAME` — operate on a specific vault (default if omitted)
 
-Invoca el skill `squirrel:capture` que:
-1. Determina tag semántico apropiado (`PROYECTO-SUBÁREA-NNN`)
-2. Detecta tipo de nota (intent / research / constraint / reference)
-3. Compone la nota con frontmatter
-4. La escribe en el folder correspondiente del vault
-5. Linkea desde Project Page si aplica
+Invokes the `squirrel:capture` skill, which:
+1. Determines the appropriate semantic tag (`PROJECT-SUBAREA-NNN`)
+2. Detects the note type (intent / research / constraint / reference)
+3. Composes the note with frontmatter
+4. Writes it to the corresponding folder in the vault
+5. Links it from the Project Page if applicable

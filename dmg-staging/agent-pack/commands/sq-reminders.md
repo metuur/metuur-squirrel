@@ -120,11 +120,11 @@ Salida esperada (ejemplo con ítems):
 
 ```
 🔴 Active (2)
-  1. [tdah-2024-001] Revisar medicación — 2024-03-10
-  2. [tdah-2024-005] Llamar al médico — 2024-03-12
+  1. [rem-2024-001] Revisar medicación — 2024-03-10
+  2. [rem-2024-005] Llamar al médico — 2024-03-12
 
 🔔 Approaching (1)
-  1. [tdah-2024-009] Renovar seguro — 2024-03-17
+  1. [rem-2024-009] Renovar seguro — 2024-03-17
 ```
 
 Estado vacío:

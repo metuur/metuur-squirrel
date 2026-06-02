@@ -17,7 +17,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
   const navigate = useNavigate();
   const { show: toast } = useToast();
   const [tag, setTag] = useState('');
-  const [tipo, setTipo] = useState<'A' | 'B' | 'C'>('C');
+  const [projectType, setProjectType] = useState<'A' | 'B' | 'C'>('C');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
   const [stakeholders, setStakeholders] = useState('');
@@ -29,7 +29,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
 
   function reset() {
     setTag('');
-    setTipo('C');
+    setProjectType('C');
     setDeadline('');
     setDescription('');
     setStakeholders('');
@@ -66,7 +66,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
     }
     const req: NewProjectRequest = {
       tag: trimmed,
-      tipo,
+      type: projectType,
       deadline: deadline || undefined,
       description: description.trim() || undefined,
       stakeholders: stakeholders.trim() || undefined,
@@ -136,16 +136,16 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
           />
         </Field>
 
-        <Field label="Tipo" hint="A=mission-critical, B=important, C=experimental.">
+        <Field label="Type" hint="A=mission-critical, B=important, C=experimental.">
           <div className="flex gap-2">
             {(['A', 'B', 'C'] as const).map((opt) => (
               <button
                 key={opt}
                 type="button"
-                onClick={() => setTipo(opt)}
+                onClick={() => setProjectType(opt)}
                 disabled={busy}
                 className={`flex-1 py-2 text-sm font-semibold rounded-md border transition-all ${
-                  tipo === opt
+                  projectType === opt
                     ? 'bg-accent text-surface border-accent shadow-sm'
                     : 'bg-surface text-ink-2 border-hairline hover:border-accent'
                 }`}

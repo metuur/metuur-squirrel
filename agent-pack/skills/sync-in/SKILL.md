@@ -22,9 +22,9 @@ Locate the boundary markers:
 
 If markers are missing or unbalanced → REJECT with clear error:
 ```
-❌ El paquete está incompleto o mal formateado.
-   Faltó: <start-marker | end-marker>
-   ¿Lo copiaste entero del email/clipboard?
+❌ The package is incomplete or malformed.
+   Missing: <start-marker | end-marker>
+   Did you copy the entire block from the email/clipboard?
 ```
 
 ### Step 2: Parse header
@@ -33,64 +33,64 @@ Extract from the HTML comment block at top:
 
 If `to` mismatches the current environment (configured in `~/.squirrel/config.toml` as `environment_name`):
 ```
-⚠️ Este paquete fue generado para "<to>" pero estás en "<current>".
-   ¿Aplicarlo igual? (sí / no)
+⚠️ This package was generated for "<to>" but you are in "<current>".
+   Apply it anyway? (yes / no)
 ```
 
 <!-- @spec SYNC-003 -->
 ### Step 3: Validate hash
 Reconstruct the canonical payload:
-1. Extract content of each "Archivo N" code block
+1. Extract content of each "File N" code block
 2. Concatenate in order, separated by `\n---\n`
 3. SHA-256 hash, hex-encode
 4. Compare to `hash_sha256` from header
 
 If mismatch:
 ```
-❌ Hash inválido — el paquete podría estar corrupto o truncado.
-   Esperado: <expected>
-   Calculado: <calculated>
+❌ Invalid hash — the package may be corrupt or truncated.
+   Expected: <expected>
+   Calculated: <calculated>
 
-¿Continuar de todos modos? (NO recomendado)
+Continue anyway? (NOT recommended)
 ```
 
 DO NOT apply if hash fails unless user explicitly overrides.
 
 ### Step 4: Parse each file entry
-For each `### Archivo N:` section, extract:
+For each `### File N:` section, extract:
 - `target_path` (from the section header)
-- `operacion` (create | update | append | merge)
+- `operation` (create | update | append | merge)
 - `tag`
-- `conflicto_si_existe` (ask | overwrite | skip)
+- `conflict_if_exists` (ask | overwrite | skip)
 - `content` (the markdown code block content)
 
 Resolve `target_path` against the local vault root.
 
 ### Step 5: Check for conflicts
 For each file:
-- If `operacion = create` and the file exists → CONFLICT
-- If `operacion = update` and the file does NOT exist → MISMATCH
-- If `operacion = append` and the file does NOT exist → CREATE NEW
-- If `operacion = merge` → need 3-way merge (advanced; for MVP, treat as `update` with diff)
+- If `operation = create` and the file exists → CONFLICT
+- If `operation = update` and the file does NOT exist → MISMATCH
+- If `operation = append` and the file does NOT exist → CREATE NEW
+- If `operation = merge` → need 3-way merge (advanced; for MVP, treat as `update` with diff)
 
 ### Step 6: Build the plan
 Generate a summary:
 
 ```markdown
-📦 Paquete recibido:
-   De: <from> → Para: <to>
-   Generado: <human-readable>
+📦 Package received:
+   From: <from> → To: <to>
+   Generated: <human-readable>
    Scope: <scope>
-   Hash: ✓ válido
+   Hash: ✓ valid
 
-📋 Plan de aplicación (<N> operaciones):
+📋 Application plan (<N> operations):
 
-| # | Operación | Archivo | Estado local |
-|---|-----------|---------|--------------|
-| 1 | CREATE    | 01-Proyectos-Activos/X/Y.md | (no existe) |
-| 2 | UPDATE    | 01-Proyectos-Activos/X/Z.md | existe — DIFF abajo |
-| 3 | APPEND    | 99-Resources/inbox.md | existe — append |
-| 4 | CREATE    | 01-Proyectos-Activos/X/W.md | ⚠️ YA EXISTE — conflicto |
+| # | Operation | File | Local status |
+|---|-----------|------|--------------|
+| 1 | CREATE    | 01-Active-Projects/X/Y.md | (does not exist) |
+| 2 | UPDATE    | 01-Active-Projects/X/Z.md | exists — DIFF below |
+| 3 | APPEND    | 99-Resources/inbox.md | exists — append |
+| 4 | CREATE    | 01-Active-Projects/X/W.md | ⚠️ ALREADY EXISTS — conflict |
 
 ```
 
@@ -99,32 +99,32 @@ Generate a summary:
 For each file marked CONFLICT or UPDATE, show a unified diff:
 
 ```diff
---- local: 01-Proyectos-Activos/X/Z.md
+--- local: 01-Active-Projects/X/Z.md
 +++ incoming
 @@ -10,7 +10,9 @@
  ## Open questions
--- ¿Refresh token en localStorage o httpOnly cookie?
-+- ¿Refresh token en localStorage o httpOnly cookie? [DECIDIDO: httpOnly]
-+- ¿Email no verificado en Google → cómo manejarlo?
+-- Refresh token in localStorage or httpOnly cookie?
++- Refresh token in localStorage or httpOnly cookie? [DECIDED: httpOnly]
++- Unverified email from Google → how to handle it?
 ```
 
 For CREATE operations on existing files, ask resolution:
 ```
-Conflicto en <file>:
-  a) sobrescribir local con el paquete
-  b) preservar local, descartar paquete
-  c) crear con sufijo -CONFLICT (revisar manualmente)
-  d) ver diff
+Conflict in <file>:
+  a) overwrite local with the package
+  b) preserve local, discard package
+  c) create with -CONFLICT suffix (review manually)
+  d) view diff
 ```
 
 ### Step 8: Ask for confirmation
 After showing the plan and any diffs:
 
 ```
-¿Aplicar el paquete?
-  (sí: aplicar todo según el plan)
-  (selectivo: te pregunto archivo por archivo)
-  (cancelar: no se aplica nada)
+Apply the package?
+  (yes: apply everything according to the plan)
+  (selective: ask file by file)
+  (cancel: nothing is applied)
 ```
 
 ### Step 9: Apply operations atomically
@@ -135,8 +135,8 @@ For each operation:
 
 If ANY operation fails, do NOT roll back automatically — but report clearly:
 ```
-✅ Aplicados: 3 archivos
-⚠️ Fallidos: 1
+✅ Applied: 3 files
+⚠️ Failed: 1
    - <file>: <error>
 ```
 
@@ -162,25 +162,25 @@ This gives a forensic trail: if your security/compliance ever asks "what did you
 ### Step 11: Update Project Pages
 For any new intent/decision/research note created, check if it should be linked from a Project Page. Suggest:
 ```
-🔗 Sugerencia: agregar los siguientes links a Project Pages:
-   - <PROJECT-A>.md: agregar [[<NEW-TAG-1>]] bajo "Componentes e Intents"
-   - <PROJECT-A>.md: agregar [[<NEW-TAG-2>]] bajo "Decisiones"
+🔗 Suggestion: add the following links to Project Pages:
+   - <PROJECT-A>.md: add [[<NEW-TAG-1>]] under "Components and Intents"
+   - <PROJECT-A>.md: add [[<NEW-TAG-2>]] under "Decisions"
 
-¿Aplico estos links?
+Apply these links?
 ```
 
 ### Step 12: Final confirmation
 ```
-✅ Paquete aplicado exitosamente.
+✅ Package applied successfully.
 
-Resumen:
-  • Creados: <N>
-  • Actualizados: <N>
-  • Saltados (conflicto): <N>
+Summary:
+  • Created: <N>
+  • Updated: <N>
+  • Skipped (conflict): <N>
 
 Log: <vault>/.squirrel/applied/<timestamp>-<short-hash>.json
 
-Sugerencia: corré /sq-brief <PROJECT> para ver el estado actualizado.
+Suggestion: run /sq-brief <PROJECT> to see the updated status.
 ```
 
 ## Security considerations
@@ -218,22 +218,22 @@ If the payload looks like GPG armored output:
 ### Package version mismatch
 If header is `v2` but we only know `v1` → REJECT with message:
 ```
-❌ Versión del paquete no soportada: v2.
-   Actualizá squirrel a una versión compatible.
+❌ Unsupported package version: v2.
+   Update squirrel to a compatible version.
 ```
 
 ### Partial paste
 If only the header is present but no files → REJECT:
 ```
-❌ Solo encontré el header del paquete, sin archivos.
-   ¿Copiaste el bloque completo?
+❌ Only found the package header, no files.
+   Did you copy the complete block?
 ```
 
 ### Re-applying the same package
 The audit log has hashes — detect re-application:
 ```
-ℹ️ Este paquete ya fue aplicado el <date> (mismo hash).
-   ¿Re-aplicar de todos modos? (puede sobrescribir cambios locales hechos desde entonces)
+ℹ️ This package was already applied on <date> (same hash).
+   Re-apply anyway? (may overwrite local changes made since then)
 ```
 
 ## Anti-patterns
@@ -255,4 +255,3 @@ The audit log has hashes — detect re-application:
 - Saltzer & Schroeder (1975): fail-safe defaults — unrecognized input should be rejected, not silently accepted
 - Anderson, R. (2020): Security Engineering — hash verification as integrity primitive for untrusted channels
 - Allen, D. (2001): GTD "inbox zero" — temporary holding area with guaranteed review prevents indefinite limbo
-- Barkley, R.A. (2015): ADHD impulsivity risk — compliance gate before applying prevents accidental data merge

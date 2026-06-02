@@ -22,7 +22,7 @@ Dependency layers:
 
 - [x] **1.1** Add `compose_deeplink(project, task)` helper to `agent-pack/companions/macos-reminders/reminder-daemon.sh` (mutex: daemon-script, est: ~20m)
   - acceptance:
-    - R-1.9 — Returns `squirrel://projects/<proyecto>/<id>` when both present and `id != proyecto`; `squirrel://projects/<proyecto>` when only `proyecto` present; `squirrel://projects/<id>` legacy fallback when `proyecto` is empty.
+    - R-1.9 — Returns `squirrel://projects/<project>/<id>` when both present and `id != project`; `squirrel://projects/<project>` when only `project` present; `squirrel://projects/<id>` legacy fallback when `project` is empty.
   - verify:
     - Bash unit test: source the helper, call with `("FOO","BAR")` → `squirrel://projects/FOO/BAR`; `("FOO","FOO")` → `squirrel://projects/FOO`; `("FOO","")` → `squirrel://projects/FOO`; `("","BAR")` → `squirrel://projects/BAR`.
 

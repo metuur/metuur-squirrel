@@ -1,9 +1,28 @@
 // Squirrel JSON API client — all calls hit /api/* on the Python server.
 // In dev (vite), /api/* is proxied to http://127.0.0.1:3939 (vite.config.ts).
-// In prod (squirrel web start), the SPA is served BY the Python server, so
+// In prod (squirrel web open-web), the SPA is served BY the Python server, so
 // /api/* is same-origin.
 
 const BASE = '/api';
+const TOKEN_KEY = 'squirrel_auth_token';
+
+// Read ?token= from the launch URL once, store in sessionStorage, strip from history.
+(function bootstrapToken() {
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('token');
+  if (t) {
+    sessionStorage.setItem(TOKEN_KEY, t);
+    params.delete('token');
+    const rest = params.toString();
+    const next = window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash;
+    window.history.replaceState(null, '', next);
+  }
+})();
+
+function authHeaders(): Record<string, string> {
+  const t = sessionStorage.getItem(TOKEN_KEY);
+  return t ? { 'X-Squirrel-Token': t } : {};
+}
 
 export class ApiError extends Error {
   status: number;
@@ -20,7 +39,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   window.dispatchEvent(new CustomEvent('squirrel:api-start', { detail: { id, path } }));
   try {
     const resp = await fetch(BASE + path, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       ...init,
     });
     const text = await resp.text();
@@ -189,7 +208,7 @@ export interface SaveResult { success: true; id?: string; slug?: string; mtime?:
 export interface CaptureResult { success: true; id: string; project_slug: string; }
 export interface NewProjectRequest {
   tag: string;
-  tipo: 'A' | 'B' | 'C';
+  type: 'A' | 'B' | 'C';
   deadline?: string;
   stakeholders?: string;
   description?: string;
@@ -200,7 +219,7 @@ export interface NewProjectRequest {
 export interface NewProjectResult {
   success: true;
   slug: string;
-  tipo: string;
+  type: string;
   deadline: string | null;
   wip_count: number;
   wip_max: number;
@@ -224,7 +243,7 @@ export interface ReminderItem {
   title: string;
   path: string;
   reminder_date: string;
-  proyecto: string | null;
+  project: string | null;
 }
 export interface RemindersPayload {
   approaching: ReminderItem[];

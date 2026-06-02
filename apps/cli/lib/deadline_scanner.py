@@ -16,8 +16,8 @@ Niveles canónicos (ATTN-001):
 Los items con deadline pasado quedan en `critical` con `is_overdue=True` y `days_overdue=N`.
 
 Uso CLI:
-    python3 deadline_scanner.py --vault ~/vault-tdah
-    python3 deadline_scanner.py --vault ~/vault-tdah --level critical,urgent
+    python3 deadline_scanner.py --vault ~/vault-squirrel
+    python3 deadline_scanner.py --vault ~/vault-squirrel --level critical,urgent
 """
 
 import argparse
@@ -112,8 +112,8 @@ def scan_vault_deadlines(vault_path: Path) -> dict:
                 continue
 
             # Skip if already completed
-            estado = str(data["frontmatter"].get("estado", "")).lower()
-            if estado in ("done", "completado", "archived"):
+            estado = str(data["frontmatter"].get("status", "")).lower()
+            if estado in ("done", "completed", "archived"):
                 continue
 
             total_with_deadline += 1
@@ -125,9 +125,9 @@ def scan_vault_deadlines(vault_path: Path) -> dict:
                 "title": data["title"],
                 "path": data["path"],
                 "deadline": deadline.isoformat(),
-                "estado": estado,
-                "prioridad": data["frontmatter"].get("prioridad"),
-                "proyecto": data["frontmatter"].get("proyecto"),
+                "status": estado,
+                "priority": data["frontmatter"].get("priority"),
+                "project": data["frontmatter"].get("project"),
                 **time_info,
             }
 

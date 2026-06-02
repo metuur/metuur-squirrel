@@ -1,24 +1,24 @@
 ---
-description: Descompone una estimación de tiempo en chunks ADHD-friendly con distribución por fases. Uso: /sq-chunk <duración> [--custom-phases name1=N,name2=M]
+description: Breaks a time estimate into manageable chunks with a per-phase distribution. Usage: /sq-chunk <duration> [--custom-phases name1=N,name2=M]
 allowed-tools: [Bash]
 ---
 
 # /sq-chunk
 
-Argumentos: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-Descompone la tarea en chunks ADHD-friendly ejecutando `chunk_helper.py`.
+Breaks the task into manageable chunks by running `chunk_helper.py`.
 
-## Paso 1: Parsear argumentos
+## Step 1: Parse arguments
 
-De `$ARGUMENTS` extraer:
-- **duración**: número + unidad (ej: `4h`, `90min`, `2.5 hours`, `240 minutes`). Convertir a `--hours N` o `--minutes N` para el script.
-- **--custom-phases**: si está presente, pasarlo como `--custom-phases "..."`.
-- **--threshold**: minutos mínimos antes de activar el chunking (default: 120). Pasar como `--threshold N` al script si está presente.
+From `$ARGUMENTS` extract:
+- **duration**: number + unit (e.g. `4h`, `90min`, `2.5 hours`, `240 minutes`). Convert to `--hours N` or `--minutes N` for the script.
+- **--custom-phases**: if present, pass it through as `--custom-phases "..."`.
+- **--threshold**: minimum minutes before chunking kicks in (default: 120). Pass as `--threshold N` to the script if present.
 
-Si no se especifica duración, preguntar: "¿Cuánto tiempo estimás para esta tarea?"
+If no duration is specified, ask: "How long do you estimate this task will take?"
 
-## Paso 2: Localizar el script
+## Step 2: Locate the script
 
 ```bash
 SCRIPT=""
@@ -28,44 +28,44 @@ for candidate in \
     "$(find "${HOME}/others" -name 'chunk_helper.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCRIPT="$candidate" && break
 done
-[ -z "$SCRIPT" ] && echo "❌ No se encontró chunk_helper.py. Verificá la instalación del plugin." && exit 1
+[ -z "$SCRIPT" ] && echo "❌ chunk_helper.py not found. Check the plugin installation." && exit 1
 ```
 
-## Paso 3: Ejecutar el script
+## Step 3: Run the script
 
 ```bash
 RESULT=$(python3 "$SCRIPT" --hours <N> --threshold <T> --pretty 2>&1)
 EXIT_CODE=$?
 ```
 
-Si `EXIT_CODE != 0`, mostrar el error y detener.
+If `EXIT_CODE != 0`, show the error and stop.
 
-## Paso 4: Renderizar el resultado
+## Step 4: Render the result
 
-Si el JSON contiene `"below_threshold": true`, mostrar:
+If the JSON contains `"below_threshold": true`, show:
 
 ```
-✅ Esta tarea es ≤{threshold_minutes}min — no necesita chunking. ¿Querés arrancar directo?
+✅ This task is ≤{threshold_minutes}min — no chunking needed. Want to start right away?
 ```
 
-De lo contrario, con el JSON devuelto, renderizar:
+Otherwise, with the returned JSON, render:
 
 ```
 🧩 Chunk Plan — <total_human>
 
-Fases:
+Phases:
   🔬 Research & Planning   (<min>min)  → <n_chunks> chunk(s)
   🛠  Setup & Scaffolding   (<min>min)  → <n_chunks> chunk(s)
   ⚙️  Core Implementation   (<min>min)  → <n_chunks> chunk(s)
   ✨ Polish & Edge Cases    (<min>min)  → <n_chunks> chunk(s)
   🧪 Testing & Docs         (<min>min)  → <n_chunks> chunk(s)
 
-Sesiones sugeridas (<total_chunks> chunks en <N> sesión/es):
-  📅 Sesión 1 (<total_minutes>min): [chunk1, chunk2, ...]
-  📅 Sesión 2 (<total_minutes>min): [...]
+Suggested sessions (<total_chunks> chunks across <N> session(s)):
+  📅 Session 1 (<total_minutes>min): [chunk1, chunk2, ...]
+  📅 Session 2 (<total_minutes>min): [...]
 
-Estimación: ~<estimated_days> día(s) de trabajo
+Estimate: ~<estimated_days> day(s) of work
 ```
 
-Luego preguntar: "¿Querés nombrar los chunks para este intent específico?"
-Si sí, pedir el nombre del intent y proponer nombres contextuales para cada chunk.
+Then ask: "Want to name the chunks for this specific intent?"
+If yes, ask for the intent name and propose contextual names for each chunk.

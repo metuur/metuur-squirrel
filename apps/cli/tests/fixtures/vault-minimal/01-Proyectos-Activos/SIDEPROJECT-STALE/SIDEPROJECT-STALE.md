@@ -1,10 +1,10 @@
 ---
-proyecto: SIDEPROJECT-STALE
-tipo: B
+project: SIDEPROJECT-STALE
+type: B
 deadline: 2026-06-07
-estado: WIP
-prioridad: finishing-tax
-tags: [proyecto/activo, prioridad/finishing-tax]
+status: WIP
+priority: finishing-tax
+tags: [project/active, priority/finishing-tax]
 ---
 
 # SIDEPROJECT-STALE — Proyecto estancado al 90%

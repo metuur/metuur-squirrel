@@ -255,4 +255,3 @@ The audit log has hashes — detect re-application:
 - Saltzer & Schroeder (1975): fail-safe defaults — unrecognized input should be rejected, not silently accepted
 - Anderson, R. (2020): Security Engineering — hash verification as integrity primitive for untrusted channels
 - Allen, D. (2001): GTD "inbox zero" — temporary holding area with guaranteed review prevents indefinite limbo
-- Barkley, R.A. (2015): ADHD impulsivity risk — compliance gate before applying prevents accidental data merge

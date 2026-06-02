@@ -74,8 +74,8 @@ function ApproachingRow({ item }: { item: ReminderItem }) {
         <div className="min-w-0">
           <div className="text-[10px] font-mono text-ink-4 mb-0.5">{item.id}</div>
           <h3 className="font-medium text-ink truncate">{item.title}</h3>
-          {item.proyecto && (
-            <div className="text-xs text-ink-3 mt-0.5">{item.proyecto}</div>
+          {item.project && (
+            <div className="text-xs text-ink-3 mt-0.5">{item.project}</div>
           )}
         </div>
         <span className="chip whitespace-nowrap">
@@ -113,8 +113,8 @@ function ActiveRow({
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-mono text-ink-4 mb-0.5">{item.id}</div>
           <h3 className="font-medium text-ink truncate">{item.title}</h3>
-          {item.proyecto && (
-            <div className="text-xs text-ink-3 mt-0.5">{item.proyecto}</div>
+          {item.project && (
+            <div className="text-xs text-ink-3 mt-0.5">{item.project}</div>
           )}
           <div className="text-xs text-warning mt-1">Due {item.reminder_date}</div>
         </div>

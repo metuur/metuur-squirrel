@@ -436,7 +436,7 @@ mod tests {
             id: "VISA-001".into(),
             title: "Pay visa".into(),
             reminder_date: "2026-05-30".into(),
-            proyecto: None,
+            project: None,
             item_url: format!("{}/notes/{}", BACKEND_ORIGIN, "VISA-001"),
         };
         assert_eq!(r.item_url, "http://127.0.0.1:3939/notes/VISA-001");

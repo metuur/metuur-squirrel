@@ -1,6 +1,6 @@
 # Squirrel — Codex Agent Manifest
 
-squirrel is a session-management plugin for engineers with ADHD. It persists
+squirrel is a session-management plugin for engineers. It persists
 cognitive state across sessions, projects, and air-gapped environments via a
 Markdown vault. Scripts do all deterministic work; the agent only does judgment.
 
@@ -37,7 +37,7 @@ Commands are installed at `~/.codex/commands/`. All are prefixed `/sq-`.
 /sq-capture <content>    — save a note
 /sq-decision <topic>     — record an ADR
 /sq-chunk [N]h           — decompose task into chunks
-/sq-estimate <time>      — ADHD-buffered time estimate
+/sq-estimate <time>      — focus-buffered time estimate
 /sq-chunk-intent [TAG]   — decompose intent into chunks
 /sq-task-initiation [TAG] — anti-paralysis protocols
 /sq-parakeet             — deadline reminder with tone
@@ -53,7 +53,7 @@ Commands are installed at `~/.codex/commands/`. All are prefixed `/sq-`.
 `~/.squirrel/config.toml` must exist. Minimal example:
 
 ```toml
-vault_path = "~/vault-tdah"
+vault_path = "~/vault-squirrel"
 environment_name = "personal"
 
 [compliance]
@@ -75,7 +75,7 @@ or at the original repo path). Scripts are stdlib-only Python 3.9+.
 | `deadline_scanner.py` | Deadline urgency classification (6 levels) |
 | `intent_parser.py` | Frontmatter + section parser for vault files |
 | `switch_tracker.py` | Context-switch counter, focus_score |
-| `estimate_buffer.py` | ADHD time multiplier |
+| `estimate_buffer.py` | focus time multiplier |
 | `chunk_helper.py` | Task decomposition into ≤50-min chunks |
 | `session_scanner.py` | Recoverable session finder |
 | `dashboard_generator.py` | HTML vault dashboard |

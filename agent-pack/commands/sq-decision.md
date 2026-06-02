@@ -1,19 +1,19 @@
 ---
-description: Captura una decisión arquitectónica/de diseño como ADR ligero en el vault.
+description: Captures an architectural/design decision as a lightweight ADR in the vault.
 allowed-tools: [Read, Write, Glob]
 ---
 
 # /sq-decision
 
-Captura una decisión sobre $ARGUMENTS (o sobre la conversación reciente).
+Captures a decision about $ARGUMENTS (or about the recent conversation).
 
-Argumentos opcionales:
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--vault NAME` — operate on a specific vault (default if omitted)
 
-Invoca el skill `squirrel:decision` que:
-1. Asigna tag `<PROYECTO>-DECISION-<NNN>`
-2. Extrae de la conversación: contexto, decisión, alternativas consideradas, consecuencias
-3. Pide confirmación de los campos
-4. Crea archivo `<PROYECTO>-DECISION-<NNN>.md` con formato ADR
-5. Linkea desde la Project Page
-6. Ofrece notificar a stakeholders relevantes
+Invokes the `squirrel:decision` skill, which:
+1. Assigns the tag `<PROJECT>-DECISION-<NNN>`
+2. Extracts from the conversation: context, decision, alternatives considered, consequences
+3. Asks for confirmation of the fields
+4. Creates the file `<PROJECT>-DECISION-<NNN>.md` in ADR format
+5. Links it from the Project Page
+6. Offers to notify relevant stakeholders

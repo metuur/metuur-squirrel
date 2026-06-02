@@ -37,8 +37,8 @@ class TestCaptureWriter(unittest.TestCase):
         self.assertTrue(p.name.startswith("UNFILED-"))
         self.assertTrue(p.name.endswith(".md"))
         body = p.read_text(encoding="utf-8")
-        self.assertIn("tipo: capture", body)
-        self.assertIn("proyecto: unfiled", body)
+        self.assertIn("type: capture", body)
+        self.assertIn("project: unfiled", body)
         self.assertIn("an idea", body)
 
     def test_writes_into_project_folder_when_slug_given(self):
@@ -48,7 +48,7 @@ class TestCaptureWriter(unittest.TestCase):
         self.assertEqual(p.parent.resolve(), proj.resolve())
         self.assertTrue(p.name.startswith("PROYECTO-A-CAPTURE-"))
         body = p.read_text(encoding="utf-8")
-        self.assertIn("proyecto: PROYECTO-A", body)
+        self.assertIn("project: PROYECTO-A", body)
         self.assertIn("my project note", body)
 
     def test_numbering_increments(self):

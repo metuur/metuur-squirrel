@@ -5,12 +5,12 @@ allowed-tools: [Bash, Read]
 
 # /sq-parakeet
 
-Escanea deadlines del vault y genera mensajes con tono acorde al nivel de urgencia.
+Scans the vault's deadlines and generates messages with a tone that matches the urgency level.
 
-Argumentos opcionales:
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--vault NAME` — operate on a specific vault (default if omitted)
 
-## Paso 1: Resolver VAULT_PATH y script (multi-vault)
+## Step 1: Resolve VAULT_PATH and script (multi-vault)
 
 ```bash
 # Parse --vault NAME from $ARGUMENTS (R-6.1, R-6.2)
@@ -37,23 +37,23 @@ except ConfigError as e:
 
 SCRIPT=$(find "${HOME}/.claude/plugins/squirrel/lib" "${HOME}/others" \
     -name 'deadline_scanner.py' -path '*/squirrel/*' 2>/dev/null | head -1)
-[ -z "$SCRIPT" ] && echo "❌ deadline_scanner.py no encontrado" && exit 1
+[ -z "$SCRIPT" ] && echo "❌ deadline_scanner.py not found" && exit 1
 ```
 
-## Paso 2: Escanear deadlines
+## Step 2: Scan deadlines
 
 ```bash
 DEADLINES_JSON=$(python3 "$SCRIPT" --vault "$VAULT_PATH" --pretty 2>&1)
 ```
 
-## Paso 3: Invocar el skill parakeet
+## Step 3: Invoke the parakeet skill
 
-Pasarle el JSON al skill `squirrel-parakeet` (ver `skills/parakeet/SKILL.md`).
+Pass the JSON to the `squirrel-parakeet` skill (see `skills/parakeet/SKILL.md`).
 
-El skill:
-1. Evalúa los niveles de urgencia
-2. Genera mensajes con tono apropiado (critical con is_overdue → non-judgmental, critical inminente → serio, upcoming → casual)
-3. Sugiere una acción concreta si hay items urgent/critical
+The skill:
+1. Evaluates the urgency levels
+2. Generates messages with an appropriate tone (critical with is_overdue → non-judgmental, imminent critical → serious, upcoming → casual)
+3. Suggests a concrete action if there are urgent/critical items
 
-Modo de invocación directa (`/sq-parakeet`): mostrar todos los niveles incluyendo `upcoming`, `eventual`, `distant`.
-Modo embedded (dentro de session-start, status): mostrar solo `critical`, `urgent`.
+Direct invocation mode (`/sq-parakeet`): show all levels including `upcoming`, `eventual`, `distant`.
+Embedded mode (within session-start, status): show only `critical`, `urgent`.

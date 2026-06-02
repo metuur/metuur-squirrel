@@ -10,7 +10,7 @@ Generates a single-file HTML dashboard from vault status + deadlines and opens i
 Optional arguments:
 - `--vault NAME` — operate on the named vault (default if omitted)
 
-## Paso 1: Resolver VAULT_PATH y script (multi-vault)
+## Step 1: Resolve VAULT_PATH and script (multi-vault)
 
 ```bash
 # Parse --vault NAME from $ARGUMENTS (R-6.1, R-6.2)
@@ -41,31 +41,31 @@ for candidate in \
     "$(find "${HOME}/others" -name 'dashboard_generator.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCRIPT="$candidate" && break
 done
-[ -z "$SCRIPT" ] && echo "❌ No se encontró dashboard_generator.py. Verificá la instalación del plugin." && exit 1
+[ -z "$SCRIPT" ] && echo "❌ dashboard_generator.py not found. Check the plugin installation." && exit 1
 ```
 
-## Paso 2: Generar el dashboard
+## Step 2: Generate the dashboard
 
 ```bash
 python3 "$SCRIPT" --vault "$VAULT_PATH" --open
 ```
 
-Si el flag `--open` no funciona en el entorno actual, el archivo se habrá guardado en `~/.squirrel/dashboard.html`. Informar al usuario la ruta y que puede abrirlo con:
+If the `--open` flag doesn't work in the current environment, the file will have been saved to `~/.squirrel/dashboard.html`. Tell the user the path and that they can open it with:
 
 ```bash
 open ~/.squirrel/dashboard.html
 ```
 
-## Paso 3: Confirmar
+## Step 3: Confirm
 
-Reportar:
-- Ruta del archivo generado
-- Número de proyectos WIP encontrados
-- Número de deadlines encontrados
-- Confirmar si se abrió en el browser
+Report:
+- Path of the generated file
+- Number of WIP projects found
+- Number of deadlines found
+- Confirm whether it opened in the browser
 
-## Notas
+## Notes
 
-- El HTML se auto-refresca cada 5 minutos (meta refresh)
-- Para regenerar sin abrir: `sq dashboard` o `python3 dashboard_generator.py --vault <path>`
-- Si hay errores del vault (archivos malformados), se reportan pero no detienen la generación
+- The HTML auto-refreshes every 5 minutes (meta refresh)
+- To regenerate without opening: `sq dashboard` or `python3 dashboard_generator.py --vault <path>`
+- If there are vault errors (malformed files), they're reported but don't stop generation

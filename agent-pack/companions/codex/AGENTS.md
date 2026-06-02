@@ -1,6 +1,6 @@
 # Squirrel — Codex Agent Manifest
 
-squirrel is a session-management plugin for engineers with ADHD. It persists
+squirrel is a session-management plugin for engineers. It persists
 cognitive state across sessions, projects, and air-gapped environments via a
 Markdown vault. Scripts do all deterministic work; the agent only does judgment.
 
@@ -11,17 +11,17 @@ matches the trigger phrases below.
 
 | Skill | Trigger phrases | File |
 |---|---|---|
-| `session-start` | "vamos a trabajar en X", "retomemos Y", "what was I doing", `/sq-start` | `session-start/SKILL.md` |
-| `session-end` | "cerramos por hoy", "shutdown", "voy a pausar", `/sq-end` | `session-end/SKILL.md` |
-| `brief` | "dame el brief", "status update", "resumí el proyecto", `/sq-brief` | `brief/SKILL.md` |
-| `capture` | "guardá esto", "anotá", "save this", `/sq-capture` | `capture/SKILL.md` |
-| `decision` | "decidimos usar X", "vamos a hacer Y", `/sq-decision` | `decision/SKILL.md` |
-| `where-am-i` | "¿en qué estoy?", "where am I", `/sq-where-am-i` | `where-am-i/SKILL.md` |
-| `sync-out` | "exportar contexto", "necesito llevar esto al trabajo", `/sq-sync-out` | `sync-out/SKILL.md` |
+| `session-start` | "let's work on X", "let's pick up Y", "what was I doing", `/sq-start` | `session-start/SKILL.md` |
+| `session-end` | "we're done for today", "shutdown", "I'm going to pause", `/sq-end` | `session-end/SKILL.md` |
+| `brief` | "give me the brief", "status update", "summarize the project", `/sq-brief` | `brief/SKILL.md` |
+| `capture` | "save this", "note this down", "save this", `/sq-capture` | `capture/SKILL.md` |
+| `decision` | "we decided to use X", "we're going to do Y", `/sq-decision` | `decision/SKILL.md` |
+| `where-am-i` | "what am I working on?", "where am I", `/sq-where-am-i` | `where-am-i/SKILL.md` |
+| `sync-out` | "export context", "I need to take this to work", `/sq-sync-out` | `sync-out/SKILL.md` |
 | `sync-in` | pastes a `<!-- SQUIRREL-PACKAGE` block, `/sq-sync-in` | `sync-in/SKILL.md` |
-| `chunk-intent` | "descomponer intent X", "breaks this into chunks", `/sq-chunk-intent` | `chunk-intent/SKILL.md` |
-| `task-initiation` | "no puedo arrancar", "stuck", "paralysis", `/sq-task-initiation` | `task-initiation/SKILL.md` |
-| `parakeet` | "¿cuáles son mis deadlines?", `/sq-parakeet` | `parakeet/SKILL.md` |
+| `chunk-intent` | "break down intent X", "breaks this into chunks", `/sq-chunk-intent` | `chunk-intent/SKILL.md` |
+| `task-initiation` | "I can't get started", "stuck", "paralysis", `/sq-task-initiation` | `task-initiation/SKILL.md` |
+| `parakeet` | "what are my deadlines?", `/sq-parakeet` | `parakeet/SKILL.md` |
 | `hyperfocus-guardian` | (auto-triggered by long sessions or drift signals) | `hyperfocus-guardian/SKILL.md` |
 
 ## Slash commands
@@ -37,7 +37,7 @@ Commands are installed at `~/.codex/commands/`. All are prefixed `/sq-`.
 /sq-capture <content>    — save a note
 /sq-decision <topic>     — record an ADR
 /sq-chunk [N]h           — decompose task into chunks
-/sq-estimate <time>      — ADHD-buffered time estimate
+/sq-estimate <time>      — focus-buffered time estimate
 /sq-chunk-intent [TAG]   — decompose intent into chunks
 /sq-task-initiation [TAG] — anti-paralysis protocols
 /sq-parakeet             — deadline reminder with tone
@@ -53,7 +53,7 @@ Commands are installed at `~/.codex/commands/`. All are prefixed `/sq-`.
 `~/.squirrel/config.toml` must exist. Minimal example:
 
 ```toml
-vault_path = "~/vault-tdah"
+vault_path = "~/vault-squirrel"
 environment_name = "personal"
 
 [compliance]
@@ -75,7 +75,7 @@ or at the original repo path). Scripts are stdlib-only Python 3.9+.
 | `deadline_scanner.py` | Deadline urgency classification (6 levels) |
 | `intent_parser.py` | Frontmatter + section parser for vault files |
 | `switch_tracker.py` | Context-switch counter, focus_score |
-| `estimate_buffer.py` | ADHD time multiplier |
+| `estimate_buffer.py` | focus time multiplier |
 | `chunk_helper.py` | Task decomposition into ≤50-min chunks |
 | `session_scanner.py` | Recoverable session finder |
 | `dashboard_generator.py` | HTML vault dashboard |

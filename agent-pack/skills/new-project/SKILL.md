@@ -1,6 +1,6 @@
 ---
 name: squirrel-new-project
-description: Scaffold a new project in the vault. Creates the project page (and optionally a first intent) under `01-Proyectos-Activos/<TAG>/`. Use when the user says "create a new project", "nuevo proyecto", "agregar proyecto", or invokes `/sq-new-project`. Refuses to overwrite an existing project and refuses to exceed the WIP cap unless `--force` is passed. Accepts an optional `vault_name`; when omitted, writes to the default vault (R-7.1, R-7.3).
+description: Scaffold a new project in the vault. Creates the project page (and optionally a first intent) under `01-Proyectos-Activos/<TAG>/`. Use when the user says "create a new project", "new project", "add project", or invokes `/sq-new-project`. Refuses to overwrite an existing project and refuses to exceed the WIP cap unless `--force` is passed. Accepts an optional `vault_name`; when omitted, writes to the default vault (R-7.1, R-7.3).
 token_budget: 200
 ---
 

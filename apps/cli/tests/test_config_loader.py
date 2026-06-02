@@ -47,7 +47,7 @@ machine_environment = "personal"
 
 [[vaults]]
 name = "personal"
-path = "~/vault-tdah"
+path = "~/vault-squirrel"
 default = true
 
 [[vaults]]

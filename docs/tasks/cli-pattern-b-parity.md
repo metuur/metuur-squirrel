@@ -52,7 +52,7 @@
 
 - [x] 9.1 Add `first_intent_filename` param to `new_project_writer.py` (est: ~20m)
   - acceptance: R-9.1, R-9.2, R-9.3, R-9.4, R-9.5 — `create_project()` accepts `first_intent_filename=None`; writes `{filename}.md` when set, else `{tag}.md`; validates against `^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$`; raises `INVALID_INTENT_FILENAME`; `--first-intent-filename` flag added to CLI
-  - verify: `python3 new_project_writer.py --tag TEST --tipo C --first-intent-tag TEST-SETUP-001 --first-intent-filename MY-CUSTOM-FILE` creates `MY-CUSTOM-FILE.md`; omitting flag falls back to tag name
+  - verify: `python3 new_project_writer.py --tag TEST --type C --first-intent-tag TEST-SETUP-001 --first-intent-filename MY-CUSTOM-FILE` creates `MY-CUSTOM-FILE.md`; omitting flag falls back to tag name
 
 - [x] 9.2 Update `agent-pack/commands/sq-new-project.md` to expose `--first-intent-filename` (deps: 9.1, est: ~10m)
   - acceptance: R-9.5 — command docs show `--first-intent-filename` as optional flag alongside `--first-intent-tag`; skill derives filename from title using UPPERCASE-DASH logic when not provided

@@ -124,9 +124,9 @@ def collect_files_by_scope(vault_path: Path, scope: str) -> list[dict]:
         # Filter by kind
         if kind == "*":
             pass  # include all
-        elif kind == "research" and frontmatter.get("tipo") != "research":
+        elif kind == "research" and frontmatter.get("type") != "research":
             continue
-        elif kind == "decisions" and frontmatter.get("tipo") != "decision":
+        elif kind == "decisions" and frontmatter.get("type") != "decision":
             continue
         elif kind not in ("*", "research", "decisions"):
             # Unknown kind, skip

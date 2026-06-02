@@ -15,11 +15,11 @@ updated: weekly
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   deadline AS Deadline,
-  prioridad AS Prioridad
+  priority AS Priority
 FROM "01-Proyectos-Activos"
-WHERE estado = "pending" OR estado = "pendiente"
+WHERE status = "pending"
 SORT deadline ASC NULLS LAST
 ```
 
@@ -28,11 +28,11 @@ SORT deadline ASC NULLS LAST
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   deadline AS Deadline,
   file.mtime AS "Last Touch"
 FROM "01-Proyectos-Activos"
-WHERE estado = "in-progress" OR estado = "en-progreso"
+WHERE status = "in-progress"
 SORT file.mtime DESC
 ```
 
@@ -41,10 +41,10 @@ SORT file.mtime DESC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Blocked Since"
 FROM "01-Proyectos-Activos"
-WHERE estado = "blocked" OR estado = "bloqueado"
+WHERE status = "blocked"
 SORT file.mtime ASC
 ```
 
@@ -53,10 +53,10 @@ SORT file.mtime ASC
 ```dataview
 TABLE WITHOUT ID
   file.link AS Intent,
-  proyecto AS Proyecto,
+  project AS Project,
   file.mtime AS "Completed"
 FROM "01-Proyectos-Activos" OR "04-Archivo"
-WHERE (estado = "done" OR estado = "completado")
+WHERE (status = "done")
   AND file.mtime >= date(today) - dur(30 days)
 SORT file.mtime DESC
 ```
@@ -67,15 +67,15 @@ SORT file.mtime DESC
 
 ```dataview
 TABLE WITHOUT ID
-  proyecto AS Proyecto,
-  length(filter(rows, (r) => r.estado = "done" OR r.estado = "completado")) AS "✅ Done",
-  length(filter(rows, (r) => r.estado = "in-progress" OR r.estado = "en-progreso")) AS "🔄 Active",
-  length(filter(rows, (r) => r.estado = "blocked" OR r.estado = "bloqueado")) AS "🚧 Blocked",
-  length(filter(rows, (r) => r.estado = "pending")) AS "⏳ Pending"
+  project AS Project,
+  length(filter(rows, (r) => r.status = "done")) AS "✅ Done",
+  length(filter(rows, (r) => r.status = "in-progress")) AS "🔄 Active",
+  length(filter(rows, (r) => r.status = "blocked")) AS "🚧 Blocked",
+  length(filter(rows, (r) => r.status = "pending")) AS "⏳ Pending"
 FROM "01-Proyectos-Activos"
-WHERE proyecto != null AND tipo = "intent"
-GROUP BY proyecto
-SORT length(filter(rows, (r) => r.estado = "in-progress" OR r.estado = "en-progreso")) DESC
+WHERE project != null AND type = "intent"
+GROUP BY project
+SORT length(filter(rows, (r) => r.status = "in-progress")) DESC
 ```
 
 ## 🏗️ Active Projects
@@ -83,11 +83,11 @@ SORT length(filter(rows, (r) => r.estado = "in-progress" OR r.estado = "en-progr
 ```dataview
 TABLE WITHOUT ID
   file.link AS Project,
-  objetivo AS Objetivo,
+  objective AS Objective,
   deadline AS Deadline
 FROM "01-Proyectos-Activos"
-WHERE tipo = "proyecto" OR tipo = "project"
-  AND (estado = "wip" OR estado = "active" OR estado = "en-progreso")
+WHERE type = "project"
+  AND (status = "wip" OR status = "active" OR status = "in-progress")
 SORT deadline ASC NULLS LAST
 ```
 

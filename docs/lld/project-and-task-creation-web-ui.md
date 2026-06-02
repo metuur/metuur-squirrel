@@ -44,7 +44,7 @@ Fields (maps directly to `POST /api/projects` payload):
 | Field | Type | Required | Validation |
 |---|---|---|---|
 | `tag` | text | yes | `^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$` (client-side, matches backend) |
-| `tipo` | select: A / B / C | yes | one of three values |
+| `type` | select: A / B / C | yes | one of three values |
 | `deadline` | date | no | |
 | `stakeholders` | text | no | |
 | `description` | textarea | no | |

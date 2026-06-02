@@ -1,6 +1,6 @@
 ---
 name: squirrel-task-initiation
-description: Break through task-start paralysis. Use when the user says "no puedo arrancar", "can't start", "I'm stuck", "no sé por dónde empezar", "estoy bloqueado", "I keep avoiding this", "everytime I try to start I...", "I don't know where to begin", "this feels overwhelming", "just can't make myself do it", or has been stalling on the same intent across multiple sessions without progress. Accepts an optional `vault_name` argument; when omitted, reads from the default vault (R-7.1, R-7.3).
+description: Break through task-start paralysis. Use when the user says "I can't get started", "can't start", "I'm stuck", "I don't know where to begin", "I'm blocked", "I keep avoiding this", "everytime I try to start I...", "I don't know where to begin", "this feels overwhelming", "just can't make myself do it", or has been stalling on the same intent across multiple sessions without progress. Accepts an optional `vault_name` argument; when omitted, reads from the default vault (R-7.1, R-7.3).
 metadata:
   category: executive-function-support
   pairs-with: [squirrel-chunk-intent, squirrel-hyperfocus-guardian, squirrel-session-start]
@@ -11,7 +11,7 @@ metadata:
 
 ## Purpose
 
-Task initiation is one of the most debilitating ADHD executive function deficits. The **Wall
+Task initiation is one of the most debilitating executive function deficits. The **Wall
 of Awful** (Mahan 2017) — the accumulated emotional weight around a task — can make starting
 feel physically impossible even when the user knows exactly what to do.
 
@@ -41,7 +41,7 @@ cat ~/.squirrel/state.json 2>/dev/null
 ```
 
 Read `active_intent` or `last_active_project`. If neither is set, ask:
-"¿Cuál es el task que no podés arrancar? (dame el tag o descríbelo)"
+"Which task can't you get started on? (give me the tag or describe it)"
 
 ## Step 2: Read the intent (if it exists in the vault)
 
@@ -58,13 +58,13 @@ If the intent doesn't exist in the vault, skip this step and work from what the 
 Present these options quickly (don't make the user analyze themselves):
 
 ```
-Antes de arrancar: ¿cuál describe mejor lo que está pasando?
+Before we start: which best describes what's happening?
 
-  A) No sé exactamente qué hacer primero
-  B) Sé qué hacer pero no puedo hacer click/abrir el archivo
-  C) La tarea parece enorme y no sé si voy a terminarla
-  D) Tengo miedo de que salga mal / de que me juzguen
-  E) Otro (descríbelo)
+  A) I don't know exactly what to do first
+  B) I know what to do but I can't click/open the file
+  C) The task feels huge and I don't know if I'll finish it
+  D) I'm afraid it'll go wrong / that I'll be judged
+  E) Other (describe it)
 ```
 
 Route to the appropriate protocol based on the answer. If they don't answer or say "all of
@@ -94,7 +94,7 @@ File/tool to open should be **maximally specific**:
 The specificity is what makes the action feel manageable. Generate it from:
 1. Last shutdown note's "next physical action" (most specific)
 2. First task checkbox in the intent
-3. If nothing found: ask "¿qué archivo o herramienta usarías si supieras exactamente qué hacer?"
+3. If nothing found: ask "What file or tool would you open if you knew exactly what to do?"
 
 ## Protocol 2: 2-Minute Start (for B — body won't cooperate)
 
@@ -112,7 +112,7 @@ Your 2-minute task:
 Timer set?
 ```
 
-Research basis: task initiation is the hardest moment. Once started, ADHD momentum often 
+Research basis: task initiation is the hardest moment. Once started, momentum often 
 carries the session forward. The 2-minute commitment removes the "but I have to do the whole 
 thing" cognitive load.
 
@@ -130,7 +130,7 @@ Not finish it. Not solve it. Just 1% forward.
 ```
 
 If they struggle to identify the 1% action, immediately offer to run the chunk-intent skill:
-"¿Quiero que lo descomponga ahora?"
+"Want me to break it down now?"
 
 ## Protocol 4: Emotional Defusion (for D — fear/shame)
 
@@ -163,7 +163,7 @@ I'll be here.
 
 Do NOT launch into explaining the full task. Do NOT offer options. Wait for confirmation.
 
-When they confirm: "¿Qué ves?" / "What do you see?" — this anchors them in the actual task
+When they confirm: "What do you see?" — this anchors them in the actual task
 and transitions from initiation to working mode.
 
 ## Step 5: Transition to working mode
@@ -187,8 +187,8 @@ During session-start, check if the recommended intent has been "in-progress" for
 with 0 shutdown notes added. If so, after the normal session brief, add:
 
 ```
-⚠️ [INTENT-TAG] ha estado "en progreso" por [N] sesiones sin avance registrado.
-¿Querés que apliquemos el protocolo de inicio? (responde "sí" o "salteamos")
+⚠️ [INTENT-TAG] has been "in progress" for [N] sessions with no logged progress.
+Want to apply the initiation protocol? (reply "yes" or "skip")
 ```
 
 Only offer once per session. Don't push.
@@ -202,7 +202,7 @@ Only offer once per session. Don't push.
 
 ## Anti-patterns
 
-- ❌ Don't explain why ADHD makes starting hard (they know, it doesn't help)
+- ❌ Don't explain why starting is hard (they know, it doesn't help)
 - ❌ Don't offer 3 protocols at once — choose the most likely and offer alternatives after
 - ❌ Don't say "you can do it!" — hollow motivation, zero traction
 - ❌ Don't launch into the full task plan before the first micro-action
@@ -213,5 +213,4 @@ Only offer once per session. Don't push.
 
 - Mahan, B. (2017): Wall of Awful — accumulated emotional weight blocking task entry
 - Barkley, R.A. (2015): task initiation as distinct executive function deficit from motivation
-- Volkow et al. (2011): dopamine deficiency in ADHD's reward anticipation circuit
 - Deci & Ryan (1985): autonomy support vs control — why "just do it" commands fail

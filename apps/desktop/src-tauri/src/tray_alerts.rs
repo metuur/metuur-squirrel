@@ -387,14 +387,14 @@ impl Alert {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReminderAlert {
     pub id: String,
-    // `title` and `proyecto` mirror the /api/reminders wire shape so the struct
+    // `title` and `project` mirror the /api/reminders wire shape so the struct
     // deserializes the full response, but the tray menu derives its label from
     // `id`/`reminder_date` only — Rust never reads these two fields.
     #[allow(dead_code)]
     pub title: String,
     pub reminder_date: String,
     #[allow(dead_code)]
-    pub proyecto: Option<String>,
+    pub project: Option<String>,
     /// URL to open when the tray item is clicked. Not in the API response;
     /// populated by `fetch_reminders` after deserialization.
     #[serde(default)]
@@ -1017,7 +1017,7 @@ mod tests {
             id: id.to_string(),
             title: id.to_string(),
             reminder_date: "2026-05-30".to_string(),
-            proyecto: None,
+            project: None,
             item_url: format!("{}/notes/{}", BACKEND_ORIGIN, id),
         }
     }

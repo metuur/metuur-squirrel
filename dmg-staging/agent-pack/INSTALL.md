@@ -11,7 +11,7 @@ Step-by-step guide to install and configure the plugin across different agents.
    python3 --version  # must be 3.9 or later
    ```
 
-2. **An Obsidian vault** (or any Markdown folder) with the ADHD system structure. If you do not have one, unzip `vault-tdah-obsidian.zip` first.
+2. **An Obsidian vault** (or any Markdown folder) with the Squirrel system structure. If you do not have one, unzip `vault-squirrel-obsidian.zip` first.
 
 3. **A compatible coding agent**: Claude Code, Codex CLI, Cursor, GitHub Copilot, or equivalent.
 
@@ -56,7 +56,7 @@ Inside Claude Code:
 ```
 
 It will ask for:
-- `vault_path`: absolute path to your vault (example: `/home/user/vault-tdah`)
+- `vault_path`: absolute path to your vault (example: `/home/user/vault-squirrel`)
 - `environment_name`: `personal` or `work`
 - `default_email`: your email for drafts
 - `active_projects`: list of WIP tags (example: `TRABAJO-PROYECTO-A,SIDEPROJECT-FOYER-FAMILY,VISA-FAMILIA`)
@@ -75,7 +75,7 @@ default_email = "you@example.com"
 
 [[vaults]]
 name = "personal"
-path = "~/vault-tdah"
+path = "~/vault-squirrel"
 default = true
 
 [[vaults]]
@@ -160,7 +160,7 @@ config manually:
 ```bash
 mkdir -p ~/.squirrel
 cat > ~/.squirrel/config.toml << 'EOF'
-vault_path = "/home/user/vault-tdah"
+vault_path = "/home/user/vault-squirrel"
 environment_name = "personal"
 default_email = "your-email@example.com"
 
@@ -281,7 +281,7 @@ The Python script works completely on its own:
 ```bash
 # Generate package
 python3 squirrel/lib/package_protocol.py generate \
-  --vault ~/vault-tdah \
+  --vault ~/vault-squirrel \
   --scope TRABAJO-PROYECTO-A:research \
   --from-env personal \
   --to-env work \
@@ -297,122 +297,6 @@ python3 squirrel/lib/package_protocol.py apply \
 ```
 
 Useful for automation (cron, scripts) or if you want to use the protocol without an LLM agent.
-
----
-
-## 🛡️ Manual install from DMG (Gatekeeper blocked)
-
-Use this path when macOS blocks the `Install Squirrel` script with a "can't be opened because it is from an unidentified developer" error, or when you need a quick install during development without waiting for a signed build.
-
-### Why the normal installer fails
-
-macOS attaches a `com.apple.quarantine` flag to every file downloaded from the internet (including DMG contents). The `Install Squirrel` script is a shell script, not a notarized binary, so Gatekeeper refuses to run it. Additionally, the installer runs `codesign --verify --strict --deep` on the binaries before copying them — this also fails on unsigned dev builds.
-
-### Step-by-step manual install
-
-**1. Mount the DMG**
-
-Double-click the `.dmg` file in Finder, or from the terminal:
-
-```bash
-hdiutil attach ~/Downloads/Squirrel.dmg
-# Note the mount path printed — usually /Volumes/Squirrel
-```
-
-**2. Strip the quarantine flag from all DMG contents**
-
-```bash
-xattr -cr /Volumes/Squirrel/
-```
-
-This removes `com.apple.quarantine` recursively so macOS stops blocking the files.
-
-**3. Copy the binaries** (skipping the codesign check)
-
-```bash
-mkdir -p ~/.local/bin
-
-cp /Volumes/Squirrel/bin/squirrel           ~/.local/bin/squirrel
-cp /Volumes/Squirrel/bin/squirrel-backend   ~/.local/bin/squirrel-backend
-chmod +x ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
-
-# Remove quarantine from the copied binaries too
-xattr -d com.apple.quarantine ~/.local/bin/squirrel          2>/dev/null || true
-xattr -d com.apple.quarantine ~/.local/bin/squirrel-backend  2>/dev/null || true
-```
-
-**4. Ensure `~/.local/bin` is on your PATH**
-
-```bash
-echo $PATH | grep -q "$HOME/.local/bin" || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-**5. Install the agent-pack**
-
-```bash
-mkdir -p ~/.claude/plugins/squirrel
-rsync -a --delete /Volumes/Squirrel/agent-pack/ ~/.claude/plugins/squirrel/
-```
-
-**6. Seed the config** (skip if `~/.squirrel/config.toml` already exists)
-
-```bash
-mkdir -p ~/.squirrel
-cp /Volumes/Squirrel/resources/squirrel.toml.example ~/.squirrel/config.toml
-$EDITOR ~/.squirrel/config.toml   # set vault path
-```
-
-**7. Install and start the background service**
-
-```bash
-BACKEND_BIN="$HOME/.local/bin/squirrel-backend"
-PLIST_PATH="$HOME/Library/LaunchAgents/org.squirrel.web-ui.plist"
-mkdir -p "$HOME/Library/LaunchAgents"
-
-plist="$(cat /Volumes/Squirrel/resources/plist.template)"
-plist="${plist//__BINARY__/$BACKEND_BIN}"
-plist="${plist//__PORT__/3939}"
-plist="${plist//__HOME__/$HOME}"
-printf '%s\n' "$plist" > "$PLIST_PATH"
-
-launchctl load "$PLIST_PATH"
-```
-
-**8. Verify**
-
-```bash
-squirrel --help
-curl -s http://127.0.0.1:3939/health   # should return {"status":"ok"}
-```
-
-Then inside Claude Code:
-
-```
-/sq-status
-```
-
-### Potential issues
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `zsh: killed squirrel` or binary crashes silently | macOS Gatekeeper killed the unsigned binary | `xattr -d com.apple.quarantine ~/.local/bin/squirrel` |
-| `command not found: squirrel` | `~/.local/bin` not on PATH | Add `export PATH="$HOME/.local/bin:$PATH"` to `~/.zshrc` and re-open the terminal |
-| `launchctl: service already loaded` | Previous install left the plist registered | `launchctl unload "$PLIST_PATH" && launchctl load "$PLIST_PATH"` |
-| `curl` to port 3939 times out | Backend plist still points to old binary path | Check the plist: `cat ~/Library/LaunchAgents/org.squirrel.web-ui.plist` — rerun step 7 if the `__BINARY__` placeholder was not replaced |
-| `/sq-*` commands missing in Claude Code | agent-pack not installed or wrong destination | Verify `~/.claude/plugins/squirrel/` exists and contains `SKILL.md` files; re-run step 5 |
-| `rsync: No such file or directory` | DMG not mounted | Run `hdiutil attach ~/Downloads/Squirrel.dmg` first |
-
-### Uninstalling
-
-```bash
-launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.plist 2>/dev/null || true
-rm -f ~/Library/LaunchAgents/org.squirrel.web-ui.plist
-rm -f ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
-rm -rf ~/.claude/plugins/squirrel
-# Optionally remove config and vault:
-# rm -rf ~/.squirrel
-```
 
 ---
 
@@ -474,19 +358,6 @@ The other side decrypts with `/sq-sync-in` if it has the private key.
 
 ## ❓ Troubleshooting
 
-### "`Install Squirrel` is blocked by macOS / codesign error"
-
-macOS quarantines every file from the internet, including DMG contents. The installer also runs `codesign --verify --strict --deep` on the binaries — this fails on unsigned dev builds.
-
-**Quick fix** — strip the quarantine flag before running the installer:
-
-```bash
-xattr -cr /Volumes/Squirrel/
-"/Volumes/Squirrel/Install Squirrel"
-```
-
-If that still fails (e.g. the binaries are unsigned), follow the **Manual install from DMG** section above — it skips the codesign check entirely.
-
 ### "Slash commands do not appear in Claude Code"
 - Verify the directory is at `~/.claude/plugins/squirrel/`
 - Verify `.claude-plugin/plugin.json` exists and is valid JSON
@@ -510,7 +381,7 @@ If that still fails (e.g. the binaries are unsigned), follow the **Manual instal
 ### "The vault does not have the expected structure"
 - The skills assume `01-Proyectos-Activos/`, `02-Parking-Lot/`, etc.
 - If your vault uses a different structure, edit the relevant skills (for example `session-start/SKILL.md` line X)
-- Or migrate your vault to the ADHD system (unzip `vault-tdah-obsidian.zip` as a reference)
+- Or migrate your vault to the Squirrel system (unzip `vault-squirrel-obsidian.zip` as a reference)
 
 ---
 

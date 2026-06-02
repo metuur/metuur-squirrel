@@ -10,8 +10,8 @@ Filters sessions by:
 - Environment: cwd must match allowed_inbound_environments from config
 
 CLI:
-    python3 session_scanner.py --vault ~/vault-tdah
-    python3 session_scanner.py --vault ~/vault-tdah --max-age-hours 48 --pretty
+    python3 session_scanner.py --vault ~/vault-squirrel
+    python3 session_scanner.py --vault ~/vault-squirrel --max-age-hours 48 --pretty
 """
 
 import argparse

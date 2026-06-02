@@ -7,14 +7,14 @@ description: Detect and interrupt hyperfocus loops. Use when the user has been o
 
 ## Purpose
 
-ADHD hyperfocus is a double-edged sword: productive streaks can become unsustainable tunnel
+Hyperfocus is a double-edged sword: productive streaks can become unsustainable tunnel
 vision that leads to burnout, missed meals, forgotten commitments, and poor decision-making
 late in a session. This skill intervenes gently but firmly to impose a circuit breaker.
 
 ## When to invoke
 
 - **Explicit**: user says "I've been at this for 3 hours", "lost track of time", "just one more
-  quick thing" (the ADHD lie), `/hyperfocus-guardian`, "check on me"
+  quick thing" (the classic lie), `/hyperfocus-guardian`, "check on me"
 - **Automatic** (via session timer check): session has been open >90 min on a single intent
 - **Post-sprint**: user returns from a deep work session and mentions fatigue or confusion
 - **Escalation**: user has said "just one more" 2+ times in the same session
@@ -54,7 +54,7 @@ If the user reported "just one more thing" multiple times → escalate one level
 ```
 ⏱️ You've been at [INTENT] for ~[N] minutes.
 
-That's past the 90-min mark where focus quality typically drops for ADHD brains.
+That's past the 90-min mark where focus quality typically drops.
 Your current progress: [what you've done this session, 1-2 lines]
 
 → Recommended: 10-min break now, then one more focused block.
@@ -170,7 +170,7 @@ If the user has said any variant of "just one more", "quick fix", "almost done" 
 the same session without actually finishing:
 
 ```
-⚠️ That's the third "just one more." This is a known ADHD trap.
+⚠️ That's the third "just one more." This is a known trap.
 
 The task is probably bigger than it felt at the start. That's OK.
 But continuing in this state usually means:
@@ -196,7 +196,7 @@ then check in again. Never disable the guardian entirely for a session.
 - Direct, not preachy. One intervention, not a lecture.
 - Acknowledge the work done — it's real and valuable.
 - Offer a concrete out (not "take a break" but "what specifically to do in the break").
-- Never shame. ADHD time blindness is neurological, not a character flaw.
+- Never shame. Time blindness is neurological, not a character flaw.
 - Use the user's language (Spanish/English based on the session).
 
 ## Anti-patterns

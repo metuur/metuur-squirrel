@@ -1,7 +1,7 @@
 {
   "name": "squirrel",
   "owner": {
-    "name": "TDAH SE Toolkit"
+    "name": "Squirrel SE Toolkit"
   },
   "metadata": {
     "description": "Context and task management on Markdown. Multi-agent (Claude Code, Codex, Cursor) with air-gap support between personal and corporate environments via clipboard/email. Includes a local React web UI companion."

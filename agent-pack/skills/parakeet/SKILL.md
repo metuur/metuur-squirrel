@@ -1,6 +1,6 @@
 ---
 name: squirrel-parakeet
-description: Deadline reminder with tone calibrated to urgency level. Use when the user runs /sq-parakeet, at the start of any session (embedded in session-start), when the user asks "qué tengo pendiente", "what's due", "any deadlines?", "cuándo es lo de X", or after sq-status returns items with critical/urgent deadlines. Also triggers automatically when any loaded project has a deadline within 24 hours. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
+description: Deadline reminder with tone calibrated to urgency level. Use when the user runs /sq-parakeet, at the start of any session (embedded in session-start), when the user asks "what do I have pending", "what's due", "any deadlines?", "when is the thing about X", or after sq-status returns items with critical/urgent deadlines. Also triggers automatically when any loaded project has a deadline within 24 hours. Accepts an optional `vault_name` argument; when omitted, operates on the default vault (R-7.1, R-7.3).
 metadata:
   category: proactive-reminders
   pairs-with: [squirrel-session-start, squirrel-where-am-i, squirrel-brief]
@@ -11,12 +11,12 @@ metadata:
 
 ## Purpose
 
-ADHD brains don't feel time passing — deadlines arrive as surprises. Parakeet is the friendly
+Some brains don't feel time passing — deadlines arrive as surprises. Parakeet is the friendly
 but persistent voice that keeps deadlines visible without shame, escalating tone only when
 urgency truly warrants it.
 
-The key insight from research: most ADHD deadline failures aren't from not caring but from
-**time blindness** (Barkley 2015). A well-timed, well-toned reminder can bridge that gap.
+The key insight from research: most deadline failures aren't from not caring but from
+**time blindness**. A well-timed, well-toned reminder can bridge that gap.
 A nagging one creates anxiety and avoidance.
 
 ## Urgency levels and tones
@@ -184,7 +184,7 @@ Compact format:
 ## Special behaviors
 
 ### "I know, I know" pattern
-If the user dismisses a deadline ("sí, ya sé", "I'll deal with it later"):
+If the user dismisses a deadline ("yeah, I know", "I'll deal with it later"):
 - Acknowledge: "Noted. I'll mention it again next session if it's still open."
 - Don't argue or repeat immediately
 - Log the dismissal mentally (don't literally write to a file)
@@ -205,7 +205,7 @@ Treat as urgent/critical, not as fully overdue. Tone: "This just tipped over —
 
 - Max 8 deadline items total before truncation
 - Never mention the same deadline twice in the same session (track in conversation context)
-- If ADHD-specific framing doesn't fit culturally for the user, default to neutral factual tone
+- If this framing doesn't fit culturally for the user, default to neutral factual tone
 - Always end overdue/critical blocks with one concrete action option
 
 ## Anti-patterns
@@ -219,6 +219,4 @@ Treat as urgent/critical, not as fully overdue. Tone: "This just tipped over —
 
 ## References
 
-- Barkley, R.A. (2015): time blindness as core ADHD deficit, not motivation failure
-- Hallowell & Ratey (2021): deadline proximity as primary ADHD motivational trigger
 - Mark et al. (2008): reminder fatigue when alerts fire too frequently

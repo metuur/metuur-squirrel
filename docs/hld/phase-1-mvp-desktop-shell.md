@@ -2,7 +2,7 @@
 
 ## Overview
 
-Squirrel is a local-first ADHD productivity companion that will ultimately bundle a Tauri desktop shell, a Flask sidecar, a CLI, an agent pack, Obsidian integration, and a background vault watcher. Phase 1 deliberately scopes down to **proving the desktop runtime architecture works** before any real domain functionality is built. The MVP is a single Tauri v2 + React + TypeScript application that runs as a macOS menu bar app, stays alive in the background, fires native notifications driven by a fake internal timer, and exposes a minimal dashboard.
+Squirrel is a local-first focus & productivity companion that will ultimately bundle a Tauri desktop shell, a Flask sidecar, a CLI, an agent pack, Obsidian integration, and a background vault watcher. Phase 1 deliberately scopes down to **proving the desktop runtime architecture works** before any real domain functionality is built. The MVP is a single Tauri v2 + React + TypeScript application that runs as a macOS menu bar app, stays alive in the background, fires native notifications driven by a fake internal timer, and exposes a minimal dashboard.
 
 The objective of Phase 1 is **not UI and not features** — it is to validate the parts of a desktop application that are hardest to retrofit later: lifecycle, background execution, tray behaviour, notification reliability, and local runtime orchestration.
 
@@ -10,7 +10,7 @@ The objective of Phase 1 is **not UI and not features** — it is to validate th
 
 | Stakeholder | Today's pain | After Phase 1 ships |
 |---|---|---|
-| Primary user (Javier, ADHD operator) | No unified desktop presence for Squirrel; vault activity is invisible unless actively working in CLI; nothing surfaces when context is lost | SQ icon is persistently visible in macOS menu bar; app survives window close; notifications can surface events even while user is in another app |
+| Primary user (Javier, focus operator) | No unified desktop presence for Squirrel; vault activity is invisible unless actively working in CLI; nothing surfaces when context is lost | SQ icon is persistently visible in macOS menu bar; app survives window close; notifications can surface events even while user is in another app |
 | Future Phase 2/3 engineering work (Flask sidecar, CLI, real watcher, agent skills) | Each would have to re-solve desktop lifecycle and notification plumbing | Plumbing exists; later phases plug into a stable host |
 | Future Windows users | Not addressed in Phase 1 | Tauri cross-platform code will not block a future Windows MSI build, but Phase 1 only ships and tests macOS |
 

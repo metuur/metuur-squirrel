@@ -7,7 +7,7 @@ Conventions:
 - `R-x.y` references the EARS requirement that gates the story.
 - `deps:` references story IDs in this same file.
 - `(mutex: tag)` blocks concurrent execution with other stories sharing the same tag.
-- Estimates are wall-clock for a single engineer working in focus. ADHD buffer not pre-applied.
+- Estimates are wall-clock for a single engineer working in focus. Focus buffer not pre-applied.
 
 ---
 
@@ -259,4 +259,4 @@ Packaging gate:      7.1 → 7.2 → 7.4
 Scope audit:         8.1 last
 ```
 
-Total stories: 39. Total estimated focus time: ~12h (no ADHD buffer applied; expect 1.5–2× wall-clock).
+Total stories: 39. Total estimated focus time: ~12h (no focus buffer applied; expect 1.5–2× wall-clock).

@@ -53,7 +53,7 @@ def _make_intent(folder: pathlib.Path, slug: str, frontmatter: dict,
     """Write a minimal valid intent .md and return its path. Mirrors
     apps/cli/tests/test_focus_picker.py's helper."""
     folder.mkdir(parents=True, exist_ok=True)
-    fm = {"id": slug, "estado": "in-progress"}
+    fm = {"id": slug, "status": "in-progress"}
     fm.update(frontmatter)
     fm_text = "\n".join(f"{k}: {v}" for k, v in fm.items()) + "\n"
     content = (

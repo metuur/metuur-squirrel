@@ -34,21 +34,21 @@ class TestIntentParser(unittest.TestCase):
     def test_parse_simple_frontmatter(self):
         content = """---
 id: TEST-001
-estado: in-progress
+status: in-progress
 ---
 # Body"""
         fm, body = parse_frontmatter(content)
         self.assertEqual(fm["id"], "TEST-001")
-        self.assertEqual(fm["estado"], "in-progress")
+        self.assertEqual(fm["status"], "in-progress")
         self.assertIn("# Body", body)
 
     def test_parse_inline_list(self):
         content = """---
-tags: [intent, proyecto/X, estado/wip]
+tags: [intent, project/X, status/wip]
 ---
 """
         fm, _ = parse_frontmatter(content)
-        self.assertEqual(fm["tags"], ["intent", "proyecto/X", "estado/wip"])
+        self.assertEqual(fm["tags"], ["intent", "project/X", "status/wip"])
 
     def test_parse_block_list(self):
         content = """---
@@ -94,13 +94,13 @@ Notes here"""
 
     def test_parse_shutdown_notes(self):
         text = """### 2026-05-22 17:30
-- **Estado**: working state
+- **State**: working state
 - **Next physical action**: open file X
-- **Hipótesis activa**: maybe Y
-- **Bloqueado por**: nothing
+- **Hypothesis**: maybe Y
+- **Blocked by**: nothing
 
 ### 2026-05-20 10:00
-- **Estado**: earlier state
+- **State**: earlier state
 - **Next**: do Z"""
         notes = parse_shutdown_notes(text)
         self.assertEqual(len(notes), 2)
@@ -114,7 +114,7 @@ Notes here"""
         path = FIXTURES / "01-Proyectos-Activos" / "TEST-PROJECT" / "TEST-PROJECT-AUTH-002.md"
         data = parse_intent(path)
         self.assertEqual(data["id"], "TEST-PROJECT-AUTH-002")
-        self.assertEqual(data["frontmatter"]["estado"], "in-progress")
+        self.assertEqual(data["frontmatter"]["status"], "in-progress")
         self.assertEqual(data["stats"]["definition_of_done"]["done_count"], 2)
         self.assertEqual(data["stats"]["definition_of_done"]["total"], 6)
         self.assertEqual(data["stats"]["definition_of_done"]["percent_done"], 33)

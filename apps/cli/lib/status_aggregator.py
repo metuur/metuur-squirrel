@@ -8,9 +8,9 @@ que devuelve un JSON estructurado.
 Usado por skills: where-am-i, status, brief, session-start.
 
 Uso CLI:
-    python3 status_aggregator.py --vault ~/vault-tdah
-    python3 status_aggregator.py --vault ~/vault-tdah --project TEST-PROJECT
-    python3 status_aggregator.py --vault ~/vault-tdah --output json --detailed
+    python3 status_aggregator.py --vault ~/vault-squirrel
+    python3 status_aggregator.py --vault ~/vault-squirrel --project TEST-PROJECT
+    python3 status_aggregator.py --vault ~/vault-squirrel --output json --detailed
 """
 
 import argparse
@@ -164,8 +164,8 @@ def analyze_project(project_md_path: Path, detailed: bool = False) -> dict:
                 "id": intent["id"],
                 "title": intent.get("title", ""),
                 "path": intent["path"],
-                "estado": intent["frontmatter"].get("estado", "unknown"),
-                "prioridad": intent["frontmatter"].get("prioridad"),
+                "status": intent["frontmatter"].get("status", "unknown"),
+                "priority": intent["frontmatter"].get("priority"),
                 "deadline": intent["frontmatter"].get("deadline"),
                 "days_to_deadline": intent["stats"]["days_to_deadline"],
                 "days_since_activity": intent["stats"]["days_since_activity"],
@@ -187,14 +187,14 @@ def analyze_project(project_md_path: Path, detailed: bool = False) -> dict:
     # Compute aggregates
     by_state = {"done": [], "in-progress": [], "pending": [], "blocked": [], "other": []}
     for it in intents:
-        st = it.get("estado", "pending").lower()
-        if st in ("done", "completado"):
+        st = it.get("status", "pending").lower()
+        if st in ("done", "completed"):
             by_state["done"].append(it["id"])
         elif st in ("in-progress", "wip", "in_progress"):
             by_state["in-progress"].append(it["id"])
         elif st in ("pending", "todo"):
             by_state["pending"].append(it["id"])
-        elif st in ("blocked", "bloqueado"):
+        elif st in ("blocked", "blocked"):
             by_state["blocked"].append(it["id"])
         else:
             by_state["other"].append(it["id"])
@@ -235,7 +235,7 @@ def analyze_project(project_md_path: Path, detailed: bool = False) -> dict:
     alerts = []
 
     # Stale + finishing-tax = critical
-    if project_fm.get("prioridad") == "finishing-tax":
+    if project_fm.get("priority") == "finishing-tax":
         if days_since_activity and days_since_activity > 7:
             alerts.append({
                 "level": "critical",
@@ -265,9 +265,9 @@ def analyze_project(project_md_path: Path, detailed: bool = False) -> dict:
     result = {
         "id": project_id,
         "path": str(project_md_path),
-        "tipo": project_fm.get("tipo"),
-        "estado": project_fm.get("estado"),
-        "prioridad": project_fm.get("prioridad"),
+        "type": project_fm.get("type"),
+        "status": project_fm.get("status"),
+        "priority": project_fm.get("priority"),
         "deadline": project_fm.get("deadline"),
         "stakeholders": project_fm.get("stakeholders", []),
         "tags": project_fm.get("tags", []),
@@ -317,8 +317,8 @@ def aggregate_status(vault_path: Path, project_filter: Optional[str] = None, det
             parking_items.append({
                 "id": page["id"],
                 "path": page["path"],
-                "tipo": page["frontmatter"].get("tipo"),
-                "estado": page["frontmatter"].get("estado", "PARKING-LOT"),
+                "type": page["frontmatter"].get("type"),
+                "status": page["frontmatter"].get("status", "PARKING-LOT"),
             })
         except Exception:
             parking_items.append({"id": p.stem, "path": str(p)})

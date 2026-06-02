@@ -244,7 +244,7 @@ Configuration lives at ~/.squirrel/config.toml.
 _COPILOT_INSTRUCTIONS_BLOCK = """\
 # Squirrel — Copilot Agent Manifest
 
-squirrel is a session-management plugin for engineers with ADHD. It persists
+squirrel is a session-management plugin for engineers. It persists
 cognitive state across sessions, projects, and air-gapped environments via a
 Markdown vault.
 
@@ -867,6 +867,7 @@ _WEB_PID_PATH = Path("~/.squirrel/web-ui.pid").expanduser()
 _WEB_LAUNCHD_PLIST = Path(
     "~/Library/LaunchAgents/org.squirrel.web-ui.plist"
 ).expanduser()
+_WEB_TOKEN_PATH = Path("~/.squirrel/launchd-token").expanduser()
 
 
 def _web_server_script() -> Path:
@@ -912,6 +913,8 @@ def cmd_web(args):
         _web_status()
     elif sub == "open":
         _web_open(args.port)
+    elif sub == "open-web":
+        _web_open_browser(args.port)
     elif sub == "uninstall":
         _web_uninstall()
     else:
@@ -993,6 +996,34 @@ def _web_open(port: int) -> None:
     webbrowser.open(f"http://127.0.0.1:{port}")
 
 
+def _port_listening(port: int) -> bool:
+    """Return True if something is already accepting TCP connections on localhost:port."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _web_open_browser(port: int) -> None:
+    """Open the web UI in the browser, embedding the launchd token in the URL
+    so the SPA can authenticate against a token-protected backend.
+
+    Uses a TCP probe instead of the PID file so it works whether the backend
+    was started via launchd, squirrel web start, or manually."""
+    if not _port_listening(port):
+        _web_start(port, False)
+    import webbrowser
+    url = f"http://127.0.0.1:{port}"
+    if _WEB_TOKEN_PATH.is_file():
+        try:
+            token = _WEB_TOKEN_PATH.read_text(encoding="utf-8").strip()
+            if token:
+                url = f"{url}/?token={token}"
+        except OSError:
+            pass
+    webbrowser.open(url)
+
+
 def _web_uninstall() -> None:
     _web_stop()
     if _WEB_LAUNCHD_PLIST.is_file():
@@ -1036,12 +1067,12 @@ def main():
     dl.add_argument("--vault", metavar="NAME",
                     help="Operate on the named vault (default: configured default)")
 
-    ch = sub.add_parser("chunk", help="Decompose a task into ADHD-friendly chunks")
+    ch = sub.add_parser("chunk", help="Decompose a task into focus-friendly chunks")
     grp = ch.add_mutually_exclusive_group(required=True)
     grp.add_argument("--minutes", type=int)
     grp.add_argument("--hours", type=float)
 
-    est = sub.add_parser("estimate", help="Apply ADHD time buffer to an estimate")
+    est = sub.add_parser("estimate", help="Apply focus time buffer to an estimate")
     grp2 = est.add_mutually_exclusive_group(required=True)
     grp2.add_argument("--minutes", type=int)
     grp2.add_argument("--hours", type=float)
@@ -1092,6 +1123,11 @@ def main():
     w_sub.add_parser("status", help="Print whether the web UI is running")
     w_open = w_sub.add_parser("open", help="Open the web UI in the browser (starts if needed)")
     w_open.add_argument("--port", type=int, default=3939)
+    w_oweb = w_sub.add_parser(
+        "open-web",
+        help="Open the web UI in the browser with auth token (for installed/launchd backends)",
+    )
+    w_oweb.add_argument("--port", type=int, default=3939)
     w_sub.add_parser("uninstall", help="Stop server, remove PID file and launchd plist")
 
     args = p.parse_args()

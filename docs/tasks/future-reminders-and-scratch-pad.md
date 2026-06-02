@@ -29,7 +29,7 @@ Dependency layers:
 - [x] **1.1** Write `apps/cli/lib/reminder_scanner.py` (est: ~45m)
   - acceptance:
     - R-2.1 — Scans `01-Proyectos-Activos` and `03-Areas` for `reminder_date` in frontmatter at call time.
-    - R-2.2 — Files with `estado: done/completado/archived` are excluded.
+    - R-2.2 — Files with `status: done/completed/archived` are excluded.
     - R-2.3 — Files with `reminder_dismissed` set (any non-empty value) are excluded permanently.
     - R-2.4 — Files with `reminder_snoozed_until` set to a future date are suppressed until that date.
     - R-2.5 — `reminder_date` today or in the past, with no suppression → classified as `reminder_active`.
@@ -57,7 +57,7 @@ Dependency layers:
 
 - [x] **2.1** Add `GET /api/reminders` and extend `GET /api/home` in `apps/backend/server.py` (deps: 1.1, est: ~30m)
   - acceptance:
-    - R-3.1 — `GET /api/reminders` returns `{ "approaching": [...], "active": [...] }` with each entry containing `id`, `title`, `path`, `reminder_date`, `proyecto`.
+    - R-3.1 — `GET /api/reminders` returns `{ "approaching": [...], "active": [...] }` with each entry containing `id`, `title`, `path`, `reminder_date`, `project`.
     - R-3.2 — `GET /api/home` includes `reminders: { "approaching_count": N, "active_count": N }` in its response alongside existing fields.
   - verify:
     - Manual: create a test `.md` file in the vault with `reminder_date` set to today. `curl http://127.0.0.1:3939/api/reminders` returns it in `active`. `curl http://127.0.0.1:3939/api/home` includes `reminders.active_count: 1`.
@@ -120,7 +120,7 @@ Dependency layers:
 - [x] **5.1** Add `ensure_scratch_pad(vault_path)` to `apps/cli/lib/new_project_writer.py` and call it at server startup (est: ~30m)
   - acceptance:
     - R-5.1 — On every server start, the function checks for `01-Proyectos-Activos/SCRATCH-PAD/`.
-    - R-5.2 — If absent, creates the project with `tipo: C`, `protected: true`, bypassing the WIP cap (`force=True`).
+    - R-5.2 — If absent, creates the project with `type: C`, `protected: true`, bypassing the WIP cap (`force=True`).
     - R-5.3 — `protected: true` is present in `SCRATCH-PAD/SCRATCH-PAD.md` YAML frontmatter.
     - R-5.5 — SCRATCH-PAD counts toward WIP cap in all capacity checks (no special exemption added).
   - verify:

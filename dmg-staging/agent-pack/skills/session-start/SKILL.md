@@ -6,7 +6,7 @@ description: Load context from the local Markdown vault to start a coding sessio
 # squirrel:session-start
 
 ## Purpose
-Solve the ADHD context-switching problem. When the user returns to a project (after hours, days, or weeks), this skill rebuilds the cognitive context FAST by reading the vault's structured notes.
+Solve the context-switching problem. When the user returns to a project (after hours, days, or weeks), this skill rebuilds the cognitive context FAST by reading the vault's structured notes.
 
 ## When to invoke
 - Explicit: `/sq-start [PROJECT-TAG]`, "let's work on X", "retomemos Y"

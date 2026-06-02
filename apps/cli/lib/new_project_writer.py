@@ -74,28 +74,28 @@ _CODE_TO_EXIT = {
 
 _PROJECT_PAGE_TEMPLATE = """---
 id: {tag}
-tipo: {tipo}
-estado: wip
-creado: {creado}
-{deadline_line}{stakeholders_line}tags: [proyecto, proyecto/activo, tipo/{tipo}]
+type: {tipo}
+status: wip
+created: {creado}
+{deadline_line}{stakeholders_line}tags: [project, project/active, type/{tipo}]
 ---
 
 # {tag}
 
 {description}
 
-## 🎯 Objetivo
-<Qué se busca lograr con este proyecto y por qué importa.>
+## 🎯 Objective
+<What you want to achieve with this project and why it matters.>
 
-## ✅ Definition of Done (mínima)
-- [ ] <Criterio concreto y verificable>
-- [ ] <Criterio concreto y verificable>
+## ✅ Definition of Done
+- [ ] <Concrete, verifiable criterion>
+- [ ] <Concrete, verifiable criterion>
 
 ## 🧩 Intents
-<!-- Los intents viven como archivos hermanos `<TAG>-<SUBAREA>-NNN.md` -->
+<!-- Intents live as sibling files `<TAG>-<SUBAREA>-NNN.md` -->
 
-## 📝 Contexto
-<Información de fondo, links, decisiones tomadas fuera de un ADR>
+## 📝 Context
+<Background info, links, decisions made outside an ADR>
 """
 
 
@@ -319,7 +319,7 @@ def create_project(
 
     return {
         "tag": tag,
-        "tipo": tipo,
+        "type": tipo,
         "deadline": deadline,
         "page_path": str(project_page),
         "intent_path": str(intent_path) if intent_path else None,
@@ -340,26 +340,26 @@ def ensure_scratch_pad(vault_path: pathlib.Path) -> None:
         page = project_dir / "SCRATCH-PAD.md"
         content = f"""---
 id: SCRATCH-PAD
-tipo: C
-estado: wip
-creado: {today_iso}
+type: C
+status: wip
+created: {today_iso}
 protected: true
-tags: [proyecto, proyecto/activo, tipo/C]
+tags: [project, project/active, type/C]
 ---
 
 # SCRATCH-PAD
 
 Default project for quick ideas, reminders, and captures.
 
-## 🎯 Objetivo
+## 🎯 Objective
 Container for quick captures and scratch notes.
 
-## ✅ Definition of Done (mínima)
+## ✅ Definition of Done
 - [ ] Items moved to appropriate projects
 
 ## 🧩 Intents
 
-## 📝 Contexto
+## 📝 Context
 """
         page.write_text(content, encoding="utf-8")
     except Exception:
@@ -372,13 +372,13 @@ def _print_summary(result: dict, first_intent_tag: Optional[str]) -> None:
     print(f"   Page:    {result['page_path']}")
     if result.get("intent_path"):
         print(f"   Intent:  {result['intent_path']}")
-    print(f"   Tipo:    {result['tipo']}")
+    print(f"   Type:    {result['type']}")
     if result.get("deadline"):
         print(f"   Deadline: {result['deadline']}")
     over = "  ⚠️ over cap" if result.get("over_cap") else ""
     print(f"   WIP now: {result['wip_count']}/{result['wip_max']}{over}")
     print()
-    print("Próximo paso sugerido:")
+    print("Suggested next step:")
     if first_intent_tag:
         print(f"  /sq-start {tag}")
     else:
@@ -388,7 +388,7 @@ def _print_summary(result: dict, first_intent_tag: Optional[str]) -> None:
 def main() -> int:
     p = argparse.ArgumentParser(prog="new_project_writer")
     p.add_argument("--tag", required=True)
-    p.add_argument("--tipo", required=True, choices=sorted(_VALID_TIPOS))
+    p.add_argument("--type", dest="tipo", required=True, choices=sorted(_VALID_TIPOS))
     p.add_argument("--name", default=None)
     p.add_argument("--deadline", default=None)
     p.add_argument("--stakeholders", default=None)

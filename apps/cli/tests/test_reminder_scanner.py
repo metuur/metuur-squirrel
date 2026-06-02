@@ -37,8 +37,8 @@ def _md(stem: str, extra_fields: dict | None = None, reminder_date: str | None =
     fields = {
         "id": stem,
         "title": "Test Item",
-        "proyecto": "PROJ-A",
-        "estado": "wip",
+        "project": "PROJ-A",
+        "status": "wip",
     }
     if reminder_date is not None:
         fields["reminder_date"] = reminder_date
@@ -111,7 +111,7 @@ def vault(tmp_path: Path) -> Path:
     _write(proj_dir / "done_with_reminder.md", _md(
         "done_with_reminder",
         reminder_date=today_str,
-        extra_fields={"estado": "done"},
+        extra_fields={"status": "done"},
     ))
 
     # Also add a file in 03-Areas to verify that location is scanned (R-2.1)
@@ -180,7 +180,7 @@ def test_entry_fields(vault: Path) -> None:
     result = scan_vault_reminders(vault)
     for bucket in ("active", "approaching"):
         for entry in result[bucket]:
-            for field in ("id", "title", "path", "reminder_date", "proyecto"):
+            for field in ("id", "title", "path", "reminder_date", "project"):
                 assert field in entry, f"Field '{field}' missing in {bucket} entry {entry}"
 
 

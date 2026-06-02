@@ -69,7 +69,7 @@ def _make_intent(folder: pathlib.Path, slug: str, title: str = "Test Intent") ->
     path.write_text(textwrap.dedent(f"""\
         ---
         id: {slug}
-        estado: in-progress
+        status: in-progress
         ---
         # {title}
     """))

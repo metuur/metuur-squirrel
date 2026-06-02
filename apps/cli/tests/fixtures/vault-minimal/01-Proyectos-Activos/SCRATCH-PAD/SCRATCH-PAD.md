@@ -1,10 +1,10 @@
 ---
 id: SCRATCH-PAD
-tipo: C
-estado: wip
-creado: 2026-06-01
+type: C
+status: wip
+created: 2026-06-01
 protected: true
-tags: [proyecto, proyecto/activo, tipo/C]
+tags: [project, project/active, type/C]
 ---
 
 # SCRATCH-PAD

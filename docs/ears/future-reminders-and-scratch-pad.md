@@ -18,7 +18,7 @@
 | ID    | EARS statement |
 |-------|----------------|
 | R-2.1 | THE SYSTEM SHALL scan `reminder_date` fields across all `.md` files in `01-Proyectos-Activos` and `03-Areas` at request time, via a new `reminder_scanner.py` module. |
-| R-2.2 | IF a file has `estado: done`, `estado: completado`, or `estado: archived`, THE SYSTEM SHALL exclude it from all reminder scans. |
+| R-2.2 | IF a file has `status: done`, `status: completed`, or `status: archived`, THE SYSTEM SHALL exclude it from all reminder scans. |
 | R-2.3 | IF a file has `reminder_dismissed` set to any non-empty value, THE SYSTEM SHALL exclude it from all reminder output permanently. |
 | R-2.4 | IF a file has `reminder_snoozed_until` set to a future date, THE SYSTEM SHALL suppress its reminder until that date passes. |
 | R-2.5 | WHEN `reminder_date` is today or in the past and no suppression applies (R-2.3, R-2.4), THE SYSTEM SHALL classify the item as `reminder_active`. |
@@ -31,7 +31,7 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-3.1 | THE SYSTEM SHALL expose `GET /api/reminders` returning `{ "approaching": [...], "active": [...] }` where each entry contains at minimum: `id`, `title`, `path`, `reminder_date`, `proyecto`. |
+| R-3.1 | THE SYSTEM SHALL expose `GET /api/reminders` returning `{ "approaching": [...], "active": [...] }` where each entry contains at minimum: `id`, `title`, `path`, `reminder_date`, `project`. |
 | R-3.2 | THE SYSTEM SHALL extend `GET /api/home` to include `reminders: { "approaching_count": N, "active_count": N }` alongside existing fields. |
 | R-3.3 | THE SYSTEM SHALL expose `PATCH /api/reminder/<id>/dismiss` which writes `reminder_dismissed: <today>` to the file's frontmatter and removes the body callout. |
 | R-3.4 | THE SYSTEM SHALL expose `PATCH /api/reminder/<id>/snooze` which accepts a `{ "until": "YYYY-MM-DD" }` body, writes `reminder_snoozed_until: <date>` to the file's frontmatter, and updates the body callout to show the new date. |
@@ -59,7 +59,7 @@
 | ID    | EARS statement |
 |-------|----------------|
 | R-5.1 | WHEN the backend server starts, THE SYSTEM SHALL check whether a project with tag `SCRATCH-PAD` exists in `01-Proyectos-Activos`. |
-| R-5.2 | IF no `SCRATCH-PAD` project exists at server start, THE SYSTEM SHALL create it automatically with `tipo: C`, `protected: true`, and a default description, bypassing the WIP cap. |
+| R-5.2 | IF no `SCRATCH-PAD` project exists at server start, THE SYSTEM SHALL create it automatically with `type: C`, `protected: true`, and a default description, bypassing the WIP cap. |
 | R-5.3 | THE SYSTEM SHALL write `protected: true` in the `SCRATCH-PAD` project page's YAML frontmatter. |
 | R-5.4 | IF a delete request targets any project whose frontmatter contains `protected: true`, THE SYSTEM SHALL reject the request with HTTP 403 and body `{"error": "PROJECT_PROTECTED"}`. |
 | R-5.5 | THE SYSTEM SHALL count the `SCRATCH-PAD` project toward the WIP cap in all WIP capacity checks. |

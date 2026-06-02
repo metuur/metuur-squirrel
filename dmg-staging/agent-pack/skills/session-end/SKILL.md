@@ -6,7 +6,7 @@ description: Write a structured shutdown note to the active intent in the Markdo
 # squirrel:session-end
 
 ## Purpose
-Prevent ADHD context loss between sessions. Every time the user closes a coding session, capture the cognitive state in a structured shutdown note. This is the SINGLE MOST IMPORTANT skill — without it, the system fails.
+Prevent context loss between sessions. Every time the user closes a coding session, capture the cognitive state in a structured shutdown note. This is the SINGLE MOST IMPORTANT skill — without it, the system fails.
 
 ## When to invoke
 - Explicit: `/sq-end`, "termino", "shutdown", "cerremos", "guardemos"
@@ -196,6 +196,5 @@ If the session ended because of a blocker (waiting for someone, missing info), s
 ## References
 
 - Hemingway, E.: stop mid-sentence — cognitive re-entry is cheaper than starting cold (source of Hemingway technique)
-- Barkley, R.A. (2015): working memory deficit in ADHD makes task state invisible across sessions — external capture is prosthetic memory
 - Allen, D. (2001): GTD "next physical action" — the concrete next step is the unit of cognitive handoff
 - Forte, T. (2022): PARA — project notes as "thinking residue" that survives context switches

@@ -3,13 +3,13 @@
   "version": "0.7.0",
   "description": "Context and task management on Markdown. Multi-agent (Claude Code, Codex, Cursor) with air-gap support between personal and corporate environments via clipboard/email. Includes a local React web UI companion.",
   "author": {
-    "name": "TDAH SE Toolkit"
+    "name": "Squirrel SE Toolkit"
   },
   "license": "MIT",
   "homepage": "https://github.com/example/squirrel",
   "keywords": [
     "productivity",
-    "adhd",
+    "focus",
     "context-management",
     "markdown",
     "obsidian",

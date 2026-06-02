@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-chunk_helper.py — Sugiere estructura de fases para chunking ADHD-friendly.
+chunk_helper.py — Sugiere estructura de fases para chunking manejable.
 
 Toma una estimación en horas/minutos y devuelve la estructura de fases
 con distribución de tiempo. El LLM toma esto y le pone nombres específicos

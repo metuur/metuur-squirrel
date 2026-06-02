@@ -45,7 +45,7 @@ User's macOS host
 │       │     # warning prepended to the body
 │       ├── compose_deeplink(project, task) -> string           [NEW]
 │       │     # if project is empty AND task non-empty: use task as project
-│       │     #   (legacy path; rare — scanner items always carry proyecto)
+│       │     #   (legacy path; rare — scanner items always carry project)
 │       │     # if task is empty OR task == project:
 │       │     #   echo "squirrel://projects/${project}"
 │       │     # else:
@@ -193,7 +193,7 @@ Rejected alternatives:
 
 ### D-2. URL scheme shape: nested `squirrel://projects/<p>/<t>`
 
-Chosen because the daemon's scanner items are typed (`proyecto` is the project tag, `id` is the intent / task slug), and a single URL family that scales from project-only to project-plus-task lets us pick the right scope at compose time without inventing a separate `tasks` host. Examples:
+Chosen because the daemon's scanner items are typed (`project` is the project tag, `id` is the intent / task slug), and a single URL family that scales from project-only to project-plus-task lets us pick the right scope at compose time without inventing a separate `tasks` host. Examples:
 
 - `squirrel://projects/CASA-CONTABILIDAD-TAXES-2025` — opens the project's first deadline card.
 - `squirrel://projects/CASA-CONTABILIDAD-TAXES-2025/test-deadline` — opens the specific task within that project.

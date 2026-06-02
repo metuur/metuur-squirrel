@@ -1,26 +1,26 @@
 ---
-description: Procesa un paquete SQUIRREL recibido por email/clipboard. Detección automática también: si pegás un bloque SQUIRREL-PACKAGE, se invoca solo.
+description: Processes a SQUIRREL package received by email/clipboard. Auto-detection too: if you paste a SQUIRREL-PACKAGE block, it triggers on its own.
 allowed-tools: [Read, Write, Edit, Bash, Glob]
 ---
 
 # /sq-sync-in
 
-Aplica el paquete pegado en el chat (o el último guardado en `<vault>/.squirrel/incoming/`).
+Applies the package pasted into the chat (or the last one saved in `<vault>/.squirrel/incoming/`).
 
-Invoca el skill `squirrel:sync-in` que:
-1. Parsea el bloque SQUIRREL-PACKAGE (start/end markers)
-2. Valida hash SHA-256
-3. Verifica que el `to` field coincide con este entorno
-4. Para cada archivo: chequea conflictos con vault local
-5. Muestra plan de aplicación (tabla con operaciones)
-6. Muestra diffs para conflictos/updates
-7. Pide confirmación (todo / selectivo / cancelar)
-8. Aplica operaciones atómicamente
-9. Linkea nuevos intents desde Project Pages
-10. Loguea aplicación en `<vault>/.squirrel/applied/<timestamp>-<hash>.json`
+Invokes the `squirrel:sync-in` skill, which:
+1. Parses the SQUIRREL-PACKAGE block (start/end markers)
+2. Validates the SHA-256 hash
+3. Verifies that the `to` field matches this environment
+4. For each file: checks for conflicts with the local vault
+5. Shows the apply plan (a table of operations)
+6. Shows diffs for conflicts/updates
+7. Asks for confirmation (all / selective / cancel)
+8. Applies operations atomically
+9. Links new intents from Project Pages
+10. Logs the application in `<vault>/.squirrel/applied/<timestamp>-<hash>.json`
 
 Flags:
-- `--dry-run`: solo muestra qué pasaría, sin escribir
-- `--from-file <path>`: lee paquete desde archivo en vez de del clipboard/chat
-- `--force-hash`: aplica aunque el hash no matchee (peligroso)
-- `--vault NAME`: operar sobre un vault específico (default si se omite)
+- `--dry-run`: only shows what would happen, without writing
+- `--from-file <path>`: reads the package from a file instead of the clipboard/chat
+- `--force-hash`: applies even if the hash doesn't match (dangerous)
+- `--vault NAME`: operate on a specific vault (default if omitted)

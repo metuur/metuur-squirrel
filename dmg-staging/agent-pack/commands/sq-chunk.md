@@ -1,5 +1,5 @@
 ---
-description: Descompone una estimación de tiempo en chunks ADHD-friendly con distribución por fases. Uso: /sq-chunk <duración> [--custom-phases name1=N,name2=M]
+description: Descompone una estimación de tiempo en chunks manejables con distribución por fases. Uso: /sq-chunk <duración> [--custom-phases name1=N,name2=M]
 allowed-tools: [Bash]
 ---
 
@@ -7,7 +7,7 @@ allowed-tools: [Bash]
 
 Argumentos: `$ARGUMENTS`
 
-Descompone la tarea en chunks ADHD-friendly ejecutando `chunk_helper.py`.
+Descompone la tarea en chunks manejables ejecutando `chunk_helper.py`.
 
 ## Paso 1: Parsear argumentos
 

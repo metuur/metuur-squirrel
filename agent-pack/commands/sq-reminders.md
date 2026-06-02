@@ -1,15 +1,15 @@
 ---
-description: Lista y gestiona reminders del vault. Uso: /sq-reminders | /sq-reminders snooze ID YYYY-MM-DD [--vault NAME]
+description: Lists and manages vault reminders. Usage: /sq-reminders | /sq-reminders snooze ID YYYY-MM-DD [--vault NAME]
 allowed-tools: [Bash]
 ---
 
 # /sq-reminders
 
-Argumentos: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-## Paso 1: Parsear argumentos
+## Step 1: Parse arguments
 
-De `$ARGUMENTS` extraer el subcomando (`snooze`), ID de nota, fecha, y `--vault NAME` si están presentes.
+From `$ARGUMENTS` extract the subcommand (`snooze`), note ID, date, and `--vault NAME` if present.
 
 ```bash
 SUBCMD=""
@@ -29,10 +29,10 @@ for arg in $ARGUMENTS; do
 done
 ```
 
-- Si `SUBCMD` está vacío → modo lista.
-- Si `SUBCMD` es `snooze` → modo snooze; requiere `ID` y `DATE`.
+- If `SUBCMD` is empty → list mode.
+- If `SUBCMD` is `snooze` → snooze mode; requires `ID` and `DATE`.
 
-## Paso 2: Resolver VAULT_PATH
+## Step 2: Resolve VAULT_PATH
 
 ```bash
 # Parse --vault NAME from $ARGUMENTS (R-6.1, R-6.2)
@@ -58,7 +58,7 @@ except ConfigError as e:
 [ $? -ne 0 ] && echo "❌ $VAULT_PATH" >&2 && exit 1
 ```
 
-## Paso 3: Localizar los scripts
+## Step 3: Locate the scripts
 
 ```bash
 SCANNER_SCRIPT=""
@@ -68,7 +68,7 @@ for candidate in \
     "$(find "${HOME}/others" -name 'reminder_scanner.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && SCANNER_SCRIPT="$candidate" && break
 done
-[ -z "$SCANNER_SCRIPT" ] && echo "❌ No se encontró reminder_scanner.py. Verificá la instalación del plugin." && exit 1
+[ -z "$SCANNER_SCRIPT" ] && echo "❌ reminder_scanner.py not found. Check the plugin installation." && exit 1
 
 WRITER_SCRIPT=""
 for candidate in \
@@ -77,19 +77,19 @@ for candidate in \
     "$(find "${HOME}/others" -name 'reminder_writer.py' -path '*/squirrel/*' 2>/dev/null | head -1)"; do
   [ -f "$candidate" ] && WRITER_SCRIPT="$candidate" && break
 done
-[ -z "$WRITER_SCRIPT" ] && echo "❌ No se encontró reminder_writer.py. Verificá la instalación del plugin." && exit 1
+[ -z "$WRITER_SCRIPT" ] && echo "❌ reminder_writer.py not found. Check the plugin installation." && exit 1
 ```
 
-## Paso 4: Ejecutar
+## Step 4: Run
 
-### Modo lista (SUBCMD vacío)
+### List mode (SUBCMD empty)
 
 ```bash
 RESULT=$(python3 "$SCANNER_SCRIPT" --vault "$VAULT_PATH" 2>&1)
-[ $? -ne 0 ] && echo "❌ Error ejecutando reminder_scanner: $RESULT" >&2 && exit 1
+[ $? -ne 0 ] && echo "❌ Error running reminder_scanner: $RESULT" >&2 && exit 1
 ```
 
-Parsear el JSON con Python stdlib y renderizar:
+Parse the JSON with Python stdlib and render:
 
 ```bash
 python3 -c "
@@ -116,18 +116,18 @@ if approaching:
 "
 ```
 
-Salida esperada (ejemplo con ítems):
+Expected output (example with items):
 
 ```
 🔴 Active (2)
-  1. [tdah-2024-001] Revisar medicación — 2024-03-10
-  2. [tdah-2024-005] Llamar al médico — 2024-03-12
+  1. [rem-2024-001] Refill medication — 2024-03-10
+  2. [rem-2024-005] Call the doctor — 2024-03-12
 
 🔔 Approaching (1)
-  1. [tdah-2024-009] Renovar seguro — 2024-03-17
+  1. [rem-2024-009] Renew insurance — 2024-03-17
 ```
 
-Estado vacío:
+Empty state:
 
 ```
 No reminders right now.
@@ -135,23 +135,23 @@ No reminders right now.
 
 ---
 
-### Modo snooze (SUBCMD = "snooze")
+### Snooze mode (SUBCMD = "snooze")
 
-Validar que `ID` y `DATE` estén presentes:
+Validate that `ID` and `DATE` are present:
 
 ```bash
-[ -z "$ID" ]   && echo "❌ Uso: /sq-reminders snooze ID YYYY-MM-DD" >&2 && exit 1
-[ -z "$DATE" ] && echo "❌ Uso: /sq-reminders snooze ID YYYY-MM-DD" >&2 && exit 1
+[ -z "$ID" ]   && echo "❌ Usage: /sq-reminders snooze ID YYYY-MM-DD" >&2 && exit 1
+[ -z "$DATE" ] && echo "❌ Usage: /sq-reminders snooze ID YYYY-MM-DD" >&2 && exit 1
 ```
 
-Ejecutar:
+Run:
 
 ```bash
 RESULT=$(python3 "$WRITER_SCRIPT" snooze --note-id "$ID" --until "$DATE" --vault "$VAULT_PATH" 2>&1)
 EXIT_CODE=$?
 ```
 
-Parsear respuesta JSON:
+Parse the JSON response:
 
 ```bash
 python3 -c "
@@ -159,7 +159,7 @@ import json, sys
 try:
     data = json.loads('$RESULT')
 except Exception:
-    print('❌ Respuesta inesperada del writer:', '$RESULT')
+    print('❌ Unexpected response from the writer:', '$RESULT')
     sys.exit(1)
 err = data.get('error')
 if err == 'not_found':
@@ -171,7 +171,7 @@ elif err == 'invalid_date':
 elif data.get('snoozed'):
     print(f'✅ Reminder snoozed: $ID until $DATE')
 else:
-    print('❌ Error desconocido:', data)
+    print('❌ Unknown error:', data)
     sys.exit(1)
 "
 ```

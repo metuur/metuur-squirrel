@@ -56,7 +56,7 @@ def _make_intent(
 ) -> pathlib.Path:
     """Write a minimal valid intent .md and return its path."""
     folder.mkdir(parents=True, exist_ok=True)
-    fm = {"id": slug, "estado": "in-progress"}
+    fm = {"id": slug, "status": "in-progress"}
     fm.update(frontmatter)
     content = (
         "---\n"

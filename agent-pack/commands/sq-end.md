@@ -1,22 +1,22 @@
 ---
-description: Cierra la sesión actual, genera shutdown note estructurada y la guarda en el intent activo. Aplica el truco de Hemingway (sugerir parar en punto "going good").
+description: Closes the current session, generates a structured shutdown note, and saves it in the active intent. Applies the Hemingway trick (suggest stopping at a "going good" point).
 allowed-tools: [Read, Write, Edit, Bash, Glob]
 ---
 
 # /sq-end
 
-Cierra la sesión actual.
+Closes the current session.
 
-Invoca el skill `squirrel:session-end` para:
-1. Leer state.json e identificar el intent activo
-2. Reconstruir lo que pasó en la sesión (de la conversación + git)
-3. Generar shutdown note con: estado, next physical action, hipótesis activa, bloqueos, decisiones tomadas
-4. Pedir confirmación antes de aplicar
-5. Actualizar checkboxes de Definition of Done si corresponde
-6. Sugerir commit con tag semántico
-7. Aplicar Hemingway (sugerir parar en punto "going good" o dejar TODO en próxima línea)
+Invokes the `squirrel:session-end` skill to:
+1. Read state.json and identify the active intent
+2. Reconstruct what happened in the session (from the conversation + git)
+3. Generate a shutdown note with: status, next physical action, active hypothesis, blockers, decisions made
+4. Ask for confirmation before applying
+5. Update Definition of Done checkboxes if applicable
+6. Suggest a commit with a semantic tag
+7. Apply Hemingway (suggest stopping at a "going good" point or leaving a TODO on the next line)
 
-Argumentos opcionales:
-- `--quick`: shutdown rápido (2 líneas, sin estructura completa)
-- `--commit`: además de la shutdown note, hacer commit automáticamente
-- `--vault NAME` — operar sobre un vault específico (default si se omite)
+Optional arguments:
+- `--quick`: quick shutdown (2 lines, no full structure)
+- `--commit`: in addition to the shutdown note, commit automatically
+- `--vault NAME` — operate on a specific vault (default if omitted)

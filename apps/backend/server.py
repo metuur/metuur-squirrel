@@ -435,10 +435,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not is_safe_request_path(path):
             return self._send_plain_error(400, "Bad path.")
         bare = path.split("?", 1)[0]
-        # R-2.6/R-2.7/R-2.8: gate every route except the handshake (which runs
-        # its own contract) on a constant-time token match. Static assets are
-        # gated too — a squatter must not be able to serve a hostile bundle.
-        if bare != "/api/_handshake" and _auth_required() and not self._token_ok():
+        # R-2.6/R-2.7/R-2.8: gate API routes on a constant-time token match.
+        # The SPA shell and static assets are exempt so the browser can load
+        # the app via the open-web token URL before any API call is made.
+        # /api/_handshake runs its own contract and is always exempt.
+        if (bare.startswith("/api/") and bare != "/api/_handshake"
+                and _auth_required() and not self._token_ok()):
             return self._send_unauthorized(method)
         for m, pattern, fn_name in ROUTES:
             if m != method:
@@ -977,14 +979,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctx, _ = self._context()
         payload = self._read_json_body()
         tag = (payload.get("tag") or "").strip()
-        tipo = (payload.get("tipo") or "").strip()
-        if not tag or not tipo:
-            raise _UserError(400, "tag and tipo are required.")
+        project_type = (payload.get("type") or "").strip()
+        if not tag or not project_type:
+            raise _UserError(400, "tag and type are required.")
         from new_project_writer import NewProjectError, create_project
         try:
             result = create_project(
                 tag=tag,
-                tipo=tipo,
+                tipo=project_type,
                 vault_name=ctx.active.name,
                 deadline=(payload.get("deadline") or None) or None,
                 stakeholders=payload.get("stakeholders") or None,
@@ -1015,7 +1017,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_json({
             "success": True,
             "slug": result["tag"],
-            "tipo": result["tipo"],
+            "type": result["type"],
             "deadline": result["deadline"],
             "wip_count": result["wip_count"],
             "wip_max": result["wip_max"],

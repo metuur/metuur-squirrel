@@ -1,38 +1,38 @@
 ---
 # Required fields (VAULT-002)
 id: <TAG>
-proyecto: <PROJECT>
-estado: pending
-creado: <YYYY-MM-DD>
-tags: [intent, proyecto/<PROJECT>, estado/pending]
+project: <PROJECT>
+status: pending
+created: <YYYY-MM-DD>
+tags: [intent, project/<PROJECT>, status/pending]
 # Optional fields
-prioridad: media          # low | media | high | finishing-tax
+priority: medium          # low | medium | high | finishing-tax
 deadline: <YYYY-MM-DD>   # ISO date; omit if no hard deadline
 stakeholders: []          # list of @handles or names
 ---
 
-# <TAG> — <Título corto>
+# <TAG> — <short title>
 
-## 🎯 Intent (qué/por qué)
-> Qué se busca lograr y por qué importa
+## 🎯 Intent
+> What you want to achieve and why it matters
 
 ## ✅ Definition of Done
-- [ ] Criterio concreto y verificable
+- [ ] Concrete, verifiable criterion
 - [ ] ...
 
-## 🔨 Tareas concretas (next physical actions)
-- [ ] Acción de 2-15 min — fecha
-- [ ] Acción de 2-15 min — fecha
+## 🔨 Tasks
+- [ ] 2-15 min action — date
+- [ ] 2-15 min action — date
 
-## 📝 Notas / Context
-[Información relevante, decisiones tomadas, links, etc.]
+## 📝 Notes
+[Relevant info, decisions made, links, etc.]
 
-## 🔗 Relacionados
+## 🔗 Related
 - **Parent**: [[<PROJECT>]]
-- **Bloquea**: [[<OTHER-TAG>]]
-- **Bloqueado por**: [[<OTHER-TAG>]]
-- **Comunicación**: avisar a @stakeholder cuando esté resuelto
+- **Blocks**: [[<OTHER-TAG>]]
+- **Blocked by**: [[<OTHER-TAG>]]
+- **Communication**: notify @stakeholder when resolved
 
-## 🔄 Shutdown notes (más reciente arriba)
+## 🔄 Shutdown notes (most recent on top)
 
-<!-- Las shutdown notes se agregan aquí -->
+<!-- Shutdown notes are appended here -->

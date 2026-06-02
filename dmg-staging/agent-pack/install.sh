@@ -93,7 +93,7 @@ banner() {
   ║                                                              ║
   ║       🐿   Squirrel  —  Interactive Installer                ║
   ║                                                              ║
-  ║       ADHD-friendly context management for AI agents         ║
+  ║       Focus-friendly context management for AI agents        ║
   ║                                                              ║
   ╚══════════════════════════════════════════════════════════════╝
 

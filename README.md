@@ -1,6 +1,6 @@
 # Squirrel
 
-Local-first ADHD productivity companion. Monorepo.
+Local-first focus & productivity companion. Monorepo.
 
 ## Installing (end users)
 

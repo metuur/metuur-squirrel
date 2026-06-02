@@ -191,6 +191,5 @@ If unsure, ASK: "¿Esta es una decisión táctica o estratégica?"
 ## References
 
 - Nygard, M. (2011): Architecture Decision Records — lightweight immutable decision log pattern
-- Barkley, R.A. (2015): ADHD impairs prospective memory — external decision log compensates for "why did we do this?" gaps
 - Klein, G. (1998): Naturalistic Decision Making — decisions made under time pressure need abbreviated rationale capture, not full analysis
 - Tufte, E. (2001): decision context decays rapidly — record the constraint, not just the choice

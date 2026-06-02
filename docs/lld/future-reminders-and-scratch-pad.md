@@ -46,7 +46,7 @@ Classification logic:
 | `reminder_date` in the past or today, no suppression | `reminder_active` |
 | `reminder_date` within 7 calendar days, no suppression | `reminder_approaching` |
 
-Returns two lists: `reminder_approaching[]` and `reminder_active[]`. Each entry carries: `id`, `title`, `path`, `reminder_date`, `proyecto`.
+Returns two lists: `reminder_approaching[]` and `reminder_active[]`. Each entry carries: `id`, `title`, `path`, `reminder_date`, `project`.
 
 ### API changes (`server.py`)
 
@@ -86,7 +86,7 @@ def ensure_scratch_pad(vault_path: Path) -> None:
         return
     create_project(
         tag="SCRATCH-PAD",
-        tipo="C",
+        type="C",
         description="Default project for quick ideas, reminders, and captures.",
         force=True,
     )
@@ -112,7 +112,7 @@ New check in the project delete handler (`server.py`): read project page frontma
 - Atomic writes via temp file + `os.replace()` (existing pattern).
 - All date parsing must handle both `YYYY-MM-DD` strings and `datetime.date` objects from `python-frontmatter` (which sometimes returns native types).
 - `dateutil` is available in the backend Python environment (verify in `pyproject.toml`; add if absent).
-- The `reminder_scanner` must skip files with `estado: done/completado/archived` (same as `deadline_scanner`).
+- The `reminder_scanner` must skip files with `status: done/completed/archived` (same as `deadline_scanner`).
 
 ---
 
@@ -126,7 +126,7 @@ New check in the project delete handler (`server.py`): read project page frontma
 
 **`ensure_scratch_pad` called at server startup, not on first capture.** D7 specifies "first time the user opens the app." Server startup is the closest reliable hook for this in the current architecture.
 
-**`tipo: C`** for the Scratch Pad (experimental). A/B/C are the only valid tipos; C ("experimental") is the least semantically loaded choice for a utility container.
+**`type: C`** for the Scratch Pad (experimental). A/B/C are the only valid types; C ("experimental") is the least semantically loaded choice for a utility container.
 
 ---
 
