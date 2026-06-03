@@ -527,6 +527,47 @@ fn should_respawn(s: &mut SupervisorState) -> bool {
     true
 }
 
+/// Kill the current backend (if Managed) and respawn it. Used by the
+/// "Restart Service" tray menu item. In Adopted mode the external process is
+/// not touched; we simply re-probe and re-adopt when it comes back.
+pub(crate) async fn restart<R: Runtime>(app: &AppHandle<R>) {
+    tracing::info!("backend supervisor: restart requested");
+    let _ = crate::tray::set_state(app, crate::tray::IconState::Processing);
+
+    // Kill the Managed child (if any) while holding the lock, then drop it.
+    {
+        let state = app.state::<Mutex<SupervisorState>>();
+        let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+        if s.mode == SupervisionMode::Managed {
+            if let Some(child) = s.child.take() {
+                let pid = child.pid();
+                #[cfg(unix)]
+                send_term(pid);
+                let _ = child.kill();
+                tracing::info!(pid, "backend supervisor: sidecar killed for restart");
+            }
+        }
+        s.mode = SupervisionMode::Failed;
+        s.consecutive_failures = 0;
+        s.respawn_timestamps.clear();
+    }
+
+    // Give the OS a moment to free the port before we try to bind again.
+    tokio::time::sleep(Duration::from_millis(800)).await;
+
+    let (mode, child) = spawn_or_adopt(app);
+    {
+        let state = app.state::<Mutex<SupervisorState>>();
+        let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+        s.mode = mode;
+        s.child = child;
+        s.consecutive_failures = 0;
+    }
+
+    wait_for_ready(app).await;
+    tracing::info!("backend supervisor: restart complete");
+}
+
 /// R-9.3: shutdown hook called from the Tauri `RunEvent::ExitRequested`.
 /// In Adopted mode this is a no-op — the user owns the backend's lifecycle.
 /// In Managed mode we attempt a graceful shutdown:

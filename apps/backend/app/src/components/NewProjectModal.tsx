@@ -7,6 +7,10 @@ import { useToast } from '@/components/Toast';
 
 const TAG_RE = /^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$/;
 
+function toTag(name: string): string {
+  return name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -16,7 +20,9 @@ interface Props {
 export function NewProjectModal({ open, onClose, onCreated }: Props) {
   const navigate = useNavigate();
   const { show: toast } = useToast();
+  const [name, setName] = useState('');
   const [tag, setTag] = useState('');
+  const [tagManuallyEdited, setTagManuallyEdited] = useState(false);
   const [projectType, setProjectType] = useState<'A' | 'B' | 'C'>('C');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
@@ -28,7 +34,9 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
   const [wipPrompt, setWipPrompt] = useState<string | null>(null);
 
   function reset() {
+    setName('');
     setTag('');
+    setTagManuallyEdited(false);
     setProjectType('C');
     setDeadline('');
     setDescription('');
@@ -48,6 +56,11 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
 
   async function submit(force: boolean) {
     setError(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Project name is required.');
+      return;
+    }
     const trimmed = tag.trim().toUpperCase();
     if (!TAG_RE.test(trimmed)) {
       setError('Tag must be UPPERCASE letters/digits, dash-separated (e.g. MYAPP or VISA-FAMILIA).');
@@ -65,6 +78,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
       }
     }
     const req: NewProjectRequest = {
+      name: trimmedName,
       tag: trimmed,
       type: projectType,
       deadline: deadline || undefined,
@@ -116,7 +130,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
           </button>
           <button
             onClick={() => submit(false)}
-            disabled={busy || !tag.trim()}
+            disabled={busy || !name.trim() || !tag.trim()}
             className="btn btn-primary px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
           >
             {busy ? 'Creating…' : 'Create project'}
@@ -125,12 +139,28 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
       }
     >
       <div className="space-y-4">
-        <Field label="Tag" hint="UPPERCASE, dash-separated. e.g. MYAPP, VISA-FAMILIA-2027.">
+        <Field label="Name">
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (!tagManuallyEdited) setTag(toTag(e.target.value));
+            }}
+            placeholder="My Cool App"
+            autoFocus
+            disabled={busy}
+            className="w-full text-sm border border-hairline rounded-md px-3 py-2 bg-surface text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+          />
+        </Field>
+
+        <Field label="Tag" hint="UPPERCASE, dash-separated. Auto-generated from name, editable.">
           <input
             value={tag}
-            onChange={(e) => setTag(e.target.value)}
+            onChange={(e) => {
+              setTagManuallyEdited(true);
+              setTag(e.target.value);
+            }}
             placeholder="MYAPP"
-            autoFocus
             disabled={busy}
             className="w-full font-mono text-sm border border-hairline rounded-md px-3 py-2 bg-surface text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none uppercase"
           />

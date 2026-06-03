@@ -32,11 +32,16 @@ pub const TRAY_ID: &str = "main";
 /// vite proxy all agree on this single backend origin.
 pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 
+/// Obsidian vault name opened from the tray menu item.
+const OBSIDIAN_VAULT: &str = "vault-tdah";
+
 /// Menu item IDs. The alert items use the `ALERT_PREFIX` so the menu-event
 /// handler can detect them and extract the task id.
 pub mod ids {
     pub const OPEN: &str = "open";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
+    pub const OPEN_OBSIDIAN: &str = "open_obsidian";
+    pub const RESTART_SERVICE: &str = "restart_service";
     pub const QUIT: &str = "quit";
     pub const ALERT_PREFIX: &str = "alert:";
     pub const PRESSING_HEADER: &str = "pressing_header";
@@ -95,6 +100,10 @@ fn build_menu<R: Runtime>(
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
+    let open_obsidian_item =
+        MenuItem::with_id(app, ids::OPEN_OBSIDIAN, "Open Obsidian Vault", true, None::<&str>)?;
+    let restart_service_item =
+        MenuItem::with_id(app, ids::RESTART_SERVICE, "Restart Service", true, None::<&str>)?;
     let sep_top = PredefinedMenuItem::separator(app)?;
     let pressing_header = MenuItem::with_id(
         app,
@@ -121,13 +130,9 @@ fn build_menu<R: Runtime>(
 
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
         &open_item,
-        &open_web_ui_item,
         &sep_top,
         &pressing_header,
     ];
-    if let Some(ref w) = why_item {
-        items.insert(2, w); // between Open Web UI and the top separator
-    }
 
     let alert_items: Vec<MenuItem<R>> = alerts
         .iter()
@@ -214,7 +219,14 @@ fn build_menu<R: Runtime>(
         items.push(ni);
     }
 
+    // Bottom section: actions + quit
     items.push(&sep_bot);
+    items.push(&open_web_ui_item);
+    items.push(&open_obsidian_item);
+    if let Some(ref w) = why_item {
+        items.push(w);
+    }
+    items.push(&restart_service_item);
     items.push(&quit_item);
 
     Menu::with_items(app, &items)
@@ -232,6 +244,16 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             match id {
                 ids::OPEN => show_main_window(app),
                 ids::OPEN_WEB_UI => open_url(app, BACKEND_ORIGIN),
+                ids::OPEN_OBSIDIAN => {
+                    let url = format!("obsidian://open?vault={}", OBSIDIAN_VAULT);
+                    open_url(app, &url);
+                }
+                ids::RESTART_SERVICE => {
+                    let handle = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        crate::backend_supervisor::restart(&handle).await;
+                    });
+                }
                 ids::QUIT => {
                     tracing::info!("tray: quit requested");
                     app.exit(0);

@@ -80,7 +80,7 @@ created: {creado}
 {deadline_line}{stakeholders_line}tags: [project, project/active, type/{tipo}]
 ---
 
-# {tag}
+# {name}
 
 {description}
 
@@ -221,11 +221,13 @@ def _render_project_page(
     deadline: Optional[str],
     stakeholders: Optional[str],
     description: str,
+    name: str = "",
 ) -> str:
     deadline_line = f"deadline: {deadline}\n" if deadline else ""
     stakeholders_line = _stakeholders_yaml(stakeholders)
     return _PROJECT_PAGE_TEMPLATE.format(
         tag=tag,
+        name=name or tag,
         tipo=tipo,
         creado=creado,
         deadline_line=deadline_line,
@@ -255,6 +257,7 @@ def create_project(
     *,
     tag: str,
     tipo: str,
+    name: str = "",
     vault_name: Optional[str] = None,
     deadline: Optional[str] = None,
     stakeholders: Optional[str] = None,
@@ -293,6 +296,7 @@ def create_project(
     page_body = _render_project_page(
         tag=tag,
         tipo=tipo,
+        name=(name or "").strip(),
         creado=today_iso,
         deadline=deadline,
         stakeholders=stakeholders,

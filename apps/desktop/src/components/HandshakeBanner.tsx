@@ -13,7 +13,6 @@
 
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { exit } from "@tauri-apps/plugin-process";
 
 // Mirrors the Rust `handshake_refusal_cause` strings. Any unknown value falls
 // back to the generic message so a future cause never renders an empty banner.
@@ -116,7 +115,6 @@ function CauseBody({ cause }: { cause: RefusalCause }) {
 
 export function HandshakeBanner() {
   const [cause, setCause] = useState<RefusalCause | null>(null);
-  const [quitting, setQuitting] = useState(false);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
@@ -136,18 +134,6 @@ export function HandshakeBanner() {
   }, []);
 
   if (!cause) return null;
-
-  const handleQuit = async () => {
-    setQuitting(true);
-    try {
-      await exit(0);
-    } catch (err) {
-      // exit() only returns on failure; a successful quit terminates the
-      // process first. Reset so the user can retry.
-      console.error("[HandshakeBanner] exit failed:", err);
-      setQuitting(false);
-    }
-  };
 
   return (
     <div
@@ -173,24 +159,17 @@ export function HandshakeBanner() {
       </div>
 
       <footer className="shrink-0 flex justify-end px-4 py-3 border-t border-hairline bg-surface-2">
-        {isTauriContext() && (
-          <button
-            type="button"
-            onClick={handleQuit}
-            disabled={quitting}
-            className="btn disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background: "rgba(200, 54, 42, 0.06)",
-              borderColor: "rgba(200, 54, 42, 0.35)",
-              color: "var(--color-critical)",
-              boxShadow: "1px 1px 0 rgba(200, 54, 42, 0.25)",
-              padding: "4px 12px",
-              fontSize: 12,
-            }}
-          >
-            {quitting ? "Quitting…" : "Quit Squirrel"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setCause(null)}
+          className="btn"
+          style={{
+            padding: "4px 12px",
+            fontSize: 12,
+          }}
+        >
+          Close
+        </button>
       </footer>
     </div>
   );

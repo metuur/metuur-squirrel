@@ -207,6 +207,7 @@ export interface SearchHit {
 export interface SaveResult { success: true; id?: string; slug?: string; mtime?: number; }
 export interface CaptureResult { success: true; id: string; project_slug: string; }
 export interface NewProjectRequest {
+  name: string;
   tag: string;
   type: 'A' | 'B' | 'C';
   deadline?: string;

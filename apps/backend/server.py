@@ -980,6 +980,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         payload = self._read_json_body()
         tag = (payload.get("tag") or "").strip()
         project_type = (payload.get("type") or "").strip()
+        project_name = (payload.get("name") or "").strip()
         if not tag or not project_type:
             raise _UserError(400, "tag and type are required.")
         from new_project_writer import NewProjectError, create_project
@@ -987,6 +988,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             result = create_project(
                 tag=tag,
                 tipo=project_type,
+                name=project_name,
                 vault_name=ctx.active.name,
                 deadline=(payload.get("deadline") or None) or None,
                 stakeholders=payload.get("stakeholders") or None,
