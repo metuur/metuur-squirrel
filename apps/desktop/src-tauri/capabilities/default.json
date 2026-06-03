@@ -14,7 +14,10 @@
       "identifier": "opener:allow-open-url",
       "allow": [{ "url": "obsidian://**" }]
     },
-    "opener:allow-open-path",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "$RESOURCE/**" }]
+    },
     "notification:default",
     "store:default",
     "autostart:default",

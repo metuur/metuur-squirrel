@@ -49,8 +49,8 @@ export function SizeToggle() {
       className="icon-btn"
     >
       <svg
-        width="15"
-        height="15"
+        width="19"
+        height="19"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

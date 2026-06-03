@@ -6,13 +6,121 @@
 // footer), but it is informational rather than a critical block: it is
 // dismissible and uses neutral chrome instead of the critical-red banner.
 //
+// Each command is a collapsible <details> row: collapsed it shows the
+// command + a one-line summary; expanded it reveals what it does, the
+// outcome, and an example invocation.
+//
 // Opened two ways (the parent App owns the `open` state):
 //   • the in-app "?" header button, and
 //   • the tray "How to use Squirrel" item, which shows the window and emits
 //     a `show-how-to` event the App listens for.
 
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { resolveResource } from "@tauri-apps/api/path";
+
+interface CommandEntry {
+  cmd: string; // the command chip text
+  summary: string; // one-liner shown while collapsed
+  what: string; // what it does
+  outcome: string; // the result you get
+  example: string; // a concrete example invocation
+}
+
+const AGENT_COMMANDS: CommandEntry[] = [
+  {
+    cmd: "/sq-init",
+    summary: "Set Squirrel up for your vault and agent",
+    what: "Runs the initial setup — creates ~/.squirrel/config.toml and a minimal vault structure if you don't have one yet.",
+    outcome: "Squirrel is configured and ready; your config file and a vault skeleton exist.",
+    example: "/sq-init   (or /sq-init --add-vault to register another vault)",
+  },
+  {
+    cmd: "/sq-capture",
+    summary: "Jot a note or task without losing flow",
+    what: "Captures a note, idea, research finding, or constraint into the vault with an auto-derived semantic tag (PROJECT-SUBAREA-NNN).",
+    outcome: "A tagged note with frontmatter is written to the right folder and linked from its Project Page.",
+    example: "/sq-capture pay the visa bill before June 30",
+  },
+  {
+    cmd: "/sq-focus",
+    summary: "Pick what to work on right now",
+    what: "Shows or sets your manual focus pick for today, today-PM, or this week.",
+    outcome: "Your chosen focus is recorded and surfaces in the popup and the Web UI.",
+    example: "/sq-focus today FOO-001   (or just /sq-focus to see the current pick)",
+  },
+  {
+    cmd: "/sq-status",
+    summary: "See WIP, alerts, and a recommended focus",
+    what: "Reports global vault status — work-in-progress projects, alerts, and a suggested focus. Read-only; it creates nothing.",
+    outcome: "A snapshot of where everything stands right now.",
+    example: "/sq-status   (or /sq-status --vault work)",
+  },
+  {
+    cmd: "/sq-where-am-i",
+    summary: "Re-orient after an interruption",
+    what: "Shows the current state of all WIP projects and suggests where to pick up.",
+    outcome: "A “where was I?” summary so you can resume without re-reading everything.",
+    example: "/sq-where-am-i",
+  },
+];
+
+const CLI_COMMANDS: CommandEntry[] = [
+  {
+    cmd: "squirrel status",
+    summary: "WIP projects, alerts, recommended focus",
+    what: "The same status report as /sq-status, straight from the terminal — it reads the vault directly, no agent needed.",
+    outcome: "Prints WIP projects, alerts, and a recommended focus to your terminal.",
+    example: "squirrel status   (or squirrel status --vault work)",
+  },
+  {
+    cmd: "squirrel deadlines",
+    summary: "Deadline report grouped by urgency",
+    what: "Lists upcoming and overdue items grouped by urgency: overdue, critical, urgent, soon, upcoming.",
+    outcome: "A prioritized deadline report you can scan at a glance.",
+    example: "squirrel deadlines --level overdue,critical",
+  },
+  {
+    cmd: "squirrel web open",
+    summary: "Open the local Web UI in your browser",
+    what: "Opens the local browser dashboard, starting the Web UI server first if it isn't already running.",
+    outcome: "The Web UI opens in your default browser (default port 3939).",
+    example: "squirrel web open",
+  },
+  {
+    cmd: "squirrel recover",
+    summary: "Find interrupted sessions to resume",
+    what: "Finds recently interrupted work sessions (from the manifest or your Claude history) so you can jump back in.",
+    outcome: "A list of resumable sessions within the age window (default 72 hours).",
+    example: "squirrel recover --max-age 48",
+  },
+  {
+    cmd: "squirrel install",
+    summary: "Install Squirrel for your coding agent",
+    what: "Installs Squirrel's commands and skills for your coding agent — Claude Code, Codex, Cursor, or Copilot (auto-detected).",
+    outcome: "The slash commands become available inside your agent.",
+    example: "squirrel install --agent claude",
+  },
+];
+
+// Canonical docs target. Primary: the README bundled as a Tauri resource
+// (see tauri.conf.json `resources`). Fallback: the repo README on GitHub, so
+// the button always does something even if the local file can't be opened
+// (e.g. in `tauri dev` before resources are staged, or no Markdown handler).
+const REPO_README_URL = "https://github.com/metuur/metuur-squirrel#readme";
+
+async function openGuide() {
+  try {
+    const path = await resolveResource("README.md");
+    await openPath(path);
+  } catch (err) {
+    console.error("[HowToModal] local README open failed, opening GitHub:", err);
+    try {
+      await openUrl(REPO_README_URL);
+    } catch (err2) {
+      console.error("[HowToModal] README fallback failed:", err2);
+    }
+  }
+}
 
 // Copy-pasteable command chip — monospace, click-to-select.
 function Cmd({ children }: { children: string }) {
@@ -23,27 +131,47 @@ function Cmd({ children }: { children: string }) {
   );
 }
 
-// One command row: the command chip on the left, a one-line description.
-function Row({ cmd, desc }: { cmd: string; desc: string }) {
+// One collapsible command row. Native <details> keeps it dependency-free and
+// accessible; the chevron rotates via the `group-open` variant.
+function CommandRow({ entry }: { entry: CommandEntry }) {
   return (
-    <li className="flex items-baseline gap-2.5">
-      <Cmd>{cmd}</Cmd>
-      <span className="text-[12.5px] leading-relaxed text-ink-2">{desc}</span>
-    </li>
+    <details className="group rounded-lg border border-hairline bg-surface">
+      <summary className="flex items-center gap-2.5 px-3 py-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+          className="shrink-0 text-ink-4 transition-transform duration-150 group-open:rotate-90"
+        >
+          <polyline points="9 6 15 12 9 18" />
+        </svg>
+        <Cmd>{entry.cmd}</Cmd>
+        <span className="text-[12.5px] text-ink-2 truncate">{entry.summary}</span>
+      </summary>
+      <div className="px-3 pb-3 pt-1 pl-[33px] space-y-2 text-[12.5px] leading-relaxed text-ink-2">
+        <p>
+          <span className="font-semibold text-ink-1">What it does — </span>
+          {entry.what}
+        </p>
+        <p>
+          <span className="font-semibold text-ink-1">Outcome — </span>
+          {entry.outcome}
+        </p>
+        <div>
+          <span className="font-semibold text-ink-1">Example</span>
+          <div className="mt-1">
+            <Cmd>{entry.example}</Cmd>
+          </div>
+        </div>
+      </div>
+    </details>
   );
-}
-
-// README is bundled as a Tauri resource (see tauri.conf.json `resources`).
-// Opening it hands off to the OS default handler for Markdown. Best-effort:
-// a missing handler / resource is logged, never thrown, so the overlay stays
-// usable.
-async function openReadme() {
-  try {
-    const path = await resolveResource("README.md");
-    await openPath(path);
-  } catch (err) {
-    console.error("[HowToModal] failed to open README:", err);
-  }
 }
 
 export function HowToModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -67,7 +195,7 @@ export function HowToModal({ open, onClose }: { open: boolean; onClose: () => vo
         <div className="min-w-0">
           <h2 className="text-[14px] font-semibold text-ink-1">How to use Squirrel</h2>
           <p className="text-[12px] text-ink-3 mt-0.5">
-            A quick guide to the slash commands and the CLI.
+            Tap a command to see what it does, the outcome, and an example.
           </p>
         </div>
       </div>
@@ -80,13 +208,11 @@ export function HowToModal({ open, onClose }: { open: boolean; onClose: () => vo
             Type these slash commands in Claude Code (or your configured agent)
             to capture, focus, and stay oriented:
           </p>
-          <ul className="space-y-2">
-            <Row cmd="/sq-init" desc="Set Squirrel up for your vault and agent" />
-            <Row cmd="/sq-capture" desc="Jot a note or task without losing flow" />
-            <Row cmd="/sq-focus" desc="Pick what to work on right now" />
-            <Row cmd="/sq-status" desc="See WIP, alerts, and a recommended focus" />
-            <Row cmd="/sq-where-am-i" desc="Re-orient after an interruption" />
-          </ul>
+          <div className="space-y-2">
+            {AGENT_COMMANDS.map((e) => (
+              <CommandRow key={e.cmd} entry={e} />
+            ))}
+          </div>
         </section>
 
         {/* CLI — direct terminal access, no agent required. */}
@@ -96,20 +222,18 @@ export function HowToModal({ open, onClose }: { open: boolean; onClose: () => vo
             The <Cmd>squirrel</Cmd> CLI reads your vault directly — no agent
             needed:
           </p>
-          <ul className="space-y-2">
-            <Row cmd="squirrel status" desc="WIP projects, alerts, recommended focus" />
-            <Row cmd="squirrel deadlines" desc="Deadline report grouped by urgency" />
-            <Row cmd="squirrel web open" desc="Open the local Web UI in your browser" />
-            <Row cmd="squirrel recover" desc="Find interrupted sessions to resume" />
-            <Row cmd="squirrel install" desc="Install Squirrel for your coding agent" />
-          </ul>
+          <div className="space-y-2">
+            {CLI_COMMANDS.map((e) => (
+              <CommandRow key={e.cmd} entry={e} />
+            ))}
+          </div>
         </section>
       </div>
 
       <footer className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-t border-hairline bg-surface-2">
         <button
           type="button"
-          onClick={() => void openReadme()}
+          onClick={() => void openGuide()}
           className="btn"
           style={{ padding: "4px 12px", fontSize: 12 }}
         >
