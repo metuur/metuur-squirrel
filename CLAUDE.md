@@ -28,5 +28,5 @@ This project uses the **LID+EARS documentation chain** for spec-driven developme
 
 ### Conventions
 - Personal scratchpad in `.devlocal/<user>/` (gitignored, not shared)
-- Team learnings captured in `.uncle-dev/learns/`
+- Team learnings captured in `.uncle-dev/learns/` — organized by category (e.g. `integration-issues/`, `build-errors/`), YAML frontmatter with `module`, `tags`, `problem_type`; relevant when debugging or implementing in documented areas
 <!-- /uncle-dev -->
