@@ -19,6 +19,7 @@ import { CaptureButton } from "./components/CaptureButton";
 import { CaptureModal } from "./components/CaptureModal";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
+import { OpenVaultButton } from "./components/OpenVaultButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
 import { api } from "./api/client";
@@ -201,6 +202,7 @@ export default function App() {
         <CaptureButton online={status.online} onClick={() => openCapture(null)} />
         <div className="flex items-center gap-2">
           <OpenWebUIButton />
+          <OpenVaultButton />
           <CloseWindowButton />
         </div>
       </footer>

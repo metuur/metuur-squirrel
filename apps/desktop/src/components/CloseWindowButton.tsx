@@ -1,14 +1,14 @@
 // Phase 2 CloseWindowButton — explicit close affordance in the popup footer.
-// Calls window.hide() directly (Phase 1 R-1.4 says X button hides; this
-// button matches that semantic — the app process keeps running, click the
-// SQ tray icon to bring the popup back).
+// Calls window.close() so the Rust CloseRequested handler runs, which
+// prevents destruction, hides the window, and switches to Accessory mode
+// (removes Dock icon / Cmd+Tab entry). Same path as the native macOS X button.
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export function CloseWindowButton() {
   const handleClick = () => {
     void getCurrentWindow()
-      .hide()
+      .close()
       .catch(() => {
         /* not in Tauri (e.g. plain browser dev) — no-op */
       });

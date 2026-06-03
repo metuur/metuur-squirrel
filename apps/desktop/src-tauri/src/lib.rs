@@ -211,11 +211,39 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
-            // R-9.3: kill the Managed backend child when the user quits
-            // Squirrel. No-op in Adopted/Failed modes — we never own the
-            // backend in those cases.
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                backend_supervisor::shutdown(app);
+            match event {
+                // External quit attempts (Cmd+Q, Dock right-click → Quit, etc.).
+                // We redirect them to the same hide+Accessory behaviour as the
+                // window X button so the app continues running as a tray app.
+                // The only real exit path is the tray "Quit Squirrel" item,
+                // which calls app.exit(0) directly and fires Exit, not this.
+                tauri::RunEvent::ExitRequested { api, .. } => {
+                    api.prevent_exit();
+                    if let Some(window) = app.get_webview_window("main") {
+                        if window.is_visible().unwrap_or(false) {
+                            if let Err(e) = window.hide() {
+                                tracing::warn!(error = %e, "ExitRequested: failed to hide window");
+                            } else {
+                                #[cfg(target_os = "macos")]
+                                if let Err(e) = app
+                                    .set_activation_policy(tauri::ActivationPolicy::Accessory)
+                                {
+                                    tracing::warn!(
+                                        error = %e,
+                                        "ExitRequested: failed to set Accessory policy"
+                                    );
+                                }
+                                tracing::info!("ExitRequested intercepted; window hidden");
+                            }
+                        }
+                    }
+                }
+                // R-9.3: kill the Managed backend child on a real exit (only
+                // reached when app.exit(0) is called from the tray "Quit" item).
+                tauri::RunEvent::Exit => {
+                    backend_supervisor::shutdown(app);
+                }
+                _ => {}
             }
         });
 }
