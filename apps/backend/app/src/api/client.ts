@@ -99,6 +99,7 @@ export interface ProjectListItem {
   slug: string;
   title: string;
   percent_done?: number;
+  delivered?: boolean;
   deadline?: string | null;
   active_intent?: string | null;
   last_activity?: string | null;
@@ -258,6 +259,11 @@ export const api = {
   home: () => call<HomePayload>('/home'),
   projects: () => call<ProjectListItem[]>('/projects'),
   project: (slug: string) => call<ProjectDetail>(`/projects/${slug}`),
+  projectSetStatus: (slug: string, body: { deadline?: string | null; delivered?: boolean }) =>
+    call<{ success: true; slug: string; deadline: string | null; delivered: boolean }>(
+      `/projects/${slug}/status`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
   projectSave: (slug: string, body: string, mtime: number) =>
     call<SaveResult>(`/projects/${slug}`, {
       method: 'POST',

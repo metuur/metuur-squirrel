@@ -317,6 +317,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
                                                                        "api_project_save"),
     ("DELETE", re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_delete"),
+    ("PATCH", re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)/status$"),
+                                                                       "api_project_set_status"),
     ("GET",  re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
                                                                        "api_note_detail"),
     ("POST", re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
@@ -698,6 +700,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "slug": slug,
                 "title": vocabulary.project_title(slug, ctx.active.path),
                 "percent_done": p.get("intents", {}).get("percent_done", 0),
+                "delivered": bool(p.get("delivered", False)),
                 "deadline": p.get("deadline"),
                 "last_activity": p.get("last_activity"),
                 "active_intent": p.get("active_intent"),
@@ -1056,6 +1059,47 @@ class Handler(http.server.BaseHTTPRequestHandler):
         shutil.rmtree(project_dir)
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "slug": slug})
+
+    def api_project_set_status(self, slug: str) -> None:
+        """Move a project between board columns by rewriting frontmatter.
+
+        Accepts `deadline` (YYYY-MM-DD, or null to clear) and/or `delivered`
+        (bool). The board's THIS WEEK / ACTIVE / LATER lanes are deadline-driven;
+        DELIVERED is the `delivered` flag. Only these two fields are touched —
+        the rest of the project page is preserved verbatim.
+        """
+        ctx, _ = self._context()
+        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
+            raise _UserError(404, "We could not find that project.")
+        payload = self._read_json_body()
+        updates: dict = {}
+        if "deadline" in payload:
+            dl = payload.get("deadline")
+            if dl is None or (isinstance(dl, str) and not dl.strip()):
+                updates["deadline"] = None
+            else:
+                dl = str(dl).strip()
+                if not re.match(r"^\d{4}-\d{2}-\d{2}$", dl):
+                    raise _UserError(400, "deadline must be a YYYY-MM-DD date.")
+                updates["deadline"] = dl
+        if "delivered" in payload:
+            updates["delivered"] = "true" if bool(payload.get("delivered")) else None
+        if not updates:
+            raise _UserError(400, "Nothing to update — send a deadline and/or delivered.")
+        text = proj_md.read_text(encoding="utf-8", errors="replace")
+        new_text = _update_frontmatter_fields(text, updates)
+        tmp = proj_md.with_suffix(proj_md.suffix + ".tmp")
+        tmp.write_text(new_text, encoding="utf-8")
+        os.replace(tmp, proj_md)
+        self._invalidate_vault_cache(ctx)
+        fm = _parse_frontmatter_simple(new_text)
+        self._send_json({
+            "success": True,
+            "slug": slug,
+            "deadline": fm.get("deadline"),
+            "delivered": str(fm.get("delivered", "")).strip().lower() in ("true", "1", "yes"),
+        })
 
     def api_intent_create(self) -> None:
         ctx, _ = self._context()
@@ -1689,6 +1733,47 @@ def _strip_frontmatter(text: str) -> str:
             if line.rstrip() == "---":
                 return "\n".join(lines[i + 1 :]).lstrip("\n")
     return text
+
+
+def _update_frontmatter_fields(text: str, updates: dict) -> str:
+    """Return *text* with frontmatter keys set or removed per *updates*.
+
+    A string value sets/replaces the ``key: value`` line; a ``None`` value
+    removes the line if present. Keys not already in the block are appended
+    just before the closing ``---``. If the text has no frontmatter block, one
+    is created from the set-only updates. Only simple ``key: value`` lines are
+    touched; everything else is preserved verbatim.
+    """
+    lines = text.split("\n")
+    if not lines or lines[0].rstrip() != "---":
+        fm_lines = [f"{k}: {v}" for k, v in updates.items() if v is not None]
+        if not fm_lines:
+            return text
+        return "---\n" + "\n".join(fm_lines) + "\n---\n" + text
+    close = None
+    for i in range(1, len(lines)):
+        if lines[i].rstrip() == "---":
+            close = i
+            break
+    if close is None:
+        return text  # malformed frontmatter — leave it alone
+    remaining = dict(updates)
+    out = [lines[0]]
+    for line in lines[1:close]:
+        key = line.partition(":")[0].strip() if ":" in line else None
+        if key is not None and key in remaining:
+            val = remaining.pop(key)
+            if val is not None:
+                out.append(f"{key}: {val}")
+            # val is None → drop the line (removal)
+        else:
+            out.append(line)
+    for key, val in remaining.items():
+        if val is not None:
+            out.append(f"{key}: {val}")
+    out.append("---")
+    out.extend(lines[close + 1:])
+    return "\n".join(out)
 
 
 def _find_note(vault_path: pathlib.Path, note_id: str) -> Optional[pathlib.Path]:

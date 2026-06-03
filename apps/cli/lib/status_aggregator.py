@@ -267,6 +267,7 @@ def analyze_project(project_md_path: Path, detailed: bool = False) -> dict:
         "path": str(project_md_path),
         "type": project_fm.get("type"),
         "status": project_fm.get("status"),
+        "delivered": str(project_fm.get("delivered", "")).strip().lower() in ("true", "1", "yes"),
         "priority": project_fm.get("priority"),
         "deadline": project_fm.get("deadline"),
         "stakeholders": project_fm.get("stakeholders", []),

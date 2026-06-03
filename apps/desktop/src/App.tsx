@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { listen } from "@tauri-apps/api/event";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
 import { useDeepLink } from "./hooks/useDeepLink";
@@ -22,6 +23,7 @@ import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { OpenVaultButton } from "./components/OpenVaultButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
+import { HowToModal } from "./components/HowToModal";
 import { api } from "./api/client";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
@@ -90,7 +92,24 @@ export default function App() {
   }, [home.data, home.loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [notifOpen, setNotifOpen] = useState(false);
+  const [howToOpen, setHowToOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+
+  // The tray "How to use Squirrel" item shows the window and emits this
+  // event; open the overlay in response. Mirrors HandshakeBanner's listen
+  // pattern so the guide appears even if the tray fired before mount.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    listen("show-how-to", () => setHowToOpen(true)).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, []);
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
   const [focusModalSlot, setFocusModalSlot] = useState<"today" | "week" | null>(null);
 
@@ -151,6 +170,29 @@ export default function App() {
         <div className="flex items-center gap-1">
           <button
             type="button"
+            onClick={() => setHowToOpen(true)}
+            aria-label="How to use Squirrel"
+            title="How to use Squirrel"
+            className="icon-btn"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </button>
+          <button
+            type="button"
             onClick={() => setNotifOpen((v) => !v)}
             aria-label="Notifications"
             className="icon-btn"
@@ -206,6 +248,8 @@ export default function App() {
           <CloseWindowButton />
         </div>
       </footer>
+
+      <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
 
       <NotificationCenter
         notifications={notifications}

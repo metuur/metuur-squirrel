@@ -21,7 +21,7 @@
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::tray_alerts::{Alert, ReminderAlert};
@@ -40,6 +40,9 @@ const OBSIDIAN_VAULT: &str = "vault-tdah";
 pub mod ids {
     pub const OPEN: &str = "open";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
+    /// Always-visible help item. Opens the dashboard and emits `show-how-to`
+    /// so the React How-to overlay renders the quick-start guide.
+    pub const HOW_TO: &str = "how_to";
     pub const OPEN_OBSIDIAN: &str = "open_obsidian";
     pub const RESTART_SERVICE: &str = "restart_service";
     pub const QUIT: &str = "quit";
@@ -102,6 +105,8 @@ fn build_menu<R: Runtime>(
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
     let open_obsidian_item =
         MenuItem::with_id(app, ids::OPEN_OBSIDIAN, "Open Obsidian Vault", true, None::<&str>)?;
+    let how_to_item =
+        MenuItem::with_id(app, ids::HOW_TO, "How to use Squirrel", true, None::<&str>)?;
     let restart_service_item =
         MenuItem::with_id(app, ids::RESTART_SERVICE, "Restart Service", true, None::<&str>)?;
     let sep_top = PredefinedMenuItem::separator(app)?;
@@ -223,6 +228,7 @@ fn build_menu<R: Runtime>(
     items.push(&sep_bot);
     items.push(&open_web_ui_item);
     items.push(&open_obsidian_item);
+    items.push(&how_to_item);
     if let Some(ref w) = why_item {
         items.push(w);
     }
@@ -259,6 +265,14 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     app.exit(0);
                 }
                 ids::VIEW_NOTIFICATIONS => show_main_window(app),
+                ids::HOW_TO => {
+                    // Open the dashboard, then emit so the React How-to overlay
+                    // renders even if its listener mounted after this click.
+                    show_main_window(app);
+                    if let Err(e) = app.emit("show-how-to", ()) {
+                        tracing::warn!(error = %e, "tray: failed to emit show-how-to");
+                    }
+                }
                 ids::WHY => {
                     // R-6.1: open the dashboard, then re-emit the refusal cause
                     // so the banner renders even if the React listener wasn't

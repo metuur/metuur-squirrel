@@ -1,11 +1,12 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent, type DragEvent } from 'react';
 import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick, type EntityKind } from '@/api/client';
 import { fromNow } from '@/lib/utils';
 import { PromptPanel } from '@/components/PromptPanel';
 import { RemindersWidget } from '@/components/RemindersWidget';
 import { FocusPickerModal } from '@/components/FocusPickerModal';
+import { Modal } from '@/components/Modal';
 
 type Ctx = { viewMode: 'List' | 'Board' };
 
@@ -102,7 +103,7 @@ export default function HomePage() {
       <Header parakeet={data.parakeet} focus={data.focus} manualFocus={data.manual_focus} projects={data.projects} onRefresh={mutate} />
       <RemindersWidget />
       {viewMode === 'Board' ? (
-        <BoardView projects={data.projects} pressing={data.pressing} />
+        <BoardView projects={data.projects} pressing={data.pressing} onChanged={mutate} />
       ) : (
         <ListView projects={data.projects} pressing={data.pressing} />
       )}
@@ -323,7 +324,57 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
   );
 }
 
-function BoardView({ projects, pressing }: { projects: ProjectListItem[]; pressing: PressingItem[] }) {
+// Board columns a project card can be dragged into. PRESSING is a separate
+// computed feed (not project-backed), so it is never a drop target.
+type DropCol = 'thisWeek' | 'active' | 'later' | 'done';
+const COL_LABELS: Record<string, string> = {
+  pressing: 'PRESSING',
+  thisWeek: 'THIS WEEK',
+  active: 'ACTIVE',
+  later: 'LATER',
+  done: 'DELIVERED',
+};
+const DROPPABLE: Record<string, boolean> = { thisWeek: true, active: true, later: true, done: true };
+
+/** Local-time YYYY-MM-DD for `today + days`. */
+function addDaysISO(days: number): string {
+  const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + days);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${dd}`;
+}
+
+/** The frontmatter change a drop into `col` should persist. Time-based lanes
+ *  rewrite the deadline (and clear `delivered`); DELIVERED sets the flag. */
+function changeForColumn(col: DropCol): { deadline?: string | null; delivered?: boolean } {
+  switch (col) {
+    case 'thisWeek': return { deadline: addDaysISO(5), delivered: false };
+    case 'active':   return { deadline: addDaysISO(20), delivered: false };
+    case 'later':    return { deadline: addDaysISO(60), delivered: false };
+    case 'done':     return { delivered: true };
+  }
+}
+
+type PendingMove = { slug: string; title: string; from: string; to: DropCol };
+
+function BoardView({ projects, pressing, onChanged }: {
+  projects: ProjectListItem[];
+  pressing: PressingItem[];
+  onChanged: () => void;
+}) {
+  const [drag, setDrag] = useState<{ slug: string; title: string; from: string } | null>(null);
+  const [overCol, setOverCol] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingMove | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Auto-dismiss the "can't move here" toast.
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
+
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const cols = {
     pressing: [] as Array<{ kind: 'pressing'; item: PressingItem }>,
@@ -332,10 +383,11 @@ function BoardView({ projects, pressing }: { projects: ProjectListItem[]; pressi
     later: [] as ProjectListItem[],
     done: [] as ProjectListItem[],
   };
-  pressing.forEach((p) => cols.pressing.push({ kind: 'pressing', item: p }));
+  // PRESSING shows at most 3 items; the other lanes are unbounded.
+  pressing.slice(0, 3).forEach((p) => cols.pressing.push({ kind: 'pressing', item: p }));
   for (const p of projects) {
     const pct = p.percent_done ?? 0;
-    if (pct >= 100) { cols.done.push(p); continue; }
+    if (pct >= 100 || p.delivered) { cols.done.push(p); continue; }
     if (p.deadline) {
       const dl = new Date(p.deadline);
       const diffDays = (dl.getTime() - today.getTime()) / 86400000;
@@ -354,31 +406,150 @@ function BoardView({ projects, pressing }: { projects: ProjectListItem[]; pressi
     { key: 'done', label: 'DELIVERED', accent: 'border-ok', count: cols.done.length },
   ] as const;
 
+  function startDrag(e: DragEvent<HTMLAnchorElement>, p: ProjectListItem, from: string) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', p.slug);
+    setDrag({ slug: p.slug, title: p.title, from });
+  }
+
+  // A valid persisting move: a real status lane, not the source column.
+  function canDropHere(colKey: string): boolean {
+    return !!drag && !!DROPPABLE[colKey] && drag.from !== colKey;
+  }
+
+  // Whether a drop event should even fire over this column. PRESSING accepts
+  // the event only so we can reject it with an explanatory message.
+  function acceptsDrop(colKey: string): boolean {
+    return !!drag && drag.from !== colKey && (!!DROPPABLE[colKey] || colKey === 'pressing');
+  }
+
+  function onDrop(colKey: string) {
+    if (drag) {
+      if (colKey === 'pressing') {
+        setNotice('PRESSING is automatic — items surface here by deadline and it holds at most 3. You can’t move cards into it.');
+      } else if (canDropHere(colKey)) {
+        setPending({ slug: drag.slug, title: drag.title, from: drag.from, to: colKey as DropCol });
+      }
+    }
+    setDrag(null);
+    setOverCol(null);
+  }
+
+  async function confirmMove() {
+    if (!pending) return;
+    setSaving(true);
+    try {
+      await api.projectSetStatus(pending.slug, changeForColumn(pending.to));
+      setPending(null);
+      onChanged();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      window.alert('Could not move the project: ' + msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const card = (p: ProjectListItem, colKey: string) => (
+    <ProjectCard
+      key={p.slug}
+      p={p}
+      draggable
+      isDragging={drag?.slug === p.slug}
+      onDragStart={(e) => startDrag(e, p, colKey)}
+      onDragEnd={() => { setDrag(null); setOverCol(null); }}
+    />
+  );
+
   return (
-    <div className="flex h-full overflow-x-auto gap-6 pb-6 select-none">
-      {columns.map((col) => (
-        <div key={col.key} className="flex-shrink-0 w-72 flex flex-col">
-          <div className={`flex items-center justify-between mb-4 border-b-2 ${col.accent} pb-2 px-1`}>
-            <h3 className="eyebrow text-ink-2">{col.label}</h3>
-            <span className="chip chip-count">{col.count}</span>
-          </div>
-          <div className="flex-1 space-y-3 min-h-[200px] px-1">
-            {col.key === 'pressing' && cols.pressing.map(({ item }) => (
-              <PressingCard key={item.id} item={item} />
-            ))}
-            {col.key === 'thisWeek' && cols.thisWeek.map((p) => <ProjectCard key={p.slug} p={p} />)}
-            {col.key === 'active' && cols.active.map((p) => <ProjectCard key={p.slug} p={p} />)}
-            {col.key === 'later' && cols.later.map((p) => <ProjectCard key={p.slug} p={p} />)}
-            {col.key === 'done' && cols.done.map((p) => <ProjectCard key={p.slug} p={p} />)}
-            {col.count === 0 && (
-              <div className="h-24 border-2 border-dashed border-hairline rounded-lg flex items-center justify-center">
-                <span className="text-[10px] text-ink-4 uppercase font-bold tracking-widest">Empty</span>
-              </div>
-            )}
-          </div>
+    <>
+      {notice && (
+        <div
+          role="status"
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 panel px-4 py-2.5 shadow-lg flex items-center gap-2 border-l-4 border-critical max-w-md"
+        >
+          <span className="material-icons text-sm text-critical">block</span>
+          <span className="text-sm text-ink-2">{notice}</span>
         </div>
-      ))}
-    </div>
+      )}
+      <div className="flex h-full overflow-x-auto gap-6 pb-6 select-none">
+        {columns.map((col) => {
+          const isTarget = canDropHere(col.key) && overCol === col.key;
+          return (
+            <div key={col.key} className="flex-shrink-0 w-72 flex flex-col">
+              <div className={`flex items-center justify-between mb-4 border-b-2 ${col.accent} pb-2 px-1`}>
+                <h3 className="eyebrow text-ink-2">{col.label}</h3>
+                <span className="chip chip-count">{col.count}</span>
+              </div>
+              <div
+                className={`flex-1 space-y-3 min-h-[200px] px-1 rounded-lg transition-colors ${
+                  isTarget ? 'ring-2 ring-accent ring-inset bg-focus-tint/30' : ''
+                }`}
+                onDragOver={(e) => { if (acceptsDrop(col.key)) { e.preventDefault(); if (canDropHere(col.key)) setOverCol(col.key); } }}
+                onDragLeave={() => setOverCol((c) => (c === col.key ? null : c))}
+                onDrop={(e) => { e.preventDefault(); onDrop(col.key); }}
+              >
+                {col.key === 'pressing' && cols.pressing.map(({ item }) => (
+                  <PressingCard key={item.id} item={item} />
+                ))}
+                {col.key === 'thisWeek' && cols.thisWeek.map((p) => card(p, 'thisWeek'))}
+                {col.key === 'active' && cols.active.map((p) => card(p, 'active'))}
+                {col.key === 'later' && cols.later.map((p) => card(p, 'later'))}
+                {col.key === 'done' && cols.done.map((p) => card(p, 'done'))}
+                {col.count === 0 && (
+                  <div className="h-24 border-2 border-dashed border-hairline rounded-lg flex items-center justify-center">
+                    <span className="text-[10px] text-ink-4 uppercase font-bold tracking-widest">Empty</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Modal
+        open={!!pending}
+        onClose={() => { if (!saving) setPending(null); }}
+        title="Confirm status change"
+        icon="swap_horiz"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost px-4 py-1.5 text-sm font-semibold"
+              disabled={saving}
+              onClick={() => setPending(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary px-4 py-1.5 text-sm font-semibold"
+              disabled={saving}
+              onClick={confirmMove}
+            >
+              {saving ? 'Saving…' : 'Confirm'}
+            </button>
+          </>
+        }
+      >
+        {pending && (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-2">
+              Move <span className="font-bold text-ink">{pending.title}</span> from{' '}
+              <span className="font-semibold">{COL_LABELS[pending.from] ?? pending.from}</span> to{' '}
+              <span className="font-semibold">{COL_LABELS[pending.to]}</span>?
+            </p>
+            <p className="text-xs text-ink-3">
+              {pending.to === 'done'
+                ? 'This marks the project as delivered.'
+                : `This sets the project deadline to ${changeForColumn(pending.to).deadline}.`}
+            </p>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
 
@@ -414,13 +585,24 @@ function PressingCard({ item }: { item: PressingItem }) {
   );
 }
 
-function ProjectCard({ p }: { p: ProjectListItem }) {
+function ProjectCard({ p, draggable, isDragging, onDragStart, onDragEnd }: {
+  p: ProjectListItem;
+  draggable?: boolean;
+  isDragging?: boolean;
+  onDragStart?: (e: DragEvent<HTMLAnchorElement>) => void;
+  onDragEnd?: () => void;
+}) {
   const pct = p.percent_done ?? 0;
   const urgency = classifyDeadline(p.deadline);
   return (
     <Link
       to={`/projects/${p.slug}`}
-      className="block panel p-4 hover:shadow-md transition-all group"
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={`block panel p-4 hover:shadow-md transition-all group ${
+        draggable ? 'cursor-grab active:cursor-grabbing' : ''
+      } ${isDragging ? 'opacity-40' : ''}`}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="text-[10px] font-mono text-ink-4 truncate">{p.slug}</div>

@@ -26,10 +26,6 @@ interface RefusalPayload {
   cause: RefusalCause;
 }
 
-function isTauriContext(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
-
 // Inline shell-command chip — copy-pasteable, monospace.
 function Cmd({ children }: { children: string }) {
   return (
