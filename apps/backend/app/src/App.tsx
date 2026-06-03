@@ -11,6 +11,7 @@ const ProjectEditPage = lazy(() => import('@/pages/ProjectEditPage'));
 const NotePage = lazy(() => import('@/pages/NotePage'));
 const NoteEditPage = lazy(() => import('@/pages/NoteEditPage'));
 const DeadlinesPage = lazy(() => import('@/pages/DeadlinesPage'));
+const JournalPage = lazy(() => import('@/pages/JournalPage'));
 const HistoryPage = lazy(() => import('@/pages/HistoryPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/notes/:id" element={<NotePage />} />
               <Route path="/notes/:id/edit" element={<NoteEditPage />} />
               <Route path="/deadlines" element={<DeadlinesPage />} />
+              <Route path="/journal" element={<JournalPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />

@@ -18,6 +18,7 @@ import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
 import { CaptureModal } from "./components/CaptureModal";
+import { JournalModal } from "./components/JournalModal";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { OpenVaultButton } from "./components/OpenVaultButton";
@@ -94,6 +95,7 @@ export default function App() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [howToOpen, setHowToOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
 
   // The tray "How to use Squirrel" item shows the window and emits this
   // event; open the overlay in response. Mirrors HandshakeBanner's listen
@@ -102,6 +104,20 @@ export default function App() {
     let unlisten: (() => void) | null = null;
     let cancelled = false;
     listen("show-how-to", () => setHowToOpen(true)).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // Tray "Mind Journal — check in" → open the in-app journal modal (R-4.4).
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    listen("show-journal", () => setJournalOpen(true)).then((fn) => {
       if (cancelled) fn();
       else unlisten = fn;
     });
@@ -193,6 +209,42 @@ export default function App() {
           </button>
           <button
             type="button"
+            onClick={() => setJournalOpen(true)}
+            aria-label="Mind Journal"
+            title="Mind Journal"
+            className="icon-btn"
+          >
+            {/* brain icon — mirrors public/brain.svg (lucide brain) */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 18V5" />
+              <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4" />
+              <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5" />
+              <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77" />
+              <path d="M18 18a4 4 0 0 0 2-7.464" />
+              <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517" />
+              <path d="M6 18a4 4 0 0 1-2-7.464" />
+              <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77" />
+            </svg>
+            {home.data?.journal?.due && (
+              <span
+                className="notif-badge"
+                style={{ top: -2, right: -2, minWidth: 8, height: 8, padding: 0 }}
+                aria-label="Check-in due"
+              />
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setNotifOpen((v) => !v)}
             aria-label="Notifications"
             className="icon-btn"
@@ -268,6 +320,12 @@ export default function App() {
         projects={projects}
         focusSlug={focusSlug}
         initialSlug={captureInitialSlug}
+      />
+
+      <JournalModal
+        open={journalOpen}
+        onClose={() => setJournalOpen(false)}
+        onLogged={() => setHomeBump((n) => n + 1)}
       />
 
       {focusModalSlot && (

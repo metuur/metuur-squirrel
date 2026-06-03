@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, type SearchHit } from '@/api/client';
 import { useMe } from '@/hooks/useMe';
+import { useFetch } from '@/hooks/useFetch';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useCapture } from '@/components/CaptureModal';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 export type ViewMode = 'List' | 'Board';
 
@@ -18,6 +21,11 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
   const navigate = useNavigate();
   const location = useLocation();
   const { open: openCapture } = useCapture();
+  // Mind Journal check-in state — drives the brain button's "due" dot.
+  const { data: journal } = useFetch('journal-due', () => api.journal());
+  const journalDue = !!journal?.exists && !!journal.due;
+  const notifications = useNotifications();
+  const [notifOpen, setNotifOpen] = useState(false);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -156,9 +164,81 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               Add a note
             </button>
 
+            <Link
+              to="/journal"
+              className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+              title="Mind Journal"
+              aria-label="Mind Journal"
+            >
+              {/* brain icon — mirrors public/brain.svg (lucide brain) */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 18V5" />
+                <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4" />
+                <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5" />
+                <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77" />
+                <path d="M18 18a4 4 0 0 0 2-7.464" />
+                <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517" />
+                <path d="M6 18a4 4 0 0 1-2-7.464" />
+                <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77" />
+              </svg>
+              {journalDue && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-warning ring-2 ring-surface"
+                  aria-label="Check-in due"
+                />
+              )}
+            </Link>
+
+            <div className="relative">
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {notifications.unreadCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[1rem] h-4 px-1 flex items-center justify-center rounded-full bg-warning text-surface text-[10px] font-bold tabular ring-2 ring-surface"
+                    aria-label={`${notifications.unreadCount} unread notifications`}
+                  >
+                    {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationCenter
+                notifications={notifications}
+                open={notifOpen}
+                onClose={() => setNotifOpen(false)}
+              />
+            </div>
+
             <button
               onClick={toggleDarkMode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
               title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               <span className="material-icons text-xl">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>

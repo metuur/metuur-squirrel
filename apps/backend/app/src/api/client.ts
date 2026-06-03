@@ -251,6 +251,45 @@ export interface RemindersPayload {
   approaching: ReminderItem[];
   active: ReminderItem[];
 }
+export type Mood = 'happy' | 'neutral' | 'sad';
+export interface JournalEntry {
+  timestamp: string;
+  mood: Mood;
+  mind: string;
+  doing: string;
+}
+export interface JournalPayload {
+  exists: boolean;
+  task?: { id: string; title: string; path: string };
+  entries?: JournalEntry[];
+  due?: boolean;
+  next_due?: string | null;
+  interval_hours?: number;
+  waking?: { start: string; end: string };
+}
+export interface JournalConfig {
+  interval_hours?: number;
+  waking_start?: string;
+  waking_end?: string;
+}
+
+// `GET /api/notifications` — shape mirrored from apps/backend/server.py::api_notifications
+export interface NotificationItem {
+  id: number;
+  type: string;
+  item_id: string;
+  title: string;
+  body: string;
+  item_url: string | null;
+  fired_at: string;
+  read_at: string | null;
+  dismissed_at: string | null;
+}
+export interface NotificationsPayload {
+  items: NotificationItem[];
+  unread_count: number;
+  total_count: number;
+}
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
@@ -295,6 +334,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ id }),
     }),
+  journal: () => call<JournalPayload>('/journal'),
+  journalEntry: (body: { mind: string; doing: string; mood: Mood }) =>
+    call<{ success: true }>('/journal/entry', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  journalConfig: (body: JournalConfig) =>
+    call<{ success: true }>('/journal/config', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  notifications: (params: { limit?: number; unread?: boolean } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params.unread) qs.set('unread', 'true');
+    const query = qs.toString();
+    return call<NotificationsPayload>(`/notifications${query ? `?${query}` : ''}`);
+  },
+  notificationsMarkAllRead: () =>
+    call<{ updated: number }>('/notifications/read-all', { method: 'POST' }),
+  notificationRead: (id: number) =>
+    call<{ success: true }>(`/notification/${id}/read`, { method: 'PATCH' }),
+  notificationDismiss: (id: number) =>
+    call<{ success: true }>(`/notification/${id}/dismiss`, { method: 'PATCH' }),
   reminders: () => call<RemindersPayload>('/reminders'),
   reminderDismiss: (id: string) =>
     call<void>(`/reminder/${encodeURIComponent(id)}/dismiss`, { method: 'PATCH' }),

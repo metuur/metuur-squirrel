@@ -416,6 +416,19 @@ struct RemindersResponse {
 #[derive(Debug, Deserialize)]
 struct HomeResponse {
     pressing: Vec<Alert>,
+    /// Recurring Mind Journal check-in state (R-3.10). Absent on older
+    /// backends → defaults to not-due.
+    #[serde(default)]
+    journal: JournalState,
+}
+
+/// Mirror of /api/home `journal` block. `due` already reflects the waking-hours
+/// window server-side (R-2.6), so the tray never needs its own quiet-hours
+/// logic to satisfy R-4.3.
+#[derive(Debug, Clone, Default, Deserialize)]
+struct JournalState {
+    #[serde(default)]
+    due: bool,
 }
 
 /// UTC date as YYYY-MM-DD without adding a dependency on chrono.
@@ -454,7 +467,7 @@ async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, 
     Ok(resp)
 }
 
-async fn fetch_pressing(client: &reqwest::Client) -> Result<Vec<Alert>, reqwest::Error> {
+async fn fetch_pressing(client: &reqwest::Client) -> Result<(Vec<Alert>, bool), reqwest::Error> {
     let resp = client
         .get(BACKEND_HOME)
         .timeout(REQUEST_TIMEOUT)
@@ -463,7 +476,9 @@ async fn fetch_pressing(client: &reqwest::Client) -> Result<Vec<Alert>, reqwest:
         .error_for_status()?
         .json::<HomeResponse>()
         .await?;
-    Ok(resp.pressing.into_iter().take(MAX_ALERTS).collect())
+    let journal_due = resp.journal.due;
+    let alerts = resp.pressing.into_iter().take(MAX_ALERTS).collect();
+    Ok((alerts, journal_due))
 }
 
 // R-3.1–R-3.6: Apply all guards and return at most 3 qualifying candidates.
@@ -526,8 +541,12 @@ fn select_reminder_candidates<'a>(
 // R-1.1 + R-4.3: called every tick from `start_polling`. Sends at most 3 native banners
 // (pressing + reminder_active combined) when guards pass, then updates `last_check_at`.
 // R-4.4: reminder_approaching items are NOT passed here — tray only.
-fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminder_active: &[ReminderAlert]) {
+fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminder_active: &[ReminderAlert], journal_due: bool) {
     use tauri_plugin_notification::NotificationExt;
+
+    // Fixed item id for the recurring journal check-in. Reuses the per-item
+    // cooldown machinery (ITEM_COOLDOWN) so a single "due" window doesn't spam.
+    const JOURNAL_ITEM_ID: &str = "MIND-JOURNAL-CHECKIN";
 
     let state_ref = app.state::<Mutex<TauriNotificationState>>();
 
@@ -625,6 +644,49 @@ fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminde
             }
             Err(e) => {
                 tracing::warn!(error = %e, "reminder-notif-send-failed");
+            }
+        }
+    }
+
+    // Phase 3c: Mind Journal check-in (R-4.2). `journal_due` is already
+    // false outside the waking window (computed server-side), satisfying R-4.3.
+    // Same NOTIF_INTERVAL / ITEM_COOLDOWN / MAX_DIALOGS_PER_DAY guards.
+    if journal_due {
+        let fire = {
+            let state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
+            state.last_check_at.elapsed() >= NOTIF_INTERVAL
+                && state.dialogs_today < MAX_DIALOGS_PER_DAY
+                && state
+                    .last_notified
+                    .get(JOURNAL_ITEM_ID)
+                    .map_or(true, |t| t.elapsed() >= ITEM_COOLDOWN)
+        };
+        if fire {
+            let id = {
+                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
+                let id = state.next_id;
+                state.next_id += 1;
+                id
+            };
+            // Note: no web URL stored — journaling is done in-app via the
+            // brain button / tray "check in" item, never the browser.
+            match app
+                .notification()
+                .builder()
+                .id(id)
+                .title("🧠 squirrel: Mind Journal")
+                .body("What is your mind thinking right now? What are you doing right now?")
+                .show()
+            {
+                Ok(_) => {
+                    let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
+                    state
+                        .last_notified
+                        .insert(JOURNAL_ITEM_ID.to_string(), Instant::now());
+                    state.dialogs_today += 1;
+                    tracing::info!(notification_id = id, "journal-checkin-notif-sent");
+                }
+                Err(e) => tracing::warn!(error = %e, "journal-checkin-notif-send-failed"),
             }
         }
     }
@@ -774,7 +836,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             let settings = fetch_notif_settings(&client).await;
 
             match fetch_pressing(&client).await {
-                Ok(alerts) => {
+                Ok((alerts, journal_due)) => {
                     current_interval = POLL_INTERVAL;
                     let reminders = fetch_reminders(&client).await.unwrap_or_else(|_| RemindersResponse {
                         approaching: vec![],
@@ -832,7 +894,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                     // R-8.2: pass current unread count so the menu shows/hides
                     // "Notifications (N)" correctly after any new INSERTs above.
                     let current_unread = with_cached_conn(&app, &db_path, unread_count_on_conn).unwrap_or(0);
-                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, current_unread) {
+                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, current_unread, journal_due) {
                         tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
                     } else {
                         tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
@@ -840,7 +902,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
 
                     // R-3.1/R-3.2 (Story 3.1): OS popup guard — existing rate-limit guards apply inside
                     if settings.os_popups {
-                        check_notifications(&app, &alerts, &reminders.active);
+                        check_notifications(&app, &alerts, &reminders.active, journal_due);
                     }
                 }
                 Err(e) => {
@@ -852,7 +914,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         "tray-alerts: backend unreachable, clearing and backing off",
                     );
                     current_interval = next;
-                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], 0);
+                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], 0, false);
                 }
             }
 
@@ -907,6 +969,21 @@ mod tests {
     #[test]
     fn test_notification_sound_default_is_glass() {
         assert_eq!(NotificationSound::default(), NotificationSound::Glass);
+    }
+
+    // R-3.10 / R-4.1: /api/home journal block parses into HomeResponse.journal.
+    #[test]
+    fn test_home_response_parses_journal_due() {
+        let json = r#"{"pressing":[],"journal":{"due":true,"next_due":"2026-06-03T14:00:00-06:00"}}"#;
+        let resp: HomeResponse = serde_json::from_str(json).unwrap();
+        assert!(resp.journal.due);
+    }
+
+    // Older backend without a journal block → defaults to not-due (no panic).
+    #[test]
+    fn test_home_response_journal_defaults_when_absent() {
+        let resp: HomeResponse = serde_json::from_str(r#"{"pressing":[]}"#).unwrap();
+        assert!(!resp.journal.due);
     }
 
     #[test]

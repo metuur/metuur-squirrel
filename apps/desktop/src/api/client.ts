@@ -135,6 +135,24 @@ export interface HomePayload {
   projects: ProjectListItem[];
   manual_focus: ManualFocusPayload;
   parakeet: string;
+  journal?: { due: boolean; next_due: string | null };
+}
+
+export type Mood = "happy" | "neutral" | "sad";
+export interface JournalEntry {
+  timestamp: string;
+  mood: Mood;
+  mind: string;
+  doing: string;
+}
+export interface JournalPayload {
+  exists: boolean;
+  task?: { id: string; title: string; path: string };
+  entries?: JournalEntry[];
+  due?: boolean;
+  next_due?: string | null;
+  interval_hours?: number;
+  waking?: { start: string; end: string };
 }
 
 export interface ParakeetPayload {
@@ -191,6 +209,12 @@ export const api = {
   me: () => call<Me>("/api/me"),
   home: () => call<HomePayload>("/api/home"),
   parakeet: () => call<ParakeetPayload>("/api/parakeet"),
+  journal: () => call<JournalPayload>("/api/journal"),
+  journalEntry: (body: { mind: string; doing: string; mood: Mood }) =>
+    call<{ success: true }>("/api/journal/entry", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   noteCreate: (text: string, project_slug: string | null) =>
     call<CaptureResult>("/api/notes", {
       method: "POST",

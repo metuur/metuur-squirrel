@@ -357,6 +357,59 @@ function changeForColumn(col: DropCol): { deadline?: string | null; delivered?: 
 
 type PendingMove = { slug: string; title: string; from: string; to: DropCol };
 
+// Legend + ordering rationale shown by the board's "?" help button. The rows
+// mirror the lane rules in BoardView (deadline buckets) and the chosen order
+// (PRESSING leads as focus, then projects flow by stage toward DELIVERED).
+const BOARD_HELP_ROWS: { dot: string; label: string; rule: string }[] = [
+  { dot: 'bg-critical', label: 'PRESSING', rule: 'Needs attention now — a computed feed of your most urgent items (top 3). Always first so it stays the focus; you can’t drop cards here.' },
+  { dot: 'bg-hairline', label: 'LATER', rule: 'Deadline more than 30 days away — early stage.' },
+  { dot: 'bg-accent', label: 'ACTIVE', rule: 'Deadline within 8–30 days, or no deadline set — your default working lane.' },
+  { dot: 'bg-warning', label: 'THIS WEEK', rule: 'Deadline within 7 days — about to close.' },
+  { dot: 'bg-ok', label: 'DELIVERED', rule: '100% complete or marked delivered — done.' },
+];
+
+function BoardHelp({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      {/* Backdrop — closes on outside click */}
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="panel absolute right-0 top-full mt-2 w-80 z-50 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="eyebrow text-ink-2">How the columns work</span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-ink-4 hover:text-ink-2 text-base leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        <p className="text-xs text-ink-3 leading-snug">
+          Columns read left → right toward <strong className="text-ink-2">done</strong>: PRESSING
+          leads as your focus, then projects flow by stage so the closest-to-finish sits next to
+          DELIVERED.
+        </p>
+        <ul className="space-y-2">
+          {BOARD_HELP_ROWS.map((r) => (
+            <li key={r.label} className="flex items-start gap-2">
+              <span className={`mt-1 shrink-0 h-2 w-2 rounded-full ${r.dot}`} aria-hidden />
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold tracking-wide text-ink">{r.label}</span>
+                <p className="text-[11px] text-ink-3 leading-snug">{r.rule}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="text-[11px] text-ink-4 leading-snug pt-1 border-t border-hairline-2">
+          Drag a project card between lanes to change its deadline; PRESSING is computed and not a
+          drop target.
+        </p>
+      </div>
+    </>
+  );
+}
+
 function BoardView({ projects, pressing, onChanged }: {
   projects: ProjectListItem[];
   pressing: PressingItem[];
@@ -367,6 +420,7 @@ function BoardView({ projects, pressing, onChanged }: {
   const [pending, setPending] = useState<PendingMove | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Auto-dismiss the "can't move here" toast.
   useEffect(() => {
@@ -398,11 +452,15 @@ function BoardView({ projects, pressing, onChanged }: {
     cols.active.push(p);
   }
 
+  // Order: PRESSING leads (initial focus / alarm lane), then the pipeline flows
+  // left→right toward "done" by stage — LATER (early) → ACTIVE → THIS WEEK
+  // (about to close) → DELIVERED. This keeps the temporal read coherent so the
+  // far-future lane no longer sits next to the completed one.
   const columns = [
     { key: 'pressing', label: 'PRESSING', accent: 'border-critical', count: cols.pressing.length },
-    { key: 'thisWeek', label: 'THIS WEEK', accent: 'border-warning', count: cols.thisWeek.length },
-    { key: 'active', label: 'ACTIVE', accent: 'border-accent', count: cols.active.length },
     { key: 'later', label: 'LATER', accent: 'border-hairline', count: cols.later.length },
+    { key: 'active', label: 'ACTIVE', accent: 'border-accent', count: cols.active.length },
+    { key: 'thisWeek', label: 'THIS WEEK', accent: 'border-warning', count: cols.thisWeek.length },
     { key: 'done', label: 'DELIVERED', accent: 'border-ok', count: cols.done.length },
   ] as const;
 
@@ -472,6 +530,19 @@ function BoardView({ projects, pressing, onChanged }: {
           <span className="text-sm text-ink-2">{notice}</span>
         </div>
       )}
+      <div className="relative flex items-center justify-end mb-2 px-1">
+        <button
+          type="button"
+          onClick={() => setShowHelp((v) => !v)}
+          aria-label="How the board columns work"
+          title="How the board columns work"
+          aria-expanded={showHelp}
+          className="icon-btn"
+        >
+          <span className="material-icons text-base">help_outline</span>
+        </button>
+        {showHelp && <BoardHelp onClose={() => setShowHelp(false)} />}
+      </div>
       <div className="flex h-full overflow-x-auto gap-6 pb-6 select-none">
         {columns.map((col) => {
           const isTarget = canDropHere(col.key) && overCol === col.key;

@@ -52,6 +52,9 @@ pub mod ids {
     pub const RADAR_HEADER: &str = "radar_header";
     pub const REMINDER_HEADER: &str = "reminder_header";
     pub const REMINDER_PREFIX: &str = "reminder:";
+    /// Mind Journal check-in item — shown only while the recurring check-in is
+    /// `due` (R-4.1). Opens the journal entry form (R-4.4).
+    pub const JOURNAL_CHECKIN: &str = "journal_checkin";
     pub const VIEW_NOTIFICATIONS: &str = "view_notifications";
     /// Shown only when the backend_supervisor refused adoption (Runtime Trust
     /// Handshake, R-6.1). Opens the dashboard and re-emits the refusal cause so
@@ -99,6 +102,7 @@ fn build_menu<R: Runtime>(
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
     unread_count: u32,
+    journal_due: bool,
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
     let open_web_ui_item =
@@ -208,6 +212,25 @@ fn build_menu<R: Runtime>(
         }
     }
 
+    // "Mind Journal — check in" item — visible only while the recurring
+    // check-in is due (R-4.1). Opens the journal entry form (R-4.4).
+    let sep_journal = PredefinedMenuItem::separator(app)?;
+    let journal_item_opt: Option<MenuItem<R>> = if journal_due {
+        Some(MenuItem::with_id(
+            app,
+            ids::JOURNAL_CHECKIN,
+            "🧠 Mind Journal — check in",
+            true,
+            None::<&str>,
+        )?)
+    } else {
+        None
+    };
+    if let Some(ref ji) = journal_item_opt {
+        items.push(&sep_journal);
+        items.push(ji);
+    }
+
     // "Notifications (N)" item — visible only when unread_count > 0 (R-8.1, R-8.2, R-8.3)
     let notif_item_opt: Option<MenuItem<R>> = if unread_count > 0 {
         Some(MenuItem::with_id(
@@ -239,7 +262,7 @@ fn build_menu<R: Runtime>(
 }
 
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let menu = build_menu(app, &[], &[], &[], 0)?;
+    let menu = build_menu(app, &[], &[], &[], 0, false)?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_image(IconState::Normal)?)
@@ -265,6 +288,15 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     app.exit(0);
                 }
                 ids::VIEW_NOTIFICATIONS => show_main_window(app),
+                ids::JOURNAL_CHECKIN => {
+                    // R-4.4: open the journal entry form IN-APP — never the web
+                    // UI. Show the window and emit so the React popup opens its
+                    // JournalModal (mirrors the show-how-to pattern).
+                    show_main_window(app);
+                    if let Err(e) = app.emit("show-journal", ()) {
+                        tracing::warn!(error = %e, "tray: failed to emit show-journal");
+                    }
+                }
                 ids::HOW_TO => {
                     // Open the dashboard, then emit so the React How-to overlay
                     // renders even if its listener mounted after this click.
@@ -316,8 +348,9 @@ pub fn update_alerts<R: Runtime>(
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
     unread_count: u32,
+    journal_due: bool,
 ) -> tauri::Result<()> {
-    let menu = build_menu(app, alerts, approaching, active, unread_count)?;
+    let menu = build_menu(app, alerts, approaching, active, unread_count, journal_due)?;
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         tray.set_menu(Some(menu))?;
     }
@@ -464,6 +497,14 @@ mod tests {
     #[test]
     fn view_notifications_id_constant() {
         assert_eq!(ids::VIEW_NOTIFICATIONS, "view_notifications");
+    }
+
+    // R-4.4: the journal check-in item opens the journal entry form.
+    #[test]
+    fn journal_checkin_opens_journal_form_url() {
+        assert_eq!(ids::JOURNAL_CHECKIN, "journal_checkin");
+        let url = format!("{}/journal", BACKEND_ORIGIN);
+        assert_eq!(url, "http://127.0.0.1:3939/journal");
     }
 
     #[test]

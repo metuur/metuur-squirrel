@@ -29,34 +29,47 @@ html, body, #root { height: 100%; }
 .sq-pop      { animation: sq-pop 160ms cubic-bezier(0.22, 1, 0.36, 1); }
 .sq-slide-in { animation: sq-slide-in-right 200ms cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* Web-only softening of the design-system button recipes.
-   The shared .btn/.btn-primary are tuned for the Tauri popup's editorial
-   "tactile" feel (1.5px ink border + 2px slate offset shadow). On the
-   wider web SPA that reads as too heavy, so soften here. */
+/* Tactile button recipe for the web SPA — matches the focus-row Check-in/
+   Check-out feel (1px ink border + 2px offset shadow + press-collapse) so
+   every standard button reads as a deliberate physical action. Mirrors the
+   .btn-tactile rules below. */
 .btn {
   border-width: 1px;
-  border-color: var(--color-hairline);
+  border-color: var(--color-ink-3);
   color: var(--color-ink-2);
-  box-shadow: 0 1px 2px rgba(14, 17, 22, 0.04);
+  box-shadow: 2px 2px 0 rgba(92, 100, 112, 0.30);
+  transition: background 120ms ease, transform 70ms ease, box-shadow 70ms ease;
 }
 .btn:hover {
-  border-color: var(--color-ink-4);
+  border-color: var(--color-ink-3);
   background: var(--color-surface-2);
 }
 .btn:active {
-  transform: none;
-  box-shadow: 0 1px 1px rgba(14, 17, 22, 0.06);
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 rgba(92, 100, 112, 0.30);
 }
 .btn:focus-visible {
-  box-shadow: 0 1px 2px rgba(14, 17, 22, 0.04), 0 0 0 3px rgba(31, 58, 138, 0.22);
+  box-shadow: 2px 2px 0 rgba(92, 100, 112, 0.30), 0 0 0 3px rgba(31, 58, 138, 0.25);
+}
+.btn:focus-visible:active {
+  box-shadow: 0 0 0 3px rgba(31, 58, 138, 0.25);
+}
+.btn:disabled {
+  transform: none;
+  box-shadow: 2px 2px 0 rgba(92, 100, 112, 0.30);
 }
 .btn-primary {
-  border-color: var(--color-accent);
+  border-color: rgba(31, 58, 138, 0.55);
   color: var(--color-accent);
-  box-shadow: 0 1px 2px rgba(31, 58, 138, 0.10);
+  box-shadow: 2px 2px 0 rgba(31, 58, 138, 0.20);
 }
+.btn-primary:active     { box-shadow: 0 0 0 0 rgba(31, 58, 138, 0.20); }
+.btn-primary:disabled   { box-shadow: 2px 2px 0 rgba(31, 58, 138, 0.20); }
 .btn-primary:focus-visible {
-  box-shadow: 0 1px 2px rgba(31, 58, 138, 0.10), 0 0 0 3px rgba(31, 58, 138, 0.20);
+  box-shadow: 2px 2px 0 rgba(31, 58, 138, 0.20), 0 0 0 3px rgba(31, 58, 138, 0.25);
+}
+.btn-primary:focus-visible:active {
+  box-shadow: 0 0 0 3px rgba(31, 58, 138, 0.25);
 }
 
 /* Tactile button — opt-in escape hatch that restores the original desktop

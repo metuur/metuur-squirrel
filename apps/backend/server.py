@@ -287,6 +287,21 @@ def _ensure_scratch_pad_once(vault_path: pathlib.Path) -> None:
         pass  # Non-fatal
 
 
+_mind_journal_ensured: set = set()  # vault paths already checked this process
+
+
+def _ensure_mind_journal_once(vault_path: pathlib.Path, vault_name: str) -> None:
+    key = str(vault_path)
+    if key in _mind_journal_ensured:
+        return
+    _mind_journal_ensured.add(key)
+    try:
+        from mind_journal import ensure_mind_journal
+        ensure_mind_journal(vault_path, vault_name)
+    except Exception:
+        pass  # Non-fatal
+
+
 # ─── Route table ─────────────────────────────────────────────────────────────
 
 
@@ -324,6 +339,9 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/notes/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),
                                                                        "api_note_save"),
     ("POST", re.compile(r"^/api/notes$"),                             "api_note_create"),
+    ("GET",   re.compile(r"^/api/journal$"),                          "api_journal_get"),
+    ("POST",  re.compile(r"^/api/journal/entry$"),                    "api_journal_entry"),
+    ("PATCH", re.compile(r"^/api/journal/config$"),                   "api_journal_config"),
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
@@ -566,6 +584,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def api_me(self) -> None:
         ctx, cookies = self._context()
         _ensure_scratch_pad_once(ctx.active.path)
+        _ensure_mind_journal_once(ctx.active.path, ctx.active.name)
         payload = {
             "active_workspace": _vault_to_dict(ctx.active),
             "workspaces": [_vault_to_dict(v) for v in ctx.all],
@@ -716,6 +735,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception:
             rem = {"approaching": [], "active": []}
 
+        # R-3.10 — recurring Mind Journal check-in state (due / next_due).
+        journal_block = {"due": False, "next_due": None}
+        try:
+            from mind_journal import read_journal
+            j = read_journal(ctx.active.path)
+            if j.get("exists"):
+                journal_block = {"due": j["due"], "next_due": j["next_due"]}
+        except Exception:
+            pass
+
         self._send_json({
             "focus": focus_payload,
             "pressing": pressing[:5],
@@ -730,6 +759,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "approaching_count": len(rem.get("approaching", [])),
                 "active_count": len(rem.get("active", [])),
             },
+            "journal": journal_block,
         })
 
     # ── /api/focus — manual picks ───────────────────────────────────────────
@@ -1259,6 +1289,74 @@ class Handler(http.server.BaseHTTPRequestHandler):
         tmp = target.with_suffix(target.suffix + ".tmp")
         tmp.write_text(str(body), encoding="utf-8")
         os.replace(tmp, target)
+
+    # ── mind journal ────────────────────────────────────────────────────────
+
+    def api_journal_get(self) -> None:
+        ctx, _ = self._context()
+        _ensure_mind_journal_once(ctx.active.path, ctx.active.name)
+        from mind_journal import read_journal
+        try:
+            data = read_journal(ctx.active.path)
+        except Exception as exc:
+            _log_exception(exc)
+            data = {"exists": False}
+        self._send_json(data)
+
+    def api_journal_entry(self) -> None:
+        ctx, _ = self._context()
+        from mind_journal import VALID_MOODS, append_entry, find_journal
+        payload = self._read_json_body()
+        mood = (payload.get("mood") or "").strip().lower()
+        if mood not in VALID_MOODS:  # R-3.4
+            raise _UserError(400, "INVALID_MOOD")
+        mind = (payload.get("mind") or "").strip()
+        doing = (payload.get("doing") or "").strip()
+        journal_path = find_journal(ctx.active.path)
+        if journal_path is None:  # R-3.7
+            raise _UserError(404, "NO_JOURNAL")
+        try:
+            append_entry(journal_path, mind, doing, mood)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not save your journal entry.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True}, status=201)
+
+    def api_journal_config(self) -> None:
+        ctx, _ = self._context()
+        from mind_journal import find_journal, write_config
+        payload = self._read_json_body()
+        interval = None
+        if "interval_hours" in payload:
+            try:
+                interval = float(payload.get("interval_hours"))
+            except (TypeError, ValueError):
+                interval = -1
+            if interval <= 0:  # R-3.9
+                raise _UserError(400, "interval_hours must be a positive number.")
+            # Keep whole numbers tidy (4 not 4.0) in frontmatter.
+            interval = int(interval) if interval == int(interval) else interval
+        start = payload.get("waking_start")
+        end = payload.get("waking_end")
+        for label, val in (("waking_start", start), ("waking_end", end)):
+            if val is not None and not re.match(r"^([01]?\d|2[0-3]):[0-5]\d$", str(val).strip()):
+                raise _UserError(400, f"{label} must be HH:MM.")  # R-3.9
+        journal_path = find_journal(ctx.active.path)
+        if journal_path is None:
+            raise _UserError(404, "NO_JOURNAL")
+        try:
+            write_config(
+                journal_path,
+                interval_hours=interval,
+                waking_start=start.strip() if isinstance(start, str) else None,
+                waking_end=end.strip() if isinstance(end, str) else None,
+            )
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not update journal settings.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True})
 
     # ── reminders / deadlines / history / search / parakeet ────────────────
 
