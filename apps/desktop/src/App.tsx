@@ -199,8 +199,8 @@ export default function App() {
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
+              width="24"
+              height="24"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -212,7 +212,12 @@ export default function App() {
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             {notifications.unreadCount > 0 && (
-              <span className="notif-badge tabular">{notifications.unreadCount}</span>
+              <span
+                className="notif-badge tabular"
+                style={{ top: -3, right: -3 }}
+              >
+                {notifications.unreadCount}
+              </span>
             )}
           </button>
           <SizeToggle />

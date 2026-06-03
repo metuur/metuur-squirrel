@@ -6,10 +6,10 @@ Local-first focus & productivity companion. Monorepo.
 
 Squirrel ships in two flavors. Pick whichever fits your audience:
 
-| Flavor | What you get | Who it's for |
-|---|---|---|
-| **Squirrel.app** (Tauri DMG) | Just the desktop popup with a bundled backend that the app supervises itself. No terminal needed after install. | End users who want the tray popup. |
-| **Full installer DMG** (below) | `squirrel` CLI + backend + `agent-pack/` (Claude/Codex skills) + launchd service. | Power users who want CLI access and agent integration alongside the popup. |
+| Flavor                         | What you get                                                                                                    | Who it's for                                                               |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Squirrel.app** (Tauri DMG)   | Just the desktop popup with a bundled backend that the app supervises itself. No terminal needed after install. | End users who want the tray popup.                                         |
+| **Full installer DMG** (below) | `squirrel` CLI + backend + `agent-pack/` (Claude/Codex skills) + launchd service.                               | Power users who want CLI access and agent integration alongside the popup. |
 
 For the **Squirrel.app** path, see [`docs/install.md`](docs/install.md) — drag to Applications, then a one-time Gatekeeper bypass (right-click → Open) because the app is currently unsigned. The signing roadmap is in [`docs/release.md`](docs/release.md).
 
@@ -27,13 +27,13 @@ The instructions below cover the **full installer DMG** path.
 
 The installer places two self-contained binaries on your machine and registers the backend as a launchd service that starts automatically at login:
 
-| What | Where |
-|------|-------|
-| `squirrel` CLI | `~/.local/bin/squirrel` |
-| `squirrel-backend` (API + web UI) | `~/.local/bin/squirrel-backend` |
-| Agent skills & commands | `~/.claude/plugins/squirrel/` (or Codex/Cursor/Copilot/Windsurf equivalent) |
-| Config | `~/.squirrel/config.toml` |
-| Background service | `~/Library/LaunchAgents/org.squirrel.web-ui.plist` |
+| What                              | Where                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| `squirrel` CLI                    | `~/.local/bin/squirrel`                                                     |
+| `squirrel-backend` (API + web UI) | `~/.local/bin/squirrel-backend`                                             |
+| Agent skills & commands           | `~/.claude/plugins/squirrel/` (or Codex/Cursor/Copilot/Windsurf equivalent) |
+| Config                            | `~/.squirrel/config.toml`                                                   |
+| Background service                | `~/Library/LaunchAgents/org.squirrel.web-ui.plist`                          |
 
 ### Upgrading
 
@@ -84,10 +84,10 @@ Step 5  hdiutil → squirrel-installer-macos.dmg
 
 Key files:
 
-| File | Purpose |
-|------|---------|
-| `scripts/build-dmg.sh` | Builds the DMG artifact (runs on dev machine) |
-| `installer/install.sh` | End-user installer bundled inside the DMG |
+| File                                  | Purpose                                                              |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `scripts/build-dmg.sh`                | Builds the DMG artifact (runs on dev machine)                        |
+| `installer/install.sh`                | End-user installer bundled inside the DMG                            |
 | `apps/backend/launchd/plist.template` | launchd plist with `__BINARY__`, `__PORT__`, `__HOME__` placeholders |
 
 ---
@@ -152,13 +152,13 @@ Writes to `.github/agents/`, `.github/prompts/`, `.github/copilot-instructions.m
 
 ### Key flags
 
-| Flag | Effect |
-|------|--------|
-| `--workspace` | Write to `.github/` instead of `~/.copilot/` |
-| `--link` | Create symlinks instead of copies (auto-updates on `git pull`) |
-| `--dry-run` | Preview without writing anything |
-| `--yes` / `-y` | Non-interactive |
-| `--no-config` | Skip seeding `~/.squirrel/config.toml` |
+| Flag           | Effect                                                         |
+| -------------- | -------------------------------------------------------------- |
+| `--workspace`  | Write to `.github/` instead of `~/.copilot/`                   |
+| `--link`       | Create symlinks instead of copies (auto-updates on `git pull`) |
+| `--dry-run`    | Preview without writing anything                               |
+| `--yes` / `-y` | Non-interactive                                                |
+| `--no-config`  | Skip seeding `~/.squirrel/config.toml`                         |
 
 After install, restart VS Code and try `/sq-where-am-i` in Copilot Chat.
 
@@ -192,16 +192,16 @@ Future siblings (created when each phase starts):
 
 The first version of Squirrel (v0.5.0, `~/others/ai-agents/adhd-context-bridge`) was copied in. The source repo is preserved untouched as a reference. Mapping:
 
-| v0.5 source | New location | Notes |
-|---|---|---|
-| `lib/*.py` + `squirrel` + `tests/` | `apps/cli/` | Python core + CLI entry + 24 tests |
-| `companions/web-ui/` | `apps/backend/` | Flask `server.py` + Vite `app/` frontend (node_modules stripped) |
-| `companions/macos-reminders/` | `agent-pack/companions/macos-reminders/` | launchd daemon, will be folded into Tauri |
-| `companions/menubar*/` (Swift) | not migrated | Superseded by `apps/desktop/` (Tauri) |
-| `skills/` `commands/` `hooks/` `templates/` `examples/` `config/` `scripts/` `.claude-plugin/` | `agent-pack/` | Agent integrations |
-| `companions/{codex,cursor}/` | `agent-pack/companions/` | Per-agent adapters |
-| `install.sh` `Makefile` `INSTALL*.md` | `agent-pack/` | Installer belongs with the pack |
-| `docs/` + `ARCHITECTURE.md` + old `README.md` + old `CLAUDE.md` | `docs/legacy/v0.5/` | Preserved unchanged |
+| v0.5 source                                                                                    | New location                             | Notes                                                            |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
+| `lib/*.py` + `squirrel` + `tests/`                                                             | `apps/cli/`                              | Python core + CLI entry + 24 tests                               |
+| `companions/web-ui/`                                                                           | `apps/backend/`                          | Flask `server.py` + Vite `app/` frontend (node_modules stripped) |
+| `companions/macos-reminders/`                                                                  | `agent-pack/companions/macos-reminders/` | launchd daemon, will be folded into Tauri                        |
+| `companions/menubar*/` (Swift)                                                                 | not migrated                             | Superseded by `apps/desktop/` (Tauri)                            |
+| `skills/` `commands/` `hooks/` `templates/` `examples/` `config/` `scripts/` `.claude-plugin/` | `agent-pack/`                            | Agent integrations                                               |
+| `companions/{codex,cursor}/`                                                                   | `agent-pack/companions/`                 | Per-agent adapters                                               |
+| `install.sh` `Makefile` `INSTALL*.md`                                                          | `agent-pack/`                            | Installer belongs with the pack                                  |
+| `docs/` + `ARCHITECTURE.md` + old `README.md` + old `CLAUDE.md`                                | `docs/legacy/v0.5/`                      | Preserved unchanged                                              |
 
 ## Develop
 
@@ -214,15 +214,15 @@ make build              # produces an unsigned Squirrel.app + .dmg (bundles PyIn
 
 `make help` lists every target. Most useful day-to-day:
 
-| Target | What it does |
-|---|---|
-| `make dev` | Tauri popup in dev mode — supervisor adopts whatever's on `:3939` |
-| `make dev-all` | preflight backend check + `make dev` |
-| `make build` | full unsigned Tauri bundle with embedded backend |
-| `make backend-start` | run the backend directly (for `make dev` to adopt) |
-| `make backend-build` | rebuild the React web UI served by the backend |
-| `make build-installers` | the other distribution path: CLI + agent-pack DMG |
-| `make test-cli` | run the Python test suite |
+| Target                  | What it does                                                      |
+| ----------------------- | ----------------------------------------------------------------- |
+| `make dev`              | Tauri popup in dev mode — supervisor adopts whatever's on `:3939` |
+| `make dev-all`          | preflight backend check + `make dev`                              |
+| `make build`            | full unsigned Tauri bundle with embedded backend                  |
+| `make backend-start`    | run the backend directly (for `make dev` to adopt)                |
+| `make backend-build`    | rebuild the React web UI served by the backend                    |
+| `make build-installers` | the other distribution path: CLI + agent-pack DMG                 |
+| `make test-cli`         | run the Python test suite                                         |
 
 Per-package commands work via filter:
 
@@ -265,3 +265,5 @@ Only `apps/desktop/` is implemented. See `docs/hld/phase-1-mvp-desktop-shell.md`
 ## Recommended IDE setup
 
 [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+In the scrashpad project add a mandatory task which can be deleted , to asct as journally for your mind, and add a reminder to check it every 4 hours, to add a note like "WHat is you minf thinking right now?" and "What are you doing right now?" for happy and sad moments, to track your mood and activities.
