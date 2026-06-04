@@ -114,7 +114,7 @@ fn build_menu<R: Runtime>(
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
     let add_quick_task_item =
-        MenuItem::with_id(app, ids::ADD_QUICK_TASK, "➕ Add Quick Task", true, None::<&str>)?;
+        MenuItem::with_id(app, ids::ADD_QUICK_TASK, "Add Quick Task", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
     let open_obsidian_item =
@@ -132,6 +132,8 @@ fn build_menu<R: Runtime>(
         None::<&str>,
     )?;
     let sep_bot = PredefinedMenuItem::separator(app)?;
+    // Splits the bottom block into "open external" vs "help/system" (Option C).
+    let sep_system = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, ids::QUIT, "Quit Squirrel", true, None::<&str>)?;
 
     // R-6.1: when adoption was refused, surface a "Why?" item near the top that
@@ -228,7 +230,7 @@ fn build_menu<R: Runtime>(
     let quick_header = MenuItem::with_id(
         app,
         ids::QUICK_TASKS_HEADER,
-        format!("QUICK TASKS ({})", quick_tasks.len()),
+        "QUICK TASKS",
         false, // disabled — section label
         None::<&str>,
     )?;
@@ -247,9 +249,12 @@ fn build_menu<R: Runtime>(
         }
     }
 
-    // "Mind Journal — check in" item — visible only while the recurring
-    // check-in is due (R-4.1). Opens the journal entry form (R-4.4).
-    let sep_journal = PredefinedMenuItem::separator(app)?;
+    // "Attention" group: Mind Journal check-in (R-4.1) and Notifications
+    // (R-8.1–R-8.3). Both share a SINGLE leading separator so they always
+    // form one clean box, regardless of which is present — previously the
+    // separator was tied to the journal item, so a notifications-only state
+    // rendered as a label-less item glued onto the section above.
+    let sep_attention = PredefinedMenuItem::separator(app)?;
     let journal_item_opt: Option<MenuItem<R>> = if journal_due {
         Some(MenuItem::with_id(
             app,
@@ -261,31 +266,32 @@ fn build_menu<R: Runtime>(
     } else {
         None
     };
-    if let Some(ref ji) = journal_item_opt {
-        items.push(&sep_journal);
-        items.push(ji);
-    }
-
-    // "Notifications (N)" item — visible only when unread_count > 0 (R-8.1, R-8.2, R-8.3)
     let notif_item_opt: Option<MenuItem<R>> = if unread_count > 0 {
         Some(MenuItem::with_id(
             app,
             ids::VIEW_NOTIFICATIONS,
-            format!("Notifications ({})", unread_count),
+            format!("🔔 Notifications ({})", unread_count),
             true,
             None::<&str>,
         )?)
     } else {
         None
     };
+    if journal_item_opt.is_some() || notif_item_opt.is_some() {
+        items.push(&sep_attention);
+    }
+    if let Some(ref ji) = journal_item_opt {
+        items.push(ji);
+    }
     if let Some(ref ni) = notif_item_opt {
         items.push(ni);
     }
 
-    // Bottom section: actions + quit
+    // Bottom section: external-open actions, a separator, then help/system.
     items.push(&sep_bot);
     items.push(&open_web_ui_item);
     items.push(&open_obsidian_item);
+    items.push(&sep_system);
     items.push(&how_to_item);
     if let Some(ref w) = why_item {
         items.push(w);
@@ -559,8 +565,8 @@ mod tests {
 
     #[test]
     fn view_notifications_label_format() {
-        assert_eq!(format!("Notifications ({})", 3u32), "Notifications (3)");
-        assert_eq!(format!("Notifications ({})", 12u32), "Notifications (12)");
+        assert_eq!(format!("🔔 Notifications ({})", 3u32), "🔔 Notifications (3)");
+        assert_eq!(format!("🔔 Notifications ({})", 12u32), "🔔 Notifications (12)");
     }
 
     #[test]
