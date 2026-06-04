@@ -99,7 +99,9 @@ export default function HomePage() {
   if (!data) return null;
 
   return (
-    <div className="max-w-6xl">
+    // Board uses the full main-content width so all lanes fit; List stays in a
+    // narrower editorial column for readability.
+    <div className={viewMode === 'Board' ? 'w-full' : 'max-w-6xl'}>
       <Header parakeet={data.parakeet} focus={data.focus} manualFocus={data.manual_focus} projects={data.projects} onRefresh={mutate} />
       <RemindersWidget />
       {viewMode === 'Board' ? (
