@@ -27,6 +27,7 @@ import { SizeToggle } from "./components/SizeToggle";
 import { HowToModal } from "./components/HowToModal";
 import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
 import { QuickTaskWidget } from "./components/QuickTaskWidget";
+import { QuickTaskPopover } from "./components/QuickTaskPopover";
 import { useQuickTaskCapture } from "./hooks/useQuickTaskCapture";
 import { api } from "./api/client";
 
@@ -96,6 +97,7 @@ export default function App() {
   }, [home.data, home.loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [notifOpen, setNotifOpen] = useState(false);
+  const [quickTasksOpen, setQuickTasksOpen] = useState(false);
   const [howToOpen, setHowToOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
@@ -193,9 +195,9 @@ export default function App() {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={quickTaskCapture.openCapture}
-            aria-label="Add Quick Task"
-            title="Add Quick Task (⌃⌘Q)"
+            onClick={() => setQuickTasksOpen((v) => !v)}
+            aria-label="Quick Tasks"
+            title="Quick Tasks (⌃⌘Q to capture)"
             className="icon-btn"
           >
             {/* lightning bolt — lucide "zap" */}
@@ -350,6 +352,17 @@ export default function App() {
       </footer>
 
       <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
+
+      <QuickTaskPopover
+        open={quickTasksOpen}
+        onClose={() => setQuickTasksOpen(false)}
+        online={status.online}
+        refreshSignal={triggerKey}
+        onAdd={() => {
+          setQuickTasksOpen(false);
+          quickTaskCapture.openCapture();
+        }}
+      />
 
       <QuickTaskCaptureModal
         open={quickTaskCapture.open}

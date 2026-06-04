@@ -6,6 +6,7 @@ import { useFetch } from '@/hooks/useFetch';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCapture } from '@/components/CaptureModal';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { QuickTaskPopover } from '@/components/QuickTaskPopover';
 
 export type ViewMode = 'List' | 'Board';
 
@@ -26,6 +27,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
   const journalDue = !!journal?.exists && !!journal.due;
   const notifications = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [quickTasksOpen, setQuickTasksOpen] = useState(false);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -163,6 +165,31 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               <span className="material-icons text-lg">add</span>
               Add a note
             </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setQuickTasksOpen((v) => !v)}
+                className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                title="Quick Tasks"
+                aria-label="Quick Tasks"
+              >
+                {/* lightning bolt — lucide "zap" */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+                </svg>
+              </button>
+              <QuickTaskPopover open={quickTasksOpen} onClose={() => setQuickTasksOpen(false)} />
+            </div>
 
             <Link
               to="/journal"

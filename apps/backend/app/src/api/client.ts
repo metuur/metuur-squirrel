@@ -291,6 +291,22 @@ export interface NotificationsPayload {
   total_count: number;
 }
 
+export interface QuickTask {
+  id: string;
+  text: string;
+  qt_snoozed_until?: string;
+  return_blocked?: boolean;
+}
+
+export interface QuickTasksPayload {
+  active: QuickTask[];
+  snoozed: QuickTask[];
+  active_count: number;
+  snoozed_count: number;
+  limit: number;
+  return_blocked: boolean;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -363,6 +379,21 @@ export const api = {
     call<void>(`/reminder/${encodeURIComponent(id)}/dismiss`, { method: 'PATCH' }),
   reminderSnooze: (id: string, until: string) =>
     call<void>(`/reminder/${encodeURIComponent(id)}/snooze`, {
+      method: 'PATCH',
+      body: JSON.stringify({ until }),
+    }),
+  quickTasks: () => call<QuickTasksPayload>('/quick-tasks'),
+  quickTaskCreate: (text: string) =>
+    call<{ success: true; id: string }>('/quick-tasks', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+  quickTaskComplete: (id: string) =>
+    call<{ success: true }>(`/quick-task/${encodeURIComponent(id)}/complete`, { method: 'PATCH' }),
+  quickTaskDelete: (id: string) =>
+    call<{ success: true }>(`/quick-task/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  quickTaskSnooze: (id: string, until: string) =>
+    call<{ success: true; snoozed_until: string }>(`/quick-task/${encodeURIComponent(id)}/snooze`, {
       method: 'PATCH',
       body: JSON.stringify({ until }),
     }),
