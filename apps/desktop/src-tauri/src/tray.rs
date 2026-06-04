@@ -24,7 +24,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::tray_alerts::{Alert, ReminderAlert};
+use crate::tray_alerts::{Alert, QuickTaskItem, ReminderAlert};
 
 pub const TRAY_ID: &str = "main";
 
@@ -39,6 +39,9 @@ const OBSIDIAN_VAULT: &str = "vault-tdah";
 /// handler can detect them and extract the task id.
 pub mod ids {
     pub const OPEN: &str = "open";
+    /// Captures a Quick Task in-app — shows the window and emits
+    /// `quick-task-capture-open` so the React capture modal opens (R-1.1, R-1.5).
+    pub const ADD_QUICK_TASK: &str = "add_quick_task";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
     /// Always-visible help item. Opens the dashboard and emits `show-how-to`
     /// so the React How-to overlay renders the quick-start guide.
@@ -52,6 +55,10 @@ pub mod ids {
     pub const RADAR_HEADER: &str = "radar_header";
     pub const REMINDER_HEADER: &str = "reminder_header";
     pub const REMINDER_PREFIX: &str = "reminder:";
+    /// Quick Task Stack section (R-5.1). Items use `QUICK_TASK_PREFIX`; clicking
+    /// one shows the main window so the user acts via the in-app widget.
+    pub const QUICK_TASKS_HEADER: &str = "quick_tasks_header";
+    pub const QUICK_TASK_PREFIX: &str = "quick_task:";
     /// Mind Journal check-in item — shown only while the recurring check-in is
     /// `due` (R-4.1). Opens the journal entry form (R-4.4).
     pub const JOURNAL_CHECKIN: &str = "journal_checkin";
@@ -101,10 +108,13 @@ fn build_menu<R: Runtime>(
     alerts: &[Alert],
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
+    quick_tasks: &[QuickTaskItem],
     unread_count: u32,
     journal_due: bool,
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
+    let add_quick_task_item =
+        MenuItem::with_id(app, ids::ADD_QUICK_TASK, "➕ Add Quick Task", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
     let open_obsidian_item =
@@ -139,6 +149,7 @@ fn build_menu<R: Runtime>(
 
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
         &open_item,
+        &add_quick_task_item,
         &sep_top,
         &pressing_header,
     ];
@@ -212,6 +223,30 @@ fn build_menu<R: Runtime>(
         }
     }
 
+    // "QUICK TASKS (N)" section — R-5.1. Visible only when active > 0.
+    let sep_quick = PredefinedMenuItem::separator(app)?;
+    let quick_header = MenuItem::with_id(
+        app,
+        ids::QUICK_TASKS_HEADER,
+        format!("QUICK TASKS ({})", quick_tasks.len()),
+        false, // disabled — section label
+        None::<&str>,
+    )?;
+    let quick_items: Vec<MenuItem<R>> = quick_tasks
+        .iter()
+        .map(|q| {
+            let id = format!("{}{}", ids::QUICK_TASK_PREFIX, q.id);
+            MenuItem::with_id(app, id, q.menu_label(), true, None::<&str>)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+    if !quick_tasks.is_empty() {
+        items.push(&sep_quick);
+        items.push(&quick_header);
+        for qi in quick_items.iter() {
+            items.push(qi);
+        }
+    }
+
     // "Mind Journal — check in" item — visible only while the recurring
     // check-in is due (R-4.1). Opens the journal entry form (R-4.4).
     let sep_journal = PredefinedMenuItem::separator(app)?;
@@ -262,7 +297,7 @@ fn build_menu<R: Runtime>(
 }
 
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let menu = build_menu(app, &[], &[], &[], 0, false)?;
+    let menu = build_menu(app, &[], &[], &[], &[], 0, false)?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_image(IconState::Normal)?)
@@ -272,6 +307,14 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             let id = event.id().as_ref();
             match id {
                 ids::OPEN => show_main_window(app),
+                ids::ADD_QUICK_TASK => {
+                    // R-1.1 / R-1.5: capture IN-APP — show the window and emit so
+                    // the React capture modal opens (same path as Ctrl+Cmd+Q).
+                    show_main_window(app);
+                    if let Err(e) = app.emit("quick-task-capture-open", ()) {
+                        tracing::warn!(error = %e, "tray: failed to emit quick-task-capture-open");
+                    }
+                }
                 ids::OPEN_WEB_UI => open_url(app, BACKEND_ORIGIN),
                 ids::OPEN_OBSIDIAN => {
                     let url = format!("obsidian://open?vault={}", OBSIDIAN_VAULT);
@@ -316,8 +359,14 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 | ids::NO_PRESSING
                 | ids::BACKEND_ERROR
                 | ids::RADAR_HEADER
-                | ids::REMINDER_HEADER => {
+                | ids::REMINDER_HEADER
+                | ids::QUICK_TASKS_HEADER => {
                     // Disabled items; menu-event still fires on some platforms.
+                }
+                other if other.starts_with(ids::QUICK_TASK_PREFIX) => {
+                    // R-5.1: act on Quick Tasks in-app — show the window so the
+                    // user completes/snoozes/deletes via the widget.
+                    show_main_window(app);
                 }
                 other if other.starts_with(ids::ALERT_PREFIX) => {
                     let task_id = &other[ids::ALERT_PREFIX.len()..];
@@ -347,10 +396,11 @@ pub fn update_alerts<R: Runtime>(
     alerts: &[Alert],
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
+    quick_tasks: &[QuickTaskItem],
     unread_count: u32,
     journal_due: bool,
 ) -> tauri::Result<()> {
-    let menu = build_menu(app, alerts, approaching, active, unread_count, journal_due)?;
+    let menu = build_menu(app, alerts, approaching, active, quick_tasks, unread_count, journal_due)?;
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         tray.set_menu(Some(menu))?;
     }

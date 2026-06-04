@@ -165,6 +165,30 @@ pub fn run() {
                 } else {
                     tracing::info!("global shortcut Ctrl+Cmd+S registered");
                 }
+
+                // R-1.1 / R-1.6: Ctrl+Cmd+Q captures a Quick Task from anywhere —
+                // show the window and emit so the React capture modal opens. Soft
+                // failure (hotkey held elsewhere): the tray/web surfaces still work.
+                use tauri::Emitter;
+                if let Err(e) = app.handle().global_shortcut().on_shortcut(
+                    "Ctrl+Cmd+Q",
+                    |app, _shortcut, event| {
+                        use tauri_plugin_global_shortcut::ShortcutState;
+                        if event.state == ShortcutState::Pressed {
+                            tray::show_main_window(app);
+                            if let Err(e) = app.emit("quick-task-capture-open", ()) {
+                                tracing::warn!(error = %e, "failed to emit quick-task-capture-open");
+                            }
+                        }
+                    },
+                ) {
+                    tracing::warn!(
+                        error = %e,
+                        "global shortcut Ctrl+Cmd+Q could not be registered (held by another app?)"
+                    );
+                } else {
+                    tracing::info!("global shortcut Ctrl+Cmd+Q registered");
+                }
             }
 
             // R-4.1: wire deep-link URL handler (story 3.3).

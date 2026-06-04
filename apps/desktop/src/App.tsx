@@ -25,6 +25,9 @@ import { OpenVaultButton } from "./components/OpenVaultButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
 import { HowToModal } from "./components/HowToModal";
+import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
+import { QuickTaskWidget } from "./components/QuickTaskWidget";
+import { useQuickTaskCapture } from "./hooks/useQuickTaskCapture";
 import { api } from "./api/client";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
@@ -129,6 +132,10 @@ export default function App() {
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
   const [focusModalSlot, setFocusModalSlot] = useState<"today" | "week" | null>(null);
 
+  // Quick Task capture: Ctrl+Cmd+Q / tray "Add Quick Task" emit
+  // `quick-task-capture-open`; refetch home after a successful add.
+  const quickTaskCapture = useQuickTaskCapture(() => setHomeBump((n) => n + 1));
+
   const openCapture = (initialSlug: string | null) => {
     setCaptureInitialSlug(initialSlug);
     setCaptureOpen(true);
@@ -184,6 +191,37 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={quickTaskCapture.openCapture}
+            aria-label="Add Quick Task"
+            title="Add Quick Task (⌃⌘Q)"
+            className="icon-btn"
+          >
+            {/* lightning bolt — lucide "zap" */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+            </svg>
+            {(home.data?.quick_tasks?.active_count ?? 0) > 0 && (
+              <span
+                className="notif-badge tabular"
+                style={{ top: -3, right: -3 }}
+                aria-label={`${home.data?.quick_tasks?.active_count} quick tasks`}
+              >
+                {home.data?.quick_tasks?.active_count}
+              </span>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => setHowToOpen(true)}
@@ -293,6 +331,11 @@ export default function App() {
           onAddNote={openCapture}
           scrollTarget={deepLink}
         />
+        <QuickTaskWidget
+          online={status.online}
+          refreshSignal={triggerKey}
+          onAdd={quickTaskCapture.openCapture}
+        />
         <ParakeetWidget triggerKey={triggerKey} online={status.online} />
       </div>
 
@@ -307,6 +350,14 @@ export default function App() {
       </footer>
 
       <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
+
+      <QuickTaskCaptureModal
+        open={quickTaskCapture.open}
+        error={quickTaskCapture.error}
+        busy={quickTaskCapture.busy}
+        onSubmit={quickTaskCapture.submit}
+        onClose={quickTaskCapture.close}
+      />
 
       <NotificationCenter
         notifications={notifications}

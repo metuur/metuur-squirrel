@@ -129,6 +129,32 @@ export interface ManualFocusPayload {
   week: ManualPick | null;
 }
 
+export interface QuickTask {
+  id: string;
+  text: string;
+  path?: string;
+  qt_created_at?: string;
+  qt_snoozed_until?: string;
+  return_blocked?: boolean;
+}
+
+export interface QuickTasksPayload {
+  active: QuickTask[];
+  snoozed: QuickTask[];
+  active_count: number;
+  snoozed_count: number;
+  limit: number;
+  return_blocked: boolean;
+}
+
+export interface HomeQuickTasks {
+  active: QuickTask[];
+  active_count: number;
+  snoozed_count: number;
+  oldest: QuickTask | null;
+  return_blocked: boolean;
+}
+
 export interface HomePayload {
   focus: FocusItem | null;
   pressing: PressingItem[];
@@ -136,6 +162,7 @@ export interface HomePayload {
   manual_focus: ManualFocusPayload;
   parakeet: string;
   journal?: { due: boolean; next_due: string | null };
+  quick_tasks?: HomeQuickTasks;
 }
 
 export type Mood = "happy" | "neutral" | "sad";
@@ -261,4 +288,20 @@ export const api = {
     call<{ success: true }>(`/api/notification/${id}/dismiss`, {
       method: "PATCH",
     }),
+  // ── Quick Tasks ────────────────────────────────────────────────────────────
+  quickTasks: () => call<QuickTasksPayload>("/api/quick-tasks"),
+  quickTaskCreate: (text: string) =>
+    call<{ success: true; id: string }>("/api/quick-tasks", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+  quickTaskComplete: (id: string) =>
+    call<{ success: true }>(`/api/quick-task/${id}/complete`, { method: "PATCH" }),
+  quickTaskDelete: (id: string) =>
+    call<{ success: true }>(`/api/quick-task/${id}`, { method: "DELETE" }),
+  quickTaskSnooze: (id: string, until: string) =>
+    call<{ success: true; snoozed_until: string }>(
+      `/api/quick-task/${id}/snooze`,
+      { method: "PATCH", body: JSON.stringify({ until }) },
+    ),
 };

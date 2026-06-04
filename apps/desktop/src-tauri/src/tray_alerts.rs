@@ -420,6 +420,48 @@ struct HomeResponse {
     /// backends → defaults to not-due.
     #[serde(default)]
     journal: JournalState,
+    /// Quick Task Stack summary (R-5.1). Absent on older backends → empty.
+    #[serde(default)]
+    quick_tasks: QuickTasksSummary,
+}
+
+/// Mirror of /api/home.quick_tasks.active[] — the fields the tray section and
+/// the in-app notification need.
+#[derive(Debug, Clone, Deserialize)]
+pub struct QuickTaskItem {
+    pub id: String,
+    pub text: String,
+}
+
+impl QuickTaskItem {
+    /// Compact single-line tray/notification label, e.g. "⚡ Reply to Ana".
+    pub fn menu_label(&self) -> String {
+        let t = self.text.trim();
+        let short: String = if t.chars().count() > 48 {
+            format!("{}…", t.chars().take(47).collect::<String>())
+        } else {
+            t.to_string()
+        };
+        format!("⚡ {}", short)
+    }
+}
+
+/// Mirror of /api/home.quick_tasks. Absent on older backends → empty/false.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct QuickTasksSummary {
+    #[serde(default)]
+    pub active: Vec<QuickTaskItem>,
+    // active_count / snoozed_count mirror the wire shape; the tray derives its
+    // visible count from `active.len()`, so Rust never reads these two.
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub active_count: u32,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub snoozed_count: u32,
+    /// A due snoozed task is waiting for a free slot (R-4.3, R-5.5).
+    #[serde(default)]
+    pub return_blocked: bool,
 }
 
 /// Mirror of /api/home `journal` block. `due` already reflects the waking-hours
@@ -467,7 +509,9 @@ async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, 
     Ok(resp)
 }
 
-async fn fetch_pressing(client: &reqwest::Client) -> Result<(Vec<Alert>, bool), reqwest::Error> {
+async fn fetch_pressing(
+    client: &reqwest::Client,
+) -> Result<(Vec<Alert>, bool, QuickTasksSummary), reqwest::Error> {
     let resp = client
         .get(BACKEND_HOME)
         .timeout(REQUEST_TIMEOUT)
@@ -477,8 +521,9 @@ async fn fetch_pressing(client: &reqwest::Client) -> Result<(Vec<Alert>, bool), 
         .json::<HomeResponse>()
         .await?;
     let journal_due = resp.journal.due;
+    let quick_tasks = resp.quick_tasks;
     let alerts = resp.pressing.into_iter().take(MAX_ALERTS).collect();
-    Ok((alerts, journal_due))
+    Ok((alerts, journal_due, quick_tasks))
 }
 
 // R-3.1–R-3.6: Apply all guards and return at most 3 qualifying candidates.
@@ -836,7 +881,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             let settings = fetch_notif_settings(&client).await;
 
             match fetch_pressing(&client).await {
-                Ok((alerts, journal_due)) => {
+                Ok((alerts, journal_due, quick_tasks)) => {
                     current_interval = POLL_INTERVAL;
                     let reminders = fetch_reminders(&client).await.unwrap_or_else(|_| RemindersResponse {
                         approaching: vec![],
@@ -889,12 +934,49 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                                 Err(e) => tracing::warn!(error = %e, reminder_id = %reminder.id, "tray-alerts: reminder notif insert failed"),
                             }
                         }
+
+                        // R-5.2: surface the OLDEST active Quick Task as a low-key
+                        // in-app notification (badge + center entry, no sound — kept
+                        // gentle). Per-day dedup keeps a single task from repeating.
+                        if let Some(oldest) = quick_tasks.active.first() {
+                            let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, oldest.id);
+                            let label = oldest.menu_label();
+                            let result = with_cached_conn(&app, &db_path, |conn| {
+                                insert_notification_if_new_on_conn(
+                                    conn, "quick_task", &oldest.id, &oldest.id, &label, &item_url,
+                                )
+                            });
+                            match result {
+                                Ok(true) => update_badge_and_emit(&app, &db_path),
+                                Ok(false) => {}
+                                Err(e) => tracing::warn!(error = %e, quick_task_id = %oldest.id, "tray-alerts: quick-task notif insert failed"),
+                            }
+                        }
+
+                        // R-4.3/R-5.5: a snoozed task ready to return but blocked by a
+                        // full stack → one gentle "clear a slot" nudge (per-day dedup).
+                        if quick_tasks.return_blocked {
+                            const RETURN_BLOCKED_ID: &str = "QUICK-TASK-RETURN-BLOCKED";
+                            let result = with_cached_conn(&app, &db_path, |conn| {
+                                insert_notification_if_new_on_conn(
+                                    conn,
+                                    "quick_task",
+                                    RETURN_BLOCKED_ID,
+                                    "Quick Task ready",
+                                    "A snoozed quick task is ready — clear a slot.",
+                                    BACKEND_ORIGIN,
+                                )
+                            });
+                            if let Ok(true) = result {
+                                update_badge_and_emit(&app, &db_path);
+                            }
+                        }
                     }
 
                     // R-8.2: pass current unread count so the menu shows/hides
                     // "Notifications (N)" correctly after any new INSERTs above.
                     let current_unread = with_cached_conn(&app, &db_path, unread_count_on_conn).unwrap_or(0);
-                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, current_unread, journal_due) {
+                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, &quick_tasks.active, current_unread, journal_due) {
                         tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
                     } else {
                         tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
@@ -914,7 +996,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         "tray-alerts: backend unreachable, clearing and backing off",
                     );
                     current_interval = next;
-                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], 0, false);
+                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], &[], 0, false);
                 }
             }
 
@@ -984,6 +1066,32 @@ mod tests {
     fn test_home_response_journal_defaults_when_absent() {
         let resp: HomeResponse = serde_json::from_str(r#"{"pressing":[]}"#).unwrap();
         assert!(!resp.journal.due);
+    }
+
+    // R-5.1: /api/home quick_tasks block parses (active items + return_blocked).
+    #[test]
+    fn test_home_response_parses_quick_tasks() {
+        let json = r#"{"pressing":[],"quick_tasks":{"active":[{"id":"QT-001","text":"Reply to Ana"}],"active_count":1,"snoozed_count":2,"return_blocked":true}}"#;
+        let resp: HomeResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.quick_tasks.active.len(), 1);
+        assert_eq!(resp.quick_tasks.active[0].id, "QT-001");
+        assert_eq!(resp.quick_tasks.active_count, 1);
+        assert!(resp.quick_tasks.return_blocked);
+    }
+
+    // Older backend without a quick_tasks block → empty, not blocked (no panic).
+    #[test]
+    fn test_home_response_quick_tasks_default_when_absent() {
+        let resp: HomeResponse = serde_json::from_str(r#"{"pressing":[]}"#).unwrap();
+        assert!(resp.quick_tasks.active.is_empty());
+        assert!(!resp.quick_tasks.return_blocked);
+    }
+
+    // Quick Task tray label is compact and prefixed.
+    #[test]
+    fn test_quick_task_menu_label() {
+        let q = QuickTaskItem { id: "QT-002".into(), text: "Approve transaction".into() };
+        assert_eq!(q.menu_label(), "⚡ Approve transaction");
     }
 
     #[test]

@@ -345,6 +345,11 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
+    ("GET",  re.compile(r"^/api/quick-tasks$"),                       "api_quick_tasks_list"),
+    ("POST", re.compile(r"^/api/quick-tasks$"),                       "api_quick_task_create"),
+    ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/complete$"), "api_quick_task_complete"),
+    ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),   "api_quick_task_snooze"),
+    ("DELETE", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),         "api_quick_task_delete"),
     ("POST", re.compile(r"^/api/reveal$"),                            "api_reveal"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
@@ -745,6 +750,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception:
             pass
 
+        # R-5.1 / R-4.3 — Quick Task Stack summary. Computed fresh (not cached) so
+        # the wake-commit runs on each poll; quick tasks are excluded from the
+        # cached scanners above so this does not affect their results.
+        qt_block = {"active": [], "active_count": 0, "snoozed_count": 0,
+                    "oldest": None, "return_blocked": False}
+        try:
+            from quick_task_writer import collect_quick_tasks
+            qt = collect_quick_tasks(ctx.active.path)
+            qt_block = {
+                "active": qt["active"],
+                "active_count": qt["active_count"],
+                "snoozed_count": qt["snoozed_count"],
+                "oldest": qt["active"][0] if qt["active"] else None,
+                "return_blocked": qt["return_blocked"],
+            }
+        except Exception:
+            pass
+
         self._send_json({
             "focus": focus_payload,
             "pressing": pressing[:5],
@@ -760,6 +783,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "active_count": len(rem.get("active", [])),
             },
             "journal": journal_block,
+            "quick_tasks": qt_block,
         })
 
     # ── /api/focus — manual picks ───────────────────────────────────────────
@@ -1407,6 +1431,93 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(500, "Could not snooze reminder.")
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id, "snoozed_until": until})
+
+    # ── /api/quick-tasks — Quick Task Stack ─────────────────────────────────
+
+    def api_quick_tasks_list(self) -> None:
+        """GET — scan + capacity-aware wake-commit (R-2.1, R-2.7, R-4.2–R-4.5)."""
+        ctx, _ = self._context()
+        from quick_task_writer import collect_quick_tasks
+        try:
+            data = collect_quick_tasks(ctx.active.path)
+        except Exception as exc:
+            _log_exception(exc)
+            data = {"active": [], "snoozed": [], "active_count": 0,
+                    "snoozed_count": 0, "limit": 5, "return_blocked": False}
+        self._send_json(data)
+
+    def api_quick_task_create(self) -> None:
+        """POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)."""
+        ctx, _ = self._context()
+        payload = self._read_json_body()
+        text = (payload.get("text") or "").strip()
+        if not text:
+            raise _UserError(400, "Please write the quick task before saving.")
+        from quick_task_writer import create_quick_task, QuickTaskError
+        try:
+            qt_id = create_quick_task(ctx.active.path, text)
+        except QuickTaskError as e:
+            if e.code == "QUICK_TASK_LIMIT_REACHED":
+                # R-2.3 / R-2.4: hard cap — block until one is cleared.
+                return self._send_json({"error": "QUICK_TASK_LIMIT_REACHED"}, status=409)
+            raise _UserError(400, "Could not add the quick task.")
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not add the quick task. Please try again.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id}, status=201)
+
+    def api_quick_task_complete(self, qt_id: str) -> None:
+        """PATCH — mark a Quick Task done (R-3.1, R-3.6)."""
+        ctx, _ = self._context()
+        from quick_task_writer import complete_quick_task, resolve_quick_task_path
+        path = resolve_quick_task_path(ctx.active.path, qt_id)
+        if path is None:
+            raise _UserError(404, "We could not find that quick task.")
+        try:
+            complete_quick_task(path)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not complete the quick task.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id})
+
+    def api_quick_task_delete(self, qt_id: str) -> None:
+        """DELETE — remove a Quick Task (R-3.2, R-3.6)."""
+        ctx, _ = self._context()
+        from quick_task_writer import delete_quick_task, resolve_quick_task_path
+        path = resolve_quick_task_path(ctx.active.path, qt_id)
+        if path is None:
+            raise _UserError(404, "We could not find that quick task.")
+        try:
+            delete_quick_task(path)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not delete the quick task.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id})
+
+    def api_quick_task_snooze(self, qt_id: str) -> None:
+        """PATCH — snooze a Quick Task (R-3.3, R-3.4, R-3.5)."""
+        ctx, _ = self._context()
+        from quick_task_writer import (
+            snooze_quick_task, resolve_quick_task_path, QuickTaskError,
+        )
+        path = resolve_quick_task_path(ctx.active.path, qt_id)
+        if path is None:
+            raise _UserError(404, "We could not find that quick task.")
+        until = (self._read_json_body().get("until") or "1h").strip() or "1h"
+        try:
+            wake_iso = snooze_quick_task(path, until)
+        except QuickTaskError as e:
+            if e.code == "QUICK_TASK_SNOOZE_LIMIT":
+                return self._send_json({"error": "QUICK_TASK_SNOOZE_LIMIT"}, status=409)
+            raise _UserError(400, "Could not snooze the quick task.")
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not snooze the quick task.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id, "snoozed_until": wake_iso})
 
     def api_reveal(self) -> None:
         # The server already binds to 127.0.0.1 by default; this extra check

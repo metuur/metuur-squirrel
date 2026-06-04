@@ -22,7 +22,21 @@ from typing import Optional
 
 # Import sibling
 sys.path.insert(0, str(Path(__file__).parent))
-from intent_parser import parse_intent
+from intent_parser import parse_intent, parse_frontmatter
+
+
+def _is_quick_task_file(md: Path) -> bool:
+    """True when an .md file is a Quick Task (R-6.1: not an intent).
+
+    Quick Tasks live in SCRATCH-PAD but must never be counted as intents/WIP.
+    """
+    try:
+        fm, _ = parse_frontmatter(md.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if str(fm.get("type", "")).strip().lower() == "quick_task":
+        return True
+    return str(fm.get("quick_task", "")).strip().lower() in ("true", "yes", "1")
 
 # @spec VAULT-008
 
@@ -84,6 +98,8 @@ def find_intents_for_project(project_md_path: Path) -> list[Path]:
             continue  # skip the project page itself
         if md.name.startswith("."):
             continue
+        if _is_quick_task_file(md):
+            continue  # R-6.1: Quick Tasks are not intents
         intents.append(md)
 
     return sorted(intents)
