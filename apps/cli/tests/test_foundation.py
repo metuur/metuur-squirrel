@@ -388,7 +388,28 @@ class TestEndToEnd(unittest.TestCase):
             capture_output=True, text=True, check=True,
         )
         data = json.loads(result.stdout)
-        self.assertEqual(data["wip"]["count"], 2)
+        wip = data["wip"]
+
+        # Drift-proof oracle: every folder under 01-Proyectos-Activos counts
+        # toward WIP (the WIP-cap contract — see
+        # docs/lld/future-reminders-and-scratch-pad.md). Deriving the expected
+        # count from the filesystem stops this smoke test from re-acquiring a
+        # stale magic number whenever the fixture gains a project. The
+        # load-bearing checks are the contract invariants below, not the raw
+        # count. (Exact intended inventory lives in TestWipCount.)
+        active_dir = FIXTURES / "01-Proyectos-Activos"
+        expected_wip = sum(1 for d in active_dir.iterdir() if d.is_dir())
+        self.assertEqual(wip["count"], expected_wip)
+
+        # Contract invariants — true regardless of how many fixtures exist:
+        self.assertEqual(wip["count"], len(wip["projects"]))   # count matches payload
+        self.assertEqual(wip["max"], 3)                        # cap constant
+        self.assertEqual(wip["at_capacity"], wip["count"] >= wip["max"])
+        over_cap = any(
+            a["level"] == "warning" and "WIP excede" in a["message"]
+            for a in data["alerts"]
+        )
+        self.assertEqual(over_cap, wip["count"] > wip["max"])  # warning iff over cap
         self.assertIsNotNone(data["recommended_focus"])
 
     def test_deadline_scanner_cli(self):
@@ -574,6 +595,37 @@ class TestSchemaVersion(unittest.TestCase):
     # R-2.3 — first key
     def test_schema_version_is_first_key(self):
         self.assertEqual(list(self._output.keys())[0], "schema_version")
+
+
+class TestWipCount(unittest.TestCase):
+    """Canonical WIP inventory for the minimal fixture.
+
+    Every folder under 01-Proyectos-Activos occupies a WIP slot — including the
+    Scratch Pad and a deliberately stale project. Per
+    docs/lld/future-reminders-and-scratch-pad.md: "The Scratch Pad counts toward
+    the WIP cap like any other project." The cap is a load signal ("how many
+    things are open"), not a progress signal; staleness is handled in
+    recommended_focus, not by excluding the project from the count.
+
+    This is the one place that pins the EXACT expected set. If you change the
+    fixture, update this set intentionally — do not bump a number to make red
+    go green. (The end-to-end smoke test stays drift-proof on purpose.)
+    """
+
+    EXPECTED_WIP = {"TEST-PROJECT", "SIDEPROJECT-STALE", "SCRATCH-PAD"}
+
+    def setUp(self):
+        from status_aggregator import aggregate_status
+        self._output = aggregate_status(FIXTURES)
+
+    def test_wip_set_is_the_known_fixture_projects(self):
+        wip_slugs = {p["id"] for p in self._output["wip"]["projects"]}
+        self.assertEqual(wip_slugs, self.EXPECTED_WIP)
+
+    def test_wip_count_matches_the_set(self):
+        self.assertEqual(
+            self._output["wip"]["count"], len(self._output["wip"]["projects"])
+        )
 
 
 if __name__ == "__main__":
