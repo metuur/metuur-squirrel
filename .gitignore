@@ -74,6 +74,7 @@ graphify-out/manifest.json
 
 dmg-staging/bin/
 pkg-staging/
+pkg-dmg-staging/
 
 
 # Logs

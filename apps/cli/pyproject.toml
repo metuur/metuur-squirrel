@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squirrel-cli"
-version = "0.5.0"
+version = "0.7.1"
 description = "Squirrel CLI — Markdown-first focus & productivity vault toolkit"
 requires-python = ">=3.9"
 license = { text = "MIT" }

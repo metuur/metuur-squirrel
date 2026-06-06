@@ -4,6 +4,8 @@
 # Produces squirrel-installer-macos.pkg: a guided, double-click installer that
 # lays down the desktop app, the CLI binaries, and staged agent-pack, then runs
 # a postinstall that configures the logged-in user (config, vault, agent-pack).
+# Finally wraps the .pkg into squirrel-macos.dmg so end users can mount it and
+# double-click the installer.
 #
 # Payload (root-owned):
 #   /Applications/Squirrel.app
@@ -29,6 +31,8 @@ PKG_SRC="$ROOT/installer/pkg"
 STAGING="$ROOT/pkg-staging"          # payload root
 BUILD="$ROOT/build/pkg"              # intermediate component pkg + distribution.xml
 PKG_OUT="$ROOT/squirrel-installer-macos.pkg"
+DMG_STAGING="$ROOT/pkg-dmg-staging"  # holds the .pkg for hdiutil to wrap
+DMG_OUT="$ROOT/squirrel-macos.dmg"   # final DMG that CONTAINS the .pkg
 APP_ID="com.metuur.squirrel"
 SKIP_BUILD=0
 DRY_RUN=0
@@ -54,6 +58,40 @@ warn() { printf '%s⚠  %s%s\n' "$C_YELLOW" "$*" "$C_RESET"; }
 hdr()  { printf '\n%s=== %s ===%s\n' "$C_BOLD" "$*" "$C_RESET"; }
 die()  { printf '%s✗  %s%s\n' "$C_RED" "$*" "$C_RESET" >&2; exit 1; }
 run()  { info "$*"; (( DRY_RUN )) || eval "$*"; }
+
+# _notarize_staple <artifact> — submit <artifact> to Apple's notary service,
+# wait with an elapsed-time heartbeat, then staple the ticket on Acceptance.
+# Reads notary creds from $notary_creds (set by the caller). No-op if empty.
+_notarize_staple() {
+  local artifact="$1"
+  if (( ! ${#notary_creds[@]} )); then return 0; fi
+  info "notarytool submit → $(basename "$artifact") (Apple scan; usually 1–5 min)"
+  local stdout_out stderr_out exit_code=0
+  stdout_out="$(mktemp)"; stderr_out="$(mktemp)"
+  xcrun notarytool submit "$artifact" "${notary_creds[@]}" --wait \
+    >"$stdout_out" 2>"$stderr_out" &
+  local notary_pid=$!
+  SECONDS=0; local warned_long=0
+  while kill -0 "$notary_pid" 2>/dev/null; do
+    sleep 10
+    printf '%s   ⏳ notarizing… %dm%02ds elapsed%s\r' \
+      "$C_BLUE" "$(( SECONDS / 60 ))" "$(( SECONDS % 60 ))" "$C_RESET"
+    if (( SECONDS >= 1200 && warned_long == 0 )); then
+      warned_long=1; printf '\n'; warn "20+ min — Apple's queue may be backed up; still waiting…"
+    fi
+  done
+  printf '\n'
+  wait "$notary_pid" || exit_code=$?
+  if (( exit_code )) || ! grep -q "status: Accepted" "$stdout_out"; then
+    cat "$stdout_out" "$stderr_out" >&2
+    rm -f "$stdout_out" "$stderr_out"
+    die "notarization failed or not Accepted: $(basename "$artifact")"
+  fi
+  rm -f "$stdout_out" "$stderr_out"
+  ok "notarytool: Accepted"
+  run "xcrun stapler staple '$artifact'"
+  ok "stapled"
+}
 
 # ─── Signing config ──────────────────────────────────────────────────────────
 SIGN_APP=1
@@ -149,11 +187,16 @@ DISTXML="$BUILD/distribution.xml"
 if (( ! DRY_RUN )); then
   sed "s/__VERSION__/$VERSION/g" "$PKG_SRC/distribution.xml.template" > "$DISTXML"
 fi
+# Stage GUI resources with the version substituted into welcome.html.
+run "mkdir -p '$BUILD/resources'"
+run "cp '$PKG_SRC/resources/'*.html '$BUILD/resources/'"
+(( DRY_RUN )) || sed -i '' "s/__VERSION__/$VERSION/g" "$BUILD/resources/welcome.html"
+
 UNSIGNED="$BUILD/squirrel-unsigned.pkg"
 run "productbuild \
   --distribution '$DISTXML' \
   --package-path '$BUILD' \
-  --resources '$PKG_SRC/resources' \
+  --resources '$BUILD/resources' \
   '$UNSIGNED'"
 ok "product → ${UNSIGNED#$ROOT/}"
 
@@ -170,10 +213,11 @@ fi
 
 # ─── Notarize + staple ───────────────────────────────────────────────────────
 hdr "Notarize + staple"
+# Resolve notarization credentials once; reused for both the .pkg and the DMG.
+notary_creds=()
 if (( SIGN_PKG && ! DRY_RUN )); then
   # Credentials: prefer a keychain profile (keeps the app-specific password out
   # of the process listing). Fall back to APPLE_ID/PASSWORD/TEAM_ID env vars.
-  notary_creds=()
   if [[ -n "${APPLE_KEYCHAIN_PROFILE:-}" ]]; then
     notary_creds=(--keychain-profile "$APPLE_KEYCHAIN_PROFILE")
   elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
@@ -182,34 +226,7 @@ if (( SIGN_PKG && ! DRY_RUN )); then
   else
     warn "no notarization credentials — signed but NOT notarized (set APPLE_KEYCHAIN_PROFILE or APPLE_ID/PASSWORD/TEAM_ID)"
   fi
-
-  if (( ${#notary_creds[@]} )); then
-    info "notarytool submit → $(basename "$PKG_OUT") (Apple scan; usually 1–5 min)"
-    stdout_out="$(mktemp)"; stderr_out="$(mktemp)"; exit_code=0
-    xcrun notarytool submit "$PKG_OUT" "${notary_creds[@]}" --wait \
-      >"$stdout_out" 2>"$stderr_out" &
-    notary_pid=$!
-    SECONDS=0; warned_long=0
-    while kill -0 "$notary_pid" 2>/dev/null; do
-      sleep 10
-      printf '%s   ⏳ notarizing… %dm%02ds elapsed%s\r' \
-        "$C_BLUE" "$(( SECONDS / 60 ))" "$(( SECONDS % 60 ))" "$C_RESET"
-      if (( SECONDS >= 1200 && warned_long == 0 )); then
-        warned_long=1; printf '\n'; warn "20+ min — Apple's queue may be backed up; still waiting…"
-      fi
-    done
-    printf '\n'
-    wait "$notary_pid" || exit_code=$?
-    if (( exit_code )) || ! grep -q "status: Accepted" "$stdout_out"; then
-      cat "$stdout_out" "$stderr_out" >&2
-      rm -f "$stdout_out" "$stderr_out"
-      die "notarization failed or not Accepted"
-    fi
-    rm -f "$stdout_out" "$stderr_out"
-    ok "notarytool: Accepted"
-    run "xcrun stapler staple '$PKG_OUT'"
-    ok "stapled"
-  fi
+  _notarize_staple "$PKG_OUT"
 else
   info "skipping notarization (pkg unsigned or dry-run)"
 fi
@@ -229,5 +246,26 @@ else
   info "skipping spctl assertion (unsigned or dry-run)"
 fi
 
-printf '\n%sDone.%s  Distribute: squirrel-installer-macos.pkg\n' "$C_BOLD" "$C_RESET"
-printf '       Size: %s\n\n' "$(du -sh "$PKG_OUT" 2>/dev/null | cut -f1 || echo 'n/a')"
+# ─── Wrap the .pkg into a DMG ────────────────────────────────────────────────
+hdr "Wrap .pkg into DMG"
+run "rm -rf '$DMG_STAGING'"
+run "mkdir -p '$DMG_STAGING'"
+run "cp '$PKG_OUT' '$DMG_STAGING/'"
+run "rm -f '$DMG_OUT'"
+run "hdiutil create -volname 'Squirrel $VERSION' -srcfolder '$DMG_STAGING' -ov -format UDZO '$DMG_OUT'"
+ok "dmg → ${DMG_OUT#$ROOT/}"
+
+# Sign + notarize + staple the DMG (mirrors the .pkg path).
+if (( SIGN_APP && ! DRY_RUN )); then
+  run "codesign --sign '$APPLE_SIGNING_IDENTITY' '$DMG_OUT'"
+  ok "dmg signed"
+  _notarize_staple "$DMG_OUT"
+else
+  info "skipping DMG signing/notarization (unsigned or dry-run)"
+fi
+
+printf '\n%sDone.%s  Distribute: squirrel-installer-macos.pkg (raw installer)\n' "$C_BOLD" "$C_RESET"
+printf '             or squirrel-macos.dmg (mountable, contains the .pkg)\n'
+printf '       Size: pkg %s · dmg %s\n\n' \
+  "$(du -sh "$PKG_OUT" 2>/dev/null | cut -f1 || echo 'n/a')" \
+  "$(du -sh "$DMG_OUT" 2>/dev/null | cut -f1 || echo 'n/a')"

@@ -193,6 +193,11 @@ def _build_pick(
     key = _slot_key(slot)
     note_raw = fm.get(_note_key(slot))
     note = note_raw if isinstance(note_raw, str) and note_raw else None
+
+    # Estimate↔actual variance (derived on read, never stored — R-3.2/R-3.5).
+    from estimate_buffer import estimate_variance  # noqa: E402
+    variance = estimate_variance(fm)
+
     return {
         "project_slug": project_slug,
         "project_title": project_title,
@@ -202,6 +207,11 @@ def _build_pick(
         "picked_on": fm.get(key, ""),
         "time_invested_minutes": int(fm.get("time_invested_minutes") or 0),
         "note": note,
+        "estimate_minutes": variance["estimate_minutes"],
+        "estimate_user_minutes": variance["estimate_user_minutes"],
+        "variance_minutes": variance["variance_minutes"],
+        "variance_ratio": variance["variance_ratio"],
+        "has_variance": variance["has_variance"],
     }
 
 

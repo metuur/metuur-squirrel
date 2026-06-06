@@ -186,12 +186,26 @@ def cmd_estimate(args):
             sys.exit(1)
 
     data = adjust_estimate(mins)
+
+    intent_id = getattr(args, "intent", None)
+    if intent_id:
+        from estimate_buffer import apply_estimate_to_intent, EstimateError
+        vault = _vault(getattr(args, "vault", None))
+        try:
+            apply_estimate_to_intent(vault, intent_id, mins)
+        except EstimateError as e:
+            print(f"❌  {e}", file=sys.stderr)
+            sys.exit(1)
+        data = {**data, "intent": intent_id, "persisted": True}
+
     if args.json:
         print(json.dumps(data, indent=2))
         return
 
     print(f"⏱️  {data['user_estimate_human']}  →  {data['adjusted_human']}  (×{data['multiplier']})")
     print(f"\n   {data['explanation']}")
+    if intent_id:
+        print(f"\n   ✓  saved to {intent_id}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -623,7 +637,7 @@ def _register_claude_marketplace(plugin_root: Path, dry: bool) -> None:
     ip["plugins"]["squirrel@squirrel"] = [{
         "scope": "user",
         "installPath": repo,
-        "version": "0.7.0",
+        "version": "0.7.1",
         "installedAt": now,
         "lastUpdated": now,
         "gitCommitSha": "",
@@ -1097,6 +1111,10 @@ def main():
     grp2.add_argument("--minutes", type=int)
     grp2.add_argument("--hours", type=float)
     grp2.add_argument("--estimate", metavar="STR", help="e.g. '90 min' or '2.5h'")
+    est.add_argument("--intent", metavar="ID",
+                     help="Persist the adjusted estimate onto this intent (active projects only)")
+    est.add_argument("--vault", metavar="NAME",
+                     help="Operate on the named vault (default: configured default)")
 
     rec = sub.add_parser("recover", help="Find interrupted sessions (from manifest or Claude history)")
     rec.add_argument("--max-age", type=int, default=72, dest="max_age", metavar="HOURS",

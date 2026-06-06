@@ -124,6 +124,13 @@ export interface ManualPick {
   next_action: string | null;
   picked_on: string;
   note: string | null;
+  // Estimate↔actual reconciliation (derived on read; null when absent).
+  estimate_minutes: number | null;
+  estimate_user_minutes: number | null;
+  time_invested_minutes: number;
+  variance_minutes: number | null;
+  variance_ratio: number | null;
+  has_variance: boolean;
 }
 
 export interface ManualFocusPayload {
@@ -289,6 +296,15 @@ export const api = {
       body: JSON.stringify({ ...body, slot: half }),
     });
   },
+  setEstimate: (
+    body:
+      | { project_slug: string; intent_slug: string; minutes: number }
+      | { project_slug: string; intent_slug: string; clear: true },
+  ) =>
+    call<{ ok: true; estimate: unknown }>("/api/intent/estimate", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
   notifications: (params: { limit?: number; unread?: boolean } = {}) => {
     const qs = new URLSearchParams();
     if (params.limit !== undefined) qs.set("limit", String(params.limit));

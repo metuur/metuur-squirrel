@@ -6,6 +6,27 @@ interface Props {
   online: boolean;
   onPick?: (slot: "today" | "week") => void;
   onClear?: (slot: "today" | "week") => void;
+  onSetEstimate?: (
+    projectSlug: string,
+    intentSlug: string,
+    minutes: number | null,
+  ) => void;
+}
+
+// Format minutes as "Xh Ym" / "Ym".
+function fmtMins(m: number): string {
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+// Neutral, non-shaming variance copy by ratio band (R-4.3, R-4.4). Inlined here
+// (not a shared cross-surface helper) — the web HomePage carries its own copy.
+function varianceLabel(ratio: number): string {
+  if (ratio >= 0.85 && ratio <= 1.15) return "about right — learning your pace";
+  if (ratio > 1.15) return "ran longer than planned — learning your pace";
+  return "finished ahead of plan";
 }
 
 interface PillProps {
@@ -94,9 +115,78 @@ interface FocusRowProps {
   chipStyle?: React.CSSProperties;
   pick: ManualPick;
   separator: boolean;
+  onSetEstimate?: (
+    projectSlug: string,
+    intentSlug: string,
+    minutes: number | null,
+  ) => void;
 }
 
-function ManualFocusRow({ badge, chipStyle, pick, separator }: FocusRowProps) {
+// The estimate/actual/variance line shown under a focused intent.
+// - has_variance:   "guessed 45m · est 1h53m · actual 2h10m · 1.0× — copy"
+// - estimate only:  "est 1h53m · not started yet"
+// - actual only:    "actual 2h10m · + estimate"  (prompt to add an estimate)
+function EstimateLine({
+  pick,
+  onSetEstimate,
+}: {
+  pick: ManualPick;
+  onSetEstimate?: FocusRowProps["onSetEstimate"];
+}) {
+  const promptEstimate = () => {
+    if (!onSetEstimate) return;
+    const raw = window.prompt("Estimate for this task — minutes (blank to clear):", "");
+    if (raw === null) return; // cancelled
+    const trimmed = raw.trim();
+    if (trimmed === "") {
+      onSetEstimate(pick.project_slug, pick.intent_slug, null);
+      return;
+    }
+    const mins = Number(trimmed);
+    if (!Number.isFinite(mins) || mins <= 0) return;
+    onSetEstimate(pick.project_slug, pick.intent_slug, Math.round(mins));
+  };
+
+  const setBtn = onSetEstimate ? (
+    <button
+      type="button"
+      onClick={promptEstimate}
+      className="text-[10.5px] underline-offset-2 hover:underline text-ink-3"
+    >
+      {pick.estimate_minutes ? "edit estimate" : "+ estimate"}
+    </button>
+  ) : null;
+
+  if (pick.has_variance && pick.estimate_minutes && pick.variance_ratio != null) {
+    return (
+      <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
+        {pick.estimate_user_minutes ? `guessed ${fmtMins(pick.estimate_user_minutes)} · ` : ""}
+        est {fmtMins(pick.estimate_minutes)} · actual {fmtMins(pick.time_invested_minutes)} ·{" "}
+        <span className="text-ink-2">{pick.variance_ratio.toFixed(1)}×</span>{" "}
+        <span className="italic">— {varianceLabel(pick.variance_ratio)}</span> {setBtn}
+      </p>
+    );
+  }
+  if (pick.estimate_minutes) {
+    return (
+      <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
+        est {fmtMins(pick.estimate_minutes)} · not started yet {setBtn}
+      </p>
+    );
+  }
+  if (pick.time_invested_minutes > 0) {
+    return (
+      <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
+        actual {fmtMins(pick.time_invested_minutes)} {setBtn}
+      </p>
+    );
+  }
+  return setBtn ? (
+    <p className="mt-1 text-[10.5px] leading-snug">{setBtn}</p>
+  ) : null;
+}
+
+function ManualFocusRow({ badge, chipStyle, pick, separator, onSetEstimate }: FocusRowProps) {
   // If next_action exists, the slug line carries project + intent context and
   // the title line carries the action. Otherwise project goes to the slug and
   // intent_title becomes the title (avoids printing intent twice).
@@ -127,12 +217,13 @@ function ManualFocusRow({ badge, chipStyle, pick, separator }: FocusRowProps) {
             </span>
           )}
         </div>
+        <EstimateLine pick={pick} onSetEstimate={onSetEstimate} />
       </div>
     </div>
   );
 }
 
-export function FocusWidget({ home, online, onPick, onClear }: Props) {
+export function FocusWidget({ home, online, onPick, onClear, onSetEstimate }: Props) {
   const focus = home.data?.focus ?? null;
   const manualFocus = home.data?.manual_focus ?? null;
   const dimmed = !online;
@@ -165,6 +256,7 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
               badge="Today"
               pick={amPick!}
               separator={false}
+              onSetEstimate={onSetEstimate}
             />
           ) : (
             <div className="flex flex-col">
@@ -173,6 +265,7 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
                   badge="AM"
                   pick={amPick}
                   separator={false}
+                  onSetEstimate={onSetEstimate}
                 />
               )}
               {pmPick && (
@@ -181,6 +274,7 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
                   chipStyle={VIOLET_CHIP_STYLE}
                   pick={pmPick}
                   separator={!!amPick}
+                  onSetEstimate={onSetEstimate}
                 />
               )}
             </div>
@@ -211,6 +305,7 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
             chipStyle={WEEK_CHIP_STYLE}
             pick={weekPick}
             separator={false}
+            onSetEstimate={onSetEstimate}
           />
         </div>
       )}

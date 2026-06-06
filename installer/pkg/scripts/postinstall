@@ -55,4 +55,7 @@ install_pack ".windsurf" ".windsurf/rules/squirrel"
 # Clear the quarantine bit on the freshly installed app so first launch is clean.
 /usr/bin/xattr -dr com.apple.quarantine /Applications/Squirrel.app 2>/dev/null || true
 
+# Launch the app for the user so they land in onboarding right after install.
+as_user /usr/bin/open -a "Squirrel" 2>/dev/null || true
+
 exit 0

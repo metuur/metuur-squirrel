@@ -164,6 +164,25 @@ export default function App() {
     }
   };
 
+  // Estimate↔actual reconciliation: persist a time estimate on the focused
+  // intent (minutes), or clear it (minutes === null). Best-effort; refetch home.
+  const handleSetEstimate = async (
+    projectSlug: string,
+    intentSlug: string,
+    minutes: number | null,
+  ) => {
+    try {
+      await api.setEstimate(
+        minutes === null
+          ? { project_slug: projectSlug, intent_slug: intentSlug, clear: true }
+          : { project_slug: projectSlug, intent_slug: intentSlug, minutes },
+      );
+      setHomeBump((n) => n + 1);
+    } catch {
+      // Best-effort — leave the existing value in place.
+    }
+  };
+
   const projects = home.data?.projects ?? [];
   const focusSlug = home.data?.focus?.slug ?? null;
 
@@ -348,6 +367,7 @@ export default function App() {
           online={status.online}
           onPick={status.online ? setFocusModalSlot : undefined}
           onClear={status.online ? handleClearFocus : undefined}
+          onSetEstimate={status.online ? handleSetEstimate : undefined}
         />
         <DeadlinesWidget
           home={home}

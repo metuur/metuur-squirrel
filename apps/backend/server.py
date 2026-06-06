@@ -382,6 +382,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/focus/checkout$"),                    "api_focus_checkout"),
     ("GET",  re.compile(r"^/api/focus/session$"),                     "api_focus_session"),
     ("POST", re.compile(r"^/api/focus/recalculate$"),                 "api_focus_recalculate"),
+    ("PUT",  re.compile(r"^/api/intent/estimate$"),                   "api_intent_estimate"),
     ("GET",  re.compile(r"^/api/projects$"),                          "api_projects_list"),
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_detail"),
@@ -1097,6 +1098,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
             conn.close()
         self._invalidate_vault_cache(ctx)
         self._send_json({"updated": len(intents)})
+
+    def api_intent_estimate(self) -> None:
+        """PUT /api/intent/estimate — persist or clear an intent's time estimate.
+
+        Body: {project_slug, intent_slug, minutes}  or  {project_slug, intent_slug, clear: true}
+        Variance is derived on read (in get_manual_focus); nothing variance-related
+        is stored here. (R-1.5, R-2.3, R-2.7, R-3.4)
+        """
+        body = self._read_json_body()
+        ctx, _ = self._context()
+        project_slug = body.get("project_slug", "")
+        intent_slug = body.get("intent_slug", "")
+        if not project_slug or not intent_slug:
+            self._send_json_error(400, "project_slug and intent_slug are required")
+            return
+        from estimate_buffer import (
+            apply_estimate_by_slugs, clear_estimate_by_slugs, EstimateError,
+        )
+        try:
+            if body.get("clear") is True:
+                clear_estimate_by_slugs(ctx.active.path, project_slug, intent_slug)
+                stored = None
+            else:
+                stored = apply_estimate_by_slugs(
+                    ctx.active.path, project_slug, intent_slug, body.get("minutes"),
+                )
+        except EstimateError as e:
+            status = 404 if e.code == "INTENT_NOT_FOUND" else 400
+            self._send_json_error(status, e.code)
+            return
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"ok": True, "estimate": stored})
 
     # ── projects ────────────────────────────────────────────────────────────
 

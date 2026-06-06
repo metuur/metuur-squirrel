@@ -4,12 +4,15 @@ Local-first focus & productivity companion. Monorepo.
 
 ## Installing (end users)
 
-Squirrel ships in two flavors. Pick whichever fits your audience:
+Squirrel ships in three flavors. Pick whichever fits your audience:
 
-| Flavor                         | What you get                                                                                                    | Who it's for                                                               |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Squirrel.app** (Tauri DMG)   | Just the desktop popup with a bundled backend that the app supervises itself. No terminal needed after install. | End users who want the tray popup.                                         |
-| **Full installer DMG** (below) | `squirrel` CLI + backend + `agent-pack/` (Claude/Codex skills) + launchd service.                               | Power users who want CLI access and agent integration alongside the popup. |
+| Flavor                            | What you get                                                                                                    | Who it's for                                                               |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **All-in-one installer** (`.pkg`) | Guided double-click installer: **Squirrel.app** + `squirrel` CLI + `agent-pack/`, auto-configured (vault, config, and any AI agents you have). No Terminal. | **Most users — recommended.**                              |
+| **Squirrel.app** (Tauri DMG)      | Just the desktop popup with a bundled backend that the app supervises itself. No terminal needed after install. | Just the tray popup, nothing else.                                         |
+| **Full installer DMG** (below)    | `squirrel` CLI + backend + `agent-pack/` (Claude/Codex skills) + launchd service. No desktop app.               | Headless / CLI-only power users.                                           |
+
+For the **all-in-one `.pkg`**: download `squirrel-installer-macos.pkg`, double-click, click through the installer, then open Squirrel from `⌘+Space` → "Squirrel". It installs the app to `/Applications`, the `squirrel` CLI to `/usr/local/bin`, wires the agent-pack into any agents you have, and seeds a starter config + vault. Build instructions: [Building the all-in-one installer](#building-the-all-in-one-installer-pkg).
 
 For the **Squirrel.app** path, see [`docs/install.md`](docs/install.md) — drag to Applications, then a one-time Gatekeeper bypass (right-click → Open) because the app is currently unsigned. The signing roadmap is in [`docs/release.md`](docs/release.md).
 
@@ -61,11 +64,42 @@ Requires `pyinstaller` on the dev machine (not shipped to users):
 
 ```bash
 pip install pyinstaller
-make build-installers       # → squirrel-installer-macos.dmg
-make build-installers-dry   # preview steps without executing
+make build-installers            # universal (arm64 + x86_64) → squirrel-installer-macos.dmg
+make build-installers-arm64      # Apple-Silicon-only (skips the x86_64 slice + lipo)
+make build-installers-dry        # preview steps without executing
 ```
 
-What `make build-installers` does:
+Use `build-installers-arm64` on an Apple Silicon machine that doesn't have an
+x86_64-capable Python (the universal build needs one to produce the x86_64 slice;
+without it `lipo` fails). The arm64-only DMG won't run on Intel Macs.
+
+**Versioning.** Add `BUMP=patch` (or `minor` / `major`) to bump the version
+*before* building. It reads the canonical version from `apps/cli/pyproject.toml`,
+then syncs the same number into every manifest (both `pyproject.toml`s,
+`tauri.conf.json`, the desktop `Cargo.toml` `[package]`, all `package.json`s, and
+the hardcoded plugin version in `apps/cli/squirrel`). Files are edited but **not**
+committed or tagged — review the diff yourself. A plain build never changes the version.
+
+```bash
+make build-installers-arm64 BUMP=patch     # e.g. 0.7.0 → 0.7.1, then build
+```
+
+**Signing.** When the `APPLE_*` signing env vars **or** `APPLE_KEYCHAIN_PROFILE`
+are set, the build signs the binaries + DMG, notarizes, staples, and asserts
+Gatekeeper acceptance; the notarization step streams an elapsed-time heartbeat so
+it doesn't look frozen while Apple scans. With nothing set it produces an
+**unsigned** dev DMG (which `installer/install.sh` will refuse) and warns. See
+[Signing & notarizing](#signing--notarizing-macos-distribution) for the one-time
+credential setup. To keep your app-specific password out of `ps`, store it once
+and use a keychain profile instead of `APPLE_PASSWORD`:
+
+```bash
+xcrun notarytool store-credentials squirrel-notary \
+  --apple-id you@example.com --team-id TEAMID --password xxxx-xxxx-xxxx-xxxx
+export APPLE_KEYCHAIN_PROFILE=squirrel-notary
+```
+
+What `make build-installers` does (signing/notarization steps run only when configured):
 
 ```
 Step 1  pnpm -F squirrel-web-ui build     → apps/backend/app/dist/
@@ -88,7 +122,61 @@ Key files:
 | ------------------------------------- | -------------------------------------------------------------------- |
 | `scripts/build-dmg.sh`                | Builds the DMG artifact (runs on dev machine)                        |
 | `installer/install.sh`                | End-user installer bundled inside the DMG                            |
-| `apps/backend/launchd/plist.template` | launchd plist with `__BINARY__`, `__PORT__`, `__HOME__` placeholders |
+| `scripts/bump_version.py`             | Syncs all manifests to one bumped version (`BUMP=` above)            |
+| `apps/backend/launchd/plist.template` | launchd plist with `__PYTHON__`, `__SERVER_PY__`, `__PORT__`, `__TOKEN_FILE__`, `__HOME__` placeholders |
+
+---
+
+## Building the all-in-one installer (`.pkg`)
+
+The all-in-one installer bundles the desktop app **and** the CLI **and** the
+agent-pack into one guided, double-click `.pkg`. Reuses the built `Squirrel.app`
+and the `dist/` CLI binaries.
+
+```bash
+make build-pkg            # build inputs as needed, then assemble squirrel-installer-macos.pkg
+make build-pkg-fast       # reuse an already-built Squirrel.app + dist/ binaries (no rebuild)
+make build-pkg-dry        # print the steps without executing
+```
+
+`BUMP=patch` (etc.) works here too. Typical fast path on Apple Silicon:
+
+```bash
+SQUIRREL_ARM64_ONLY=1 make build      # build the app
+make build-installers-arm64           # build the CLI binaries into dist/
+make build-pkg-fast                   # package both into the .pkg
+```
+
+**What it installs** (root-owned payload, then a `postinstall` configures the
+logged-in user):
+
+| What                          | Where                                                              |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `Squirrel.app`                | `/Applications/Squirrel.app`                                       |
+| `squirrel` + `squirrel-backend` CLI | `/usr/local/bin/`                                            |
+| Staged agent-pack + resources | `/usr/local/share/squirrel/`                                       |
+| Per-user config + vault       | `~/.squirrel/config.toml`, `~/squirrel-vault` (seeded, never overwritten) |
+| Agent-pack (per detected agent) | `~/.claude/plugins/squirrel`, `~/.codex/squirrel`, `~/.cursor/rules/squirrel`, `~/.windsurf/rules/squirrel` |
+
+No launchd service — **the app owns the backend** (avoids a `:3939` port conflict
+with a separately-installed service). The CLI reads the vault directly and works
+standalone.
+
+**Signing.** Needs a **Developer ID Installer** certificate (distinct from the
+Developer ID *Application* cert used elsewhere — create it the same way at
+[developer.apple.com → Certificates](https://developer.apple.com/account/resources/certificates)).
+`build-pkg.sh` signs the app (`APPLE_SIGNING_IDENTITY`), signs the `.pkg`
+(`APPLE_INSTALLER_IDENTITY`, auto-detected from the keychain if unset), then
+notarizes + staples (same `APPLE_KEYCHAIN_PROFILE` / `APPLE_ID` credentials as
+the DMG path). With no identity it builds an **unsigned** dev `.pkg` (Gatekeeper
+will block it).
+
+Key files: `scripts/build-pkg.sh`, `installer/pkg/scripts/postinstall`,
+`installer/pkg/distribution.xml.template`, `installer/pkg/resources/`.
+
+> **Launching:** Squirrel is a menu-bar app. After install, `⌘+Space` → "Squirrel"
+> brings the popup forward (the app handles macOS `Reopen` + single-instance
+> relaunch); the menu-bar icon toggles it too.
 
 ---
 
@@ -345,6 +433,7 @@ make build              # produces an unsigned Squirrel.app + .dmg (bundles PyIn
 | `make backend-start`    | run the backend directly (for `make dev` to adopt)                |
 | `make backend-build`    | rebuild the React web UI served by the backend                    |
 | `make build-installers` | the other distribution path: CLI + agent-pack DMG                 |
+| `make build-pkg`        | all-in-one `.pkg`: app + CLI + agent-pack, auto-configured        |
 | `make test-cli`         | run the Python test suite                                         |
 
 Per-package commands work via filter:

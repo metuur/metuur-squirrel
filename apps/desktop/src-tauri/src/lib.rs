@@ -65,10 +65,11 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder
-            .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {
-                // Wired in Story 1.1: focus the existing main window when a second
-                // instance launches. For Story 0.2 the plugin is registered only to
-                // prove it compiles and links.
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                // When a second instance launches (e.g. Cmd+Space / Spotlight
+                // spawns a new process), surface the existing window instead of
+                // silently no-op'ing. Mirrors the macOS Reopen handler.
+                tray::show_main_window(app);
             }))
             .plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -267,6 +268,15 @@ pub fn run() {
                 // reached when app.exit(0) is called from the tray "Quit" item).
                 tauri::RunEvent::Exit => {
                     backend_supervisor::shutdown(app);
+                }
+                // Launching the already-running app (Cmd+Space / Spotlight,
+                // Finder, Dock) fires applicationShouldHandleReopen → Reopen.
+                // As an Accessory/tray app we have no visible window by default,
+                // so bring the popup forward — same routine as the tray's
+                // "Open Squirrel" item — instead of doing nothing.
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { .. } => {
+                    tray::show_main_window(app);
                 }
                 _ => {}
             }

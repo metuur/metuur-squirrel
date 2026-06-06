@@ -4,6 +4,7 @@
 // the backend. Binaries/launchd/agent-pack remain the installer's job.
 
 import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { api, type ObsidianStatus } from "../api/client";
@@ -17,6 +18,23 @@ type VaultMode = "create" | "existing";
 
 export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState<Step>("welcome");
+
+  // ── App version (read at runtime via Tauri, mirrors AppCredit) ──
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getVersion()
+      .then((v) => {
+        if (alive) setVersion(v);
+      })
+      .catch(() => {
+        // Non-Tauri host (e.g. plain browser dev) or denied — just omit it.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // ── Obsidian step state ──
   const [obsidian, setObsidian] = useState<ObsidianStatus | null>(null);
@@ -91,6 +109,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
         {step === "welcome" && (
           <section className="flex flex-col gap-4">
             <h1 className="title text-[20px]">Welcome to Squirrel</h1>
+            {version && <p className="text-ink-4 tabular text-[11px]">Version {version}</p>}
             <p className="text-ink-3 text-[13px]">
               Let’s get you set up — no Terminal required. We’ll check for Obsidian
               and point Squirrel at your vault.

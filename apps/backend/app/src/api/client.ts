@@ -115,6 +115,12 @@ export interface ManualPick {
   next_action: string | null;
   picked_on: string;
   time_invested_minutes: number;
+  // Estimate↔actual reconciliation (derived on read; null when absent).
+  estimate_minutes: number | null;
+  estimate_user_minutes: number | null;
+  variance_minutes: number | null;
+  variance_ratio: number | null;
+  has_variance: boolean;
 }
 export interface ManualFocusPayload {
   today: ManualPick | null;
@@ -438,6 +444,15 @@ export const api = {
   checkin: (body: { project_slug: string; intent_slug: string; slot: string }) =>
     call<CheckinResult>('/focus/checkin', { method: 'POST', body: JSON.stringify(body) }),
   checkout: () => call<CheckoutResult>('/focus/checkout', { method: 'POST' }),
+  setEstimate: (
+    body:
+      | { project_slug: string; intent_slug: string; minutes: number }
+      | { project_slug: string; intent_slug: string; clear: true },
+  ) =>
+    call<{ ok: true; estimate: unknown }>('/intent/estimate', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   focusHistory: (params: { date?: string; from?: string; to?: string } = {}) => {
     const qs = new URLSearchParams();
     if (params.date) qs.set('date', params.date);
