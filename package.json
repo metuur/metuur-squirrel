@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "pnpm -F @squirrel/desktop dev",
     "build": "pnpm -F @squirrel/desktop build",
-    "tauri": "pnpm -F @squirrel/desktop tauri"
+    "tauri": "pnpm -F @squirrel/desktop tauri",
+    "tauri:build": "pnpm -F @squirrel/desktop tauri:build"
   },
   "packageManager": "pnpm@9.0.0"
 }

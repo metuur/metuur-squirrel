@@ -124,7 +124,130 @@ Iterating on the backend without rebuilding the whole bundle:
 cd apps/desktop && pnpm tauri:prebuild-backend   # rebuilds just the sidecar
 ```
 
-Full code-signing + notarization setup for non-technical end-user distribution is documented in [`docs/release.md`](docs/release.md).
+`make build` produces an **unsigned** app — fine for local testing, but other Macs
+show a Gatekeeper warning. For distribution you need a signed + notarized + stapled
+bundle. The steps below are the exact one-time setup; [`docs/release.md`](docs/release.md)
+has the longer-form reference.
+
+### Signing & notarizing (macOS distribution)
+
+#### 1. Prerequisites
+
+- Apple Developer Program membership ($99/yr)
+- Rust targets for your build:
+  ```bash
+  rustup target add aarch64-apple-darwin x86_64-apple-darwin
+  ```
+  A `universal` build needs both; an Apple-Silicon-only build needs just `aarch64-apple-darwin`.
+
+#### 2. Create a "Developer ID Application" certificate
+
+[developer.apple.com → Certificates](https://developer.apple.com/account/resources/certificates)
+→ **+** → **Software → Developer ID Application** → choose the **G2 Sub-CA** intermediary.
+
+It asks for a CSR. Generate one either via Keychain Access (*Certificate Assistant →
+Request a Certificate From a Certificate Authority…*, "Saved to disk"), or via openssl:
+
+```bash
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout DeveloperID.key \
+  -out DeveloperID.certSigningRequest \
+  -subj "/emailAddress=you@example.com/CN=Your Name/C=US"
+```
+
+Upload the **`.certSigningRequest`** (not the `.key`), then download the resulting `.cer`.
+
+#### 3. Import the identity into your keychain
+
+If you used openssl, bundle cert + key into a `.p12` first. **Use `-legacy`** — OpenSSL 3.x's
+default encryption can't be read by macOS's keychain (you'll get `MAC verification failed`):
+
+```bash
+# DER cert → PEM
+openssl x509 -inform DER -in developerID_application.cer -out developerID_application.pem
+
+# cert + key → legacy .p12
+openssl pkcs12 -export -legacy \
+  -inkey DeveloperID.key -in developerID_application.pem \
+  -out DeveloperID.p12 -name "Developer ID Application" \
+  -passout pass:CHANGEME
+
+# import, allowing codesign/productsign to use the key
+security import DeveloperID.p12 -k ~/Library/Keychains/login.keychain-db \
+  -P CHANGEME -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/productsign
+```
+
+Install Apple's intermediate CAs so the chain validates — without them `find-identity`
+reports **0 valid identities** even though the import "succeeded":
+
+```bash
+curl -fsSLO https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+curl -fsSLO https://www.apple.com/certificateauthority/AppleRootCA-G2.cer
+security import DeveloperIDG2CA.cer -k ~/Library/Keychains/login.keychain-db
+security import AppleRootCA-G2.cer  -k ~/Library/Keychains/login.keychain-db
+```
+
+Verify:
+
+```bash
+security find-identity -v -p codesigning
+# 1) <hash> "Developer ID Application: Your Name (TEAMID)"
+#    1 valid identities found
+```
+
+#### 4. App-specific password for notarization
+
+[appleid.apple.com](https://appleid.apple.com) → Sign-In and Security →
+**App-Specific Passwords** → **+**. Copy the `xxxx-xxxx-xxxx-xxxx` value, then sanity-check
+it authenticates:
+
+```bash
+xcrun notarytool history --apple-id you@example.com \
+  --password xxxx-xxxx-xxxx-xxxx --team-id TEAMID
+# "No submission history." = credentials OK
+```
+
+#### 5. Export credentials
+
+Create a **gitignored** `.envrc` in the repo root (never commit it):
+
+```bash
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+export APPLE_ID="you@example.com"
+export APPLE_TEAM_ID="TEAMID"                  # 10-char team ID
+export APPLE_PASSWORD="xxxx-xxxx-xxxx-xxxx"    # app-specific password, not your Apple ID password
+```
+
+#### 6. Build
+
+```bash
+cd apps/desktop
+set -a; source ../../.envrc; set +a
+
+pnpm tauri:build                                 # universal (arm64 + x86_64) — default
+TAURI_TARGET=aarch64-apple-darwin pnpm tauri:build   # Apple Silicon only
+```
+
+The wrapper (`scripts/tauri-build.sh`) checks the keychain + env vars, runs
+`tauri build` (sign → notarize → staple the `.app`), then **notarizes + staples the
+`.dmg`** too (Tauri only signs the DMG, so the wrapper finishes the job) and verifies
+both artifacts. It tolerates Tauri's cosmetic DMG Finder-window AppleScript step, which
+exits non-zero in headless contexts *after* the artifacts are built. Override the build
+target with the `TAURI_TARGET` env var (defaults to `universal-apple-darwin`). Artifacts:
+
+```
+target/release/bundle/macos/Squirrel.app          # workspace-root target/ (Cargo workspace)
+target/release/bundle/dmg/Squirrel_<version>_<arch>.dmg
+```
+
+#### 7. Verify
+
+```bash
+codesign -dv --verbose=4 Squirrel.app          # signing chain + TeamIdentifier
+xcrun stapler validate Squirrel.app            # notarization staple
+spctl --assess --type execute --verbose Squirrel.app
+# → accepted  source=Notarized Developer ID
+```
 
 ---
 

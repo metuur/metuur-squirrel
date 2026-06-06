@@ -2070,7 +2070,10 @@ def _content_type(name: str) -> str:
 
 
 def _detect_version() -> str:
-    pj = _REPO / ".claude-plugin" / "plugin.json"
+    # plugin.json was relocated under agent-pack/ during the monorepo
+    # restructure; the old _REPO/.claude-plugin path now misses, which is why
+    # the sidebar showed "v?". Point at the current location.
+    pj = _REPO / "agent-pack" / ".claude-plugin" / "plugin.json"
     if pj.is_file():
         try:
             return json.loads(pj.read_text()).get("version", "?")

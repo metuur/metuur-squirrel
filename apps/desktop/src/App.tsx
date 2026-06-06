@@ -24,6 +24,7 @@ import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { OpenVaultButton } from "./components/OpenVaultButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
+import { AppCredit } from "./components/AppCredit";
 import { HowToModal } from "./components/HowToModal";
 import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
 import { QuickTaskWidget } from "./components/QuickTaskWidget";
@@ -350,6 +351,9 @@ export default function App() {
           <CloseWindowButton />
         </div>
       </footer>
+
+      {/* Gentle credit + global-shortcut strip */}
+      <AppCredit />
 
       <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
 

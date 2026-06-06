@@ -53,6 +53,7 @@ target/
 .env
 .env.local
 .env.*.local
+.envrc
 
 .claude/worktrees/
 
