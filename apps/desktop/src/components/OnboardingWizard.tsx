@@ -39,13 +39,20 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   // ── Obsidian step state ──
   const [obsidian, setObsidian] = useState<ObsidianStatus | null>(null);
   const [obsidianLoading, setObsidianLoading] = useState(false);
+  // Distinct from a definitive {installed:false}: the probe request itself
+  // failed (backend still booting, auth, network), so we genuinely don't know.
+  const [obsidianError, setObsidianError] = useState(false);
 
   const checkObsidian = () => {
     setObsidianLoading(true);
+    setObsidianError(false);
     api
       .obsidianStatus()
       .then(setObsidian)
-      .catch(() => setObsidian({ installed: false, path: null }))
+      // A failed request is NOT proof that Obsidian is missing — the backend
+      // sidecar may still be starting up. Surface a "couldn't check" state with
+      // Re-check instead of a misleading "Obsidian not found".
+      .catch(() => setObsidianError(true))
       .finally(() => setObsidianLoading(false));
   };
 
@@ -126,13 +133,23 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
           <section className="flex flex-col gap-4">
             <h1 className="title text-[18px]">Checking for Obsidian…</h1>
             {obsidianLoading && <p className="text-ink-3 text-[13px]">Checking…</p>}
-            {!obsidianLoading && obsidian?.installed && (
+            {!obsidianLoading && obsidianError && (
+              <div className="flex flex-col gap-2 text-[13px]">
+                <span>⚠ Couldn’t reach Squirrel’s backend to check for Obsidian — it may still be starting up.</span>
+                <div className="flex gap-2">
+                  <button type="button" className="btn" onClick={checkObsidian}>
+                    Re-check
+                  </button>
+                </div>
+              </div>
+            )}
+            {!obsidianLoading && !obsidianError && obsidian?.installed && (
               <div className="text-[13px]">
                 ✓ Obsidian found
                 <div className="text-ink-4 tabular truncate">{obsidian.path}</div>
               </div>
             )}
-            {!obsidianLoading && obsidian && !obsidian.installed && (
+            {!obsidianLoading && !obsidianError && obsidian && !obsidian.installed && (
               <div className="flex flex-col gap-2 text-[13px]">
                 <span>⚠ Obsidian not found. Squirrel works without it, but the vault is best viewed in Obsidian.</span>
                 <div className="flex gap-2">

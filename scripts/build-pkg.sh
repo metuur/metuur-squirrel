@@ -33,14 +33,19 @@ BUILD="$ROOT/build/pkg"              # intermediate component pkg + distribution
 PKG_OUT="$ROOT/squirrel-installer-macos.pkg"
 DMG_STAGING="$ROOT/pkg-dmg-staging"  # holds the .pkg for hdiutil to wrap
 DMG_OUT="$ROOT/squirrel-macos.dmg"   # final DMG that CONTAINS the .pkg
+# Hardened-runtime entitlements — lets the bundled squirrel-backend sidecar
+# dlopen its PyInstaller-extracted libpython (else "different Team IDs" crash).
+ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
 APP_ID="com.metuur.squirrel"
 SKIP_BUILD=0
 DRY_RUN=0
+ARM64_ONLY=0
 
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=1 ;;
     --dry-run)    DRY_RUN=1 ;;
+    --arm64-only) ARM64_ONLY=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
@@ -108,7 +113,8 @@ SIGN_PKG=1
 
 # ─── Version ─────────────────────────────────────────────────────────────────
 VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
-printf '\n%s🐿  Building Squirrel v%s .pkg installer%s\n' "$C_BOLD" "$VERSION" "$C_RESET"
+printf '\n%s🐿  Building Squirrel v%s .pkg installer%s%s\n' "$C_BOLD" "$VERSION" \
+  "$( (( ARM64_ONLY )) && printf ' (arm64-only)' )" "$C_RESET"
 (( DRY_RUN )) && printf '%s    (dry-run — no files written)%s\n' "$C_BOLD" "$C_RESET"
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
@@ -120,19 +126,37 @@ ok "pkgbuild, productbuild available"
 # ─── Locate / build inputs ───────────────────────────────────────────────────
 hdr "Locate inputs (app + CLI binaries)"
 
+# Where Tauri drops the bundled app depends on the build target. An arm64-only
+# build (TAURI_TARGET=aarch64-apple-darwin) lands under the target triple;
+# the default/universal build lands at target/release.
+if (( ARM64_ONLY )); then
+  # Cargo only uses a target-triple subdir when cross-compiling. On an Apple
+  # Silicon host, --target aarch64-apple-darwin == host, so the bundle lands in
+  # the plain target/release/ tree. List both, triple-dir first.
+  APP_CANDIDATES=(
+    "$ROOT/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app"
+    "$ROOT/target/release/bundle/macos/Squirrel.app"
+    "$ROOT/apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app"
+    "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app"
+  )
+  APP_BUILD_CMD="( cd '$ROOT/apps/desktop' && TAURI_TARGET=aarch64-apple-darwin pnpm tauri:build )"
+else
+  APP_CANDIDATES=(
+    "$ROOT/target/release/bundle/macos/Squirrel.app"
+    "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app"
+  )
+  APP_BUILD_CMD="( cd '$ROOT/apps/desktop' && pnpm tauri build )"
+fi
+
 APP=""
-for cand in \
-  "$ROOT/target/release/bundle/macos/Squirrel.app" \
-  "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app"; do
+for cand in "${APP_CANDIDATES[@]}"; do
   [[ -d "$cand" ]] && { APP="$cand"; break; }
 done
 
 if [[ -z "$APP" ]]; then
-  (( SKIP_BUILD )) && die "Squirrel.app not found and --skip-build set. Run: make build"
-  run "( cd '$ROOT/apps/desktop' && pnpm tauri build )"
-  for cand in \
-    "$ROOT/target/release/bundle/macos/Squirrel.app" \
-    "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app"; do
+  (( SKIP_BUILD )) && die "Squirrel.app not found and --skip-build set. Build it first (make build-pkg)."
+  run "$APP_BUILD_CMD"
+  for cand in "${APP_CANDIDATES[@]}"; do
     [[ -d "$cand" ]] && { APP="$cand"; break; }
   done
   [[ -n "$APP" || $DRY_RUN -eq 1 ]] || die "build finished but Squirrel.app still not found"
@@ -148,9 +172,18 @@ ok "binaries → dist/squirrel, dist/squirrel-backend"
 # ─── Sign the app (Developer ID Application) ─────────────────────────────────
 hdr "Sign Squirrel.app"
 if (( SIGN_APP )); then
-  run "codesign --force --options runtime --timestamp --deep --sign '$APPLE_SIGNING_IDENTITY' '$APP'"
+  # Sign inside-out (the app has no Frameworks/, just two Mach-O in MacOS/).
+  # The sidecar MUST be signed first and carry the library-validation
+  # entitlement; re-signing it after the bundle would break the bundle seal.
+  # --deep is intentionally NOT used: it would re-sign the sidecar without
+  # entitlements, reintroducing the dlopen crash.
+  for sc in "$APP/Contents/MacOS/"squirrel-backend*; do
+    [[ -f "$sc" ]] || continue
+    run "codesign --force --options runtime --timestamp --entitlements '$ENTITLEMENTS' --sign '$APPLE_SIGNING_IDENTITY' '$sc'"
+  done
+  run "codesign --force --options runtime --timestamp --entitlements '$ENTITLEMENTS' --sign '$APPLE_SIGNING_IDENTITY' '$APP'"
   (( DRY_RUN )) || codesign --verify --strict "$APP" || die "app signature verification failed"
-  ok "app signed + verified"
+  ok "app + sidecar signed + verified"
 else
   info "skipping app signing (APPLE_SIGNING_IDENTITY unset)"
 fi

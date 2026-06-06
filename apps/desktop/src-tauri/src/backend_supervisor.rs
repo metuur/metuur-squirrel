@@ -351,6 +351,106 @@ fn read_launchd_token_at(path: &std::path::Path) -> Result<Option<String>, Launc
     Ok(Some(token.to_string()))
 }
 
+/// R-4.11: which refusal outcomes are eligible for self-reclaim. A token
+/// mismatch (`Refused401` / `RefusedUnknown`) or a wedged listener
+/// (`RefusedTimeout`) can be our own orphaned sidecar from a prior launch.
+/// `RefusedDev` (a deliberate `make backend-start`) and `RefusedLaunchdToken`
+/// are excluded — those keep their refusal banners.
+fn refusal_is_self_reclaimable(outcome: HandshakeOutcome) -> bool {
+    matches!(
+        outcome,
+        HandshakeOutcome::Refused401
+            | HandshakeOutcome::RefusedUnknown
+            | HandshakeOutcome::RefusedTimeout
+    )
+}
+
+/// macOS: PIDs listening on `port` (loopback) via `lsof`. Empty on any error.
+#[cfg(target_os = "macos")]
+fn listener_pids(port: u16) -> Vec<u32> {
+    let Ok(out) = std::process::Command::new("/usr/sbin/lsof")
+        .args(["-nP", &format!("-iTCP:{port}"), "-sTCP:LISTEN", "-t"])
+        .output()
+    else {
+        return Vec::new();
+    };
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter_map(|l| l.trim().parse::<u32>().ok())
+        .collect()
+}
+
+/// macOS: absolute executable path of `pid` via `ps -o comm=` (prints the path
+/// of the running binary). None if the process is gone or unreadable.
+#[cfg(target_os = "macos")]
+fn pid_exe_path(pid: u32) -> Option<String> {
+    let out = std::process::Command::new("/bin/ps")
+        .args(["-o", "comm=", "-p", &pid.to_string()])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path)
+    }
+}
+
+/// R-4.11/R-4.12: reclaim port 3939 iff it is held by our own orphaned
+/// `squirrel-backend` (a stale sidecar from a previous launch). Returns true
+/// only when a self-owned sidecar was killed AND the port actually freed.
+///
+/// Safety boundary (R-4.12): only a process whose executable basename is
+/// `squirrel-backend` is targeted, and `SIGKILL` only succeeds against
+/// processes the Tauri user owns. A foreign listener is therefore never
+/// displaced — a non-matching exe is skipped, and an unkillable process leaves
+/// the refusal intact.
+#[cfg(target_os = "macos")]
+fn reclaim_own_stale_sidecar() -> bool {
+    let mut killed_any = false;
+    for pid in listener_pids(BACKEND_PORT) {
+        let is_ours = pid_exe_path(pid)
+            .as_deref()
+            .and_then(|p| std::path::Path::new(p).file_name())
+            .map(|name| name == "squirrel-backend")
+            .unwrap_or(false);
+        if !is_ours {
+            tracing::info!(pid, ":3939 held by a non-Squirrel process — not reclaiming (R-4.12)");
+            continue;
+        }
+        // SAFETY: libc::kill with a valid pid + SIGKILL is well-defined. It
+        // fails with EPERM for processes we do not own, which we treat as
+        // "not reclaimable" and leave the refusal intact.
+        let rc = unsafe { libc::kill(pid as libc::pid_t, libc::SIGKILL) };
+        if rc == 0 {
+            tracing::warn!(pid, "backend supervisor: killed orphaned own sidecar to reclaim :3939 (R-4.11)");
+            killed_any = true;
+        } else {
+            tracing::warn!(pid, "backend supervisor: listener on :3939 not killable — preserving refusal (R-4.12)");
+        }
+    }
+    if !killed_any {
+        return false;
+    }
+    // Wait for the kernel to release the port before we attempt to bind.
+    for _ in 0..20 {
+        if !port_in_use(BACKEND_PORT) {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    !port_in_use(BACKEND_PORT)
+}
+
+/// Non-macOS: the supervisor's process-reclaim is macOS-specific (lsof/ps/kill).
+#[cfg(not(target_os = "macos"))]
+fn reclaim_own_stale_sidecar() -> bool {
+    false
+}
+
 pub(crate) fn spawn_or_adopt<R: Runtime>(
     app: &AppHandle<R>,
 ) -> (SupervisionMode, Option<CommandChild>) {
@@ -385,8 +485,27 @@ pub(crate) fn spawn_or_adopt<R: Runtime>(
         );
         return match outcome {
             HandshakeOutcome::Adopted => (SupervisionMode::Adopted, None),
-            // R-4.7/4.8/4.9: refusal is terminal — no fallback port, no
-            // displacing spawn, and the supervisor issues no further requests.
+            // R-4.11: a token-mismatch / wedged listener that is verifiably our
+            // OWN orphaned sidecar (prior launch) is reclaimed — kill it and
+            // spawn fresh. Self-ownership is enforced inside
+            // reclaim_own_stale_sidecar(); a foreign listener is never displaced.
+            o if refusal_is_self_reclaimable(o) && reclaim_own_stale_sidecar() => {
+                match spawn_sidecar(app) {
+                    Ok(child) => {
+                        tracing::info!(
+                            pid = child.pid(),
+                            "backend supervisor: reclaimed :3939 from own stale sidecar; spawned fresh (Managed)"
+                        );
+                        (SupervisionMode::Managed, Some(child))
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, "backend supervisor: spawn after reclaim failed");
+                        (SupervisionMode::Failed, None)
+                    }
+                }
+            }
+            // R-4.7/4.8/4.9/4.12: refusal is terminal for foreign listeners — no
+            // fallback port, no displacing spawn, no further requests.
             refused => (SupervisionMode::RefusedAdoption(refused), None),
         };
     }
@@ -694,6 +813,21 @@ async fn probe_health(client: &reqwest::Client) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Self-reclaim eligibility (R-4.11/R-4.12) ────────────────────────────
+
+    #[test]
+    fn self_reclaim_eligibility_only_token_mismatch_and_timeout() {
+        // Token mismatch / wedged → our own orphan may hold the port → reclaim.
+        assert!(refusal_is_self_reclaimable(HandshakeOutcome::Refused401));
+        assert!(refusal_is_self_reclaimable(HandshakeOutcome::RefusedUnknown));
+        assert!(refusal_is_self_reclaimable(HandshakeOutcome::RefusedTimeout));
+        // Deliberate dev backend and a bad launchd-token file keep their banners.
+        assert!(!refusal_is_self_reclaimable(HandshakeOutcome::RefusedDev));
+        assert!(!refusal_is_self_reclaimable(HandshakeOutcome::RefusedLaunchdToken));
+        // Adopted is not a refusal at all.
+        assert!(!refusal_is_self_reclaimable(HandshakeOutcome::Adopted));
+    }
 
     // ── Runtime Trust Handshake token minting (R-1.1, R-1.5) ────────────────
 

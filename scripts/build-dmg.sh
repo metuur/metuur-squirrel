@@ -34,6 +34,10 @@ DIST="$ROOT/dist"
 BUILD="$ROOT/build/pyinstaller"
 STAGING="$ROOT/dmg-staging"
 DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
+# Hardened-runtime entitlements for the PyInstaller --onefile binaries. Without
+# com.apple.security.cs.disable-library-validation the extracted libpython fails
+# to dlopen ("different Team IDs") and the backend crash-loops. See the plist.
+ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
 DRY_RUN=0
 ARM64_ONLY=0
 
@@ -133,10 +137,11 @@ _sign_binary() {
   local bin="$1"
   local name; name="$(basename "$bin")"
   local stderr_out; stderr_out="$(mktemp)"
-  info "codesign --force --options runtime --timestamp → $name"
+  info "codesign --force --options runtime --timestamp --entitlements → $name"
   if (( DRY_RUN )); then return; fi
   local exit_code=0
   codesign --force --options runtime --timestamp \
+    --entitlements "$ENTITLEMENTS" \
     --sign "$APPLE_SIGNING_IDENTITY" "$bin" 2>"$stderr_out" || exit_code=$?
   if (( exit_code )); then
     cat "$stderr_out" >&2

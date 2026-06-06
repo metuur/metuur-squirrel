@@ -456,7 +456,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_common_headers(no_store=True)
         self.send_header("Allow", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        # X-Squirrel-Token is the auth header every webview request carries. It
+        # is NOT a CORS-safelisted header, so the browser sends a preflight and
+        # blocks the real request unless it is echoed here. Omitting it silently
+        # breaks every authenticated cross-origin fetch from the popup/onboarding
+        # webview (the "Obsidian not found" / backend-unreachable failure).
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Squirrel-Token")
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
         _log_request("OPTIONS", self.path, 204)

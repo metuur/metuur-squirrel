@@ -46,6 +46,23 @@ describe("OnboardingWizard", () => {
     expect(screen.getByRole("button", { name: /Re-check/ })).toBeTruthy();
   });
 
+  it("shows a 'couldn't reach backend' state (not a false 'not found') when the probe fails, and recovers on Re-check", async () => {
+    // Backend still booting → request rejects. Must NOT claim Obsidian is missing.
+    mockObsidian.mockRejectedValueOnce(new Error("fetch failed"));
+    render(<OnboardingWizard onComplete={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+
+    expect(await screen.findByText(/Couldn’t reach Squirrel’s backend/)).toBeTruthy();
+    // The misleading "not found" / Download Obsidian affordance must be absent.
+    expect(screen.queryByText(/Obsidian not found/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Download Obsidian/ })).toBeNull();
+
+    // Backend comes up; Re-check now succeeds → "Obsidian found".
+    mockObsidian.mockResolvedValue({ installed: true, path: "/Applications/Obsidian.app" });
+    await userEvent.click(screen.getByRole("button", { name: /Re-check/ }));
+    expect(await screen.findByText(/Obsidian found/)).toBeTruthy();
+  });
+
   it("saves the vault and advances to done, marking onboarding complete (R-3.3/R-1.4)", async () => {
     mockObsidian.mockResolvedValue({ installed: true, path: "/Applications/Obsidian.app" });
     mockSetVault.mockResolvedValue({ name: "personal", path: "/Users/x/squirrel-vault", default: true });
