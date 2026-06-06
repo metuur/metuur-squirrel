@@ -95,20 +95,25 @@ build-installers-arm64: _maybe-bump
 build-installers-dry:
 	bash $(ROOT)/scripts/build-dmg.sh --dry-run
 
-# ─── All-in-one installer (macOS .pkg) ───────────────────────────────────────
+# ─── All-in-one installer (macOS .pkg) — Apple Silicon only ──────────────────
 # Guided double-click installer: desktop app + CLI + agent-pack, auto-configured.
-# Needs a built Squirrel.app (make build) and CLI binaries (make build-installers-arm64).
-#   make build-pkg            → assemble squirrel-installer-macos.pkg (builds inputs if missing)
-#   make build-pkg-fast       → reuse existing app + dist/ binaries
-#   make build-pkg-dry        → print steps without executing
+# arm64-only: avoids the universal (x86_64) slice + lipo, which can't be produced
+# on an Apple Silicon machine without an x86_64 Python toolchain.
+#   make build-pkg [BUMP=patch|minor]  → fresh arm64 app + CLI binaries, then package
+#   make build-pkg-fast                → reuse existing arm64 app + dist/ binaries
+#   make build-pkg-dry                 → print steps without executing
+# With BUMP, build-pkg recompiles so the .pkg version matches its contents.
+# (build-pkg-fast reuses prior artifacts — do NOT combine it with BUMP.)
 build-pkg: _maybe-bump
-	bash $(ROOT)/scripts/build-pkg.sh
+	TAURI_TARGET=aarch64-apple-darwin pnpm -F @squirrel/desktop tauri:build
+	bash $(ROOT)/scripts/build-dmg.sh --arm64-only
+	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
 
 build-pkg-fast: _maybe-bump
-	bash $(ROOT)/scripts/build-pkg.sh --skip-build
+	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
 
 build-pkg-dry:
-	bash $(ROOT)/scripts/build-pkg.sh --dry-run
+	bash $(ROOT)/scripts/build-pkg.sh --dry-run --arm64-only
 
 # Produces squirrel-manual-install-<version>.zip (no signing required).
 # Compiles all three apps (CLI, backend, desktop) and bundles install-manual.sh.

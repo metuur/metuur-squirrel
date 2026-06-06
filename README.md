@@ -130,22 +130,24 @@ Key files:
 ## Building the all-in-one installer (`.pkg`)
 
 The all-in-one installer bundles the desktop app **and** the CLI **and** the
-agent-pack into one guided, double-click `.pkg`. Reuses the built `Squirrel.app`
-and the `dist/` CLI binaries.
+agent-pack into one guided, double-click `.pkg`.
+
+`make build-pkg` is **Apple Silicon (arm64) only** — it skips the universal
+x86_64 slice + `lipo`, which can't be produced on an Apple Silicon machine
+without an x86_64 Python toolchain. It does the whole chain in one command:
+freshly recompiles the arm64 `Squirrel.app` **and** the `dist/` CLI binaries,
+then packages them — so the `.pkg` version always matches its contents.
 
 ```bash
-make build-pkg            # build inputs as needed, then assemble squirrel-installer-macos.pkg
-make build-pkg-fast       # reuse an already-built Squirrel.app + dist/ binaries (no rebuild)
-make build-pkg-dry        # print the steps without executing
+make build-pkg                  # rebuild arm64 app + CLI, then assemble squirrel-installer-macos.pkg
+make build-pkg BUMP=patch       # bump (patch|minor|major), recompile, package — version-consistent
+make build-pkg-fast             # reuse an already-built arm64 Squirrel.app + dist/ binaries (no recompile)
+make build-pkg-dry              # print the steps without executing
 ```
 
-`BUMP=patch` (etc.) works here too. Typical fast path on Apple Silicon:
-
-```bash
-SQUIRREL_ARM64_ONLY=1 make build      # build the app
-make build-installers-arm64           # build the CLI binaries into dist/
-make build-pkg-fast                   # package both into the .pkg
-```
+> ⚠️ Don't combine `BUMP=` with `build-pkg-fast` — `-fast` reuses prior artifacts,
+> so the `.pkg` would be labeled with the new version but contain the old build.
+> Use `make build-pkg BUMP=…` (which recompiles) whenever bumping.
 
 **What it installs** (root-owned payload, then a `postinstall` configures the
 logged-in user):
@@ -171,8 +173,19 @@ notarizes + staples (same `APPLE_KEYCHAIN_PROFILE` / `APPLE_ID` credentials as
 the DMG path). With no identity it builds an **unsigned** dev `.pkg` (Gatekeeper
 will block it).
 
-Key files: `scripts/build-pkg.sh`, `installer/pkg/scripts/postinstall`,
-`installer/pkg/distribution.xml.template`, `installer/pkg/resources/`.
+> **Hardened-runtime entitlements.** The PyInstaller `--onefile` backend extracts
+> `libpython3.12.dylib` to a temp dir and `dlopen()`s it at runtime. Under the
+> hardened runtime (`--options runtime`) macOS rejects that load with
+> *"code signature … different Team IDs"* unless the binary carries
+> `com.apple.security.cs.disable-library-validation` — otherwise the signed
+> backend **crash-loops (exit 255)** and never serves `:3939`. The entitlement
+> lives in `apps/desktop/src-tauri/Entitlements.plist` and is applied when signing
+> the standalone CLI binaries (`build-dmg.sh`) and the app + bundled sidecar
+> (Tauri via `tauri.conf.json`, plus `build-pkg.sh`'s inside-out re-sign).
+
+Key files: `scripts/build-pkg.sh`, `apps/desktop/src-tauri/Entitlements.plist`,
+`installer/pkg/scripts/postinstall`, `installer/pkg/distribution.xml.template`,
+`installer/pkg/resources/`.
 
 > **Launching:** Squirrel is a menu-bar app. After install, `⌘+Space` → "Squirrel"
 > brings the popup forward (the app handles macOS `Reopen` + single-instance
