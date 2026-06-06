@@ -28,7 +28,7 @@ DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
 .PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
-        build-installers _build-binaries _assemble-dmg
+        build-installers build-installers-arm64 _build-binaries _assemble-dmg
 
 help:
 	@awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' $(MAKEFILE_LIST)
@@ -78,6 +78,11 @@ backend-dev-ui:
 # Requires: pip install pyinstaller  (dev machine only — not shipped to users)
 build-installers:
 	bash $(ROOT)/scripts/build-dmg.sh
+
+# arm64-only build (skips x86_64 slice + lipo). Use on Apple Silicon when you
+# don't have an x86_64-capable Python. Result won't run on Intel Macs.
+build-installers-arm64:
+	bash $(ROOT)/scripts/build-dmg.sh --arm64-only
 
 build-installers-dry:
 	bash $(ROOT)/scripts/build-dmg.sh --dry-run
