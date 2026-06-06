@@ -48,6 +48,7 @@ target/
 *.app
 *.dmg
 *.msi
+*.pkg
 
 # Env / secrets
 .env
@@ -72,6 +73,7 @@ graphify-out/manifest.json
 
 
 dmg-staging/bin/
+pkg-staging/
 
 
 # Logs

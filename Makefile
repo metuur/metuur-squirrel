@@ -28,7 +28,8 @@ DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
 .PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
-        build-installers build-installers-arm64 _maybe-bump _build-binaries _assemble-dmg
+        build-installers build-installers-arm64 build-pkg build-pkg-fast build-pkg-dry \
+        _maybe-bump _build-binaries _assemble-dmg
 
 help:
 	@awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' $(MAKEFILE_LIST)
@@ -93,6 +94,21 @@ build-installers-arm64: _maybe-bump
 
 build-installers-dry:
 	bash $(ROOT)/scripts/build-dmg.sh --dry-run
+
+# ─── All-in-one installer (macOS .pkg) ───────────────────────────────────────
+# Guided double-click installer: desktop app + CLI + agent-pack, auto-configured.
+# Needs a built Squirrel.app (make build) and CLI binaries (make build-installers-arm64).
+#   make build-pkg            → assemble squirrel-installer-macos.pkg (builds inputs if missing)
+#   make build-pkg-fast       → reuse existing app + dist/ binaries
+#   make build-pkg-dry        → print steps without executing
+build-pkg: _maybe-bump
+	bash $(ROOT)/scripts/build-pkg.sh
+
+build-pkg-fast: _maybe-bump
+	bash $(ROOT)/scripts/build-pkg.sh --skip-build
+
+build-pkg-dry:
+	bash $(ROOT)/scripts/build-pkg.sh --dry-run
 
 # Produces squirrel-manual-install-<version>.zip (no signing required).
 # Compiles all three apps (CLI, backend, desktop) and bundles install-manual.sh.
