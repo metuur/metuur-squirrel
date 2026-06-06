@@ -436,6 +436,16 @@ class TestTokenEnforcement(_ServerCase):
         r = self._get("/api/me", headers={"X-Squirrel-Token": self.GOOD})
         self.assertEqual(r.status, 200)
 
+    def test_obsidian_probe_is_exempt_from_token(self):
+        # /api/env/obsidian is a read-only first-run onboarding probe. It must
+        # answer even with NO token, so onboarding detects Obsidian before the
+        # per-launch token is reliably propagated to the webview. (Root cause of
+        # the persistent "Obsidian not found".)
+        r = self._get("/api/env/obsidian")
+        self.assertEqual(r.status, 200)
+        body = json.loads(r.read())
+        self.assertIn("installed", body)
+
     def test_static_asset_is_also_gated(self):
         # R-2.6 decision: the SPA shell / static routes are gated too, so a
         # squatter cannot serve a hostile bundle.

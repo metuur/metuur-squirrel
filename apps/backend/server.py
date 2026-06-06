@@ -69,6 +69,12 @@ TOKEN: Optional[str] = None
 DEV_MODE: bool = False
 _TOKEN_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 
+# API paths served WITHOUT a token. /api/_handshake runs its own token_echo
+# contract; /api/env/obsidian is a read-only first-run onboarding probe that
+# must work before the per-launch token is reliably propagated to the webview
+# (see _dispatch).
+_AUTH_EXEMPT_PATHS = frozenset({"/api/_handshake", "/api/env/obsidian"})
+
 
 def _auth_required() -> bool:
     """True when requests must carry a valid X-Squirrel-Token (R-2.6, R-2.8).
@@ -528,8 +534,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # R-2.6/R-2.7/R-2.8: gate API routes on a constant-time token match.
         # The SPA shell and static assets are exempt so the browser can load
         # the app via the open-web token URL before any API call is made.
-        # /api/_handshake runs its own contract and is always exempt.
-        if (bare.startswith("/api/") and bare != "/api/_handshake"
+        # Exempt endpoints:
+        #   /api/_handshake     — runs its own token_echo contract.
+        #   /api/env/obsidian   — read-only first-run onboarding probe. It runs
+        #     before the trust relationship is reliable and reveals nothing
+        #     secret (only whether /Applications/Obsidian.app exists, which any
+        #     local process can already determine). Gating it made onboarding
+        #     fail with "Obsidian not found" whenever the per-launch token was
+        #     not yet/incorrectly propagated to the webview.
+        if (bare.startswith("/api/") and bare not in _AUTH_EXEMPT_PATHS
                 and _auth_required() and not self._token_ok()):
             return self._send_unauthorized(method)
         for m, pattern, fn_name in ROUTES:

@@ -55,18 +55,26 @@ install_pack ".windsurf" ".windsurf/rules/squirrel"
 # Clear the quarantine bit on the freshly installed app so first launch is clean.
 /usr/bin/xattr -dr com.apple.quarantine /Applications/Squirrel.app 2>/dev/null || true
 
-# Quit any previously-running Squirrel so the freshly installed version takes over
-# cleanly. A lingering old instance would otherwise keep serving :3939 with a
-# stale per-launch token, and `open` below would merely reactivate the old process
-# (old code) instead of launching the new build — the exact cause of the recurring
-# "backend unreachable / Obsidian not found" onboarding failure.
+# Quit any previously-running Squirrel (from ANY bundle location) so the freshly
+# installed version takes over cleanly. A lingering old instance would otherwise
+# keep serving :3939 with a stale per-launch token.
 as_user /usr/bin/osascript -e 'tell application "Squirrel" to quit' 2>/dev/null || true
-# Hard fallback: kill the app + its (possibly orphaned PyInstaller-child) sidecar
-# by full path. Runs as root, so it can reap the console user's processes.
-/usr/bin/pkill -f '/Applications/Squirrel.app/Contents/MacOS/squirrel' 2>/dev/null || true
+# Hard fallback: kill every running squirrel app/sidecar regardless of which
+# bundle launched it (stale mounted-DMG copies, old /Applications builds, etc.).
+/usr/bin/pkill -f 'Squirrel.app/Contents/MacOS/squirrel' 2>/dev/null || true
+/usr/bin/pkill -f 'squirrel-backend --port 3939' 2>/dev/null || true
 /bin/sleep 1
 
-# Launch the app for the user so they land in onboarding right after install.
-as_user /usr/bin/open -a "Squirrel" 2>/dev/null || true
+# Purge stale LaunchServices registrations and (re)register the freshly installed
+# bundle, so `open` resolves to /Applications and not an old mounted-DMG copy.
+# Multiple bundles share the id com.metuur.squirrel; without this, macOS may
+# launch a stale 0.x copy from an unmounted DMG instead of the new install —
+# the root cause of "the installer opened an older version".
+LSREG="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+[ -x "$LSREG" ] && as_user "$LSREG" -f /Applications/Squirrel.app 2>/dev/null || true
+
+# Launch the freshly installed build BY PATH — never `open -a "Squirrel"`, which
+# resolves by bundle id and can pick a stale registered copy.
+as_user /usr/bin/open /Applications/Squirrel.app 2>/dev/null || true
 
 exit 0

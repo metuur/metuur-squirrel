@@ -1,7 +1,7 @@
 {
   "name": "squirrel",
   "private": true,
-  "version": "0.7.10",
+  "version": "0.7.12",
   "description": "Squirrel — local-first focus & productivity companion (monorepo root)",
   "scripts": {
     "dev": "pnpm -F @squirrel/desktop dev",
