@@ -6,9 +6,24 @@
 // full surface (projects, notes, deadlines, history, search, settings,
 // theme, vault). Do not import this client from the browser SPA.
 
+import { invoke } from "@tauri-apps/api/core";
+
 export const BACKEND_ORIGIN = "http://127.0.0.1:3939";
 
 const REQUEST_TIMEOUT_MS = 3000;
+
+// Per-launch shared secret minted by the Tauri shell (R-1.1). The installed
+// backend rejects unauthenticated requests with 401; the popup must present it
+// via `X-Squirrel-Token`. Fetched once and cached. Outside a Tauri host (plain
+// browser dev, vitest) `invoke` is unavailable/throws — we degrade to no token
+// so dev and tests keep working against a token-less backend.
+let tokenPromise: Promise<string | null> | undefined;
+function runtimeToken(): Promise<string | null> {
+  if (!tokenPromise) {
+    tokenPromise = invoke<string>("runtime_token").catch(() => null);
+  }
+  return tokenPromise;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -24,10 +39,15 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
+    const token = await runtimeToken();
     const resp = await fetch(BACKEND_ORIGIN + path, {
-      headers: { "Content-Type": "application/json" },
-      signal: ctrl.signal,
       ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "X-Squirrel-Token": token } : {}),
+        ...(init?.headers as Record<string, string> | undefined),
+      },
+      signal: ctrl.signal,
     });
     const text = await resp.text();
     let data: unknown = null;

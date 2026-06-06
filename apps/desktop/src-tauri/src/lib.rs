@@ -31,6 +31,14 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Expose the per-launch runtime token to the webview so the popup API client
+/// can authenticate to the backend via the `X-Squirrel-Token` header (R-1.1).
+/// The value lives only in process memory and is never persisted.
+#[tauri::command]
+fn runtime_token(state: tauri::State<RuntimeToken>) -> String {
+    state.0.clone()
+}
+
 /// Apply the squirrel dock icon via NSApplication.
 /// Must be called from the main thread; re-apply after every activation-policy
 /// change because macOS resets the dock icon when the policy switches.
@@ -233,7 +241,11 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet, drain_pending_deep_link])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            drain_pending_deep_link,
+            runtime_token
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
