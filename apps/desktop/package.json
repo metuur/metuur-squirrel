@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "tauri:build:dev": "tauri build --config src-tauri/tauri.dev.conf.json",
     "tauri:prebuild-backend": "bash scripts/build-backend-sidecar.sh",
     "tauri:build": "bash scripts/tauri-build.sh",
     "test": "vitest run"

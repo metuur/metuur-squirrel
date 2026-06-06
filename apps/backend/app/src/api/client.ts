@@ -73,6 +73,8 @@ export interface Me {
   theme: 'auto' | 'light' | 'dark';
   version: string;
   notifications?: { in_app: boolean; os_popups: boolean; sound: 'Glass' | 'Funk' | 'Silent' };
+  /** True when the backend runs without token auth (local/dev). */
+  dev?: boolean;
 }
 export interface FocusItem {
   slug: string;

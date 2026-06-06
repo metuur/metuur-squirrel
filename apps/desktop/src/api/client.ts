@@ -69,6 +69,9 @@ export interface Me {
   multi_vault: boolean;
   theme: "auto" | "light" | "dark";
   version: string;
+  /** True when the backend runs without token auth (local/dev), so the UI can
+   *  badge this as a non-installed build. */
+  dev?: boolean;
 }
 
 export interface FocusItem {

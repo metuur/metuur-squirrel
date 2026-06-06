@@ -69,6 +69,17 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
     window.location.reload();
   }
 
+  // Mark a local/dev run distinctly from the installed app, in the tab title.
+  // me.dev reflects the backend that served this SPA (DEV_MODE when untokened),
+  // which is authoritative for the browser UI.
+  const isDev = !!me?.dev;
+  useEffect(() => {
+    if (!isDev) return;
+    const original = document.title;
+    if (!original.startsWith('[DEV] ')) document.title = `[DEV] ${original}`;
+    return () => { document.title = original; };
+  }, [isDev]);
+
   return (
     <div className="flex flex-col sticky top-0 z-20">
       <header className="h-14 border-b border-hairline bg-surface flex items-center px-6 gap-10">
@@ -80,6 +91,23 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             <img src="/squirrel.svg" alt="" aria-hidden="true" className="w-8 h-8" />
             <span className="tracking-tight">Squirrel</span>
           </Link>
+          {isDev && (
+            <span
+              title="Local dev build — not the installed app"
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                padding: '2px 6px',
+                borderRadius: 4,
+                background: 'var(--warn-bg, #f59e0b22)',
+                color: 'var(--warn, #b45309)',
+                border: '1px solid var(--warn, #b4530955)',
+              }}
+            >
+              DEV
+            </span>
+          )}
 
           <div className="hidden md:flex bg-surface-2 p-0.5 rounded border border-hairline">
             <button

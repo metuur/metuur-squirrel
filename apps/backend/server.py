@@ -655,6 +655,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "multi_vault": ctx.multi,
             "theme": cookies.get(THEME_COOKIE) or "auto",
             "version": _detect_version(),
+            # True when running without token auth (e.g. `make backend-start` /
+            # `tauri dev`) so the UIs can badge a local/dev run distinctly from
+            # the installed, tokened app.
+            "dev": DEV_MODE,
             "notifications": config_loader.load_notifications_settings(
                 config_loader.DEFAULT_CONFIG_PATH
             ),

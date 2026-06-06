@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Squirrel Dev",
+  "identifier": "com.metuur.squirrel.dev",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Squirrel (dev)",
+        "width": 800,
+        "height": 600,
+        "minWidth": 320,
+        "minHeight": 480,
+        "resizable": true,
+        "focus": true,
+        "skipTaskbar": true
+      }
+    ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["squirrel-dev"]
+      }
+    }
+  }
+}

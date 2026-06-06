@@ -31,6 +31,7 @@ import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
 import { QuickTaskWidget } from "./components/QuickTaskWidget";
 import { QuickTaskPopover } from "./components/QuickTaskPopover";
 import { useQuickTaskCapture } from "./hooks/useQuickTaskCapture";
+import { useDevFlag } from "./hooks/useDevFlag";
 import { api } from "./api/client";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
@@ -47,6 +48,7 @@ export default function App() {
   const status = useBackend();
   const deepLink = useDeepLink();
   const notifications = useNotifications();
+  const isDev = useDevFlag();
 
   useEffect(() => {
     if (!deepLink) return;
@@ -186,6 +188,23 @@ export default function App() {
             <span className="title text-[16px]" style={{ letterSpacing: "-0.02em" }}>
               Squirrel
             </span>
+            {isDev && (
+              <span
+                title="Local dev build — not the installed app"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  padding: "1px 5px",
+                  borderRadius: 4,
+                  background: "var(--warn-bg, #f59e0b22)",
+                  color: "var(--warn, #b45309)",
+                  border: "1px solid var(--warn, #b4530955)",
+                }}
+              >
+                DEV
+              </span>
+            )}
             <span className="eyebrow">Today</span>
             <span className="text-[12px] text-ink-4">·</span>
             <span
