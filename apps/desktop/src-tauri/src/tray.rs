@@ -32,8 +32,64 @@ pub const TRAY_ID: &str = "main";
 /// vite proxy all agree on this single backend origin.
 pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 
-/// Obsidian vault name opened from the tray menu item.
-const OBSIDIAN_VAULT: &str = "vault-tdah";
+/// Name of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
+/// Returns `None` when no config / no default vault exists yet, so the tray can
+/// disable "Open Obsidian Vault" during first-run onboarding (R-4.4).
+fn default_vault_name() -> Option<String> {
+    let path = dirs::home_dir()?.join(".squirrel/config.toml");
+    let text = std::fs::read_to_string(path).ok()?;
+    parse_default_vault_name(&text)
+}
+
+/// Pure parse of the default vault `name` from config.toml text. Scans
+/// `[[vaults]]` blocks and returns the `name` of the first block with
+/// `default = true`. Only reads `name`/`default` (charset-safe fields), so a
+/// naive `#`-comment strip is sufficient.
+fn parse_default_vault_name(text: &str) -> Option<String> {
+    fn strip_comment(s: &str) -> &str {
+        match s.find('#') {
+            Some(i) => &s[..i],
+            None => s,
+        }
+    }
+    fn unquote(v: &str) -> Option<String> {
+        let t = v.trim();
+        let b = t.as_bytes();
+        if t.len() >= 2 && (b[0] == b'"' || b[0] == b'\'') && b[t.len() - 1] == b[0] {
+            return Some(t[1..t.len() - 1].to_string());
+        }
+        None
+    }
+
+    let mut blocks: Vec<(Option<String>, bool)> = Vec::new();
+    let mut cur: Option<(Option<String>, bool)> = None;
+    for raw in text.lines() {
+        let line = strip_comment(raw).trim();
+        if line == "[[vaults]]" {
+            if let Some(b) = cur.take() {
+                blocks.push(b);
+            }
+            cur = Some((None, false));
+        } else if line.starts_with('[') {
+            // any other section header ends the current vault block
+            if let Some(b) = cur.take() {
+                blocks.push(b);
+            }
+        } else if let Some(b) = cur.as_mut() {
+            if let Some((key, val)) = line.split_once('=') {
+                match key.trim() {
+                    "name" => b.0 = unquote(val),
+                    "default" => b.1 = val.trim() == "true",
+                    _ => {}
+                }
+            }
+        }
+    }
+    if let Some(b) = cur.take() {
+        blocks.push(b);
+    }
+    blocks.into_iter().find(|(_, d)| *d).and_then(|(n, _)| n)
+}
 
 /// Menu item IDs. The alert items use the `ALERT_PREFIX` so the menu-event
 /// handler can detect them and extract the task id.
@@ -117,8 +173,14 @@ fn build_menu<R: Runtime>(
         MenuItem::with_id(app, ids::ADD_QUICK_TASK, "Add Quick Task", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
-    let open_obsidian_item =
-        MenuItem::with_id(app, ids::OPEN_OBSIDIAN, "Open Obsidian Vault", true, None::<&str>)?;
+    // R-4.4: disabled until a vault is configured (first-run onboarding).
+    let open_obsidian_item = MenuItem::with_id(
+        app,
+        ids::OPEN_OBSIDIAN,
+        "Open Obsidian Vault",
+        default_vault_name().is_some(),
+        None::<&str>,
+    )?;
     let how_to_item =
         MenuItem::with_id(app, ids::HOW_TO, "How to use Squirrel", true, None::<&str>)?;
     let restart_service_item =
@@ -323,8 +385,12 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 }
                 ids::OPEN_WEB_UI => open_url(app, BACKEND_ORIGIN),
                 ids::OPEN_OBSIDIAN => {
-                    let url = format!("obsidian://open?vault={}", OBSIDIAN_VAULT);
-                    open_url(app, &url);
+                    // R-4.2: use the configured vault name. R-4.3: do nothing if
+                    // none is configured (the item is also disabled in that state).
+                    if let Some(name) = default_vault_name() {
+                        let url = format!("obsidian://open?vault={}", name);
+                        open_url(app, &url);
+                    }
                 }
                 ids::RESTART_SERVICE => {
                     let handle = app.clone();
@@ -472,6 +538,34 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── R-4.2 / R-4.4: default vault name parsing ────────────────────────────
+
+    #[test]
+    fn parses_single_default_vault_name() {
+        let cfg = "default_email = \"u@x.z\"\n\n[[vaults]]\nname = \"personal\"\npath = \"~/v\"\ndefault = true\n";
+        assert_eq!(parse_default_vault_name(cfg), Some("personal".to_string()));
+    }
+
+    #[test]
+    fn picks_the_block_marked_default_among_several() {
+        let cfg = "[[vaults]]\nname = \"personal\"\npath = \"~/a\"\ndefault = false\n\n[[vaults]]\nname = \"work\"\npath = \"/abs/b\"\ndefault = true\n\n[projects]\nactive = [\"A\"]\n";
+        assert_eq!(parse_default_vault_name(cfg), Some("work".to_string()));
+    }
+
+    #[test]
+    fn returns_none_when_no_default_or_no_vaults() {
+        assert_eq!(parse_default_vault_name(""), None);
+        assert_eq!(
+            parse_default_vault_name("default_email = \"u@x.z\"\nmachine_environment = \"p\"\n"),
+            None
+        );
+        // vault present but none marked default
+        assert_eq!(
+            parse_default_vault_name("[[vaults]]\nname = \"only\"\npath = \"~/v\"\ndefault = false\n"),
+            None
+        );
+    }
 
     #[test]
     fn every_icon_state_has_embedded_bytes() {

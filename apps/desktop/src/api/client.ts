@@ -230,10 +230,29 @@ export interface NotificationsPayload {
   total_count: number;
 }
 
+// `GET /api/env/obsidian` — onboarding Obsidian probe (server.py::api_env_obsidian)
+export interface ObsidianStatus {
+  installed: boolean;
+  path: string | null;
+}
+
+// `POST /api/config/vault` — onboarding vault write (server.py::api_config_vault)
+export interface VaultConfigResult {
+  name: string;
+  path: string;
+  default: boolean;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
   me: () => call<Me>("/api/me"),
+  obsidianStatus: () => call<ObsidianStatus>("/api/env/obsidian"),
+  setVaultConfig: (body: { name?: string; path: string; create?: boolean }) =>
+    call<VaultConfigResult>("/api/config/vault", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   home: () => call<HomePayload>("/api/home"),
   parakeet: () => call<ParakeetPayload>("/api/parakeet"),
   journal: () => call<JournalPayload>("/api/journal"),

@@ -302,6 +302,63 @@ def _ensure_mind_journal_once(vault_path: pathlib.Path, vault_name: str) -> None
         pass  # Non-fatal
 
 
+# ─── Onboarding: Obsidian detection + vault config write ─────────────────────
+
+
+OBSIDIAN_APP_PATH = pathlib.Path("/Applications/Obsidian.app")
+_VAULT_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def detect_obsidian(
+    app_path: Optional[pathlib.Path] = None,
+    *,
+    mdfind_timeout: float = 2.0,
+) -> tuple[bool, Optional[str]]:
+    """Detect whether Obsidian is installed (macOS). Read-only.
+
+    Order (R-2.2): /Applications/Obsidian.app, then `mdfind` by bundle id
+    `md.obsidian`. Returns (installed, path). On `mdfind` timeout or any OS
+    error the probe reports not-installed rather than raising (R-2.8).
+    """
+    app = app_path if app_path is not None else OBSIDIAN_APP_PATH
+    if app.exists():
+        return True, str(app)
+    try:
+        proc = subprocess.run(
+            ["mdfind", "kMDItemCFBundleIdentifier == 'md.obsidian'"],
+            capture_output=True, text=True, timeout=mdfind_timeout,
+        )
+        for line in proc.stdout.splitlines():
+            hit = line.strip()
+            if hit:
+                return True, hit
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return False, None
+
+
+def _validate_vault_path(raw: str) -> pathlib.Path:
+    """Expand and sandbox a user-supplied vault path (R-3.12).
+
+    Rejects paths that, after `~`/symlink expansion, are not absolute or escape
+    the user's home directory. Returns the resolved path (which may not yet
+    exist — the caller decides whether to create it). Raises ValueError on a
+    rejected path.
+    """
+    expanded = pathlib.Path(raw).expanduser()
+    if not expanded.is_absolute():
+        raise ValueError("Vault path must be absolute.")
+    # resolve() (strict=False) follows symlinks where present and tolerates a
+    # non-existent leaf, so a parent symlink that escapes home is still caught.
+    resolved = expanded.resolve()
+    home = pathlib.Path(os.path.expanduser("~")).resolve()
+    try:
+        resolved.relative_to(home)
+    except ValueError:
+        raise ValueError("Vault path must be inside your home directory.")
+    return resolved
+
+
 # ─── Route table ─────────────────────────────────────────────────────────────
 
 
@@ -314,6 +371,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/me$"),                                "api_me"),
     ("GET",  re.compile(r"^/api/vaults$"),                            "api_vaults_list"),
     ("POST", re.compile(r"^/api/vault$"),                             "api_set_vault"),
+    ("GET",  re.compile(r"^/api/env/obsidian$"),                      "api_env_obsidian"),
+    ("POST", re.compile(r"^/api/config/vault$"),                      "api_config_vault"),
     ("GET",  re.compile(r"^/api/home$"),                              "api_home"),
     ("GET",  re.compile(r"^/api/focus$"),                             "api_focus_get"),
     ("PUT",  re.compile(r"^/api/focus/today$"),                       "api_focus_put_today"),
@@ -620,6 +679,56 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(404, "We could not find that workspace.")
         self._send_json({"success": True, "name": name},
                         extra_set_cookie=(WORKSPACE_COOKIE, name))
+
+    # ── /api/env/obsidian — onboarding: is Obsidian installed? ───────────────
+
+    def api_env_obsidian(self) -> None:
+        """Report whether Obsidian is installed (R-2.1..R-2.4, R-2.8).
+
+        Read-only; does not require a configured vault, so it does not call
+        _context() (which would 503 during first-run onboarding)."""
+        installed, path = detect_obsidian()
+        self._send_json({"installed": installed, "path": path})
+
+    # ── /api/config/vault — onboarding: set the vault in config.toml ─────────
+
+    def api_config_vault(self) -> None:
+        """Persist the chosen vault as the default in ~/.squirrel/config.toml.
+
+        Validates name (R-3.13) and path (R-3.12) before any filesystem write;
+        creates the folder when requested (R-3.4); requires a directory after
+        (R-3.5); persists via the atomic idempotent upsert (R-3.6/R-3.10/R-3.11).
+        Does not require an existing vault, so no _context() call."""
+        payload = self._read_json_body()
+        name = (payload.get("name") or "personal").strip()
+        raw_path = (payload.get("path") or "").strip()
+        create = bool(payload.get("create", False))
+
+        if not raw_path:
+            raise _UserError(400, "Vault path is required.")
+        if not _VAULT_NAME_RE.match(name):
+            raise _UserError(
+                400,
+                "Vault name may only contain letters, numbers, dot, dash, "
+                "and underscore.",
+            )
+        try:
+            resolved = _validate_vault_path(raw_path)
+        except ValueError as ve:
+            raise _UserError(400, str(ve))
+
+        if create and not resolved.exists():
+            try:
+                resolved.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                raise _UserError(400, "Could not create the vault folder.")
+        if not resolved.is_dir():
+            raise _UserError(400, "Vault path is not a directory.")
+
+        vault = config_loader.upsert_default_vault(name, str(resolved))
+        self._send_json(
+            {"name": vault.name, "path": str(vault.path), "default": True}
+        )
 
     def api_set_theme(self) -> None:
         payload = self._read_json_body()

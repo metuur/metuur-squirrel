@@ -26,6 +26,7 @@ import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
 import { AppCredit } from "./components/AppCredit";
 import { HowToModal } from "./components/HowToModal";
+import { OnboardingGate } from "./components/OnboardingGate";
 import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
 import { QuickTaskWidget } from "./components/QuickTaskWidget";
 import { QuickTaskPopover } from "./components/QuickTaskPopover";
@@ -166,6 +167,8 @@ export default function App() {
 
   return (
     <main className="h-screen flex flex-col overflow-hidden">
+      {/* First-run onboarding overlay (yields to HandshakeBanner, R-1.3). */}
+      <OnboardingGate />
       {/* R-6.2: window-blocking overlay above all content on refused adoption. */}
       <HandshakeBanner />
       <BackendStatusBanner status={status} />

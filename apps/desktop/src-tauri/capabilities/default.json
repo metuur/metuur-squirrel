@@ -20,6 +20,7 @@
     },
     "notification:default",
     "store:default",
+    "dialog:allow-open",
     "autostart:default",
     "deep-link:default",
     "process:default",

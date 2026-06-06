@@ -14,6 +14,7 @@ Public API:
     add_vault(name, path, config_path=None)   -> Vault
     remove_vault(name, config_path=None)      -> None
     set_default(name, config_path=None)       -> None
+    upsert_default_vault(name, path, config_path=None) -> Vault
     state_file_for(name, state_dir=None)      -> pathlib.Path
     read_state(name, state_dir=None)          -> dict
     write_state(name, data, state_dir=None)   -> None
@@ -27,9 +28,11 @@ Exceptions:
 
 Write API contract:
 
-    All write operations (add_vault, remove_vault, set_default) edit the
-    config file in place via line-based surgical edits — comments, other
-    sections, and formatting are preserved. Atomic via temp file + os.replace.
+    All write operations (add_vault, remove_vault, set_default,
+    upsert_default_vault) edit the config file in place via line-based surgical
+    edits — comments, other sections, and formatting are preserved. Atomic via
+    temp file + os.replace. String values are emitted as TOML-safe basic
+    strings (see _toml_str) so quotes/newlines cannot corrupt the file.
 
 Python 3.9+ compatible. Uses `tomllib` on 3.11+ with a minimal fallback parser
 for 3.9 / 3.10 that covers the Squirrel schema subset only.
@@ -559,13 +562,48 @@ def _vault_block_ranges(lines: list[str]) -> list[tuple[str, int, int]]:
     return out
 
 
+def _toml_str(s: str) -> str:
+    """Quote `s` as a TOML basic string with proper escaping.
+
+    Escapes the characters that would otherwise break a `"..."` string
+    (backslash, double-quote) and the control characters TOML requires to be
+    escaped. Normal text (paths, simple names) passes through unchanged inside
+    the quotes, so existing callers and golden output are unaffected.
+    """
+    out = []
+    for ch in s:
+        if ch == "\\":
+            out.append("\\\\")
+        elif ch == '"':
+            out.append('\\"')
+        elif ch == "\n":
+            out.append("\\n")
+        elif ch == "\r":
+            out.append("\\r")
+        elif ch == "\t":
+            out.append("\\t")
+        elif ch == "\b":
+            out.append("\\b")
+        elif ch == "\f":
+            out.append("\\f")
+        elif ord(ch) < 0x20:
+            out.append("\\u%04X" % ord(ch))
+        else:
+            out.append(ch)
+    return '"' + "".join(out) + '"'
+
+
 def _format_vault_entry(name: str, path: str, default: bool) -> str:
-    """Format a [[vaults]] block as text. Always ends with a trailing newline."""
+    """Format a [[vaults]] block as text. Always ends with a trailing newline.
+
+    `name` and `path` are emitted as TOML-safe basic strings so a value
+    containing a quote, backslash, or newline cannot corrupt the file.
+    """
     default_str = "true" if default else "false"
     return (
         f"[[vaults]]\n"
-        f'name = "{name}"\n'
-        f'path = "{path}"\n'
+        f"name = {_toml_str(name)}\n"
+        f"path = {_toml_str(path)}\n"
         f"default = {default_str}\n"
     )
 
@@ -819,3 +857,92 @@ def set_default(
     if not new_text.endswith("\n"):
         new_text += "\n"
     _atomic_write(cfg_path, new_text)
+
+
+def upsert_default_vault(
+    name: str,
+    path: str,
+    *,
+    config_path: Optional[pathlib.Path] = None,
+) -> Vault:
+    """Set `name` → `path` as the sole default vault, in a single atomic write.
+
+    Unlike `add_vault` + `set_default` (two separate writes, and a hard error on
+    duplicate name), this is an idempotent upsert in one `_atomic_write`:
+
+      - If a vault named `name` already exists, its `path` is updated and it is
+        marked default (no duplicate-name error). (R-3.11)
+      - Otherwise a new `[[vaults]]` block is appended.
+      - Either way, exactly one vault ends up `default = true`. (R-3.10)
+      - All other keys, sections, comments, and vault entries are preserved.
+        (R-3.8)
+
+    This is a pure config writer: it does NOT touch the filesystem or validate
+    that `path` exists. Path creation/sandboxing is the caller's responsibility
+    (the HTTP handler, story 3.1). On any failure the config is left unchanged,
+    because the only write is the final atomic replace.
+
+    Returns the resulting default Vault.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise ValidationError("vault name must be a non-empty string")
+
+    cfg_path = config_path if config_path is not None else DEFAULT_CONFIG_PATH
+    path_obj = pathlib.Path(path).expanduser()
+
+    text = cfg_path.read_text(encoding="utf-8") if cfg_path.exists() else ""
+    lines = text.splitlines(keepends=False)
+    ranges = _vault_block_ranges(lines)
+
+    # ── Case 1: no existing [[vaults]] — bootstrap a default=true block ───────
+    if not ranges:
+        new_entry = _format_vault_entry(name, path, default=True)
+        if text.strip():
+            base = text if text.endswith("\n") else text + "\n"
+            if not base.endswith("\n\n"):
+                base += "\n"
+            new_text = base + new_entry
+        else:
+            new_text = new_entry
+        _atomic_write(cfg_path, new_text)
+        return Vault(name=name, path=path_obj, default=True)
+
+    existing_names = [n for (n, _, _) in ranges]
+
+    if name in existing_names:
+        # ── Case 2: update the existing block's path line in place ────────────
+        for entry_name, start, end in ranges:
+            if entry_name != name:
+                continue
+            for i in range(start, end + 1):
+                stripped = _strip_comment(lines[i]).strip()
+                if stripped.startswith("path") and "=" in stripped:
+                    indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
+                    lines[i] = f"{indent}path = {_toml_str(path)}"
+                    break
+            break
+    else:
+        # ── Case 3: append a new block after the last [[vaults]] block ────────
+        _, _, last_end = ranges[-1]
+        new_block_lines = (
+            _format_vault_entry(name, path, default=False).rstrip("\n").split("\n")
+        )
+        before = lines[: last_end + 1]
+        after = lines[last_end + 1 :]
+        lines = before + [""] + new_block_lines + after
+
+    # ── Flip defaults: target → true, every other block → false ──────────────
+    for entry_name, start, end in _vault_block_ranges(lines):
+        new_value = "true" if entry_name == name else "false"
+        for i in range(start, end + 1):
+            stripped = _strip_comment(lines[i]).strip()
+            if stripped.startswith("default") and "=" in stripped:
+                indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
+                lines[i] = f"{indent}default = {new_value}"
+                break
+
+    new_text = "\n".join(lines)
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+    _atomic_write(cfg_path, new_text)
+    return Vault(name=name, path=path_obj, default=True)

@@ -1,14 +1,43 @@
+import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { api } from "../api/client";
 
-const VAULT_URL = "obsidian://open?vault=vault-tdah";
-
+// R-4.1/R-4.3/R-4.4: open the *configured* vault in Obsidian. The vault name
+// comes from /api/me, not a hardcoded value. When no vault is configured yet
+// (e.g. /api/me 503s during first-run onboarding) the button is disabled
+// rather than opening a non-existent vault.
 export function OpenVaultButton() {
+  const [vaultName, setVaultName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .me()
+      .then((me) => {
+        if (!cancelled) setVaultName(me.active_workspace?.name ?? null);
+      })
+      .catch(() => {
+        // 503 (no vault yet) or backend offline → leave disabled. Never throw.
+        if (!cancelled) setVaultName(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleClick = () => {
-    void openUrl(VAULT_URL);
+    if (!vaultName) return;
+    void openUrl(`obsidian://open?vault=${encodeURIComponent(vaultName)}`);
   };
 
   return (
-    <button type="button" onClick={handleClick} className="btn">
+    <button
+      type="button"
+      onClick={handleClick}
+      className="btn"
+      disabled={!vaultName}
+      title={vaultName ? `Open ${vaultName} in Obsidian` : "No vault configured yet"}
+    >
       Open Vault
       <svg
         width="10"
