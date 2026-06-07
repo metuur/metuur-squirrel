@@ -7,6 +7,7 @@
 // theme, vault). Do not import this client from the browser SPA.
 
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 export const BACKEND_ORIGIN = "http://127.0.0.1:3939";
 
@@ -23,6 +24,20 @@ function runtimeToken(): Promise<string | null> {
     tokenPromise = invoke<string>("runtime_token").catch(() => null);
   }
   return tokenPromise;
+}
+
+// Open a Squirrel web-UI URL in the external browser, carrying the per-launch
+// runtime token as `?token=…`. The backend gates `/api/*` on `X-Squirrel-Token`
+// and the SPA reads that token from its launch URL; opening the web UI without
+// it leaves every API call 401 and the page empty. Accepts an absolute web path
+// ("/notes/VISA-001"), "" for the dashboard root, or a full BACKEND_ORIGIN URL
+// (e.g. a notification's item_url). Degrades to the un-tokened URL in dev/tests.
+export async function openWebUrl(pathOrUrl = ""): Promise<void> {
+  const token = await runtimeToken();
+  const base = pathOrUrl.startsWith("http") ? pathOrUrl : `${BACKEND_ORIGIN}${pathOrUrl}`;
+  const sep = base.includes("?") ? "&" : "?";
+  const url = token ? `${base}${sep}token=${encodeURIComponent(token)}` : base;
+  await openUrl(url);
 }
 
 export class ApiError extends Error {

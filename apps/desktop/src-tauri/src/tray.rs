@@ -383,7 +383,7 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                         tracing::warn!(error = %e, "tray: failed to emit quick-task-capture-open");
                     }
                 }
-                ids::OPEN_WEB_UI => open_url(app, BACKEND_ORIGIN),
+                ids::OPEN_WEB_UI => open_web_url(app, ""),
                 ids::OPEN_OBSIDIAN => {
                     // R-4.2: use the configured vault name. R-4.3: do nothing if
                     // none is configured (the item is also disabled in that state).
@@ -442,13 +442,11 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 }
                 other if other.starts_with(ids::ALERT_PREFIX) => {
                     let task_id = &other[ids::ALERT_PREFIX.len()..];
-                    let url = format!("{}/notes/{}", BACKEND_ORIGIN, task_id);
-                    open_url(app, &url);
+                    open_web_url(app, &format!("/notes/{}", task_id));
                 }
                 other if other.starts_with(ids::REMINDER_PREFIX) => {
                     let reminder_id = &other[ids::REMINDER_PREFIX.len()..];
-                    let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder_id);
-                    open_url(app, &url);
+                    open_web_url(app, &format!("/notes/{}", reminder_id));
                 }
                 other => {
                     tracing::info!(menu_item = other, "tray menu clicked (unhandled)");
@@ -485,6 +483,18 @@ fn open_url<R: Runtime>(app: &AppHandle<R>, url: &str) {
     } else {
         tracing::info!(url, "tray: opened url");
     }
+}
+
+/// Open a Squirrel web-UI URL in the external browser, carrying the per-launch
+/// runtime token as `?token=…`. The backend gates `/api/*` on `X-Squirrel-Token`
+/// (runtime-trust-handshake), and the SPA's bootstrap reads that token from the
+/// launch URL; without it every API call returns 401 and the page stays empty.
+/// `path` is an absolute web path beginning with `/` (e.g. "/notes/VISA-001"),
+/// or empty for the dashboard root.
+fn open_web_url<R: Runtime>(app: &AppHandle<R>, path: &str) {
+    let token = app.state::<crate::RuntimeToken>().0.clone();
+    let url = format!("{}{}?token={}", BACKEND_ORIGIN, path, token);
+    open_url(app, &url);
 }
 
 /// Switch the tray icon to a different state. Story 2.4 exposes this through

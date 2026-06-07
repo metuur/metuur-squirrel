@@ -133,9 +133,10 @@ hdr "Locate inputs (app + CLI binaries)"
 # build (TAURI_TARGET=aarch64-apple-darwin) lands under the target triple;
 # the default/universal build lands at target/release.
 if (( ARM64_ONLY )); then
-  # Cargo only uses a target-triple subdir when cross-compiling. On an Apple
-  # Silicon host, --target aarch64-apple-darwin == host, so the bundle lands in
-  # the plain target/release/ tree. List both, triple-dir first.
+  # With an explicit --target (TAURI_TARGET=aarch64-apple-darwin) cargo writes
+  # the bundle under the target-triple subdir; a plain build lands in
+  # target/release/. List every tree a Squirrel.app could come from — selection
+  # below is by newest mtime, so a stale bundle in another tree can't be packaged.
   APP_CANDIDATES=(
     "$ROOT/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app"
     "$ROOT/target/release/bundle/macos/Squirrel.app"
@@ -151,16 +152,23 @@ else
   APP_BUILD_CMD="( cd '$ROOT/apps/desktop' && pnpm tauri build )"
 fi
 
+# Pick the most recently modified Squirrel.app among the candidates that exist.
+# Selecting by mtime (via bash's -nt, not list order) means the freshly built
+# bundle always wins, even if a stale one lingers in another target tree — the
+# root cause of the "packaged an old version" bug. (make build-pkg also
+# pre-clears these dirs so normally only one candidate exists here.)
 APP=""
 for cand in "${APP_CANDIDATES[@]}"; do
-  [[ -d "$cand" ]] && { APP="$cand"; break; }
+  [[ -d "$cand" ]] || continue
+  if [[ -z "$APP" || "$cand" -nt "$APP" ]]; then APP="$cand"; fi
 done
 
 if [[ -z "$APP" ]]; then
   (( SKIP_BUILD )) && die "Squirrel.app not found and --skip-build set. Build it first (make build-pkg)."
   run "$APP_BUILD_CMD"
   for cand in "${APP_CANDIDATES[@]}"; do
-    [[ -d "$cand" ]] && { APP="$cand"; break; }
+    [[ -d "$cand" ]] || continue
+    if [[ -z "$APP" || "$cand" -nt "$APP" ]]; then APP="$cand"; fi
   done
   [[ -n "$APP" || $DRY_RUN -eq 1 ]] || die "build finished but Squirrel.app still not found"
 fi

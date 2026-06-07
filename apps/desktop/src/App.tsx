@@ -3,13 +3,12 @@
 // DeadlinesWidget can open it with the right project pre-selected.
 
 import { useEffect, useMemo, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { listen } from "@tauri-apps/api/event";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
 import { useDeepLink } from "./hooks/useDeepLink";
 import { useNotifications } from "./hooks/useNotifications";
-import { BACKEND_ORIGIN } from "./api/client";
+import { openWebUrl } from "./api/client";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { HandshakeBanner } from "./components/HandshakeBanner";
 import { FocusWidget } from "./components/FocusWidget";
@@ -54,8 +53,8 @@ export default function App() {
     if (!deepLink) return;
     if (!status.online) return;
     const id = deepLink.taskId ?? deepLink.projectId;
-    openUrl(`${BACKEND_ORIGIN}/notes/${id}`).catch((err) => {
-      console.error("[App] deep-link openUrl failed:", err);
+    openWebUrl(`/notes/${id}`).catch((err) => {
+      console.error("[App] deep-link openWebUrl failed:", err);
     });
   }, [deepLink?.key, status.online]); // eslint-disable-line react-hooks/exhaustive-deps
 

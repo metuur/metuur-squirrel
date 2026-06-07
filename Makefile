@@ -28,6 +28,7 @@ DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
 .PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
+	deploy-pages \
         build-installers build-installers-arm64 build-pkg build-pkg-fast build-pkg-dry \
         _maybe-bump _build-binaries _assemble-dmg
 
@@ -73,6 +74,9 @@ backend-build:
 backend-dev-ui:
 	pnpm -F squirrel-web-ui dev
 
+deploy-pages:
+	npx wrangler pages deploy ./landing/pages --project-name squirrel
+
 # ─── Installer (macOS DMG) ───────────────────────────────────────────────────
 
 # Produces squirrel-installer-macos.dmg.
@@ -108,6 +112,15 @@ build-installers-dry:
 # binaries, not the manual drag-install DMG. The single public artifact is
 # squirrel-macos.dmg (the .pkg wrapped in a DMG) from build-pkg.sh.
 build-pkg: _maybe-bump
+	# Remove stale Squirrel.app bundles from every target tree BEFORE building.
+	# Cargo's incremental cache + the --target split mean a leftover bundle from a
+	# prior (or differently-targeted) build can survive and get packaged instead
+	# of the fresh one — that's why installs kept shipping an old version. Clearing
+	# them first guarantees the only Squirrel.app present afterwards is this build's.
+	rm -rf $(ROOT)/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/target/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app
 	TAURI_TARGET=aarch64-apple-darwin pnpm -F @squirrel/desktop tauri:build
 	bash $(ROOT)/scripts/build-dmg.sh --arm64-only --skip-dmg
 	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
