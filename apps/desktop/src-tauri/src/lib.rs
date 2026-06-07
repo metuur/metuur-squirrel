@@ -250,30 +250,41 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app, event| {
             match event {
-                // External quit attempts (Cmd+Q, Dock right-click → Quit, etc.).
-                // We redirect them to the same hide+Accessory behaviour as the
-                // window X button so the app continues running as a tray app.
-                // The only real exit path is the tray "Quit Squirrel" item,
-                // which calls app.exit(0) directly and fires Exit, not this.
-                tauri::RunEvent::ExitRequested { api, .. } => {
-                    api.prevent_exit();
-                    if let Some(window) = app.get_webview_window("main") {
-                        if window.is_visible().unwrap_or(false) {
-                            if let Err(e) = window.hide() {
-                                tracing::warn!(error = %e, "ExitRequested: failed to hide window");
-                            } else {
-                                #[cfg(target_os = "macos")]
-                                if let Err(e) = app
-                                    .set_activation_policy(tauri::ActivationPolicy::Accessory)
-                                {
-                                    tracing::warn!(
-                                        error = %e,
-                                        "ExitRequested: failed to set Accessory policy"
-                                    );
+                // Tauri v2 routes BOTH user-interaction exits and the
+                // programmatic `app.exit(0)` through ExitRequested, distinguished
+                // by `code`:
+                //   • `code: None`  — user interaction (Cmd+Q, Dock/app-menu
+                //     Quit, `osascript … quit`, last window closed). We redirect
+                //     these to the same hide+Accessory behaviour as the window X
+                //     button so the app keeps running as a tray app.
+                //   • `code: Some(_)` — a genuine programmatic quit, which for us
+                //     is ONLY the tray "Quit Squirrel" item calling app.exit(0).
+                //     We must let it fall through to RunEvent::Exit (which shuts
+                //     the backend down). Calling prevent_exit() here — as the code
+                //     previously did unconditionally — made the Quit item a no-op.
+                tauri::RunEvent::ExitRequested { code, api, .. } => {
+                    if code.is_none() {
+                        api.prevent_exit();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                if let Err(e) = window.hide() {
+                                    tracing::warn!(error = %e, "ExitRequested: failed to hide window");
+                                } else {
+                                    #[cfg(target_os = "macos")]
+                                    if let Err(e) = app
+                                        .set_activation_policy(tauri::ActivationPolicy::Accessory)
+                                    {
+                                        tracing::warn!(
+                                            error = %e,
+                                            "ExitRequested: failed to set Accessory policy"
+                                        );
+                                    }
+                                    tracing::info!("ExitRequested intercepted; window hidden");
                                 }
-                                tracing::info!("ExitRequested intercepted; window hidden");
                             }
                         }
+                    } else {
+                        tracing::info!(?code, "ExitRequested (programmatic); exiting");
                     }
                 }
                 // R-9.3: kill the Managed backend child on a real exit (only

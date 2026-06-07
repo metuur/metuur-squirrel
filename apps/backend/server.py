@@ -43,8 +43,17 @@ from typing import Any, Callable, Optional
 
 # When running as a PyInstaller bundle, lib modules are frozen and sys._MEIPASS
 # holds the temp extraction dir. In dev, walk up to the repo root as before.
+#
+# _REPO must be defined in BOTH branches: it is also used as the base for
+# agent-pack assets (templates, plugin.json — see _detect_version and the
+# intent-template fallback). When frozen, the repo tree is absent; the .pkg
+# installs agent-pack under /usr/local/share/squirrel, so point _REPO there so
+# `_REPO / "agent-pack" / …` resolves to the installed copy. Previously _REPO was
+# defined only in the dev branch, so /api/me crashed with NameError in the
+# installed app ("Backend offline").
 if getattr(sys, "frozen", False):
     _LIB = pathlib.Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    _REPO = pathlib.Path("/usr/local/share/squirrel")
 else:
     _REPO = pathlib.Path(__file__).resolve().parent.parent.parent
     _LIB = _REPO / "apps" / "cli" / "lib"
