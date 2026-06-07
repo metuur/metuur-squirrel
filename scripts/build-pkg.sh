@@ -23,6 +23,9 @@
 #   ./scripts/build-pkg.sh                 # build inputs as needed, then package
 #   ./scripts/build-pkg.sh --skip-build    # reuse existing app + dist/ binaries
 #   ./scripts/build-pkg.sh --dry-run       # print steps without executing
+#   ./scripts/build-pkg.sh --allow-unnotarized  # local/dev build; skip the gate
+#                                          # that requires Installer cert + notary
+#                                          # creds (result won't install on other Macs)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -43,12 +46,15 @@ APP_ID="com.metuur.squirrel"
 SKIP_BUILD=0
 DRY_RUN=0
 ARM64_ONLY=0
+ALLOW_UNNOTARIZED=0   # --allow-unnotarized: opt into a local-only dev build that
+                      # won't install on other Macs (skips the distribution gate).
 
 for arg in "$@"; do
   case "$arg" in
-    --skip-build) SKIP_BUILD=1 ;;
-    --dry-run)    DRY_RUN=1 ;;
-    --arm64-only) ARM64_ONLY=1 ;;
+    --skip-build)        SKIP_BUILD=1 ;;
+    --dry-run)           DRY_RUN=1 ;;
+    --arm64-only)        ARM64_ONLY=1 ;;
+    --allow-unnotarized) ALLOW_UNNOTARIZED=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
@@ -113,6 +119,35 @@ if [[ -z "$INSTALLER_ID" ]]; then
 fi
 SIGN_PKG=1
 [[ -z "$INSTALLER_ID" ]] && { SIGN_PKG=0; warn "no Developer ID Installer identity — producing an UNSIGNED .pkg (dev only)"; }
+
+# Notary credentials: a stored keychain profile, or the APPLE_ID/PASSWORD/TEAM_ID
+# trio. Without these the .pkg/DMG can be signed but never notarized.
+HAVE_NOTARY_CREDS=0
+if [[ -n "${APPLE_KEYCHAIN_PROFILE:-}" ]]; then
+  HAVE_NOTARY_CREDS=1
+elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+  HAVE_NOTARY_CREDS=1
+fi
+
+# ─── Distribution gate — fail fast on a build that can't be notarized ─────────
+# A .pkg installs cleanly on other Macs only if it is signed by a Developer ID
+# Installer cert AND notarized by Apple. Missing any prerequisite yields an
+# installer Gatekeeper rejects with "Apple could not verify … free of malware".
+# Refuse to produce that silently; list exactly what's missing. Use
+# --allow-unnotarized for an intentional local/dev build (won't install elsewhere).
+if (( ! DRY_RUN && ! ALLOW_UNNOTARIZED )); then
+  missing=()
+  (( SIGN_APP ))         || missing+=("APPLE_SIGNING_IDENTITY — Developer ID Application cert (signs the app + DMG)")
+  (( SIGN_PKG ))         || missing+=("Developer ID Installer certificate (signs the .pkg) — create via Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ + ▸ Developer ID Installer")
+  (( HAVE_NOTARY_CREDS )) || missing+=("notary credentials — APPLE_KEYCHAIN_PROFILE, or APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID")
+  if (( ${#missing[@]} )); then
+    printf '%s✗  Refusing to build an un-notarized .pkg — it will fail to install on other Macs.%s\n' "$C_RED" "$C_RESET" >&2
+    printf '   Missing for a distributable installer:\n' >&2
+    for m in "${missing[@]}"; do printf '     • %s\n' "$m" >&2; done
+    printf '   Fix the above, then re-run — or pass --allow-unnotarized for a local-only dev build.\n' >&2
+    exit 1
+  fi
+fi
 
 # ─── Version ─────────────────────────────────────────────────────────────────
 VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
