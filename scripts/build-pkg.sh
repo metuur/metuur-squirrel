@@ -244,6 +244,23 @@ run "cp '$DIST/squirrel'         '$STAGING/usr/local/bin/squirrel'"
 run "cp '$DIST/squirrel-backend' '$STAGING/usr/local/bin/squirrel-backend'"
 run "chmod +x '$STAGING/usr/local/bin/squirrel' '$STAGING/usr/local/bin/squirrel-backend'"
 
+# Sign the CLI binaries that go to /usr/local/bin. build-dmg.sh --skip-dmg emits
+# these UNSIGNED (it exits before its own signing step), so without this the
+# notary service rejects the whole .pkg: "not signed with a valid Developer ID
+# certificate / no secure timestamp / hardened runtime not enabled". They are
+# PyInstaller --onefile binaries that dlopen a bundled libpython, so they need
+# the same hardened-runtime + library-validation entitlements as the sidecar.
+if (( SIGN_APP )); then
+  for cli in squirrel squirrel-backend; do
+    run "codesign --force --options runtime --timestamp --entitlements '$ENTITLEMENTS' --sign '$APPLE_SIGNING_IDENTITY' '$STAGING/usr/local/bin/$cli'"
+  done
+  (( DRY_RUN )) || codesign --verify --strict "$STAGING/usr/local/bin/squirrel" || die "CLI 'squirrel' signature verification failed"
+  (( DRY_RUN )) || codesign --verify --strict "$STAGING/usr/local/bin/squirrel-backend" || die "CLI 'squirrel-backend' signature verification failed"
+  ok "CLI binaries signed (hardened runtime + timestamp)"
+else
+  info "skipping CLI binary signing (APPLE_SIGNING_IDENTITY unset)"
+fi
+
 run "cp -R '$ROOT/agent-pack' '$STAGING/usr/local/share/squirrel/agent-pack'"
 run "cp '$ROOT/agent-pack/config/squirrel.toml.example' '$STAGING/usr/local/share/squirrel/resources/squirrel.toml.example'"
 ok "payload → pkg-staging/"
