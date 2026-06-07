@@ -2,7 +2,7 @@
 #
 # apps/desktop/scripts/tauri-build.sh
 #
-# Wrapper around `pnpm tauri build -- --target universal-apple-darwin` that
+# Wrapper around `pnpm tauri build --target universal-apple-darwin` that
 # guards against missing signing credentials before cargo starts.
 #
 # Signing behaviour (R-2.6, R-2.7, R-2.8):
@@ -68,13 +68,18 @@ if (( SIGNING )); then
 fi
 
 # ─── Build ────────────────────────────────────────────────────────────────────
-info "running: pnpm tauri build -- --target $TARGET $*"
+info "running: pnpm tauri build --target $TARGET $*"
 cd "$DESKTOP_ROOT"
 # Don't let set -e abort before we can inspect the result: Tauri's DMG
 # Finder-window AppleScript step can exit non-zero in a headless/non-GUI context
 # AFTER both artifacts are already built, signed, and (for the .app) notarized.
 set +e
-pnpm tauri build -- --target "$TARGET" "$@"
+# --target is a TAURI flag, not a cargo flag: it must come BEFORE any `--`.
+# Passing it after `--` forwards it to cargo only, so cargo builds into
+# target/<triple>/release but tauri's bundler looks in target/release and
+# fails with "failed to bundle project `No such file or directory`"
+# (tauri-cli 2.11+ enforces this `--` boundary strictly).
+pnpm tauri build --target "$TARGET" "$@"
 BUILD_EXIT=$?
 set -e
 
