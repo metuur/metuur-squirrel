@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squirrel-backend"
-version = "0.7.15"
+version = "0.7.17"
 description = "Squirrel local web UI — JSON API + SPA shell"
 requires-python = ">=3.9"
 license = { text = "MIT" }
