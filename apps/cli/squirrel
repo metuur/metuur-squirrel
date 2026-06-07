@@ -637,7 +637,7 @@ def _register_claude_marketplace(plugin_root: Path, dry: bool) -> None:
     ip["plugins"]["squirrel@squirrel"] = [{
         "scope": "user",
         "installPath": repo,
-        "version": "0.7.14",
+        "version": "0.7.15",
         "installedAt": now,
         "lastUpdated": now,
         "gitCommitSha": "",

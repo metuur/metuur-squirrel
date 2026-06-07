@@ -104,9 +104,12 @@ build-installers-dry:
 #   make build-pkg-dry                 → print steps without executing
 # With BUMP, build-pkg recompiles so the .pkg version matches its contents.
 # (build-pkg-fast reuses prior artifacts — do NOT combine it with BUMP.)
+# build-dmg.sh runs with --skip-dmg here: build-pkg only needs its dist/ CLI
+# binaries, not the manual drag-install DMG. The single public artifact is
+# squirrel-macos.dmg (the .pkg wrapped in a DMG) from build-pkg.sh.
 build-pkg: _maybe-bump
 	TAURI_TARGET=aarch64-apple-darwin pnpm -F @squirrel/desktop tauri:build
-	bash $(ROOT)/scripts/build-dmg.sh --arm64-only
+	bash $(ROOT)/scripts/build-dmg.sh --arm64-only --skip-dmg
 	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
 
 build-pkg-fast: _maybe-bump

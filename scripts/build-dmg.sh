@@ -40,11 +40,15 @@ DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
 ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
 DRY_RUN=0
 ARM64_ONLY=0
+SKIP_DMG=0   # --skip-dmg: build the SPA + dist/ CLI binaries, then stop before
+             # assembling the manual drag-install .dmg. Used by `make build-pkg`,
+             # which only needs dist/ and ships the .pkg-in-DMG instead.
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run)    DRY_RUN=1 ;;
     --arm64-only) ARM64_ONLY=1 ;;
+    --skip-dmg)   SKIP_DMG=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
@@ -325,6 +329,13 @@ if (( ! DRY_RUN )); then
   fi
 fi
 (( ARM64_ONLY )) && ok "Backend binary → dist/squirrel-backend (arm64)" || ok "Backend binary → dist/squirrel-backend (universal)"
+
+# --skip-dmg: dist/ binaries are now built; the caller (build-pkg.sh flow) does
+# not want the manual drag-install DMG. Stop here before Step 4.
+if (( SKIP_DMG )); then
+  printf '\n%sDone (binaries only).%s  dist/squirrel, dist/squirrel-backend ready; skipped manual DMG.\n' "$C_BOLD" "$C_RESET"
+  exit 0
+fi
 
 # ─── Step 4: Assemble DMG staging ────────────────────────────────────────────
 hdr "Step 4 — Assemble DMG staging"

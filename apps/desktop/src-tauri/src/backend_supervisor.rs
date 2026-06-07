@@ -533,7 +533,7 @@ pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
         notify_refusal(app);
         return false;
     }
-    let client = match build_client() {
+    let client = match build_client(&app.state::<crate::RuntimeToken>().0) {
         Some(c) => c,
         None => return false,
     };
@@ -567,7 +567,7 @@ pub(crate) async fn run_health_loop<R: Runtime>(app: AppHandle<R>) {
         tracing::info!("backend supervisor: adoption refused — health loop disabled (R-4.7)");
         return;
     }
-    let client = match build_client() {
+    let client = match build_client(&app.state::<crate::RuntimeToken>().0) {
         Some(c) => c,
         None => {
             tracing::error!("backend supervisor: failed to build health-check client");
@@ -796,9 +796,22 @@ pub(crate) fn is_degraded<R: Runtime>(app: &AppHandle<R>) -> bool {
     is_degraded_state(&s)
 }
 
-fn build_client() -> Option<reqwest::Client> {
+/// Build the health-check client with the per-launch runtime token as a default
+/// header. The health endpoint (`/api/me`) is auth-gated (Runtime Trust
+/// Handshake): without `X-Squirrel-Token` the backend returns 401, which the
+/// loop reads as "unhealthy" — pinning the tray icon to Error and eventually
+/// the "Backend unavailable" degraded state even when the backend is fine.
+fn build_client(token: &str) -> Option<reqwest::Client> {
+    let mut headers = reqwest::header::HeaderMap::new();
+    match reqwest::header::HeaderValue::from_str(token) {
+        Ok(val) => {
+            headers.insert("X-Squirrel-Token", val);
+        }
+        Err(e) => tracing::warn!(error = %e, "health client: runtime token not a valid header value"),
+    }
     reqwest::Client::builder()
         .timeout(HEALTH_REQ_TIMEOUT)
+        .default_headers(headers)
         .build()
         .ok()
 }

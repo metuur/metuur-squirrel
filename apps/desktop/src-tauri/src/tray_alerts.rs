@@ -804,8 +804,23 @@ async fn check_break_reminder<R: Runtime>(app: &AppHandle<R>, client: &reqwest::
 /// that callers should only invoke this once (from `lib::run`'s setup).
 pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
     tauri::async_runtime::spawn(async move {
+        // Authenticate every poll request with the per-launch runtime token —
+        // the same X-Squirrel-Token the webview sends (Runtime Trust Handshake,
+        // R-1.1). Without it the tokened backend returns 401 to /api/home,
+        // /api/reminders, etc., so the tray silently degraded to "No pressing
+        // items" in the installed app. Auth is enforced only when a token is set
+        // (off in dev), which is why this went unnoticed until packaging.
+        let mut default_headers = reqwest::header::HeaderMap::new();
+        let token = app.state::<crate::RuntimeToken>().0.clone();
+        match reqwest::header::HeaderValue::from_str(&token) {
+            Ok(val) => {
+                default_headers.insert("X-Squirrel-Token", val);
+            }
+            Err(e) => tracing::warn!(error = %e, "tray-alerts: runtime token not a valid header value"),
+        }
         let client = match reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
+            .default_headers(default_headers)
             .build()
         {
             Ok(c) => c,

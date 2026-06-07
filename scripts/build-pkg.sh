@@ -30,9 +30,12 @@ DIST="$ROOT/dist"
 PKG_SRC="$ROOT/installer/pkg"
 STAGING="$ROOT/pkg-staging"          # payload root
 BUILD="$ROOT/build/pkg"              # intermediate component pkg + distribution.xml
-PKG_OUT="$ROOT/squirrel-installer-macos.pkg"
+# The standalone .pkg is an INTERNAL artifact (debug / CI / advanced installs):
+# it lives under build/, not the repo root. The single PUBLIC artifact is the
+# DMG below, which wraps this .pkg. See `make build-pkg`.
+PKG_OUT="$BUILD/squirrel-installer-macos.pkg"
 DMG_STAGING="$ROOT/pkg-dmg-staging"  # holds the .pkg for hdiutil to wrap
-DMG_OUT="$ROOT/squirrel-macos.dmg"   # final DMG that CONTAINS the .pkg
+DMG_OUT="$ROOT/squirrel-macos.dmg"   # final DMG that CONTAINS the .pkg (public)
 # Hardened-runtime entitlements — lets the bundled squirrel-backend sidecar
 # dlopen its PyInstaller-extracted libpython (else "different Team IDs" crash).
 ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
@@ -297,8 +300,8 @@ else
   info "skipping DMG signing/notarization (unsigned or dry-run)"
 fi
 
-printf '\n%sDone.%s  Distribute: squirrel-installer-macos.pkg (raw installer)\n' "$C_BOLD" "$C_RESET"
-printf '             or squirrel-macos.dmg (mountable, contains the .pkg)\n'
+printf '\n%sDone.%s  Distribute: squirrel-macos.dmg  (mount → run the .pkg inside)\n' "$C_BOLD" "$C_RESET"
+printf '             internal: %s (standalone .pkg, not for public release)\n' "${PKG_OUT#$ROOT/}"
 printf '       Size: pkg %s · dmg %s\n\n' \
   "$(du -sh "$PKG_OUT" 2>/dev/null | cut -f1 || echo 'n/a')" \
   "$(du -sh "$DMG_OUT" 2>/dev/null | cut -f1 || echo 'n/a')"
