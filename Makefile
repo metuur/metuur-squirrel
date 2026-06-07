@@ -75,7 +75,7 @@ backend-dev-ui:
 	pnpm -F squirrel-web-ui dev
 
 deploy-pages:
-	npx wrangler pages deploy ./landing/pages --project-name squirrel
+	npx wrangler pages deploy ./landing/pages --project-name squirrel --commit-dirty=true
 
 # ─── Installer (macOS DMG) ───────────────────────────────────────────────────
 

@@ -1,1 +1,2 @@
 name = "squirrel"
+pages_build_output_dir = "./landing/pages"
