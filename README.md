@@ -12,7 +12,7 @@ Squirrel ships in three flavors. Pick whichever fits your audience:
 | **Squirrel.app** (Tauri DMG)      | Just the desktop popup with a bundled backend that the app supervises itself. No terminal needed after install. | Just the tray popup, nothing else.                                         |
 | **Full installer DMG** (below)    | `squirrel` CLI + backend + `agent-pack/` (Claude/Codex skills) + launchd service. No desktop app.               | Headless / CLI-only power users.                                           |
 
-For the **all-in-one `.pkg`**: download `squirrel-installer-macos.pkg`, double-click, click through the installer, then open Squirrel from `⌘+Space` → "Squirrel". It installs the app to `/Applications`, the `squirrel` CLI to `/usr/local/bin`, wires the agent-pack into any agents you have, and seeds a starter config + vault. Build instructions: [Building the all-in-one installer](#building-the-all-in-one-installer-pkg).
+For the **all-in-one `.pkg`**: download `squirrel-macos.dmg`, mount it, and double-click the `.pkg` inside; click through the installer, then open Squirrel from `⌘+Space` → "Squirrel". It installs the app to `/Applications`, the `squirrel` CLI to `/usr/local/bin`, wires the agent-pack into any agents you have, and seeds a starter config + vault. Build instructions: [Building the all-in-one installer](#building-the-all-in-one-installer-pkg).
 
 For the **Squirrel.app** path, see [`docs/install.md`](docs/install.md) — drag to Applications, then a one-time Gatekeeper bypass (right-click → Open) because the app is currently unsigned. The signing roadmap is in [`docs/release.md`](docs/release.md).
 
@@ -136,10 +136,12 @@ agent-pack into one guided, double-click `.pkg`.
 x86_64 slice + `lipo`, which can't be produced on an Apple Silicon machine
 without an x86_64 Python toolchain. It does the whole chain in one command:
 freshly recompiles the arm64 `Squirrel.app` **and** the `dist/` CLI binaries,
-then packages them — so the `.pkg` version always matches its contents.
+then packages them — so the `.pkg` version always matches its contents. The
+single public artifact is `squirrel-macos.dmg` (the signed `.pkg` wrapped in a
+DMG); end users mount it and run the `.pkg` inside.
 
 ```bash
-make build-pkg                  # rebuild arm64 app + CLI, then assemble squirrel-installer-macos.pkg
+make build-pkg                  # rebuild arm64 app + CLI, package, then wrap → squirrel-macos.dmg
 make build-pkg BUMP=patch       # bump (patch|minor|major), recompile, package — version-consistent
 make build-pkg-fast             # reuse an already-built arm64 Squirrel.app + dist/ binaries (no recompile)
 make build-pkg-dry              # print the steps without executing
@@ -490,5 +492,3 @@ Only `apps/desktop/` is implemented. See `docs/hld/phase-1-mvp-desktop-shell.md`
 ## Recommended IDE setup
 
 [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-In the scrashpad project add a mandatory task which can be deleted , to asct as journally for your mind, and add a reminder to check it every 4 hours, to add a note like "WHat is you minf thinking right now?" and "What are you doing right now?" for happy and sad moments, to track your mood and activities.
