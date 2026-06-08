@@ -57,7 +57,7 @@ export function FocusSwitchModal({
         if (e.target === e.currentTarget && !busy) onCancel();
       }}
     >
-      <div className="panel w-full max-w-sm flex flex-col">
+      <div className="panel w-full max-w-md flex flex-col">
         <div className="px-4 py-3 border-b border-hairline">
           <h2 className="title text-sm">Change task?</h2>
         </div>

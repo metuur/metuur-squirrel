@@ -905,14 +905,22 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                     match client.get(format!("{}/api/focus", BACKEND_ORIGIN)).send().await {
                         Ok(resp) if resp.status().is_success() => {
                             if let Ok(body) = resp.json::<serde_json::Value>().await {
+                                // macOS desktop note: Tauri v2 notification taps are
+                                // not delivered to the app (the plugin's Actions API is
+                                // mobile-only), so the banner can't be made clickable.
+                                // Point the user at the menu-bar icon instead of
+                                // promising a tap that does nothing.
                                 let (title, prompt_body) = match focus_plan_label(&body) {
                                     Some(plan) => (
                                         "Your plan for today".to_string(),
-                                        format!("{plan} — tap to confirm or change it."),
+                                        format!(
+                                            "{plan} — open Squirrel from the menu bar to confirm or change it."
+                                        ),
                                     ),
                                     None => (
                                         "What's your focus today?".to_string(),
-                                        "Tap to pick your focus for the morning.".to_string(),
+                                        "Open Squirrel from the menu bar to pick your focus."
+                                            .to_string(),
                                     ),
                                 };
                                 let _ = tauri_plugin_notification::NotificationExt::notification(&app)

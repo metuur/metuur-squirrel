@@ -204,12 +204,14 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
                 est {formatTime(pick.estimate_minutes)} · actual {formatTime(pick.time_invested_minutes)} ·{' '}
                 <span className="text-ink-2">{pick.variance_ratio.toFixed(1)}×</span>{' '}
                 <span className="italic">— {varianceLabel(pick.variance_ratio)}</span>{' '}
-                <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">edit estimate</button>
+                <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">Update estimate</button>
               </>
             ) : pick.estimate_minutes ? (
               <>
-                est {formatTime(pick.estimate_minutes)} · not started yet{' '}
-                <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">edit estimate</button>
+                {pick.estimate_user_minutes ? `Initial guess: ${formatTime(pick.estimate_user_minutes)} · ` : ''}
+                More realistic: ~{formatTime(pick.estimate_minutes)}
+                {pick.estimate_user_minutes ? ` (${(pick.estimate_minutes / pick.estimate_user_minutes).toFixed(1)}×)` : ''} · Status: Not started yet ·{' '}
+                <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">Update estimate</button>
               </>
             ) : (
               <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">+ estimate</button>
