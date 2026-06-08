@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
+import { useFocusSession } from "./hooks/useFocusSession";
 import { useDeepLink } from "./hooks/useDeepLink";
 import { useNotifications } from "./hooks/useNotifications";
 import { openWebUrl } from "./api/client";
@@ -13,6 +14,7 @@ import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { HandshakeBanner } from "./components/HandshakeBanner";
 import { FocusWidget } from "./components/FocusWidget";
 import { FocusPickerModal } from "./components/FocusPickerModal";
+import { FocusSwitchModal } from "./components/FocusSwitchModal";
 import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
@@ -31,7 +33,7 @@ import { QuickTaskWidget } from "./components/QuickTaskWidget";
 import { QuickTaskPopover } from "./components/QuickTaskPopover";
 import { useQuickTaskCapture } from "./hooks/useQuickTaskCapture";
 import { useDevFlag } from "./hooks/useDevFlag";
-import { api } from "./api/client";
+import { api, type ManualPick } from "./api/client";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
 // open sessions isn't worth a setInterval.
@@ -65,6 +67,8 @@ export default function App() {
   // external editor) land here without the user reopening the popup.
   const triggerKey = (status.lastOnlineAt ?? 0) + homeBump;
   const home = useHome(triggerKey);
+  // Open work session + derived HH:MM timer (no background process; see hook).
+  const focusSession = useFocusSession(triggerKey);
 
   // Poll /api/home every 5s while the popup is visible and backend is online,
   // so manual_focus stays in sync with the Web UI / vault edits.
@@ -136,6 +140,10 @@ export default function App() {
   }, []);
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
   const [focusModalSlot, setFocusModalSlot] = useState<"today" | "week" | null>(null);
+  // The pick the user tried to switch to while a session was open (drives the
+  // friendly "Change task?" confirm). `switchBusy` covers the in-flight checkout.
+  const [switchPromptPick, setSwitchPromptPick] = useState<ManualPick | null>(null);
+  const [switchBusy, setSwitchBusy] = useState(false);
 
   // Quick Task capture: Ctrl+Cmd+Q / tray "Add Quick Task" emit
   // `quick-task-capture-open`; refetch home after a successful add.
@@ -181,6 +189,84 @@ export default function App() {
       // Best-effort — leave the existing value in place.
     }
   };
+
+  // Check in to a focus pick. Only one open session is allowed vault-wide, so if
+  // a session is already open for a *different* intent we show a friendly confirm
+  // and require an explicit check-out first — never auto-close it (R-4.2..R-4.4).
+  const handleCheckin = async (pick: ManualPick) => {
+    const matches = (p?: ManualPick | null) =>
+      !!p && p.project_slug === pick.project_slug && p.intent_slug === pick.intent_slug;
+    const open = focusSession.session;
+    const openIsThisPick =
+      !!open &&
+      open.project_slug === pick.project_slug &&
+      open.intent_slug === pick.intent_slug;
+    if (openIsThisPick) return; // already checked in here
+    if (open) {
+      // Friendly in-app confirm — require an explicit check-out first.
+      setSwitchPromptPick(pick);
+      return;
+    }
+    const mf = homeWithOverride.data?.manual_focus;
+    const slot: "today" | "today_pm" | "week" = matches(mf?.today)
+      ? "today"
+      : matches(mf?.today_pm)
+        ? "today_pm"
+        : "week";
+    try {
+      await api.focusCheckin({
+        project_slug: pick.project_slug,
+        intent_slug: pick.intent_slug,
+        slot,
+      });
+      setHomeBump((n) => n + 1);
+      focusSession.refetch();
+    } catch {
+      // Best-effort.
+    }
+  };
+
+  // Check out the open session; backend banks the segment into time_invested.
+  const handleCheckout = async () => {
+    try {
+      await api.focusCheckout();
+      setHomeBump((n) => n + 1);
+      focusSession.refetch();
+    } catch {
+      // Best-effort.
+    }
+  };
+
+  // "Check out current task" from the switch confirm. Closes the open session,
+  // then dismisses the dialog — no auto-check-in; the user re-taps Check in.
+  const handleSwitchCheckout = async () => {
+    setSwitchBusy(true);
+    try {
+      await api.focusCheckout();
+      setHomeBump((n) => n + 1);
+      focusSession.refetch();
+      setSwitchPromptPick(null);
+    } catch {
+      // Best-effort — leave the dialog open so the user can retry.
+    } finally {
+      setSwitchBusy(false);
+    }
+  };
+
+  // Human title for the currently open session, looked up from the manual-focus
+  // picks; falls back to the intent slug.
+  const openSessionTitle = (() => {
+    const open = focusSession.session;
+    if (!open) return null;
+    const mf = homeWithOverride.data?.manual_focus;
+    const match = [mf?.today, mf?.today_pm, mf?.week].find(
+      (p) =>
+        p &&
+        p.project_slug === open.project_slug &&
+        p.intent_slug === open.intent_slug,
+    );
+    return match ? match.next_action || match.intent_title : open.intent_slug;
+  })();
 
   const projects = home.data?.projects ?? [];
   const focusSlug = home.data?.focus?.slug ?? null;
@@ -364,9 +450,13 @@ export default function App() {
         <FocusWidget
           home={homeWithOverride}
           online={status.online}
+          session={focusSession.session}
+          elapsedMinutes={focusSession.elapsedMinutes}
           onPick={status.online ? setFocusModalSlot : undefined}
           onClear={status.online ? handleClearFocus : undefined}
           onSetEstimate={status.online ? handleSetEstimate : undefined}
+          onCheckin={status.online ? handleCheckin : undefined}
+          onCheckout={status.online ? handleCheckout : undefined}
         />
         <DeadlinesWidget
           home={home}
@@ -397,6 +487,19 @@ export default function App() {
       <AppCredit />
 
       <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
+
+      <FocusSwitchModal
+        open={switchPromptPick !== null}
+        currentTitle={openSessionTitle}
+        nextTitle={
+          switchPromptPick
+            ? switchPromptPick.next_action || switchPromptPick.intent_title
+            : null
+        }
+        busy={switchBusy}
+        onCheckoutCurrent={handleSwitchCheckout}
+        onCancel={() => setSwitchPromptPick(null)}
+      />
 
       <QuickTaskPopover
         open={quickTasksOpen}

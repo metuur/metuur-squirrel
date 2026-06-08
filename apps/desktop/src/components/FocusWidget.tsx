@@ -1,9 +1,12 @@
 import type { HomeState } from "../hooks/useHome";
-import type { ManualPick } from "../api/client";
+import type { ManualPick, OpenSession } from "../api/client";
 
 interface Props {
   home: HomeState;
   online: boolean;
+  // Live focus session + derived elapsed minutes (HH:MM timer on the open pick).
+  session?: OpenSession | null;
+  elapsedMinutes?: number;
   onPick?: (slot: "today" | "week") => void;
   onClear?: (slot: "today" | "week") => void;
   onSetEstimate?: (
@@ -11,6 +14,9 @@ interface Props {
     intentSlug: string,
     minutes: number | null,
   ) => void;
+  // Check in to a pick / check out the open session. Only provided when online.
+  onCheckin?: (pick: ManualPick) => void;
+  onCheckout?: () => void;
 }
 
 // Format minutes as "Xh Ym" / "Ym".
@@ -19,6 +25,89 @@ function fmtMins(m: number): string {
   const h = Math.floor(m / 60);
   const r = m % 60;
   return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+// Elapsed minutes as a zero-padded HH:MM with unbounded hours (e.g. "00:07",
+// "12:34"). Drives the live focus timer; minute granularity by design.
+function fmtHHMM(totalMinutes: number): string {
+  const safe = Math.max(0, Math.floor(totalMinutes));
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+// True when the open session belongs to this pick.
+function isSessionFor(
+  session: OpenSession | null | undefined,
+  pick: ManualPick,
+): boolean {
+  return (
+    !!session &&
+    session.project_slug === pick.project_slug &&
+    session.intent_slug === pick.intent_slug
+  );
+}
+
+// Green chip used for the live timer pill.
+const TIMER_CHIP_STYLE: React.CSSProperties = {
+  background: "rgba(47, 107, 79, 0.10)",
+  borderColor: "rgba(47, 107, 79, 0.18)",
+  color: "var(--color-ok)",
+};
+
+// Check in / live HH:MM timer + Check out, shown under a focused intent. Rendered
+// only when online (handlers present). Tapping Check in while another session is
+// open is gated by a friendly confirm in App — here we just emit the intent.
+function CheckinControls({
+  pick,
+  session,
+  elapsedMinutes,
+  onCheckin,
+  onCheckout,
+}: {
+  pick: ManualPick;
+  session: OpenSession | null | undefined;
+  elapsedMinutes: number;
+  onCheckin?: (pick: ManualPick) => void;
+  onCheckout?: () => void;
+}) {
+  if (!onCheckin && !onCheckout) return null; // offline / not wired
+
+  if (isSessionFor(session, pick)) {
+    return (
+      <div className="mt-1 flex items-center gap-2">
+        <span
+          className="chip chip-am shrink-0 tabular-nums"
+          style={TIMER_CHIP_STYLE}
+          title="Time on this sitting"
+        >
+          ⏱ {fmtHHMM(elapsedMinutes)}
+        </span>
+        <button
+          type="button"
+          onClick={onCheckout}
+          disabled={!onCheckout}
+          className="text-[11px] underline-offset-2 hover:underline text-critical disabled:opacity-50 disabled:no-underline"
+          style={{ color: "var(--color-critical)" }}
+        >
+          Check out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => onCheckin?.(pick)}
+        disabled={!onCheckin}
+        className="text-[11px] underline-offset-2 hover:underline text-ink-3 disabled:opacity-50 disabled:no-underline"
+      >
+        Check in
+      </button>
+    </div>
+  );
 }
 
 // Neutral, non-shaming variance copy by ratio band (R-4.3, R-4.4). Inlined here
@@ -120,6 +209,10 @@ interface FocusRowProps {
     intentSlug: string,
     minutes: number | null,
   ) => void;
+  session?: OpenSession | null;
+  elapsedMinutes?: number;
+  onCheckin?: (pick: ManualPick) => void;
+  onCheckout?: () => void;
 }
 
 // The estimate/actual/variance line shown under a focused intent.
@@ -186,7 +279,17 @@ function EstimateLine({
   ) : null;
 }
 
-function ManualFocusRow({ badge, chipStyle, pick, separator, onSetEstimate }: FocusRowProps) {
+function ManualFocusRow({
+  badge,
+  chipStyle,
+  pick,
+  separator,
+  onSetEstimate,
+  session,
+  elapsedMinutes = 0,
+  onCheckin,
+  onCheckout,
+}: FocusRowProps) {
   // If next_action exists, the slug line carries project + intent context and
   // the title line carries the action. Otherwise project goes to the slug and
   // intent_title becomes the title (avoids printing intent twice).
@@ -218,15 +321,35 @@ function ManualFocusRow({ badge, chipStyle, pick, separator, onSetEstimate }: Fo
           )}
         </div>
         <EstimateLine pick={pick} onSetEstimate={onSetEstimate} />
+        <CheckinControls
+          pick={pick}
+          session={session}
+          elapsedMinutes={elapsedMinutes}
+          onCheckin={onCheckin}
+          onCheckout={onCheckout}
+        />
       </div>
     </div>
   );
 }
 
-export function FocusWidget({ home, online, onPick, onClear, onSetEstimate }: Props) {
+export function FocusWidget({
+  home,
+  online,
+  session,
+  elapsedMinutes,
+  onPick,
+  onClear,
+  onSetEstimate,
+  onCheckin,
+  onCheckout,
+}: Props) {
   const focus = home.data?.focus ?? null;
   const manualFocus = home.data?.manual_focus ?? null;
   const dimmed = !online;
+
+  // Check-in props shared by every focus row.
+  const checkinProps = { session, elapsedMinutes, onCheckin, onCheckout };
 
   const amPick = manualFocus?.today ?? null;
   const pmPick = manualFocus?.today_pm ?? null;
@@ -257,6 +380,7 @@ export function FocusWidget({ home, online, onPick, onClear, onSetEstimate }: Pr
               pick={amPick!}
               separator={false}
               onSetEstimate={onSetEstimate}
+              {...checkinProps}
             />
           ) : (
             <div className="flex flex-col">
@@ -266,6 +390,7 @@ export function FocusWidget({ home, online, onPick, onClear, onSetEstimate }: Pr
                   pick={amPick}
                   separator={false}
                   onSetEstimate={onSetEstimate}
+                  {...checkinProps}
                 />
               )}
               {pmPick && (
@@ -275,6 +400,7 @@ export function FocusWidget({ home, online, onPick, onClear, onSetEstimate }: Pr
                   pick={pmPick}
                   separator={!!amPick}
                   onSetEstimate={onSetEstimate}
+                  {...checkinProps}
                 />
               )}
             </div>
@@ -306,6 +432,7 @@ export function FocusWidget({ home, online, onPick, onClear, onSetEstimate }: Pr
             pick={weekPick}
             separator={false}
             onSetEstimate={onSetEstimate}
+            {...checkinProps}
           />
         </div>
       )}

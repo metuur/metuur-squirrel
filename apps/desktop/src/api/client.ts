@@ -174,6 +174,15 @@ export interface ManualFocusPayload {
   week: ManualPick | null;
 }
 
+// The single open work session for the vault (checked in, not yet checked out).
+// `checkin_at` is a UTC ISO-8601 string written by the backend; the desktop
+// derives the live timer from it against the computer's local clock.
+export interface OpenSession {
+  project_slug: string;
+  intent_slug: string;
+  checkin_at: string;
+}
+
 export interface QuickTask {
   id: string;
   text: string;
@@ -340,6 +349,31 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  // Focus check-in / check-out. Backend keeps one open work session per vault.
+  focusCheckin: (body: {
+    project_slug: string;
+    intent_slug: string;
+    slot: "today" | "today_pm" | "week";
+  }) =>
+    call<{ session_id: number }>("/api/focus/checkin", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  focusCheckout: () =>
+    call<{
+      session_id: number;
+      duration_minutes: number;
+      time_invested_minutes: number;
+    }>("/api/focus/checkout", { method: "POST" }),
+  // 404 (`no_open_session`) is a normal "nothing checked in" state, not an error.
+  focusSession: async (): Promise<OpenSession | null> => {
+    try {
+      return await call<OpenSession>("/api/focus/session");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  },
   notifications: (params: { limit?: number; unread?: boolean } = {}) => {
     const qs = new URLSearchParams();
     if (params.limit !== undefined) qs.set("limit", String(params.limit));
