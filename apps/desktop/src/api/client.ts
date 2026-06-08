@@ -359,12 +359,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  focusCheckout: () =>
+  // `note` (optional): why the user is switching focus, stored on the session.
+  focusCheckout: (note?: string | null) =>
     call<{
       session_id: number;
       duration_minutes: number;
       time_invested_minutes: number;
-    }>("/api/focus/checkout", { method: "POST" }),
+    }>("/api/focus/checkout", {
+      method: "POST",
+      body: JSON.stringify(note ? { note } : {}),
+    }),
   // 404 (`no_open_session`) is a normal "nothing checked in" state, not an error.
   focusSession: async (): Promise<OpenSession | null> => {
     try {

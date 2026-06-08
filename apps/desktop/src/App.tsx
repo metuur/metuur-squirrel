@@ -239,10 +239,10 @@ export default function App() {
 
   // "Check out current task" from the switch confirm. Closes the open session,
   // then dismisses the dialog — no auto-check-in; the user re-taps Check in.
-  const handleSwitchCheckout = async () => {
+  const handleSwitchCheckout = async (note: string | null) => {
     setSwitchBusy(true);
     try {
-      await api.focusCheckout();
+      await api.focusCheckout(note);
       setHomeBump((n) => n + 1);
       focusSession.refetch();
       setSwitchPromptPick(null);

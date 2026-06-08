@@ -81,4 +81,10 @@ def init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE focus_picks ADD COLUMN note TEXT")
     except sqlite3.OperationalError:
         pass
+    # Additive migration: work_sessions.switch_note — an optional note the user
+    # leaves on checkout to remember why they switched focus (idempotent).
+    try:
+        conn.execute("ALTER TABLE work_sessions ADD COLUMN switch_note TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()

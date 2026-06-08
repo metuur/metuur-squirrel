@@ -200,7 +200,7 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
           <div className="mt-0.5 text-[10.5px] text-ink-4 leading-snug">
             {pick.has_variance && pick.estimate_minutes && pick.variance_ratio != null ? (
               <>
-                {pick.estimate_user_minutes ? `guessed ${formatTime(pick.estimate_user_minutes)} · ` : ''}
+                {pick.estimate_user_minutes ? `estimated time ${formatTime(pick.estimate_user_minutes)} · ` : ''}
                 est {formatTime(pick.estimate_minutes)} · actual {formatTime(pick.time_invested_minutes)} ·{' '}
                 <span className="text-ink-2">{pick.variance_ratio.toFixed(1)}×</span>{' '}
                 <span className="italic">— {varianceLabel(pick.variance_ratio)}</span>{' '}

@@ -1061,6 +1061,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_focus_checkout(self) -> None:
         ctx, _ = self._context()
+        # Optional free-text note: why the user is switching/leaving this task.
+        # Absent for a plain check-out (no body) — defaults to None.
+        body = self._read_json_body()
+        raw_note = body.get("note")
+        switch_note = raw_note.strip() if isinstance(raw_note, str) and raw_note.strip() else None
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         conn = db.get_conn()
         db.init_schema(conn)
@@ -1074,7 +1079,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._send_json_error(409, "no_open_session")
                 return
             session_id, project_slug, intent_slug, checkin_at = row
-            conn.execute("UPDATE work_sessions SET checkout_at = ? WHERE id = ?", (now, session_id))
+            conn.execute(
+                "UPDATE work_sessions SET checkout_at = ?, switch_note = ? WHERE id = ?",
+                (now, switch_note, session_id),
+            )
             conn.commit()
             duration_minutes = conn.execute(
                 "SELECT CAST((julianday(checkout_at) - julianday(checkin_at)) * 1440 AS INTEGER)"

@@ -4,6 +4,7 @@ Source specs: `docs/hld/estimate-actual-reconciliation.md`, `docs/lld/estimate-a
 Story IDs are stable — referenced from `.devlocal/<user>/<story-id>/scratchpad.md` for private notes.
 
 Dependency layers:
+
 ```
 A   (foundation: apply_estimate_to_intent + estimate_variance in estimate_buffer.py)
  │
@@ -96,7 +97,7 @@ A   (foundation: apply_estimate_to_intent + estimate_variance in estimate_buffer
 - [x] **F.1** `FocusWidget.tsx`: "Set estimate" affordance + variance line (copy bands inlined here). (deps: E.1, est: ~60m)
   - acceptance:
     - R-2.4 — setting an estimate calls the endpoint and reflects without full reload.
-    - R-4.1 — when `has_variance`, shows raw guess + est + actual + ratio (e.g. "guessed 45m · est 2h15m · actual 2h10m · 1.0×").
+    - R-4.1 — when `has_variance`, shows raw guess + est + actual + ratio (e.g. "estimated time 45m · est 2h15m · actual 2h10m · 1.0×").
     - R-4.3 — copy only from neutral set; forbidden words absent.
     - R-4.4 — ratio band copy: 0.85–1.15 "about right — learning your pace"; >1.15 "ran longer than planned — learning your pace"; <0.85 "finished ahead of plan".
     - R-4.5 — estimate-only intent shows estimate alone, no variance.
@@ -132,6 +133,7 @@ A   (foundation: apply_estimate_to_intent + estimate_variance in estimate_buffer
 ---
 
 ## Coordination notes
+
 - **Bottom-up order:** A → (B, C, D in parallel) → E → F → G → H. A is the god-node foundation; everything depends on it.
 - **Parallelizable:** B (CLI), C (endpoint), D (payload) once A lands; F (desktop) and G (web) once E/D land — different apps, no shared code.
 - **Mutex:** none — stories touch distinct files. A.1/A.2/A.3 all edit `estimate_buffer.py` (same author/session recommended; `mutex: estimate_buffer.py`).
@@ -139,6 +141,7 @@ A   (foundation: apply_estimate_to_intent + estimate_variance in estimate_buffer
 - **Pre-existing risk (not new):** concurrent estimate-write + checkout = last-writer-wins at file level (disjoint keys, safe in practice); no file lock exists today.
 
 ## Checkpoint: after A–D
+
 - [ ] `make test-cli` green (engine + payload).
 - [ ] PUT endpoint persists + invalidates cache; CLI `--intent` writes.
 - [ ] Review before building UI (F/G).

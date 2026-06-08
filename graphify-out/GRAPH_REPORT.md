@@ -1,16 +1,16 @@
-# Graph Report - squirrel  (2026-06-06)
+# Graph Report - squirrel  (2026-06-07)
 
 ## Corpus Check
-- 611 files · ~723,058 words
+- 636 files · ~768,048 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 7488 nodes · 9688 edges · 586 communities (530 shown, 56 thin omitted)
-- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 599 edges (avg confidence: 0.75)
+- 7738 nodes · 10081 edges · 600 communities (543 shown, 57 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 616 edges (avg confidence: 0.75)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `27efabbe`
+- Built from commit: `c2d08a09`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -575,18 +575,32 @@
 - [[_COMMUNITY_Community 579|Community 579]]
 - [[_COMMUNITY_Community 580|Community 580]]
 - [[_COMMUNITY_Community 581|Community 581]]
+- [[_COMMUNITY_Community 586|Community 586]]
+- [[_COMMUNITY_Community 587|Community 587]]
+- [[_COMMUNITY_Community 588|Community 588]]
+- [[_COMMUNITY_Community 589|Community 589]]
+- [[_COMMUNITY_Community 590|Community 590]]
+- [[_COMMUNITY_Community 591|Community 591]]
+- [[_COMMUNITY_Community 592|Community 592]]
+- [[_COMMUNITY_Community 593|Community 593]]
+- [[_COMMUNITY_Community 594|Community 594]]
+- [[_COMMUNITY_Community 595|Community 595]]
+- [[_COMMUNITY_Community 596|Community 596]]
+- [[_COMMUNITY_Community 597|Community 597]]
+- [[_COMMUNITY_Community 598|Community 598]]
+- [[_COMMUNITY_Community 599|Community 599]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Handler` - 87 edges
+1. `Handler` - 89 edges
 2. `allow` - 73 edges
 3. `deny` - 73 edges
-4. `_UserError` - 41 edges
-5. `api` - 39 edges
+4. `_UserError` - 42 edges
+5. `api` - 40 edges
 6. `list_vaults()` - 38 edges
 7. `permissions` - 31 edges
 8. `useFetch()` - 29 edges
-9. `create_quick_task()` - 26 edges
-10. `Vault` - 25 edges
+9. `parse_intent()` - 27 edges
+10. `create_quick_task()` - 26 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `squirrel:session-start Skill (v0.3.0)` --delegates_to--> `status_aggregator.py — Vault State Aggregator`  [EXTRACTED]
@@ -600,19 +614,19 @@
 - `squirrel:sync-out Skill` --uses--> `package_protocol.py — Context Bridge Package (v1)`  [EXTRACTED]
   agent-pack/skills/sync-out/SKILL.md → apps/cli/lib/package_protocol.py
 
-## Communities (586 total, 56 thin omitted)
+## Communities (600 total, 57 thin omitted)
 
 ### Community 0 - "Backend Server & Logging"
-Cohesion: 0.10
-Nodes (6): Handler, is_safe_request_path(), _log_request(), 401 with an empty body (R-2.6). Logs the refusal without the token         value, 401 with an empty body (R-2.6). Logs the refusal without the token         value, 401 with an empty body (R-2.6). Logs the refusal without the token         value
+Cohesion: 0.14
+Nodes (7): Handler, _log_request(), PUT /api/intent/estimate — persist or clear an intent's time estimate., 401 with an empty body (R-2.6). Logs the refusal without the token         value, 401 with an empty body (R-2.6). Logs the refusal without the token         value, 401 with an empty body (R-2.6). Logs the refusal without the token         value, 401 with an empty body (R-2.6). Logs the refusal without the token         value
 
 ### Community 1 - "Reminder Writer Tests"
-Cohesion: 0.15
-Nodes (14): Write/update reminder_date in frontmatter and callout in body.      reminder_dat, write_reminder_date(), R-1.1/R-1.2 — "in 3 months" resolves to an absolute date ~91 days out., R-1.4 — relative date: callout also added to body., R-1.5 — dismiss removes callout, sets reminder_dismissed, deletes reminder_date., dismiss also clears reminder_snoozed_until., R-1.5 — snooze sets reminder_snoozed_until and updates callout to new date., Snooze removes reminder_dismissed if present. (+6 more)
+Cohesion: 0.11
+Nodes (24): dismiss_reminder(), _find_note(), main(), Return only the body text (after frontmatter closing `---`)., Re-assemble the file with a new body and write atomically., Write/update reminder_date in frontmatter and callout in body.      reminder_dat, Mark reminder dismissed: set reminder_dismissed, remove reminder_date     and re, Snooze reminder: set reminder_snoozed_until, clear reminder_dismissed.     Updat (+16 more)
 
 ### Community 2 - "Desktop UI Components"
 Cohesion: 0.05
-Nodes (33): AppCredit(), CaptureButton(), Props, CloseWindowButton(), HandshakeBanner(), RefusalCause, RefusalPayload, AGENT_COMMANDS (+25 more)
+Nodes (38): AppCredit(), CaptureButton(), Props, CloseWindowButton(), BACKDROP_STYLE, FocusSwitchModal(), Props, HandshakeBanner() (+30 more)
 
 ### Community 3 - "Notification System"
 Cohesion: 0.05
@@ -635,8 +649,8 @@ Cohesion: 0.07
 Nodes (20): forbidden_terms(), _humanize_slug(), project_title(), Return forbidden terms for the active config.      Single-vault: `vault` is forb, Translate a single internal term to its user-facing label.      Returns the user, Return the user-facing label for a deadline urgency level (R-4.6).      Unknown, Return the right word for "vault" given the active config.      Single-vault: No, Return the user-facing human title for a project slug (R-4.5).      Looks for `< (+12 more)
 
 ### Community 8 - "Error Handling & Editors"
-Cohesion: 0.11
-Nodes (26): slashCommands, CaptureCtx, CaptureDialog(), CaptureProvider(), Ctx, Mode, useCapture(), Markdown() (+18 more)
+Cohesion: 0.10
+Nodes (30): api, slashCommands, CaptureCtx, CaptureDialog(), CaptureProvider(), Ctx, Mode, useCapture() (+22 more)
 
 ### Community 9 - "Permission Configuration"
 Cohesion: 0.05
@@ -647,8 +661,8 @@ Cohesion: 0.05
 Nodes (16): _collect_lib_modules(), tests/test_vault_specs.py — Automated verification for VAULT-001 through VAULT-0, Lowercase valid structure should produce a suggestion., VAULT-005: aggregate_status() JSON contract must include schema_version., schema_version must be at top level, not inside a sub-dict., Ensure the full output is JSON-serialisable (no datetime objects leaking)., Return list of importable module names from lib/., VAULT-008: no third-party dependencies in lib modules. (+8 more)
 
 ### Community 11 - "Capture & Sync"
-Cohesion: 0.10
-Nodes (21): compute_focus_score(), compute_focus_score_for_window(), get_status(), main(), Compute focus score for a date window [from_date, to_date] inclusive., Get switch status for a date (default today) plus week summary., Record a context switch., Read switch log, optionally filtered by date (YYYY-MM-DD). (+13 more)
+Cohesion: 0.27
+Nodes (8): compute_focus_score_for_window(), Compute focus score for a date window [from_date, to_date] inclusive., Record a context switch., record_switch(), _switches_log(), TestATTN005, TestATTN008, _vault()
 
 ### Community 12 - "Focus & Time Tracking"
 Cohesion: 0.07
@@ -667,24 +681,24 @@ Cohesion: 0.10
 Nodes (18): ConfigError, NoVaultsConfiguredError, Parse, validate, and return the [[vaults]] list as Vault namedtuples., Parse, validate, and return the [[vaults]] list as Vault namedtuples., Raised when the config file is malformed or violates invariants., Raised when the config file is malformed or violates invariants., Raised when no vaults are configured at all., Remove the named vault from the config.      Raises:         ValidationError: if (+10 more)
 
 ### Community 16 - "Component 16"
-Cohesion: 0.09
-Nodes (12): R-4.4, R-4.5 — squirrel vaults remove and default., R-5.6 — --vault NAME with unknown vault errors clearly., R-5.7 — chunk, estimate, install are not vault-aware., Run the squirrel CLI with HOME pointed at `home` (a tempdir)., R-4.2 — squirrel vaults list., R-4.3 — squirrel vaults add NAME PATH., run_cli(), TestVaultFlagOnExistingSubcommands (+4 more)
+Cohesion: 0.08
+Nodes (12): R-4.4, R-4.5 — squirrel vaults remove and default., R-5.6 — --vault NAME with unknown vault errors clearly., R-5.7 — chunk, install are not vault-aware.      NOTE: `estimate` became vault-a, Run the squirrel CLI with HOME pointed at `home` (a tempdir)., R-4.2 — squirrel vaults list., R-4.3 — squirrel vaults add NAME PATH., run_cli(), TestVaultFlagOnExistingSubcommands (+4 more)
 
 ### Community 17 - "Component 17"
 Cohesion: 0.09
 Nodes (17): EntityKind, ReminderItem, RemindersPayload, RemindersWidget(), addDaysISO(), BOARD_HELP_ROWS, BoardView(), changeForColumn() (+9 more)
 
 ### Community 18 - "Component 18"
-Cohesion: 0.05
-Nodes (17): Spins up a server, then marks it as token-configured by setting the     module g, Start the server in-process with HOME set to a tmp dir + single-vault config., Unit tests for server.configure_auth + _load_token_from_file. These     exercise, Base case that owns server + temp HOME lifecycle for one test., _ServerCase, _start_server_with_fixture(), _stop(), TestDefaultBind (+9 more)
+Cohesion: 0.16
+Nodes (5): Spins up a server, then marks it as token-configured by setting the     module g, Spins up a server, then marks it as token-configured by setting the     module g, TestSecurityHeaders, TestStaticAndLogging, TestTokenEnforcement
 
 ### Community 19 - "Component 19"
 Cohesion: 0.05
 Nodes (38): dependencies, react, react-dom, @squirrel/design-system, @tauri-apps/api, @tauri-apps/plugin-autostart, @tauri-apps/plugin-dialog, @tauri-apps/plugin-notification (+30 more)
 
 ### Community 20 - "Component 20"
-Cohesion: 0.12
-Nodes (18): get_manual_focus(), Return `{"today": ManualPick|None, "today_pm": ManualPick|None, "week": ManualPi, Return `{"today": ManualPick|None, "today_pm": ManualPick|None, "week": ManualPi, _format_fm(), _make_intent(), _make_project_page(), R-2.6 — duplicates resolved by most recent mtime, no error., R-2.1, R-2.4 — strip-before-write yields a single key on the new file. (+10 more)
+Cohesion: 0.19
+Nodes (11): get_manual_focus(), Return `{"today": ManualPick|None, "today_pm": ManualPick|None, "week": ManualPi, Return `{"today": ManualPick|None, "today_pm": ManualPick|None, "week": ManualPi, _format_fm(), _make_intent(), _make_project_page(), R-2.6 — duplicates resolved by most recent mtime, no error., Write a minimal valid intent .md and return its path. (+3 more)
 
 ### Community 21 - "Component 21"
 Cohesion: 0.13
@@ -704,7 +718,7 @@ Nodes (16): get_default_vault(), get_vault(), Return a single Vault.      With n
 
 ### Community 25 - "Component 25"
 Cohesion: 0.06
-Nodes (55): Alert, check_break_reminder(), check_notifications(), default_notif_db_path(), fetch_notif_settings(), fetch_pressing(), fetch_reminders(), HomeResponse (+47 more)
+Nodes (56): Alert, check_break_reminder(), check_notifications(), default_notif_db_path(), fetch_notif_settings(), fetch_pressing(), fetch_reminders(), focus_plan_label() (+48 more)
 
 ### Community 26 - "Component 26"
 Cohesion: 0.12
@@ -716,7 +730,7 @@ Nodes (25): commands, description, identifier, commands, description, identifier
 
 ### Community 28 - "Component 28"
 Cohesion: 0.07
-Nodes (28): HomePayload, PressingItem, ProjectListItem, ACTION_BTN_STYLE, DeadlinesWidget(), Props, StripeLevel, ITEMS (+20 more)
+Nodes (28): HomePayload, openWebUrl(), PressingItem, ACTION_BTN_STYLE, DeadlinesWidget(), openTaskDetails(), Props, StripeLevel (+20 more)
 
 ### Community 29 - "Component 29"
 Cohesion: 0.17
@@ -724,7 +738,7 @@ Nodes (7): get_conn(), init_schema(), Open and return a new sqlite3.Connection t
 
 ### Community 30 - "Component 30"
 Cohesion: 0.07
-Nodes (27): app, security, windows, build, beforeBuildCommand, beforeBundleCommand, beforeDevCommand, devUrl (+19 more)
+Nodes (28): app, security, windows, build, beforeBuildCommand, beforeBundleCommand, beforeDevCommand, devUrl (+20 more)
 
 ### Community 31 - "Component 31"
 Cohesion: 0.32
@@ -739,16 +753,16 @@ Cohesion: 0.10
 Nodes (20): compilerOptions, allowImportingTsExtensions, baseUrl, isolatedModules, jsx, lib, module, moduleDetection (+12 more)
 
 ### Community 34 - "Component 34"
-Cohesion: 0.15
-Nodes (12): adjust_estimate(), _explain(), get_multiplier(), humanize_minutes(), main(), parse_estimate(), Return the appropriate multiplier for a given estimate., Parse a human estimate string. Returns minutes. (+4 more)
+Cohesion: 0.11
+Nodes (17): adjust_estimate(), _explain(), get_multiplier(), humanize_minutes(), main(), parse_estimate(), Return the appropriate multiplier for a given estimate., Return the appropriate multiplier for a given estimate. (+9 more)
 
 ### Community 35 - "Component 35"
 Cohesion: 0.14
 Nodes (13): _frontmatter(), R-7.2 — when vault_name is present, the vault selection is forwarded.      The l, R-7.3 — when no vault_name is provided, fall back to config_loader., R-7.1 (extended audit) — vault-touching read/write skills also expose vault_name, chunk-intent operates on user-provided estimates; no vault involved., Return the YAML frontmatter block as a string (between the first two `---`)., R-7.1 — skills invoking vault-touching lib scripts document vault_name., _read() (+5 more)
 
 ### Community 36 - "Component 36"
-Cohesion: 0.15
-Nodes (10): ApiActivityIndicator(), DeadlinesPage, HistoryPage, HomePage, JournalPage, NoteEditPage, NotePage, ProjectEditPage (+2 more)
+Cohesion: 0.10
+Nodes (20): OpenSession, CheckinControls(), EstimateLine(), fmtHHMM(), fmtMins(), FocusRowProps, FocusWidget(), isSessionFor() (+12 more)
 
 ### Community 37 - "Component 37"
 Cohesion: 0.11
@@ -775,8 +789,8 @@ Cohesion: 0.17
 Nodes (7): _atomic_write(), _format_note(), _next_number(), Write a capture note and return its path.      With `project_slug`: file lives i, Return the next integer N such that `<prefix>-<NNN>.md` is unused., write_capture(), TestCaptureWriter
 
 ### Community 43 - "Component 43"
-Cohesion: 0.21
-Nodes (5): R-1.7 — _DELETE drops the line; no `null` or `""` written., Updating an existing key keeps it in its original FM position., R-1.6 — read -> no-op write -> byte-identical file., New key inserted at end of FM block; body unchanged., TestWriteFrontmatter
+Cohesion: 0.14
+Nodes (11): _atomic_write_bytes(), _detect_newline(), Apply mutations to the YAML frontmatter of a Markdown file in-place.      - muta, Return the dominant line ending used in the frontmatter block., Write `data` to `path` atomically (temp file in same dir + os.replace)., write_frontmatter(), R-1.7 — _DELETE drops the line; no `null` or `""` written., Updating an existing key keeps it in its original FM position. (+3 more)
 
 ### Community 44 - "Component 44"
 Cohesion: 0.41
@@ -796,15 +810,15 @@ Nodes (6): R-9.4 — migration happens automatically on the first read; no manua
 
 ### Community 48 - "Component 48"
 Cohesion: 0.18
-Nodes (15): cmd_apply(), cmd_generate(), cmd_parse(), cmd_validate(), _gpg_available(), gpg_decrypt(), gpg_encrypt(), parse_package() (+7 more)
+Nodes (14): cmd_apply(), cmd_generate(), cmd_validate(), _gpg_available(), gpg_decrypt(), gpg_encrypt(), Validate a parsed package. Returns (is_valid, list_of_errors)., Encrypt a string to a GPG ASCII-armored ciphertext blob. (+6 more)
 
 ### Community 49 - "Component 49"
-Cohesion: 0.10
-Nodes (23): ManualFocusPayload, ManualPick, NoteSummary, ProjectNote, BACKDROP_STYLE, CURRENT_BADGE_STYLE, FocusPickerModal(), PendingIntent (+15 more)
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, deny-remove-data-store
 
 ### Community 50 - "Component 50"
 Cohesion: 0.06
-Nodes (27): ApiError, headlessClaude(), NewIntentRequest, NewProjectRequest, ConflictDialog(), MarkdownEditor(), Props, Modal() (+19 more)
+Nodes (26): headlessClaude(), NewIntentRequest, NewProjectRequest, ConflictDialog(), MarkdownEditor(), Props, Modal(), ModalProps (+18 more)
 
 ### Community 51 - "Component 51"
 Cohesion: 0.38
@@ -827,16 +841,16 @@ Cohesion: 0.20
 Nodes (15): Backend Web UI Package JSON, Backend Server, Config Loader Module, Database Module, Notifications Settings Tests, API Client, App Component, CaptureModal Component (+7 more)
 
 ### Community 56 - "Component 56"
-Cohesion: 0.16
-Nodes (17): Snooze a Quick Task. Frees an active slot and returns the wake timestamp.      R, _snooze_count(), snooze_quick_task(), _path(), test_quick_task_writer_ops.py — complete/delete/snooze/activate (A.3, A.4, A.5)., R-4.2: activating a snoozed task re-stamps qt_created_at to now and clears     t, R-3.1 / R-3.6: complete sets done state and drops the active count., R-3.2 / R-3.6: delete removes the file and drops the active count. (+9 more)
+Cohesion: 0.12
+Nodes (20): complete_quick_task(), Mark a Quick Task done. Frees an active slot (R-3.1)., _path(), test_quick_task_writer_ops.py — complete/delete/snooze/activate (A.3, A.4, A.5)., R-3.4: next_block resolves to the next noon or next midnight boundary., R-4.2: activating a snoozed task re-stamps qt_created_at to now and clears     t, R-3.1 / R-3.6: complete sets done state and drops the active count., R-3.2 / R-3.6: delete removes the file and drops the active count. (+12 more)
 
 ### Community 57 - "Component 57"
-Cohesion: 0.12
-Nodes (16): anyOf, description, definitions, Application, Number, PermissionEntry, ShellScopeEntryAllowedArgs, Target (+8 more)
+Cohesion: 0.13
+Nodes (15): anyOf, description, definitions, Application, Identifier, Number, PermissionEntry, Target (+7 more)
 
 ### Community 58 - "Component 58"
 Cohesion: 0.12
-Nodes (16): anyOf, description, definitions, Application, Number, PermissionEntry, ShellScopeEntryAllowedArgs, Target (+8 more)
+Nodes (16): anyOf, description, definitions, Application, Number, PermissionEntry, ShellScopeEntryAllowedArg, Target (+8 more)
 
 ### Community 59 - "Component 59"
 Cohesion: 0.14
@@ -844,7 +858,7 @@ Nodes (12): load_notifications_settings(), Return {"in_app": bool, "os_popups": 
 
 ### Community 61 - "Component 61"
 Cohesion: 0.13
-Nodes (12): build_menu(), default_vault_name(), every_icon_state_has_embedded_bytes(), icon_bytes(), IconState, load_image(), open_url(), parse_default_vault_name() (+4 more)
+Nodes (13): build_menu(), default_vault_name(), every_icon_state_has_embedded_bytes(), icon_bytes(), IconState, load_image(), open_url(), open_web_url() (+5 more)
 
 ### Community 62 - "Component 62"
 Cohesion: 0.14
@@ -891,16 +905,16 @@ Cohesion: 0.23
 Nodes (7): compute_payload_hash(), generate_package(), Generate the full package Markdown string., Compute SHA-256 of the canonical payload.     Files must be a list of {"target_p, SYNC-001: generate_package emits SQUIRREL-PACKAGE block with required header fie, _simple_files(), TestSync001PackageGeneration
 
 ### Community 73 - "Component 73"
-Cohesion: 0.12
-Nodes (20): aggregate_status(), analyze_project(), find_intents_for_project(), find_projects(), _is_quick_task_file(), main(), Build a structured summary of a project., Build a structured summary of a project. (+12 more)
+Cohesion: 0.11
+Nodes (22): Yield every intent .md under 01-Proyectos-Activos/*/ (Quick Tasks already     ex, _wip_intent_paths(), aggregate_status(), analyze_project(), find_intents_for_project(), find_projects(), _is_quick_task_file(), main() (+14 more)
 
 ### Community 74 - "Component 74"
 Cohesion: 0.05
-Nodes (55): build_client(), classify_200_dev_mode_is_refused_dev(), classify_200_matching_echo_is_adopted(), classify_200_mismatched_echo_is_refused_unknown(), classify_200_unrecognized_body_is_refused_unknown(), classify_401_is_refused_401(), classify_handshake_response(), ct_eq() (+47 more)
+Nodes (59): build_client(), classify_200_dev_mode_is_refused_dev(), classify_200_matching_echo_is_adopted(), classify_200_mismatched_echo_is_refused_unknown(), classify_200_unrecognized_body_is_refused_unknown(), classify_401_is_refused_401(), classify_handshake_response(), ct_eq() (+51 more)
 
 ### Community 75 - "Component 75"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-remove-listener
+Cohesion: 0.14
+Nodes (4): EstimateEngineTest, EstimateVarianceTest, _intent(), _write()
 
 ### Community 76 - "Component 76"
 Cohesion: 0.11
@@ -962,9 +976,13 @@ Nodes (10): type, webviews, windows, items, description, items, type, descriptio
 Cohesion: 0.11
 Nodes (9): Return the per-vault state file path. Creates the parent directory if missing., Return the per-vault state file path. Creates the parent directory if missing., Read per-vault state. Returns {} if the file does not exist.      State schema (, Read per-vault state. Returns {} if the file does not exist.      State schema (, read_state(), state_file_for(), Story 1.5 — per-vault state file convention., TestPerVaultState (+1 more)
 
+### Community 91 - "Component 91"
+Cohesion: 0.29
+Nodes (5): cmd_parse(), parse_package(), Parse a package string into structured dict.      Returns:         {, SYNC-003: validate_package verifies SHA-256 before vault mutation., TestSync003HashVerification
+
 ### Community 92 - "Component 92"
-Cohesion: 0.13
-Nodes (8): Read gpg_recipient from ~/.squirrel/config.toml, or return ''., _read_gpg_recipient(), gpg_encrypt raises RuntimeError when gpg is not available or key missing., GPG helpers in package_protocol — unit tests that don't need gpg installed., gpg_decrypt raises RuntimeError on non-GPG input., gpg_encrypt raises RuntimeError when gpg is not available or key missing., gpg_decrypt raises RuntimeError on non-GPG input., TestGpgHelpers
+Cohesion: 0.17
+Nodes (6): gpg_encrypt raises RuntimeError when gpg is not available or key missing., GPG helpers in package_protocol — unit tests that don't need gpg installed., gpg_decrypt raises RuntimeError on non-GPG input., gpg_encrypt raises RuntimeError when gpg is not available or key missing., gpg_decrypt raises RuntimeError on non-GPG input., TestGpgHelpers
 
 ### Community 93 - "Component 93"
 Cohesion: 0.40
@@ -979,16 +997,16 @@ Cohesion: 0.07
 Nodes (31): append_entry(), _as_aware(), compute_due(), ensure_mind_journal(), find_journal(), _interval_hours(), _now(), _parse_dt() (+23 more)
 
 ### Community 96 - "Component 96"
-Cohesion: 0.15
-Nodes (13): properties, Identifier, description, oneOf, type, default, description, type (+5 more)
+Cohesion: 0.17
+Nodes (12): properties, default, description, type, default, description, type, description (+4 more)
 
 ### Community 97 - "Component 97"
 Cohesion: 0.15
 Nodes (13): properties, Identifier, description, oneOf, type, default, description, type (+5 more)
 
 ### Community 98 - "Component 98"
-Cohesion: 0.18
-Nodes (6): Test that the CLI tools work end-to-end., R-1.2 — --level flag passes through and filters by_urgency keys., R-1.4 — non-zero exit when vault is missing., R-1.2 — --level flag passes through and filters by_urgency keys., R-1.4 — non-zero exit when vault is missing., TestEndToEnd
+Cohesion: 0.13
+Nodes (7): Test that the CLI tools work end-to-end., R-1.2 — --level flag passes through and filters by_urgency keys., R-1.4 — non-zero exit when vault is missing., R-1.2 — --level flag passes through and filters by_urgency keys., R-1.4 — non-zero exit when vault is missing., TestChunkHelper, TestEndToEnd
 
 ### Community 99 - "Component 99"
 Cohesion: 0.25
@@ -1016,7 +1034,7 @@ Nodes (8): description, properties, required, type, CapabilityRemote, urls, desc
 
 ### Community 105 - "Component 105"
 Cohesion: 0.06
-Nodes (40): authHeaders(), call(), CaptureResult, CheckinResult, CheckoutResult, DeadlineGroup, FocusHistoryPayload, FocusItem (+32 more)
+Nodes (48): ApiError, authHeaders(), call(), CaptureResult, CheckinResult, CheckoutResult, DeadlineGroup, FocusHistoryPayload (+40 more)
 
 ### Community 106 - "Component 106"
 Cohesion: 0.25
@@ -1047,8 +1065,8 @@ Cohesion: 0.33
 Nodes (5): description, identifier, permissions, $schema, windows
 
 ### Community 113 - "Component 113"
-Cohesion: 0.09
-Nodes (23): api, QuickTasksPayload, f, OpenVaultButton(), mockMe, mockOpenUrl, ACTION_BTN_STYLE, Props (+15 more)
+Cohesion: 0.13
+Nodes (18): QuickTasksPayload, ACTION_BTN_STYLE, Props, QuickTaskPopover(), SNOOZE_OPTIONS, ACTION_BTN_STYLE, Props, QuickTaskWidget() (+10 more)
 
 ### Community 115 - "Component 115"
 Cohesion: 0.42
@@ -1059,7 +1077,7 @@ Cohesion: 0.70
 Nodes (4): all_state_variants_exist_and_decode_at_1x(), all_state_variants_exist_and_decode_at_2x(), state_variants_are_pairwise_distinct(), tray_dir()
 
 ### Community 117 - "Component 117"
-Cohesion: 0.43
+Cohesion: 0.36
 Nodes (4): PendingDeepLink, run(), RuntimeToken, set_dock_icon()
 
 ### Community 118 - "Component 118"
@@ -1071,32 +1089,32 @@ Cohesion: 0.17
 Nodes (9): BACKDROP_STYLE, CaptureModal(), Props, ACTIVE_STYLE, ChipProps, FOCUS_STYLE, PickProps, ProjectSelector() (+1 more)
 
 ### Community 120 - "Component 120"
-Cohesion: 0.15
-Nodes (19): main(), _build_pick(), clear_manual_focus(), _iter_intent_paths(), _note_key(), Yield every intent .md path under 01-Proyectos-Activos/*/., Assemble the ManualPick dict for a winning intent., Assemble the ManualPick dict for a winning intent. (+11 more)
+Cohesion: 0.12
+Nodes (18): main(), _build_pick(), clear_manual_focus(), _iter_intent_paths(), _note_key(), Yield every intent .md path under 01-Proyectos-Activos/*/., Assemble the ManualPick dict for a winning intent., Assemble the ManualPick dict for a winning intent. (+10 more)
 
 ### Community 121 - "Component 121"
 Cohesion: 0.09
 Nodes (25): _atomic_write(), _format_vault_entry(), _load_toml(), Write per-vault state atomically (temp file + os.replace).      Caller is respon, Write per-vault state atomically (temp file + os.replace).      Caller is respon, A configured Squirrel vault., Write `text` to `path` atomically (temp file + os.replace)., Write `text` to `path` atomically (temp file + os.replace). (+17 more)
 
 ### Community 122 - "Component 122"
-Cohesion: 0.16
-Nodes (15): _atomic_write(), complete_quick_task(), create_quick_task(), delete_quick_task(), _format_quick_task(), _next_number(), Create a new active Quick Task. Returns the new id (e.g. "QT-003").      Raises, Create a new active Quick Task. Returns the new id (e.g. "QT-003").      Raises (+7 more)
+Cohesion: 0.11
+Nodes (21): _atomic_write(), delete_quick_task(), _next_number(), QuickTaskError, Resolve a Quick Task id to its file under SCRATCH-PAD, or None.      R-6.4: only, Remove a Quick Task file. Frees an active slot (R-3.2)., Resolve a snooze duration to an absolute ISO-8601 timestamp (R-3.4).      Accept, Snooze a Quick Task. Frees an active slot and returns the wake timestamp.      R (+13 more)
 
 ### Community 123 - "Component 123"
 Cohesion: 0.17
 Nodes (7): _Case, _spawn(), TestHomeQuickTasksSummary, TestQuickTaskCompleteDelete, TestQuickTaskCreate, TestQuickTaskList, TestQuickTaskSnooze
 
 ### Community 124 - "Component 124"
-Cohesion: 0.20
-Nodes (8): _auth_required(), Constant-time compare of the X-Squirrel-Token header to the stored         token, Constant-time compare of the X-Squirrel-Token header to the stored         token, Constant-time compare of the X-Squirrel-Token header to the stored         token, Runtime Trust Handshake endpoint (R-3.1..R-3.4).          - dev mode, Runtime Trust Handshake endpoint (R-3.1..R-3.4).          - dev mode, Runtime Trust Handshake endpoint (R-3.1..R-3.4).          - dev mode, True when requests must carry a valid X-Squirrel-Token (R-2.6, R-2.8).      Enfo
+Cohesion: 0.15
+Nodes (11): _auth_required(), Constant-time compare of the X-Squirrel-Token header to the stored         token, Constant-time compare of the X-Squirrel-Token header to the stored         token, Constant-time compare of the X-Squirrel-Token header to the stored         token, Constant-time compare of the X-Squirrel-Token header to the stored         token, Runtime Trust Handshake endpoint (R-3.1..R-3.4).          - dev mode, Runtime Trust Handshake endpoint (R-3.1..R-3.4).          - dev mode, Runtime Trust Handshake endpoint (R-3.1..R-3.4).          - dev mode (+3 more)
 
 ### Community 125 - "Component 125"
 Cohesion: 0.50
 Nodes (4): commands, description, identifier, allow-create-default
 
 ### Community 126 - "Component 126"
-Cohesion: 0.11
-Nodes (13): IntentNotFound, Raised when set_manual_focus is asked to target a non-existent intent., Raised when set_manual_focus is asked to target a non-existent intent., Return the current token string for `slot`.      - slot="today"    -> "YYYY-MM-D, Return the current token string for `slot`.      - slot="today"    -> "YYYY-MM-D, _token_now(), R-1.2, R-1.3 — Monday and Sunday of the same ISO week produce the same token., R-1.1 — today_pm token is YYYY-MM-DD-PM. (+5 more)
+Cohesion: 0.16
+Nodes (9): Return the current token string for `slot`.      - slot="today"    -> "YYYY-MM-D, Return the current token string for `slot`.      - slot="today"    -> "YYYY-MM-D, _token_now(), R-1.2, R-1.3 — Monday and Sunday of the same ISO week produce the same token., R-1.1 — today_pm token is YYYY-MM-DD-PM., Invalid slot raises ValueError regardless of today_pm addition., Date portion of today_pm token matches local date of frozen clock., TestTodayPmSlot (+1 more)
 
 ### Community 127 - "Component 127"
 Cohesion: 0.04
@@ -1123,28 +1141,28 @@ Cohesion: 0.50
 Nodes (4): commands, description, identifier, allow-identifier
 
 ### Community 133 - "Component 133"
-Cohesion: 0.17
-Nodes (14): test_quick_task_writer.py — Tests for quick_task_writer (A.2: create + hard cap), R-1.2: create writes QT-001.md with the quick-task frontmatter + body text., R-2.5: a newly created task is active and counts toward the cap., R-1.7: sequential creates get distinct, non-reused ids., R-2.3: with MAX_ACTIVE active, a further create raises the cap error., Empty/whitespace text is rejected, no file written., R-6.4: the file is created under SCRATCH-PAD, nowhere else., _sp() (+6 more)
+Cohesion: 0.16
+Nodes (18): create_quick_task(), _format_quick_task(), Create a new active Quick Task. Returns the new id (e.g. "QT-003").      Raises, Create a new active Quick Task. Returns the new id (e.g. "QT-003").      Raises, test_quick_task_writer.py — Tests for quick_task_writer (A.2: create + hard cap), R-1.2: create writes QT-001.md with the quick-task frontmatter + body text., R-2.5: a newly created task is active and counts toward the cap., R-1.7: sequential creates get distinct, non-reused ids. (+10 more)
 
 ### Community 134 - "Component 134"
 Cohesion: 0.50
 Nodes (4): commands, description, identifier, allow-name
 
 ### Community 135 - "Component 135"
-Cohesion: 0.13
-Nodes (22): _atomic_write_bytes(), _detect_newline(), Apply mutations to the YAML frontmatter of a Markdown file in-place.      - muta, Return the dominant line ending used in the frontmatter block., Write `data` to `path` atomically (temp file in same dir + os.replace)., write_frontmatter(), dismiss_reminder(), _find_note() (+14 more)
+Cohesion: 0.12
+Nodes (15): 1. API client — `src/api/client.ts`, 2. Session hook — `src/hooks/useFocusSession.ts` (new), 3. Card controls — `src/components/FocusWidget.tsx`, 3b. Switch confirm — `src/components/FocusSwitchModal.tsx` (new), 4. Orchestration — `src/App.tsx`, Architecture, code:ts (focusCheckin: (body: { project_slug: string; intent_slug: st), code:ts (export interface OpenSession {) (+7 more)
 
 ### Community 136 - "Component 136"
 Cohesion: 0.13
 Nodes (16): ObsidianStatus, OnboardingGate(), { container }, mockDone, mockListen, OnboardingWizard(), Step, mockDialog (+8 more)
 
 ### Community 137 - "Community 137"
-Cohesion: 0.50
-Nodes (4): 2. Command Implementation, code:rust (#[tauri::command]), code:rust (tauri::Builder::default()), code:typescript (import { invoke } from '@tauri-apps/api/core';)
+Cohesion: 0.15
+Nodes (11): Pin a single intent as the manual focus for `slot`.      Steps:       1. Resolve, Pin a single intent as the manual focus for `slot`.      Steps:       1. Resolve, Pin a single intent as the manual focus for `slot`.      Steps:       1. Resolve, set_manual_focus(), R-2.1, R-2.4 — strip-before-write yields a single key on the new file., R-2.3 — setting today leaves focus_week alone., R-2.5 — strip is bounded to the current token; stale entries are left., R-2.4 — calling set twice with the same target yields a single key. (+3 more)
 
 ### Community 138 - "Component 138"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-set-dock-visibility
+Cohesion: 0.16
+Nodes (11): JournalEntry, Mood, BACKDROP_STYLE, JournalModal(), MOOD_EMOJI, MOODS, Props, formatNextDue() (+3 more)
 
 ### Community 140 - "Component 140"
 Cohesion: 0.50
@@ -1155,8 +1173,8 @@ Cohesion: 0.50
 Nodes (4): commands, description, identifier, deny-remove-listener
 
 ### Community 142 - "Component 142"
-Cohesion: 0.22
-Nodes (9): Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., _ResponseSent, Exception, QuickTaskError, Raised when a Quick Task operation cannot proceed. Carries a stable code. (+1 more)
+Cohesion: 0.18
+Nodes (11): Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., Sentinel: a JSON response has already been written by a sub-helper., _ResponseSent, Exception, clear_estimate_by_slugs() (+3 more)
 
 ### Community 143 - "Component 143"
 Cohesion: 0.50
@@ -1167,8 +1185,8 @@ Cohesion: 0.04
 Nodes (45): Architectural shape, CLI changes, Code changes in `lib/`, code:block1 (┌──────────────────┐  ┌──────────────────┐  ┌───────────────), code:block10 (── Step 6/7 — Web UI (optional) ──), code:toml (vault_path = "~/vault-tdah"), code:toml (# Legacy fields kept for backward compatibility — auto-migra), code:block4 ([[vaults]]) (+37 more)
 
 ### Community 145 - "Component 145"
-Cohesion: 0.12
-Nodes (6): VAULT-005 — schema_version in status_aggregator (R-2.1 through R-2.3)., VAULT-005 — schema_version in status_aggregator (R-2.1 through R-2.3)., Canonical WIP inventory for the minimal fixture.      Every folder under 01-Proy, TestChunkHelper, TestSchemaVersion, TestWipCount
+Cohesion: 0.29
+Nodes (3): VAULT-005 — schema_version in status_aggregator (R-2.1 through R-2.3)., VAULT-005 — schema_version in status_aggregator (R-2.1 through R-2.3)., TestSchemaVersion
 
 ### Community 146 - "Component 146"
 Cohesion: 0.50
@@ -1207,12 +1225,12 @@ Cohesion: 0.05
 Nodes (35): Anti-patterns, code:bash (git diff HEAD --stat), code:markdown (### <YYYY-MM-DD HH:MM>), code:block3 (I see that during the session:), code:block4 (Commit suggestion:), code:json ({), code:bash (CHECKOUT_RESULT=$(python3 lib/focus_cli.py checkout --vault ), code:block7 (✅ Shutdown note saved to <INTENT-TAG>) (+27 more)
 
 ### Community 156 - "Component 156"
-Cohesion: 0.06
-Nodes (42): _auth_fail(), build_server(), _clear_cookie(), configure_auth(), _content_type(), _detect_version(), _ensure_mind_journal_once(), _ensure_scratch_pad_once() (+34 more)
+Cohesion: 0.05
+Nodes (45): _auth_fail(), build_server(), _clear_cookie(), configure_auth(), _content_type(), _get_log_handler(), is_safe_request_path(), _load_token_from_file() (+37 more)
 
 ### Community 185 - "Community 185"
-Cohesion: 0.11
-Nodes (18): _find_note(), is_path_inside(), _log_exception(), parse_cookie_header(), GET — scan + capacity-aware wake-commit (R-2.1, R-2.7, R-4.2–R-4.5)., POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)., PATCH — mark a Quick Task done (R-3.1, R-3.6)., DELETE — remove a Quick Task (R-3.2, R-3.6). (+10 more)
+Cohesion: 0.08
+Nodes (19): _find_note(), is_path_inside(), _log_exception(), GET — scan + capacity-aware wake-commit (R-2.1, R-2.7, R-4.2–R-4.5)., POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)., PATCH — mark a Quick Task done (R-3.1, R-3.6)., DELETE — remove a Quick Task (R-3.2, R-3.6)., PATCH — snooze a Quick Task (R-3.3, R-3.4, R-3.5). (+11 more)
 
 ### Community 186 - "Community 186"
 Cohesion: 0.06
@@ -1223,7 +1241,7 @@ Cohesion: 0.06
 Nodes (34): Architecture, CLI surface, code:block1 (┌─────────────────────────────────────────────────────┐), code:toml (vault_path = "~/vault-tdah"), code:toml (# Auto-migrated 2026-05-25), code:block4 (squirrel vaults list), Components, Config schema (+26 more)
 
 ### Community 188 - "Community 188"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (25): DesignSystemGenerator, _detect_page_type(), format_ascii_box(), format_markdown(), format_master_md(), format_page_override_md(), generate_design_system(), _generate_intelligent_overrides() (+17 more)
 
 ### Community 189 - "Community 189"
@@ -1231,8 +1249,8 @@ Cohesion: 0.06
 Nodes (30): Anti-patterns, code:block1 (Could not determine the active project. Which one do you wan), code:block10 (⚠️ FINISHING TAX: This project is 90% done and you've gone <), code:bash (PREV_PROJECT=$(python3 -c "), code:bash (python3 lib/switch_tracker.py record \), code:bash (python3 lib/switch_tracker.py record \), code:bash (VAULT=$(python3 -c "), code:bash (git log --oneline -5) (+22 more)
 
 ### Community 190 - "Community 190"
-Cohesion: 0.33
-Nodes (7): Building the desktop popup (contributors), Building the installer (contributors), code:bash (pip install pyinstaller), code:bash (make build-installers-arm64 BUMP=patch     # 0.5.0 → 0.5.1, ), code:bash (xcrun notarytool store-credentials squirrel-notary \), code:block5 (Step 1  pnpm -F squirrel-web-ui build     → apps/backend/app), code:bash (pip install pyinstaller)
+Cohesion: 0.15
+Nodes (8): Start the server in-process with HOME set to a tmp dir + single-vault config., Base case that owns server + temp HOME lifecycle for one test., _ServerCase, _start_server_with_fixture(), _stop(), TestDefaultBind, TestPathTraversalBlocked, TestServerScaffold
 
 ### Community 191 - "Community 191"
 Cohesion: 0.06
@@ -1363,7 +1381,7 @@ Cohesion: 0.12
 Nodes (5): _fresh_cache(), GetOrComputeTests, InvalidateTests, Reload cache between tests so stats and store start empty., StatsTests
 
 ### Community 223 - "Community 223"
-Cohesion: 0.15
+Cohesion: 0.16
 Nodes (15): BM25, detect_domain(), _load_csv(), Lowercase, split, remove punctuation, filter short words, Build BM25 index from documents, Score all documents against query, Load CSV and return list of dicts, Core search function using BM25 (+7 more)
 
 ### Community 224 - "Community 224"
@@ -1391,7 +1409,7 @@ Cohesion: 0.11
 Nodes (16): A.1 — Prerequisites, A.2 — Ask for name, path, and set-as-default, A.3 — Validate and write to the config, A.4 — Anti-patterns, code:bash (ADD_VAULT=0), code:bash (SQUIRREL_DIR=$(find "${HOME}/.claude/plugins" "${HOME}/other), code:bash (mkdir -p ~/.squirrel), code:toml (vault_path = "~/vault-squirrel") (+8 more)
 
 ### Community 230 - "Community 230"
-Cohesion: 0.11
+Cohesion: 0.14
 Nodes (17): Check for context, code:block1 (┌─────────────────────────────────────────┐), code:bash (openspec list --json), code:block3 (User: I'm thinking about adding real-time collaboration), code:block4 (User: The auth system is a mess), code:block5 (User: /opsx:explore add-auth-system), code:block6 (User: Should we use Postgres or SQLite?), code:block7 (## What We Figured Out) (+9 more)
 
 ### Community 231 - "Community 231"
@@ -1415,8 +1433,8 @@ Cohesion: 0.11
 Nodes (15): code:dataview (TABLE WITHOUT ID), code:dataview (TABLE WITHOUT ID), code:dataview (TABLE WITHOUT ID), code:dataview (TABLE WITHOUT ID), code:dataview (TABLE WITHOUT ID), code:dataview (TABLE WITHOUT ID), code:dataview (TABLE WITHOUT ID), 🔴 Critical (< 4 hours) (+7 more)
 
 ### Community 236 - "Community 236"
-Cohesion: 0.15
-Nodes (12): _parse_frontmatter_simple(), Move a project between board columns by rewriting frontmatter.          Accepts, Move a project between board columns by rewriting frontmatter.          Accepts, Parse YAML frontmatter from a markdown string into a flat dict.      Only handle, Move a project between board columns by rewriting frontmatter.          Accepts, Parse YAML frontmatter from a markdown string into a flat dict.      Only handle, Return *text* with frontmatter keys set or removed per *updates*.      A string, Parse YAML frontmatter from a markdown string into a flat dict.      Only handle (+4 more)
+Cohesion: 0.12
+Nodes (15): _classify_kind(), _first_title(), Move a project between board columns by rewriting frontmatter.          Accepts, Move a project between board columns by rewriting frontmatter.          Accepts, Move a project between board columns by rewriting frontmatter.          Accepts, Move a project between board columns by rewriting frontmatter.          Accepts, Return *text* with frontmatter keys set or removed per *updates*.      A string, Return 'project' | 'project-task' | 'note' based on the vault layout.      Mirro (+7 more)
 
 ### Community 237 - "Community 237"
 Cohesion: 0.12
@@ -1707,8 +1725,8 @@ Cohesion: 0.18
 Nodes (10): Arrow: vault, Cascade Notes, Code, EARS, HLD, LLD, Open Questions, References (+2 more)
 
 ### Community 310 - "Community 310"
-Cohesion: 0.18
-Nodes (10): Available Domains, Available Stacks, code:bash (# ASCII box (default) - best for terminal display), How to Use, Output Formats, Rule Categories by Priority, Search Reference, Tips for Better Results (+2 more)
+Cohesion: 0.22
+Nodes (7): code:bash (# ASCII box (default) - best for terminal display), How to Use, Output Formats, Rule Categories by Priority, Tips for Better Results, UI/UX Pro Max - Design Intelligence, When to Apply
 
 ### Community 311 - "Community 311"
 Cohesion: 0.18
@@ -2215,7 +2233,7 @@ Cohesion: 0.33
 Nodes (5): code:bash (openspec status --change "<name>" --json), code:bash (openspec instructions apply --change "<name>" --json), code:block3 (## Implementing: <change-name> (schema: <schema-name>)), code:block4 (## Implementation Complete), code:block5 (## Implementation Paused)
 
 ### Community 443 - "Community 443"
-Cohesion: 0.33
+Cohesion: 0.48
 Nodes (5): code:bash (openspec status --change "<name>" --json), code:bash (openspec instructions apply --change "<name>" --json), code:block3 (## Implementing: <change-name> (schema: <schema-name>)), code:block4 (## Implementation Complete), code:block5 (## Implementation Paused)
 
 ### Community 444 - "Community 444"
@@ -2303,8 +2321,8 @@ Cohesion: 0.40
 Nodes (4): anyOf, description, $schema, title
 
 ### Community 467 - "Community 467"
-Cohesion: 0.28
-Nodes (6): _classify_kind(), _first_title(), Return 'project' | 'project-task' | 'note' based on the vault layout.      Mirro, Return 'project' | 'project-task' | 'note' based on the vault layout.      Mirro, Return 'project' | 'project-task' | 'note' based on the vault layout.      Mirro, _strip_frontmatter()
+Cohesion: 0.15
+Nodes (10): ApiActivityIndicator(), DeadlinesPage, HistoryPage, HomePage, JournalPage, NoteEditPage, NotePage, ProjectEditPage (+2 more)
 
 ### Community 468 - "Community 468"
 Cohesion: 0.40
@@ -2315,7 +2333,7 @@ Cohesion: 0.40
 Nodes (4): Conventions, SDD mode: lid-ears (LID+EARS), Skills by Phase, uncle-dev
 
 ### Community 470 - "Community 470"
-Cohesion: 0.40
+Cohesion: 0.53
 Nodes (4): code:bash (openspec new change "<name>"), code:bash (openspec status --change "<name>" --json), code:bash (openspec instructions <artifact-id> --change "<name>" --json), code:bash (openspec status --change "<name>")
 
 ### Community 471 - "Community 471"
@@ -2359,7 +2377,7 @@ Cohesion: 0.50
 Nodes (3): ✅ Definition of Done, 🎯 Intent, TEST-PROJECT-AUTH-001 — OAuth callback endpoint
 
 ### Community 483 - "Community 483"
-Cohesion: 0.50
+Cohesion: 0.60
 Nodes (3): code:bash (mkdir -p openspec/changes/archive), code:bash (mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-), code:block3 (## Archive Complete)
 
 ### Community 484 - "Community 484"
@@ -2391,8 +2409,8 @@ Cohesion: 0.50
 Nodes (4): Appendix: How to capture an Activity Monitor / `top` measurement, code:bash (# Find the backend PID), code:bash (TAURI_PID=$(pgrep -i squirrel | head -1)), code:bash (curl -s http://127.0.0.1:3939/api/cache/stats | python3 -m j)
 
 ### Community 491 - "Community 491"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-insert
+Cohesion: 0.25
+Nodes (8): compute_focus_score(), get_status(), main(), Get switch status for a date (default today) plus week summary., Read switch log, optionally filtered by date (YYYY-MM-DD)., Compute focus_score 0-100 from a day's switches.      Formula:       score = 100, read_switches(), _switches_log_path()
 
 ### Community 509 - "Community 509"
 Cohesion: 0.67
@@ -2415,44 +2433,44 @@ Cohesion: 0.67
 Nodes (3): Auto-start on macOS, code:bash (bash companions/web-ui/launchd/install.sh), code:bash (bash companions/web-ui/launchd/install.sh --uninstall)
 
 ### Community 514 - "Community 514"
-Cohesion: 0.25
-Nodes (8): Resolve a snooze duration to an absolute ISO-8601 timestamp (R-3.4).      Accept, resolve_snooze_until(), R-3.4: next_block resolves to the next noon or next midnight boundary., R-3.4: a bare ISO value is normalized and passed through., R-3.4: durations resolve to absolute timestamps., test_resolve_snooze_until_durations(), test_resolve_snooze_until_iso_passthrough(), test_resolve_snooze_until_next_block()
+Cohesion: 0.18
+Nodes (3): Unit tests for server.configure_auth + _load_token_from_file. These     exercise, Unit tests for server.configure_auth + _load_token_from_file. These     exercise, TestTokenConfig
 
 ### Community 515 - "Community 515"
 Cohesion: 0.67
 Nodes (3): Value, anyOf, description
 
 ### Community 516 - "Community 516"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-set-checked
+Cohesion: 0.18
+Nodes (5): ATTN-002: each appended entry must contain from, to, timestamp, reason., ATTN-002: from is optional (first session has no previous project)., ATTN-002 + ATTN-008: each switch adds exactly one line; prior lines unchanged., ATTN-002: every line in switches.jsonl must be valid JSON., TestSwitchTracker
 
 ### Community 517 - "Community 517"
 Cohesion: 0.67
 Nodes (3): Value, anyOf, description
 
 ### Community 525 - "Community 525"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-set-enabled
+Cohesion: 0.14
+Nodes (13): Check for context, code:block1 (┌─────────────────────────────────────────┐), code:bash (openspec list --json), Command Template, Ending Discovery, Guardrails, OpenSpec Awareness, source-command-opsx-explore (+5 more)
 
 ### Community 533 - "Community 533"
 Cohesion: 0.18
 Nodes (10): Architecture, code:block1 (┌─────────────────────────── Tauri desktop app ─────────────), code:block2 (GET  /api/env/obsidian   → 200 { "installed": true,  "path":), Component responsibilities, Constraints, Data shapes, In-App Vault Onboarding — Low-Level Design, Key Decisions (+2 more)
 
 ### Community 534 - "Community 534"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-set-text
+Cohesion: 0.29
+Nodes (6): Desktop Focus Check-in / Check-out & Live Timer — EARS Specifications, Unit 1: API client, Unit 2: Derived timer (no background process), Unit 3: Check in / Check out, Unit 4: One session at a time & friendly switch gate, Unit 5: Offline & resilience
 
 ### Community 535 - "Community 535"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-tauri-version
+Cohesion: 0.29
+Nodes (6): Desktop Focus Check-in / Check-out & Live Timer — High-Level Design, Goals, Non-Goals, Overview, Stakeholders & Impact, Success Criteria
 
 ### Community 536 - "Community 536"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, deny-set-dock-visibility
+Cohesion: 0.28
+Nodes (4): _Case, _make_intent(), _spawn(), TestIntentEstimate
 
 ### Community 537 - "Community 537"
 Cohesion: 0.50
-Nodes (4): commands, description, identifier, deny-tauri-version
+Nodes (4): 2. Command Implementation, code:rust (#[tauri::command]), code:rust (tauri::Builder::default()), code:typescript (import { invoke } from '@tauri-apps/api/core';)
 
 ### Community 538 - "Community 538"
 Cohesion: 0.18
@@ -2463,8 +2481,8 @@ Cohesion: 0.29
 Nodes (6): ADR 0001 — WIP cap counts every open project (including stale and Scratch Pad), code:python (wip_count = len(projects_by_loc["wip"])   # every folder und), Consequences, Context, Decision, Open question (deferred — not blocking)
 
 ### Community 540 - "Community 540"
-Cohesion: 0.18
-Nodes (11): 1. Prerequisites, 2. Create a "Developer ID Application" certificate, 4. App-specific password for notarization, 5. Export credentials, 7. Verify, code:bash (xcrun notarytool history --apple-id you@example.com \), code:bash (export APPLE_SIGNING_IDENTITY="Developer ID Application: You), code:bash (codesign -dv --verbose=4 Squirrel.app          # signing cha) (+3 more)
+Cohesion: 0.05
+Nodes (53): 1. Prerequisites, 2. Create a "Developer ID Application" certificate, 3. Import the identity into your keychain, 4. App-specific password for notarization, 5. Export credentials, 6. Build, 7. Verify, Background service (+45 more)
 
 ### Community 541 - "Community 541"
 Cohesion: 0.29
@@ -2475,24 +2493,24 @@ Cohesion: 0.50
 Nodes (4): default, description, type, description
 
 ### Community 543 - "Community 543"
-Cohesion: 0.14
-Nodes (12): commands, description, identifier, commands, description, identifier, commands, description (+4 more)
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-supports-multiple-windows
 
 ### Community 544 - "Community 544"
-Cohesion: 0.67
-Nodes (3): ShellScopeEntryAllowedArg, anyOf, description
+Cohesion: 0.20
+Nodes (7): _detect_version(), _ensure_mind_journal_once(), _ensure_scratch_pad_once(), _vault_to_dict(), ensure_scratch_pad(), Create SCRATCH-PAD project if absent. Called at every server start., Create SCRATCH-PAD project if absent. Called at every server start.
 
 ### Community 545 - "Community 545"
 Cohesion: 0.20
 Nodes (9): app, windows, desktop, schemes, identifier, plugins, deep-link, productName (+1 more)
 
 ### Community 546 - "Community 546"
-Cohesion: 0.20
-Nodes (9): code:block19 (squirrel/), code:bash (pnpm install), code:bash (pnpm -F @squirrel/desktop dev), Develop, Layout, Migrated from v0.5 (adhd-context-bridge), Phase 1 scope, Recommended IDE setup (+1 more)
+Cohesion: 0.17
+Nodes (11): Apple Developer signing material, code:sh (security find-identity -v | grep "Developer ID"), code:sh (cd .devlocal/appleDeveloper), code:sh (openssl req -new -newkey rsa:2048 -nodes \), code:sh (spctl --assess --type install -vv squirrel-macos.dmg   # → a), File inventory, How the build uses all this, Keychain state (what the build actually uses) (+3 more)
 
 ### Community 547 - "Community 547"
-Cohesion: 0.20
-Nodes (10): 4. App-specific password for notarization, 5. Export credentials, 6. Build, 7. Verify, code:bash (xcrun notarytool history --apple-id you@example.com \), code:bash (export APPLE_SIGNING_IDENTITY="Developer ID Application: You), code:bash (cd apps/desktop), code:block17 (target/release/bundle/macos/Squirrel.app          # workspac) (+2 more)
+Cohesion: 0.05
+Nodes (53): 1. Prerequisites, 2. Create a "Developer ID Application" certificate, 3. Import the identity into your keychain, 4. App-specific password for notarization, 5. Export credentials, 6. Build, 7. Verify, Background service (+45 more)
 
 ### Community 548 - "Community 548"
 Cohesion: 0.22
@@ -2502,13 +2520,9 @@ Nodes (8): Goals, In-App Vault Onboarding — High-Level Design, Non-Goals, Over
 Cohesion: 0.25
 Nodes (7): code:block1 (1.1  config_loader: upsert_default_vault + TOML-safe escapin), In-App Vault Onboarding — Tasks, Unit 1: Backend foundation — config write contract, Unit 2: Obsidian detection, Unit 3: Vault persistence endpoint, Unit 4: Onboarding wizard + first-run gate, Unit 5: Vault wiring (un-hardcode)
 
-### Community 551 - "Community 551"
-Cohesion: 0.25
-Nodes (8): 3. Import the identity into your keychain, code:bash (# DER cert → PEM), code:bash (curl -fsSLO https://www.apple.com/certificateauthority/Devel), code:bash (security find-identity -v -p codesigning), code:bash (brew install terminal-notifier), macOS Notifications (reminder daemon), Optional: `terminal-notifier`, v1 icon caveat
-
 ### Community 552 - "Community 552"
-Cohesion: 0.25
-Nodes (8): code:bash (./agent-pack/scripts/install-copilot.sh --yes), code:bash (./agent-pack/scripts/install-copilot.sh --workspace --yes), code:block7 (Step 1  pnpm build                              → apps/deskt), code:bash (cd apps/desktop && pnpm tauri:prebuild-backend   # rebuilds ), Installing for GitHub Copilot, Key flags, User-level install (default — applies to all workspaces), Workspace-level install (files committed to the repo)
+Cohesion: 0.20
+Nodes (9): Current state (verified live), Gotchas / environment notes, Handoff — 2026-06-06T23:08:08Z, Next Session Focus, Suggested Skills, TL;DR of what happened, Verification commands for next session, What is COMMITTED (this session) (+1 more)
 
 ### Community 553 - "Community 553"
 Cohesion: 0.29
@@ -2518,125 +2532,177 @@ Nodes (6): Estimate↔Actual Reconciliation — EARS Specifications, Unit 1: Est
 Cohesion: 0.29
 Nodes (6): Estimate↔Actual Reconciliation — High-Level Design, Goals, Non-Goals, Overview, Stakeholders & Impact, Success Criteria
 
+### Community 555 - "Community 555"
+Cohesion: 0.46
+Nodes (6): die(), info(), _notarize_staple(), ok(), run(), warn()
+
 ### Community 556 - "Community 556"
 Cohesion: 0.33
 Nodes (5): In-App Vault Onboarding — EARS Specifications, Unit 1: First-run gate, Unit 2: Obsidian detection, Unit 3: Vault selection and persistence, Unit 4: Vault wiring (un-hardcode)
 
 ### Community 557 - "Community 557"
-Cohesion: 0.33
-Nodes (6): code:bash (./agent-pack/scripts/install-copilot.sh --yes), code:bash (./agent-pack/scripts/install-copilot.sh --workspace --yes), Installing for GitHub Copilot, Key flags, User-level install (default — applies to all workspaces), Workspace-level install (files committed to the repo)
+Cohesion: 0.20
+Nodes (10): apply_estimate_by_slugs(), apply_estimate_to_intent(), Coerce + bounds-check an estimate input (R-2.7)., Resolve an intent id to its file within active projects only (R-1.4).     Raises, Write the three estimate keys atomically; leaves all other frontmatter     (incl, CLI path: resolve `intent_id` within active projects and persist (R-2.1)., API path: deterministic `01-Proyectos-Activos/<project>/<intent>.md` (R-1.4)., resolve_wip_intent() (+2 more)
 
 ### Community 558 - "Community 558"
 Cohesion: 0.40
 Nodes (4): Design, EARS, Story 1.1 (in-app-vault-onboarding) — upsert_default_vault + TOML-safe escaping, Tests: apps/cli/tests/test_upsert_default_vault.py
 
 ### Community 559 - "Community 559"
-Cohesion: 0.40
-Nodes (4): Migrated from v0.5 (adhd-context-bridge), Phase 1 scope, Recommended IDE setup, Squirrel
+Cohesion: 0.22
+Nodes (8): code:bash (mkdir -p openspec/changes/archive), code:bash (mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-), code:block3 (## Archive Complete), code:block4 (## Archive Complete), code:block5 (## Archive Complete (with warnings)), code:block6 (## Archive Failed), Command Template, source-command-opsx-archive
 
 ### Community 560 - "Community 560"
-Cohesion: 0.40
-Nodes (5): Background service, code:bash (launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.), Installing (end users), Uninstalling, Upgrading
+Cohesion: 0.31
+Nodes (3): The webview sends the custom ``X-Squirrel-Token`` header cross-origin, so     a, TestCorsPreflight, TestMethodNotAllowed
 
 ### Community 561 - "Community 561"
 Cohesion: 0.70
 Nodes (4): apply(), bump(), main(), read_canonical()
 
 ### Community 562 - "Community 562"
-Cohesion: 0.40
-Nodes (5): 2. Create a "Developer ID Application" certificate, code:bash (openssl req -new -newkey rsa:2048 -nodes \), code:bash (pnpm install), code:bash (pnpm -F @squirrel/desktop dev), Develop
+Cohesion: 0.25
+Nodes (7): code:bash (openspec status --change "<name>" --json), code:bash (openspec instructions apply --change "<name>" --json), code:block3 (## Implementing: <change-name> (schema: <schema-name>)), code:block4 (## Implementation Complete), code:block5 (## Implementation Paused), Command Template, source-command-opsx-apply
 
 ### Community 563 - "Community 563"
-Cohesion: 0.40
-Nodes (5): Background service, code:bash (launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.), Installing (end users), Uninstalling, Upgrading
+Cohesion: 0.33
+Nodes (5): Expand and sandbox a user-supplied vault path (R-3.12).      Rejects paths that,, Expand and sandbox a user-supplied vault path (R-3.12).      Rejects paths that,, Persist the chosen vault as the default in ~/.squirrel/config.toml.          Val, Persist the chosen vault as the default in ~/.squirrel/config.toml.          Val, _validate_vault_path()
 
 ### Community 564 - "Community 564"
-Cohesion: 0.50
-Nodes (3): detect_obsidian(), Detect whether Obsidian is installed (macOS). Read-only.      Order (R-2.2): /Ap, Report whether Obsidian is installed (R-2.1..R-2.4, R-2.8).          Read-only;
+Cohesion: 0.33
+Nodes (5): detect_obsidian(), Detect whether Obsidian is installed (macOS). Read-only.      Order (R-2.2): /Ap, Detect whether Obsidian is installed (macOS). Read-only.      Order (R-2.2): /Ap, Report whether Obsidian is installed (R-2.1..R-2.4, R-2.8).          Read-only;, Report whether Obsidian is installed (R-2.1..R-2.4, R-2.8).          Read-only;
 
 ### Community 565 - "Community 565"
-Cohesion: 0.50
-Nodes (4): 3. Import the identity into your keychain, code:bash (curl -fsSLO https://www.apple.com/certificateauthority/Devel), code:bash (security find-identity -v -p codesigning), code:bash (# DER cert → PEM)
+Cohesion: 0.25
+Nodes (7): Build / install commands, code:bash (SQUIRREL_ARM64_ONLY=1 make build      # arm64 app (universal), Gotchas / open items, Handoff — Squirrel installer + desktop app fixes, Next Session Focus, Suggested Skills, What happened this session (high level)
 
 ### Community 566 - "Community 566"
-Cohesion: 0.50
-Nodes (4): Building the desktop popup (contributors), code:bash (pip install pyinstaller), code:block5 (Step 1  pnpm build                              → apps/deskt), code:bash (cd apps/desktop && pnpm tauri:prebuild-backend   # rebuilds )
+Cohesion: 0.25
+Nodes (7): CORS preflight silently blocks the webview's authenticated fetch, Fix, How to reproduce / test without a browser, Root cause, Symptom, Takeaway, The trap (why it was hard to find)
 
 ### Community 567 - "Community 567"
-Cohesion: 0.50
-Nodes (4): code:bash (brew install terminal-notifier), macOS Notifications (reminder daemon), Optional: `terminal-notifier`, v1 icon caveat
+Cohesion: 0.29
+Nodes (6): code:bash (openspec new change "<name>"), code:bash (openspec status --change "<name>" --json), code:bash (openspec instructions <artifact-id> --change "<name>" --json), code:bash (openspec status --change "<name>"), Command Template, source-command-opsx-propose
 
 ### Community 568 - "Community 568"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-append
-
-### Community 569 - "Community 569"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-remove
+Cohesion: 0.33
+Nodes (6): _insert_or_update_callout(), _is_callout(), _make_callout(), Remove all lines matching the reminder callout pattern., Insert or replace the reminder callout in the body.      Strategy:     - Find th, _remove_callout()
 
 ### Community 570 - "Community 570"
 Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-set-accelerator
+Nodes (4): _coerce_num(), estimate_variance(), Tolerantly coerce a frontmatter scalar (always a string from the parser)     to, Derive estimate-vs-actual variance from an intent's frontmatter (read-side).
 
 ### Community 571 - "Community 571"
 Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-set-app-theme
+Nodes (3): IntentNotFound, Raised when set_manual_focus is asked to target a non-existent intent., Raised when set_manual_focus is asked to target a non-existent intent.
 
 ### Community 572 - "Community 572"
 Cohesion: 0.50
 Nodes (4): commands, description, identifier, allow-set-as-help-menu-for-nsapp
-
-### Community 573 - "Community 573"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, allow-supports-multiple-windows
 
 ### Community 574 - "Community 574"
 Cohesion: 0.50
 Nodes (4): commands, description, identifier, deny-app-show
 
 ### Community 575 - "Community 575"
-Cohesion: 0.50
-Nodes (4): commands, description, identifier, deny-set-app-theme
+Cohesion: 0.14
+Nodes (12): commands, description, identifier, commands, description, identifier, commands, description (+4 more)
 
 ### Community 576 - "Community 576"
-Cohesion: 0.50
-Nodes (4): default, description, type, description
+Cohesion: 0.40
+Nodes (4): Conventions, SDD mode: lid-ears (LID+EARS), Skills by Phase, uncle-dev
 
 ### Community 577 - "Community 577"
 Cohesion: 0.50
-Nodes (4): 1. Prerequisites, code:block21 (squirrel/), code:bash (rustup target add aarch64-apple-darwin x86_64-apple-darwin), Layout
+Nodes (4): commands, description, identifier, allow-set-accelerator
 
 ### Community 579 - "Community 579"
-Cohesion: 0.67
-Nodes (3): 6. Build, code:bash (cd apps/desktop), code:block15 (target/release/bundle/macos/Squirrel.app          # workspac)
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-default-window-icon
 
 ### Community 580 - "Community 580"
-Cohesion: 0.67
-Nodes (3): Building the installer (contributors), code:bash (pip install pyinstaller), code:block3 (Step 1  pnpm -F squirrel-web-ui build     → apps/backend/app)
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-set-as-window-menu
 
 ### Community 581 - "Community 581"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-set-icon
+
+### Community 586 - "Community 586"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, deny-app-hide
+
+### Community 587 - "Community 587"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-items
+
+### Community 588 - "Community 588"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-remove
+
+### Community 589 - "Community 589"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-set-dock-visibility
+
+### Community 590 - "Community 590"
+Cohesion: 0.67
+Nodes (3): ShellScopeEntryAllowedArgs, anyOf, description
+
+### Community 591 - "Community 591"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-set-enabled
+
+### Community 592 - "Community 592"
+Cohesion: 0.67
+Nodes (3): Available Domains, Available Stacks, Search Reference
+
+### Community 593 - "Community 593"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-set-text
+
+### Community 594 - "Community 594"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, allow-tauri-version
+
+### Community 595 - "Community 595"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, deny-supports-multiple-windows
+
+### Community 596 - "Community 596"
+Cohesion: 0.50
+Nodes (4): commands, description, identifier, deny-tauri-version
+
+### Community 597 - "Community 597"
 Cohesion: 0.67
 Nodes (3): ShellScopeEntryAllowedArg, anyOf, description
 
+### Community 598 - "Community 598"
+Cohesion: 0.67
+Nodes (3): description, type, identifier
+
+### Community 599 - "Community 599"
+Cohesion: 0.67
+Nodes (3): ShellScopeEntryAllowedArgs, anyOf, description
+
 ## Knowledge Gaps
-- **3121 isolated node(s):** `name`, `private`, `version`, `description`, `dev` (+3116 more)
+- **3160 isolated node(s):** `name`, `private`, `version`, `description`, `dev` (+3155 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **56 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **57 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `render()` connect `Component 115` to `Component 28`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Why does `renderWidget()` connect `Component 28` to `Component 115`?**
-  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Why does `main()` connect `Component 115` to `Community 336`, `Component 73`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
-- **Are the 3 inferred relationships involving `Handler` (e.g. with `IntentNotFound` and `NewProjectError`) actually correct?**
-  _`Handler` has 3 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 3 inferred relationships involving `_UserError` (e.g. with `IntentNotFound` and `NewProjectError`) actually correct?**
-  _`_UserError` has 3 INFERRED edges - model-reasoned connections that need verification._
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+- **Are the 4 inferred relationships involving `Handler` (e.g. with `IntentNotFound` and `EstimateError`) actually correct?**
+  _`Handler` has 4 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 4 inferred relationships involving `_UserError` (e.g. with `IntentNotFound` and `EstimateError`) actually correct?**
+  _`_UserError` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `name`, `private`, `version` to the rest of the system?**
-  _3605 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _3684 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Backend Server & Logging` be split into smaller, more focused modules?**
-  _Cohesion score 0.09878048780487805 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.13548387096774195 - nodes in this community are weakly interconnected._

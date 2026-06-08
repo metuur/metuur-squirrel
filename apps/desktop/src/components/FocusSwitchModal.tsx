@@ -3,14 +3,15 @@
 // auto-check-out (EARS R-4.4): the user must explicitly check out first, so this
 // dialog offers a check-out action and a cancel — it does not chain into a new
 // check-in.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   open: boolean;
   currentTitle: string | null; // the task currently checked in
   nextTitle: string | null; // the task the user tried to switch to
   busy?: boolean; // checkout request in flight
-  onCheckoutCurrent: () => void;
+  // Receives the optional "why I'm switching" note (null when left blank).
+  onCheckoutCurrent: (note: string | null) => void;
   onCancel: () => void;
 }
 
@@ -26,6 +27,13 @@ export function FocusSwitchModal({
   onCheckoutCurrent,
   onCancel,
 }: Props) {
+  // Optional "why I'm switching" note. Reset each time the dialog opens so a
+  // previous note never leaks into the next switch.
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    if (open) setNote("");
+  }, [open]);
+
   // Escape cancels (ignored while a checkout is in flight).
   useEffect(() => {
     if (!open) return;
@@ -59,26 +67,46 @@ export function FocusSwitchModal({
             {currentTitle ? (
               <>
                 {" "}
-                to <span className="text-ink-1 font-medium">{currentTitle}</span>
+                to <span className="text-ink-1 font-bold">{currentTitle}</span>
               </>
             ) : null}
             .
           </p>
           <p>
-            Do you really want to change task? Double-check it's really necessary —
-            if it is, that's fine. You just need to{" "}
-            <span className="text-ink-1 font-medium">check out</span> the current
-            task before checking into
+            Before we drop everything and sprint toward
             {nextTitle ? (
               <>
                 {" "}
-                <span className="text-ink-1 font-medium">{nextTitle}</span>
+                <span className="text-ink-1 font-bold">{nextTitle}</span>
               </>
             ) : (
-              " a new one"
+              " the next task"
             )}
-            .
+            , let's do a quick sanity check.
           </p>
+          <p>
+            Is this a genuine priority shift, or did your brain just spot
+            something newer, shinier, and significantly more exciting?
+          </p>
+          <p>
+            No judgment either way. Just remember you'll need to{" "}
+            <span className="text-ink-1 font-medium">check out</span> of the
+            current task before chasing the next adventure.
+          </p>
+          <label className="flex flex-col gap-1 mt-0.5">
+            <span className="text-[11px] text-ink-3">
+              Why are you switching?{" "}
+              <span className="text-ink-4">(optional — for future you)</span>
+            </span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              disabled={busy}
+              rows={2}
+              placeholder="e.g. blocked on review, deadline moved up…"
+              className="w-full resize-none rounded border border-hairline bg-surface px-2 py-1.5 text-[12px] text-ink-1 outline-none focus:border-ink-3 disabled:opacity-50"
+            />
+          </label>
         </div>
         <div className="px-4 py-3 bg-surface-2 border-t border-hairline-2 flex items-center justify-end gap-2">
           <button
@@ -91,7 +119,7 @@ export function FocusSwitchModal({
           </button>
           <button
             type="button"
-            onClick={onCheckoutCurrent}
+            onClick={() => onCheckoutCurrent(note.trim() ? note.trim() : null)}
             disabled={busy}
             className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >

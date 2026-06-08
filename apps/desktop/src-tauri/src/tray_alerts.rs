@@ -494,6 +494,32 @@ fn today_date_string() -> String {
     format!("{:04}-{:02}-{:02}", y, m, d)
 }
 
+/// Build a human-readable label for today's focus plan from the `/api/focus`
+/// JSON body, combining the AM slot (`today`) with the optional PM slot
+/// (`today_pm`). Returns `None` when no focus is set for today.
+fn focus_plan_label(body: &serde_json::Value) -> Option<String> {
+    fn slot_label(slot: &serde_json::Value) -> Option<String> {
+        if slot.is_null() {
+            return None;
+        }
+        let project = slot["project_title"].as_str().unwrap_or("").trim();
+        let intent = slot["intent_title"].as_str().unwrap_or("").trim();
+        match (project.is_empty(), intent.is_empty()) {
+            (false, false) => Some(format!("{project} · {intent}")),
+            (false, true) => Some(project.to_string()),
+            (true, false) => Some(intent.to_string()),
+            (true, true) => None,
+        }
+    }
+
+    match (slot_label(&body["today"]), slot_label(&body["today_pm"])) {
+        (Some(am), Some(pm)) => Some(format!("AM: {am} · PM: {pm}")),
+        (Some(am), None) => Some(am),
+        (None, Some(pm)) => Some(format!("PM: {pm}")),
+        (None, None) => None,
+    }
+}
+
 async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, reqwest::Error> {
     let mut resp = client
         .get("http://127.0.0.1:3939/api/reminders")
@@ -853,38 +879,6 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             }
         }
 
-        // R-6.1–R-6.5: fire a "What's your focus?" notification if today's focus
-        // is not set and we haven't already prompted today.
-        {
-            let today = today_date_string();
-            let focus_prompted_today = {
-                let state = app.state::<Mutex<TauriNotificationState>>();
-                let s = state.lock().unwrap_or_else(|p| p.into_inner());
-                s.focus_prompted_date.as_deref() == Some(today.as_str())
-            };
-            if !focus_prompted_today {
-                match client.get(format!("{}/api/focus", BACKEND_ORIGIN)).send().await {
-                    Ok(resp) if resp.status().is_success() => {
-                        if let Ok(body) = resp.json::<serde_json::Value>().await {
-                            let today_set = !body["today"].is_null();
-                            if !today_set {
-                                let _ = tauri_plugin_notification::NotificationExt::notification(&app)
-                                    .builder()
-                                    .title("What's your focus today?")
-                                    .body("Tap to pick your focus for the morning.")
-                                    .show();
-                                let state = app.state::<Mutex<TauriNotificationState>>();
-                                let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
-                                s.focus_prompted_date = Some(today);
-                                tracing::info!("focus-prompt: notification fired");
-                            }
-                        }
-                    }
-                    _ => tracing::debug!("focus-prompt: backend unreachable, skipping"),
-                }
-            }
-        }
-
         let mut last_break_check: Option<Instant> = None;
         // Sleep cadence between polls. Starts at POLL_INTERVAL; doubles up
         // to MAX_BACKOFF_INTERVAL on each consecutive fetch_pressing Err;
@@ -892,6 +886,51 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
         let mut current_interval: Duration = POLL_INTERVAL;
 
         loop {
+            // R-6.1–R-6.5: fire the daily planning prompt once per day. If a
+            // focus is already set for today, ask the user to confirm or change
+            // it; otherwise ask them to pick one. Lives inside the poll loop (not
+            // a one-shot before it) so that on a cold start — where we spawn our
+            // own backend and it takes a few seconds to become reachable — we
+            // retry each cycle instead of silently dropping the prompt. The
+            // `focus_prompted_today` guard short-circuits before any fetch once
+            // it has fired, so this stays a once-per-day notification.
+            {
+                let today = today_date_string();
+                let focus_prompted_today = {
+                    let state = app.state::<Mutex<TauriNotificationState>>();
+                    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+                    s.focus_prompted_date.as_deref() == Some(today.as_str())
+                };
+                if !focus_prompted_today {
+                    match client.get(format!("{}/api/focus", BACKEND_ORIGIN)).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                                let (title, prompt_body) = match focus_plan_label(&body) {
+                                    Some(plan) => (
+                                        "Your plan for today".to_string(),
+                                        format!("{plan} — tap to confirm or change it."),
+                                    ),
+                                    None => (
+                                        "What's your focus today?".to_string(),
+                                        "Tap to pick your focus for the morning.".to_string(),
+                                    ),
+                                };
+                                let _ = tauri_plugin_notification::NotificationExt::notification(&app)
+                                    .builder()
+                                    .title(title)
+                                    .body(prompt_body)
+                                    .show();
+                                let state = app.state::<Mutex<TauriNotificationState>>();
+                                let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+                                s.focus_prompted_date = Some(today);
+                                tracing::info!("focus-prompt: notification fired");
+                            }
+                        }
+                        _ => tracing::debug!("focus-prompt: backend unreachable, will retry next cycle"),
+                    }
+                }
+            }
+
             // R-3.3/R-3.4 (Story 2.1): read notification settings every cycle; default on failure
             let settings = fetch_notif_settings(&client).await;
 

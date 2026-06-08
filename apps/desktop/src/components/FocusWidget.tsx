@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import type { HomeState } from "../hooks/useHome";
 import type { ManualPick, OpenSession } from "../api/client";
 
@@ -75,7 +76,7 @@ function CheckinControls({
 
   if (isSessionFor(session, pick)) {
     return (
-      <div className="mt-1 flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0 self-center">
         <span
           className="chip chip-am shrink-0 tabular-nums"
           style={TIMER_CHIP_STYLE}
@@ -87,8 +88,8 @@ function CheckinControls({
           type="button"
           onClick={onCheckout}
           disabled={!onCheckout}
-          className="text-[11px] underline-offset-2 hover:underline text-critical disabled:opacity-50 disabled:no-underline"
-          style={{ color: "var(--color-critical)" }}
+          className="btn disabled:opacity-50"
+          style={{ borderColor: "var(--color-critical)", color: "var(--color-critical)" }}
         >
           Check out
         </button>
@@ -97,16 +98,14 @@ function CheckinControls({
   }
 
   return (
-    <div className="mt-1">
-      <button
-        type="button"
-        onClick={() => onCheckin?.(pick)}
-        disabled={!onCheckin}
-        className="text-[11px] underline-offset-2 hover:underline text-ink-3 disabled:opacity-50 disabled:no-underline"
-      >
-        Check in
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => onCheckin?.(pick)}
+      disabled={!onCheckin}
+      className="btn shrink-0 self-center disabled:opacity-50"
+    >
+      Check in
+    </button>
   );
 }
 
@@ -216,7 +215,7 @@ interface FocusRowProps {
 }
 
 // The estimate/actual/variance line shown under a focused intent.
-// - has_variance:   "guessed 45m · est 1h53m · actual 2h10m · 1.0× — copy"
+// - has_variance:   "estimated time 45m · est 1h53m · actual 2h10m · 1.0× — copy"
 // - estimate only:  "est 1h53m · not started yet"
 // - actual only:    "actual 2h10m · + estimate"  (prompt to add an estimate)
 function EstimateLine({
@@ -226,34 +225,84 @@ function EstimateLine({
   pick: ManualPick;
   onSetEstimate?: FocusRowProps["onSetEstimate"];
 }) {
-  const promptEstimate = () => {
-    if (!onSetEstimate) return;
-    const raw = window.prompt("Estimate for this task — minutes (blank to clear):", "");
-    if (raw === null) return; // cancelled
-    const trimmed = raw.trim();
-    if (trimmed === "") {
-      onSetEstimate(pick.project_slug, pick.intent_slug, null);
-      return;
-    }
-    const mins = Number(trimmed);
-    if (!Number.isFinite(mins) || mins <= 0) return;
-    onSetEstimate(pick.project_slug, pick.intent_slug, Math.round(mins));
+  // Inline estimate editor. window.prompt() is a no-op in the Tauri webview and
+  // the dialog plugin has no text-input prompt, so we edit in place: clicking the
+  // trigger reveals a small minutes input. Enter / blur commits, Esc cancels,
+  // empty value clears the estimate.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const skipCommit = useRef(false);
+
+  const startEdit = () => {
+    setDraft(pick.estimate_minutes ? String(pick.estimate_minutes) : "");
+    setEditing(true);
   };
 
+  const commit = () => {
+    if (onSetEstimate) {
+      const trimmed = draft.trim();
+      if (trimmed === "") {
+        onSetEstimate(pick.project_slug, pick.intent_slug, null);
+      } else {
+        const mins = Number(trimmed);
+        if (Number.isFinite(mins) && mins > 0) {
+          onSetEstimate(pick.project_slug, pick.intent_slug, Math.round(mins));
+        }
+      }
+    }
+    setEditing(false);
+  };
+
+  const editor = (
+    <span className="inline-flex items-center gap-1">
+      <input
+        type="number"
+        min={1}
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (skipCommit.current) {
+            skipCommit.current = false;
+            setEditing(false);
+            return;
+          }
+          commit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          } else if (e.key === "Escape") {
+            skipCommit.current = true;
+            e.currentTarget.blur();
+          }
+        }}
+        placeholder="min"
+        className="w-12 px-1 py-0.5 text-[10.5px] rounded border border-hairline bg-surface text-ink-2 outline-none focus:border-ink-3 tabular-nums"
+      />
+      <span className="text-[10.5px] text-ink-4">min</span>
+    </span>
+  );
+
   const setBtn = onSetEstimate ? (
-    <button
-      type="button"
-      onClick={promptEstimate}
-      className="text-[10.5px] underline-offset-2 hover:underline text-ink-3"
-    >
-      {pick.estimate_minutes ? "edit estimate" : "+ estimate"}
-    </button>
+    editing ? (
+      editor
+    ) : (
+      <button
+        type="button"
+        onClick={startEdit}
+        className="text-[10.5px] underline-offset-2 hover:underline text-ink-3"
+      >
+        {pick.estimate_minutes ? "Update estimate" : "+ estimate"}
+      </button>
+    )
   ) : null;
 
   if (pick.has_variance && pick.estimate_minutes && pick.variance_ratio != null) {
     return (
       <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
-        {pick.estimate_user_minutes ? `guessed ${fmtMins(pick.estimate_user_minutes)} · ` : ""}
+        {pick.estimate_user_minutes ? `estimated time ${fmtMins(pick.estimate_user_minutes)} · ` : ""}
         est {fmtMins(pick.estimate_minutes)} · actual {fmtMins(pick.time_invested_minutes)} ·{" "}
         <span className="text-ink-2">{pick.variance_ratio.toFixed(1)}×</span>{" "}
         <span className="italic">— {varianceLabel(pick.variance_ratio)}</span> {setBtn}
@@ -261,9 +310,16 @@ function EstimateLine({
     );
   }
   if (pick.estimate_minutes) {
+    // Surface the ADHD buffer: the user estimated time `estimate_user_minutes`, which was
+    // multiplied up to the plan-around `estimate_minutes`. Showing "estimated time 1h →
+    // est 2h30m (2.5×)" makes the inflation explicit instead of looking broken.
+    const guess = pick.estimate_user_minutes;
+    const mult = guess && guess > 0 ? pick.estimate_minutes / guess : null;
     return (
       <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
-        est {fmtMins(pick.estimate_minutes)} · not started yet {setBtn}
+        {guess ? `Initial guess: ${fmtMins(guess)} · ` : ""}
+        More realistic: ~{fmtMins(pick.estimate_minutes)}
+        {mult ? ` (${mult.toFixed(1)}×)` : ""} · Status: Not started yet · {setBtn}
       </p>
     );
   }
@@ -321,14 +377,14 @@ function ManualFocusRow({
           )}
         </div>
         <EstimateLine pick={pick} onSetEstimate={onSetEstimate} />
-        <CheckinControls
-          pick={pick}
-          session={session}
-          elapsedMinutes={elapsedMinutes}
-          onCheckin={onCheckin}
-          onCheckout={onCheckout}
-        />
       </div>
+      <CheckinControls
+        pick={pick}
+        session={session}
+        elapsedMinutes={elapsedMinutes}
+        onCheckin={onCheckin}
+        onCheckout={onCheckout}
+      />
     </div>
   );
 }
