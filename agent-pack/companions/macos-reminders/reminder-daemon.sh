@@ -432,10 +432,10 @@ main() {
     # Build rich, multi-line messages for up to 3 critical/urgent items.
     # Output format: PROJECT<US>MSG<RS> where US=\x1f, RS=\x1e — robust against
     # arbitrary text (including pipes and newlines) inside titles or next-action.
-    RECORDS=$(echo "$SCAN_OUTPUT" | python3 - <<'PYEOF' 2>/dev/null
-import json, sys
+    RECORDS=$(SCAN_OUTPUT="$SCAN_OUTPUT" python3 <<'PYEOF' 2>/dev/null
+import json, os, sys
 
-d = json.load(sys.stdin)
+d = json.loads(os.environ["SCAN_OUTPUT"])
 by = d.get("by_urgency", {})
 items = (by.get("critical", []) + by.get("urgent", []))[:3]
 
