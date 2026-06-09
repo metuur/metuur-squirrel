@@ -69,12 +69,12 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
 
 ## Unit 6: Testing
 
-- [ ] 6.1 Invert `test_emitters.sh` `-sender` assertion (deps: 2.1, est: ~20m)
+- [x] 6.1 Invert `test_emitters.sh` `-sender` assertion (deps: 2.1, est: ~20m)
   - acceptance:
     - R-6.1 / R-6.2 — replace the `assert_not_contains … "-sender"` at `apps/cli/tests/test_emitters.sh:104` with an `assert_contains … "-sender com.metuur.squirrel"` for **both** Silent and sounded branches; assert the `-open` URL (incl. `?action=`) is unchanged.
   - verify: `bash apps/cli/tests/test_emitters.sh` green; the old `R-1.10 NO -sender` case is removed/updated.
 
-- [ ] 6.3 Bootstrap unit/harness test (deps: 1.1, est: ~30m)
+- [x] 6.3 Bootstrap unit/harness test (deps: 1.1, est: ~30m)
   - acceptance:
     - R-6.3 — authorized → emit + sentinel created; denied → no sentinel, retried next start; sentinel present → no-op.
   - verify: `cargo test` (src-tauri) green against a temp `$HOME`/sentinel path.
