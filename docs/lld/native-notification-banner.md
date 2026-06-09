@@ -152,13 +152,15 @@ User's macOS host
 └── (external)
     └── terminal-notifier                                       [Homebrew dep, optional]
           # brew install terminal-notifier
-          # Invocation shape (v1 — no -sender; see EARS R-1.10):
+          # Invocation shape (-sender now included; delivered by
+          # notification-icon-branding, see EARS R-1.6 / R-1.10):
           #   terminal-notifier \
           #     -title    "⏰ squirrel: <PROJECT-ID>" \
           #     -subtitle "<due-status>" \
           #     -message  "<note title · → <next-action>>" \
           #     -open     "squirrel://projects/<PROJECT-ID>" \
           #     -group    org.squirrel.reminders \
+          #     -sender   com.metuur.squirrel \
           #     -sound    Submarine
 ```
 
@@ -234,15 +236,15 @@ Snooze was a UI button on the modal dialog. Banners have no buttons. The functio
 
 The implicit-snooze is the existing `cadence_minutes` throttle — invariant.
 
-### D-6. `terminal-notifier -sender com.metuur.squirrel` — deferred to follow-up
+### D-6. `terminal-notifier -sender com.metuur.squirrel` — DELIVERED (see `notification-icon-branding`)
 
-Without `-sender`, banners appear with the generic Terminal icon and no Squirrel branding. With `-sender com.metuur.squirrel`:
+With `-sender com.metuur.squirrel`:
 
-- The banner would use the Squirrel app icon.
-- macOS would treat it as coming from the Squirrel app — same notification group in System Settings, same Focus-mode rules.
-- The user could grant/revoke notification permission for "Squirrel" specifically rather than for the script-runner.
+- The banner uses the Squirrel app icon.
+- macOS treats it as coming from the Squirrel app — same notification group in System Settings, same Focus-mode rules.
+- The user grants/revokes notification permission for "Squirrel" specifically rather than for the script-runner.
 
-**v1 deferral.** Validated on macOS 26.5 + `terminal-notifier` 2.0.0 that `-sender com.metuur.squirrel` silently drops the banner until `com.metuur.squirrel` has emitted at least one notification through Apple's modern `UNUserNotificationCenter` API. `terminal-notifier` itself uses the deprecated `NSUserNotificationCenter` path, and the bridge between the two no longer auto-registers unknown senders on Big Sur+. Also confirmed `-appIcon` and `-contentImage` are silently ignored on macOS 11+ for the same API-deprecation reason. v1 therefore ships without `-sender` (generic icon). The follow-up change will add a Tauri-side `tauri-plugin-notification` self-introduction call on first launch — that one emission registers the bundle with `UNUserNotificationCenter`, surfaces "Squirrel" in System Settings → Notifications, and unlocks `-sender com.metuur.squirrel` for the daemon. See EARS R-1.10.
+**Status: delivered by `docs/{hld,lld,ears}/notification-icon-branding.md`.** Validated on macOS 26.5 + `terminal-notifier` 2.0.0 that `-sender com.metuur.squirrel` silently drops the banner until `com.metuur.squirrel` has emitted at least one notification through Apple's modern `UNUserNotificationCenter` API. `terminal-notifier` uses the deprecated `NSUserNotificationCenter` path, and the bridge no longer auto-registers unknown senders on Big Sur+; `-appIcon`/`-contentImage` are likewise silently ignored on macOS 11+. The branding change satisfies the precondition with a permission-gated, one-shot Tauri-side `tauri-plugin-notification` emission on first launch (branding Unit 1) — that emission registers the bundle with `UNUserNotificationCenter`, surfaces "Squirrel" in System Settings → Notifications, and unlocks `-sender` for the daemon (branding R-2.1). Note the **cold-identity window** (branding R-4.5) and the **reinstall requirement** for existing daemons (branding R-2.5). See EARS R-1.6 / R-1.10.
 
 ### D-7. New module `deep_link.rs`, not extending `tray_alerts.rs`
 
