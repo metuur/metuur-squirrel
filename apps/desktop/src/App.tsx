@@ -3,17 +3,18 @@
 // DeadlinesWidget can open it with the right project pre-selected.
 
 import { useEffect, useMemo, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { listen } from "@tauri-apps/api/event";
 import { useBackend } from "./hooks/useBackend";
 import { useHome } from "./hooks/useHome";
+import { useFocusSession } from "./hooks/useFocusSession";
 import { useDeepLink } from "./hooks/useDeepLink";
 import { useNotifications } from "./hooks/useNotifications";
-import { BACKEND_ORIGIN } from "./api/client";
+import { openWebUrl } from "./api/client";
 import { BackendStatusBanner } from "./components/BackendStatusBanner";
 import { HandshakeBanner } from "./components/HandshakeBanner";
 import { FocusWidget } from "./components/FocusWidget";
 import { FocusPickerModal } from "./components/FocusPickerModal";
+import { FocusSwitchModal } from "./components/FocusSwitchModal";
 import { DeadlinesWidget } from "./components/DeadlinesWidget";
 import { ParakeetWidget } from "./components/ParakeetWidget";
 import { CaptureButton } from "./components/CaptureButton";
@@ -24,8 +25,15 @@ import { OpenWebUIButton } from "./components/OpenWebUIButton";
 import { OpenVaultButton } from "./components/OpenVaultButton";
 import { CloseWindowButton } from "./components/CloseWindowButton";
 import { SizeToggle } from "./components/SizeToggle";
+import { AppCredit } from "./components/AppCredit";
 import { HowToModal } from "./components/HowToModal";
-import { api } from "./api/client";
+import { OnboardingGate } from "./components/OnboardingGate";
+import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
+import { QuickTaskWidget } from "./components/QuickTaskWidget";
+import { QuickTaskPopover } from "./components/QuickTaskPopover";
+import { useQuickTaskCapture } from "./hooks/useQuickTaskCapture";
+import { useDevFlag } from "./hooks/useDevFlag";
+import { api, type ManualPick } from "./api/client";
 
 // Computed once per render — popup is short-lived, so a midnight tick across
 // open sessions isn't worth a setInterval.
@@ -41,13 +49,14 @@ export default function App() {
   const status = useBackend();
   const deepLink = useDeepLink();
   const notifications = useNotifications();
+  const isDev = useDevFlag();
 
   useEffect(() => {
     if (!deepLink) return;
     if (!status.online) return;
     const id = deepLink.taskId ?? deepLink.projectId;
-    openUrl(`${BACKEND_ORIGIN}/notes/${id}`).catch((err) => {
-      console.error("[App] deep-link openUrl failed:", err);
+    openWebUrl(`/notes/${id}`).catch((err) => {
+      console.error("[App] deep-link openWebUrl failed:", err);
     });
   }, [deepLink?.key, status.online]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -58,6 +67,8 @@ export default function App() {
   // external editor) land here without the user reopening the popup.
   const triggerKey = (status.lastOnlineAt ?? 0) + homeBump;
   const home = useHome(triggerKey);
+  // Open work session + derived HH:MM timer (no background process; see hook).
+  const focusSession = useFocusSession(triggerKey);
 
   // Poll /api/home every 5s while the popup is visible and backend is online,
   // so manual_focus stays in sync with the Web UI / vault edits.
@@ -93,6 +104,7 @@ export default function App() {
   }, [home.data, home.loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [notifOpen, setNotifOpen] = useState(false);
+  const [quickTasksOpen, setQuickTasksOpen] = useState(false);
   const [howToOpen, setHowToOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
@@ -128,6 +140,14 @@ export default function App() {
   }, []);
   const [captureInitialSlug, setCaptureInitialSlug] = useState<string | null>(null);
   const [focusModalSlot, setFocusModalSlot] = useState<"today" | "week" | null>(null);
+  // The pick the user tried to switch to while a session was open (drives the
+  // friendly "Change task?" confirm). `switchBusy` covers the in-flight checkout.
+  const [switchPromptPick, setSwitchPromptPick] = useState<ManualPick | null>(null);
+  const [switchBusy, setSwitchBusy] = useState(false);
+
+  // Quick Task capture: Ctrl+Cmd+Q / tray "Add Quick Task" emit
+  // `quick-task-capture-open`; refetch home after a successful add.
+  const quickTaskCapture = useQuickTaskCapture(() => setHomeBump((n) => n + 1));
 
   const openCapture = (initialSlug: string | null) => {
     setCaptureInitialSlug(initialSlug);
@@ -151,11 +171,110 @@ export default function App() {
     }
   };
 
+  // Estimate↔actual reconciliation: persist a time estimate on the focused
+  // intent (minutes), or clear it (minutes === null). Best-effort; refetch home.
+  const handleSetEstimate = async (
+    projectSlug: string,
+    intentSlug: string,
+    minutes: number | null,
+  ) => {
+    try {
+      await api.setEstimate(
+        minutes === null
+          ? { project_slug: projectSlug, intent_slug: intentSlug, clear: true }
+          : { project_slug: projectSlug, intent_slug: intentSlug, minutes },
+      );
+      setHomeBump((n) => n + 1);
+    } catch {
+      // Best-effort — leave the existing value in place.
+    }
+  };
+
+  // Check in to a focus pick. Only one open session is allowed vault-wide, so if
+  // a session is already open for a *different* intent we show a friendly confirm
+  // and require an explicit check-out first — never auto-close it (R-4.2..R-4.4).
+  const handleCheckin = async (pick: ManualPick) => {
+    const matches = (p?: ManualPick | null) =>
+      !!p && p.project_slug === pick.project_slug && p.intent_slug === pick.intent_slug;
+    const open = focusSession.session;
+    const openIsThisPick =
+      !!open &&
+      open.project_slug === pick.project_slug &&
+      open.intent_slug === pick.intent_slug;
+    if (openIsThisPick) return; // already checked in here
+    if (open) {
+      // Friendly in-app confirm — require an explicit check-out first.
+      setSwitchPromptPick(pick);
+      return;
+    }
+    const mf = homeWithOverride.data?.manual_focus;
+    const slot: "today" | "today_pm" | "week" = matches(mf?.today)
+      ? "today"
+      : matches(mf?.today_pm)
+        ? "today_pm"
+        : "week";
+    try {
+      await api.focusCheckin({
+        project_slug: pick.project_slug,
+        intent_slug: pick.intent_slug,
+        slot,
+      });
+      setHomeBump((n) => n + 1);
+      focusSession.refetch();
+    } catch {
+      // Best-effort.
+    }
+  };
+
+  // Check out the open session; backend banks the segment into time_invested.
+  const handleCheckout = async () => {
+    try {
+      await api.focusCheckout();
+      setHomeBump((n) => n + 1);
+      focusSession.refetch();
+    } catch {
+      // Best-effort.
+    }
+  };
+
+  // "Check out current task" from the switch confirm. Closes the open session,
+  // then dismisses the dialog — no auto-check-in; the user re-taps Check in.
+  const handleSwitchCheckout = async (note: string | null) => {
+    setSwitchBusy(true);
+    try {
+      await api.focusCheckout(note);
+      setHomeBump((n) => n + 1);
+      focusSession.refetch();
+      setSwitchPromptPick(null);
+    } catch {
+      // Best-effort — leave the dialog open so the user can retry.
+    } finally {
+      setSwitchBusy(false);
+    }
+  };
+
+  // Human title for the currently open session, looked up from the manual-focus
+  // picks; falls back to the intent slug.
+  const openSessionTitle = (() => {
+    const open = focusSession.session;
+    if (!open) return null;
+    const mf = homeWithOverride.data?.manual_focus;
+    const match = [mf?.today, mf?.today_pm, mf?.week].find(
+      (p) =>
+        p &&
+        p.project_slug === open.project_slug &&
+        p.intent_slug === open.intent_slug,
+    );
+    return match ? match.next_action || match.intent_title : open.intent_slug;
+  })();
+
   const projects = home.data?.projects ?? [];
   const focusSlug = home.data?.focus?.slug ?? null;
 
   return (
     <main className="h-screen flex flex-col overflow-hidden">
+      {/* First-run onboarding overlay (yields to HandshakeBanner, R-1.3). */}
+      <OnboardingGate />
       {/* R-6.2: window-blocking overlay above all content on refused adoption. */}
       <HandshakeBanner />
       <BackendStatusBanner status={status} />
@@ -173,6 +292,23 @@ export default function App() {
             <span className="title text-[16px]" style={{ letterSpacing: "-0.02em" }}>
               Squirrel
             </span>
+            {isDev && (
+              <span
+                title="Local dev build — not the installed app"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  padding: "1px 5px",
+                  borderRadius: 4,
+                  background: "var(--warn-bg, #f59e0b22)",
+                  color: "var(--warn, #b45309)",
+                  border: "1px solid var(--warn, #b4530955)",
+                }}
+              >
+                DEV
+              </span>
+            )}
             <span className="eyebrow">Today</span>
             <span className="text-[12px] text-ink-4">·</span>
             <span
@@ -184,6 +320,37 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setQuickTasksOpen((v) => !v)}
+            aria-label="Quick Tasks"
+            title="Quick Tasks (⌃⌘Q to capture)"
+            className="icon-btn"
+          >
+            {/* lightning bolt — lucide "zap" */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+            </svg>
+            {(home.data?.quick_tasks?.active_count ?? 0) > 0 && (
+              <span
+                className="notif-badge tabular"
+                style={{ top: -3, right: -3 }}
+                aria-label={`${home.data?.quick_tasks?.active_count} quick tasks`}
+              >
+                {home.data?.quick_tasks?.active_count}
+              </span>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => setHowToOpen(true)}
@@ -283,8 +450,13 @@ export default function App() {
         <FocusWidget
           home={homeWithOverride}
           online={status.online}
+          session={focusSession.session}
+          elapsedMinutes={focusSession.elapsedMinutes}
           onPick={status.online ? setFocusModalSlot : undefined}
           onClear={status.online ? handleClearFocus : undefined}
+          onSetEstimate={status.online ? handleSetEstimate : undefined}
+          onCheckin={status.online ? handleCheckin : undefined}
+          onCheckout={status.online ? handleCheckout : undefined}
         />
         <DeadlinesWidget
           home={home}
@@ -292,6 +464,11 @@ export default function App() {
           projects={projects}
           onAddNote={openCapture}
           scrollTarget={deepLink}
+        />
+        <QuickTaskWidget
+          online={status.online}
+          refreshSignal={triggerKey}
+          onAdd={quickTaskCapture.openCapture}
         />
         <ParakeetWidget triggerKey={triggerKey} online={status.online} />
       </div>
@@ -306,7 +483,42 @@ export default function App() {
         </div>
       </footer>
 
+      {/* Gentle credit + global-shortcut strip */}
+      <AppCredit />
+
       <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
+
+      <FocusSwitchModal
+        open={switchPromptPick !== null}
+        currentTitle={openSessionTitle}
+        nextTitle={
+          switchPromptPick
+            ? switchPromptPick.next_action || switchPromptPick.intent_title
+            : null
+        }
+        busy={switchBusy}
+        onCheckoutCurrent={handleSwitchCheckout}
+        onCancel={() => setSwitchPromptPick(null)}
+      />
+
+      <QuickTaskPopover
+        open={quickTasksOpen}
+        onClose={() => setQuickTasksOpen(false)}
+        online={status.online}
+        refreshSignal={triggerKey}
+        onAdd={() => {
+          setQuickTasksOpen(false);
+          quickTaskCapture.openCapture();
+        }}
+      />
+
+      <QuickTaskCaptureModal
+        open={quickTaskCapture.open}
+        error={quickTaskCapture.error}
+        busy={quickTaskCapture.busy}
+        onSubmit={quickTaskCapture.submit}
+        onClose={quickTaskCapture.close}
+      />
 
       <NotificationCenter
         notifications={notifications}

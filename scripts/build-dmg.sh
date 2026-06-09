@@ -34,13 +34,21 @@ DIST="$ROOT/dist"
 BUILD="$ROOT/build/pyinstaller"
 STAGING="$ROOT/dmg-staging"
 DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
+# Hardened-runtime entitlements for the PyInstaller --onefile binaries. Without
+# com.apple.security.cs.disable-library-validation the extracted libpython fails
+# to dlopen ("different Team IDs") and the backend crash-loops. See the plist.
+ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
 DRY_RUN=0
 ARM64_ONLY=0
+SKIP_DMG=0   # --skip-dmg: build the SPA + dist/ CLI binaries, then stop before
+             # assembling the manual drag-install .dmg. Used by `make build-pkg`,
+             # which only needs dist/ and ships the .pkg-in-DMG instead.
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run)    DRY_RUN=1 ;;
     --arm64-only) ARM64_ONLY=1 ;;
+    --skip-dmg)   SKIP_DMG=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
@@ -133,10 +141,11 @@ _sign_binary() {
   local bin="$1"
   local name; name="$(basename "$bin")"
   local stderr_out; stderr_out="$(mktemp)"
-  info "codesign --force --options runtime --timestamp → $name"
+  info "codesign --force --options runtime --timestamp --entitlements → $name"
   if (( DRY_RUN )); then return; fi
   local exit_code=0
   codesign --force --options runtime --timestamp \
+    --entitlements "$ENTITLEMENTS" \
     --sign "$APPLE_SIGNING_IDENTITY" "$bin" 2>"$stderr_out" || exit_code=$?
   if (( exit_code )); then
     cat "$stderr_out" >&2
@@ -169,13 +178,24 @@ _notarize_and_staple() {
   local artifact="$1"
   local name; name="$(basename "$artifact")"
 
-  # Validate required env vars (R-2.7 equivalent for installer path)
-  for var in APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
-    [[ -n "${!var:-}" ]] \
-      || die "error: $var is unset — cannot notarize. Set it in your shell profile or .envrc."
-  done
+  # Credentials: prefer a keychain profile so the app-specific password never
+  # appears in the process listing ('ps'). Fall back to APPLE_ID/PASSWORD/TEAM_ID.
+  #   one-time setup:  xcrun notarytool store-credentials <profile> \
+  #                      --apple-id <id> --team-id <team> --password <app-specific-pwd>
+  #   then:            export APPLE_KEYCHAIN_PROFILE=<profile>
+  local -a notary_creds
+  if [[ -n "${APPLE_KEYCHAIN_PROFILE:-}" ]]; then
+    notary_creds=(--keychain-profile "$APPLE_KEYCHAIN_PROFILE")
+  else
+    for var in APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+      [[ -n "${!var:-}" ]] \
+        || die "error: $var is unset — cannot notarize. Set it (or APPLE_KEYCHAIN_PROFILE) in your shell profile or .envrc."
+    done
+    notary_creds=(--apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD")
+    warn "--password is passed on the command line (visible via 'ps'); set APPLE_KEYCHAIN_PROFILE to avoid this"
+  fi
 
-  info "notarytool submit → $name (this takes 1–5 min)"
+  info "notarytool submit → $name (Apple scan; usually 1–5 min)"
   local stderr_out; stderr_out="$(mktemp)"
   local stdout_out; stdout_out="$(mktemp)"
   local exit_code=0
@@ -185,14 +205,25 @@ _notarize_and_staple() {
     return
   fi
 
-  # Password passed via env var, not command line, to keep it out of process listings
-  # (notarytool supports NOTARYTOOL_PASSWORD but also --password; use env to avoid arg exposure)
-  xcrun notarytool submit "$artifact" \
-    --apple-id "$APPLE_ID" \
-    --team-id "$APPLE_TEAM_ID" \
-    --password "$APPLE_PASSWORD" \
-    --wait \
-    >"$stdout_out" 2>"$stderr_out" || exit_code=$?
+  # Run --wait in the background and print an elapsed-time heartbeat so the step
+  # never looks frozen while Apple is scanning.
+  xcrun notarytool submit "$artifact" "${notary_creds[@]}" --wait \
+    >"$stdout_out" 2>"$stderr_out" &
+  local notary_pid=$!
+  SECONDS=0
+  local warned_long=0
+  while kill -0 "$notary_pid" 2>/dev/null; do
+    sleep 10
+    printf '%s   ⏳ notarizing… %dm%02ds elapsed%s\r' \
+      "$C_BLUE" "$(( SECONDS / 60 ))" "$(( SECONDS % 60 ))" "$C_RESET"
+    if (( SECONDS >= 1200 && warned_long == 0 )); then
+      warned_long=1
+      printf '\n'
+      warn "20+ min elapsed — Apple's notarization queue may be backed up; still waiting…"
+    fi
+  done
+  printf '\n'
+  wait "$notary_pid" || exit_code=$?
 
   if (( exit_code )); then
     cat "$stdout_out" >&2
@@ -299,6 +330,13 @@ if (( ! DRY_RUN )); then
 fi
 (( ARM64_ONLY )) && ok "Backend binary → dist/squirrel-backend (arm64)" || ok "Backend binary → dist/squirrel-backend (universal)"
 
+# --skip-dmg: dist/ binaries are now built; the caller (build-pkg.sh flow) does
+# not want the manual drag-install DMG. Stop here before Step 4.
+if (( SKIP_DMG )); then
+  printf '\n%sDone (binaries only).%s  dist/squirrel, dist/squirrel-backend ready; skipped manual DMG.\n' "$C_BOLD" "$C_RESET"
+  exit 0
+fi
+
 # ─── Step 4: Assemble DMG staging ────────────────────────────────────────────
 hdr "Step 4 — Assemble DMG staging"
 run "rm -rf '$STAGING'"
@@ -385,13 +423,27 @@ if (( SIGNING && ! DRY_RUN )); then
   info "spctl --assess → squirrel-installer-macos.dmg"
   spctl_out="$(mktemp)"
   spctl_code=0
-  spctl --assess --type open --context context:primary-signature "$DMG_OUT" \
+  # -v makes spctl print the "source=..." line. Note: spctl emits "accepted"
+  # and "source=Notarized Developer ID" on SEPARATE lines, so match each token
+  # independently rather than as one contiguous string.
+  spctl --assess --type open --context context:primary-signature -v "$DMG_OUT" \
     >"$spctl_out" 2>&1 || spctl_code=$?
-  if (( spctl_code )) || ! grep -q "accepted source=Notarized Developer ID" "$spctl_out"; then
+
+  # Distinguish the two real failure modes so the message is honest:
+  #   (a) spctl itself rejected the DMG  → non-zero exit (genuine Gatekeeper fail)
+  #   (b) spctl accepted but the source/text isn't what we expect → unexpected state
+  reason=""
+  if (( spctl_code )); then
+    reason="spctl rejected the DMG (exit=$spctl_code) — not accepted by Gatekeeper"
+  elif ! grep -q ": accepted" "$spctl_out"; then
+    reason="spctl exit=0 but output is missing 'accepted' — unexpected assessment"
+  elif ! grep -q "source=Notarized Developer ID" "$spctl_out"; then
+    reason="accepted, but source is not 'Notarized Developer ID' (not notarized?)"
+  fi
+  if [[ -n "$reason" ]]; then
     cat "$spctl_out" >&2
     rm -f "$spctl_out"
-    printf 'failed: installer-dmg path, step: spctl assess, exit=%d\n' "$spctl_code" >&2
-    exit 1
+    die "Gatekeeper assertion failed: $reason"
   fi
   rm -f "$spctl_out"
   ok "spctl: accepted source=Notarized Developer ID"

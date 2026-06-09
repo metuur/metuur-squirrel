@@ -1,0 +1,80 @@
+#!/bin/bash
+# postinstall — configure Squirrel for the logged-in user after the payload lands.
+#
+# The .pkg payload (root-owned) has already installed:
+#   /Applications/Squirrel.app
+#   /usr/local/bin/squirrel, /usr/local/bin/squirrel-backend
+#   /usr/local/share/squirrel/{agent-pack,resources}
+#
+# This script runs as root. All per-user state (config, vault, agent-pack) is
+# written as the console user — never as root — so ownership is correct.
+# It is idempotent and never overwrites an existing config.
+set -u
+
+SHARE="/usr/local/share/squirrel"
+CONFIG_EXAMPLE="$SHARE/resources/squirrel.toml.example"
+AGENT_PACK="$SHARE/agent-pack"
+
+# ── Resolve the console (logged-in) user ─────────────────────────────────────
+consoleUser="$(/usr/bin/stat -f%Su /dev/console 2>/dev/null || true)"
+if [ -z "$consoleUser" ] || [ "$consoleUser" = "root" ]; then
+  echo "postinstall: no console user — skipping per-user configuration" >&2
+  exit 0
+fi
+userHome="$(/usr/bin/dscl . -read "/Users/$consoleUser" NFSHomeDirectory 2>/dev/null | /usr/bin/awk '{print $2}')"
+[ -n "$userHome" ] || userHome="/Users/$consoleUser"
+
+as_user() { /usr/bin/sudo -u "$consoleUser" "$@"; }
+
+# ── 1. Seed config + default vault (never overwrite an existing config) ───────
+sqdir="$userHome/.squirrel"
+cfg="$sqdir/config.toml"
+as_user /bin/mkdir -p "$sqdir"
+if [ ! -f "$cfg" ] && [ -f "$CONFIG_EXAMPLE" ]; then
+  as_user /bin/cp "$CONFIG_EXAMPLE" "$cfg"
+  vault="$userHome/squirrel-vault"
+  as_user /usr/bin/sed -i '' "s|path = \".*\"|path = \"$vault\"|" "$cfg" 2>/dev/null || true
+  as_user /bin/mkdir -p "$vault"
+  echo "postinstall: config → $cfg (vault: $vault)"
+fi
+
+# ── 2. Install agent-pack into every detected agent directory ─────────────────
+install_pack() {
+  local check="$1" dest="$2"
+  if [ -d "$userHome/$check" ]; then
+    as_user /bin/mkdir -p "$userHome/$dest"
+    as_user /usr/bin/rsync -a --delete "$AGENT_PACK/" "$userHome/$dest/"
+    echo "postinstall: agent-pack → $userHome/$dest"
+  fi
+}
+install_pack ".claude"   ".claude/plugins/squirrel"
+install_pack ".codex"    ".codex/squirrel"
+install_pack ".cursor"   ".cursor/rules/squirrel"
+install_pack ".windsurf" ".windsurf/rules/squirrel"
+
+# Clear the quarantine bit on the freshly installed app so first launch is clean.
+/usr/bin/xattr -dr com.apple.quarantine /Applications/Squirrel.app 2>/dev/null || true
+
+# Quit any previously-running Squirrel (from ANY bundle location) so the freshly
+# installed version takes over cleanly. A lingering old instance would otherwise
+# keep serving :3939 with a stale per-launch token.
+as_user /usr/bin/osascript -e 'tell application "Squirrel" to quit' 2>/dev/null || true
+# Hard fallback: kill every running squirrel app/sidecar regardless of which
+# bundle launched it (stale mounted-DMG copies, old /Applications builds, etc.).
+/usr/bin/pkill -f 'Squirrel.app/Contents/MacOS/squirrel' 2>/dev/null || true
+/usr/bin/pkill -f 'squirrel-backend --port 3939' 2>/dev/null || true
+/bin/sleep 1
+
+# Purge stale LaunchServices registrations and (re)register the freshly installed
+# bundle, so `open` resolves to /Applications and not an old mounted-DMG copy.
+# Multiple bundles share the id com.metuur.squirrel; without this, macOS may
+# launch a stale 0.x copy from an unmounted DMG instead of the new install —
+# the root cause of "the installer opened an older version".
+LSREG="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+[ -x "$LSREG" ] && as_user "$LSREG" -f /Applications/Squirrel.app 2>/dev/null || true
+
+# Launch the freshly installed build BY PATH — never `open -a "Squirrel"`, which
+# resolves by bundle id and can pick a stale registered copy.
+as_user /usr/bin/open /Applications/Squirrel.app 2>/dev/null || true
+
+exit 0

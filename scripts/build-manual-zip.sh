@@ -225,10 +225,12 @@ if (( INCLUDE_APP )); then
     if (( DRY_RUN )); then
       info "would build: pnpm tauri build (apps/desktop)"
     else
+      # --target is a TAURI flag (before any `--`); passing it after `--` sends it
+      # to cargo only, so tauri's bundler can't find the binary in target/<triple>.
       if (( ARM64_ONLY )); then
-        (cd "$ROOT/apps/desktop" && SQUIRREL_ARM64_ONLY=1 pnpm tauri build -- --target aarch64-apple-darwin)
+        (cd "$ROOT/apps/desktop" && SQUIRREL_ARM64_ONLY=1 pnpm tauri build --target aarch64-apple-darwin)
       else
-        (cd "$ROOT/apps/desktop" && pnpm tauri build -- --target universal-apple-darwin)
+        (cd "$ROOT/apps/desktop" && pnpm tauri build --target universal-apple-darwin)
       fi
     fi
     APP_PATH="$(_find_app)"

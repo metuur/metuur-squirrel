@@ -2,12 +2,11 @@
 // the parent footer handles layout + spacing.
 // EARS R-4.2 (in popup), R-4.3 (uses plugin-opener), R-4.4 (no pre-flight).
 
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { BACKEND_ORIGIN } from "../api/client";
+import { openWebUrl } from "../api/client";
 
 export function OpenWebUIButton() {
   const handleClick = () => {
-    void openUrl(BACKEND_ORIGIN);
+    void openWebUrl();
   };
 
   return (

@@ -43,8 +43,17 @@ from typing import Any, Callable, Optional
 
 # When running as a PyInstaller bundle, lib modules are frozen and sys._MEIPASS
 # holds the temp extraction dir. In dev, walk up to the repo root as before.
+#
+# _REPO must be defined in BOTH branches: it is also used as the base for
+# agent-pack assets (templates, plugin.json — see _detect_version and the
+# intent-template fallback). When frozen, the repo tree is absent; the .pkg
+# installs agent-pack under /usr/local/share/squirrel, so point _REPO there so
+# `_REPO / "agent-pack" / …` resolves to the installed copy. Previously _REPO was
+# defined only in the dev branch, so /api/me crashed with NameError in the
+# installed app ("Backend offline").
 if getattr(sys, "frozen", False):
     _LIB = pathlib.Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    _REPO = pathlib.Path("/usr/local/share/squirrel")
 else:
     _REPO = pathlib.Path(__file__).resolve().parent.parent.parent
     _LIB = _REPO / "apps" / "cli" / "lib"
@@ -68,6 +77,12 @@ LAN_HOST = "0.0.0.0"
 TOKEN: Optional[str] = None
 DEV_MODE: bool = False
 _TOKEN_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+
+# API paths served WITHOUT a token. /api/_handshake runs its own token_echo
+# contract; /api/env/obsidian is a read-only first-run onboarding probe that
+# must work before the per-launch token is reliably propagated to the webview
+# (see _dispatch).
+_AUTH_EXEMPT_PATHS = frozenset({"/api/_handshake", "/api/env/obsidian"})
 
 
 def _auth_required() -> bool:
@@ -302,6 +317,63 @@ def _ensure_mind_journal_once(vault_path: pathlib.Path, vault_name: str) -> None
         pass  # Non-fatal
 
 
+# ─── Onboarding: Obsidian detection + vault config write ─────────────────────
+
+
+OBSIDIAN_APP_PATH = pathlib.Path("/Applications/Obsidian.app")
+_VAULT_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def detect_obsidian(
+    app_path: Optional[pathlib.Path] = None,
+    *,
+    mdfind_timeout: float = 2.0,
+) -> tuple[bool, Optional[str]]:
+    """Detect whether Obsidian is installed (macOS). Read-only.
+
+    Order (R-2.2): /Applications/Obsidian.app, then `mdfind` by bundle id
+    `md.obsidian`. Returns (installed, path). On `mdfind` timeout or any OS
+    error the probe reports not-installed rather than raising (R-2.8).
+    """
+    app = app_path if app_path is not None else OBSIDIAN_APP_PATH
+    if app.exists():
+        return True, str(app)
+    try:
+        proc = subprocess.run(
+            ["mdfind", "kMDItemCFBundleIdentifier == 'md.obsidian'"],
+            capture_output=True, text=True, timeout=mdfind_timeout,
+        )
+        for line in proc.stdout.splitlines():
+            hit = line.strip()
+            if hit:
+                return True, hit
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return False, None
+
+
+def _validate_vault_path(raw: str) -> pathlib.Path:
+    """Expand and sandbox a user-supplied vault path (R-3.12).
+
+    Rejects paths that, after `~`/symlink expansion, are not absolute or escape
+    the user's home directory. Returns the resolved path (which may not yet
+    exist — the caller decides whether to create it). Raises ValueError on a
+    rejected path.
+    """
+    expanded = pathlib.Path(raw).expanduser()
+    if not expanded.is_absolute():
+        raise ValueError("Vault path must be absolute.")
+    # resolve() (strict=False) follows symlinks where present and tolerates a
+    # non-existent leaf, so a parent symlink that escapes home is still caught.
+    resolved = expanded.resolve()
+    home = pathlib.Path(os.path.expanduser("~")).resolve()
+    try:
+        resolved.relative_to(home)
+    except ValueError:
+        raise ValueError("Vault path must be inside your home directory.")
+    return resolved
+
+
 # ─── Route table ─────────────────────────────────────────────────────────────
 
 
@@ -314,6 +386,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/me$"),                                "api_me"),
     ("GET",  re.compile(r"^/api/vaults$"),                            "api_vaults_list"),
     ("POST", re.compile(r"^/api/vault$"),                             "api_set_vault"),
+    ("GET",  re.compile(r"^/api/env/obsidian$"),                      "api_env_obsidian"),
+    ("POST", re.compile(r"^/api/config/vault$"),                      "api_config_vault"),
     ("GET",  re.compile(r"^/api/home$"),                              "api_home"),
     ("GET",  re.compile(r"^/api/focus$"),                             "api_focus_get"),
     ("PUT",  re.compile(r"^/api/focus/today$"),                       "api_focus_put_today"),
@@ -323,6 +397,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/focus/checkout$"),                    "api_focus_checkout"),
     ("GET",  re.compile(r"^/api/focus/session$"),                     "api_focus_session"),
     ("POST", re.compile(r"^/api/focus/recalculate$"),                 "api_focus_recalculate"),
+    ("PUT",  re.compile(r"^/api/intent/estimate$"),                   "api_intent_estimate"),
     ("GET",  re.compile(r"^/api/projects$"),                          "api_projects_list"),
     ("GET",  re.compile(r"^/api/projects/(?P<slug>[A-Z0-9][A-Z0-9_-]*)$"),
                                                                        "api_project_detail"),
@@ -345,6 +420,11 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
+    ("GET",  re.compile(r"^/api/quick-tasks$"),                       "api_quick_tasks_list"),
+    ("POST", re.compile(r"^/api/quick-tasks$"),                       "api_quick_task_create"),
+    ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/complete$"), "api_quick_task_complete"),
+    ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),   "api_quick_task_snooze"),
+    ("DELETE", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),         "api_quick_task_delete"),
     ("POST", re.compile(r"^/api/reveal$"),                            "api_reveal"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
@@ -391,7 +471,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_common_headers(no_store=True)
         self.send_header("Allow", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        # X-Squirrel-Token is the auth header every webview request carries. It
+        # is NOT a CORS-safelisted header, so the browser sends a preflight and
+        # blocks the real request unless it is echoed here. Omitting it silently
+        # breaks every authenticated cross-origin fetch from the popup/onboarding
+        # webview (the "Obsidian not found" / backend-unreachable failure).
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Squirrel-Token")
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
         _log_request("OPTIONS", self.path, 204)
@@ -458,8 +543,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # R-2.6/R-2.7/R-2.8: gate API routes on a constant-time token match.
         # The SPA shell and static assets are exempt so the browser can load
         # the app via the open-web token URL before any API call is made.
-        # /api/_handshake runs its own contract and is always exempt.
-        if (bare.startswith("/api/") and bare != "/api/_handshake"
+        # Exempt endpoints:
+        #   /api/_handshake     — runs its own token_echo contract.
+        #   /api/env/obsidian   — read-only first-run onboarding probe. It runs
+        #     before the trust relationship is reliable and reveals nothing
+        #     secret (only whether /Applications/Obsidian.app exists, which any
+        #     local process can already determine). Gating it made onboarding
+        #     fail with "Obsidian not found" whenever the per-launch token was
+        #     not yet/incorrectly propagated to the webview.
+        if (bare.startswith("/api/") and bare not in _AUTH_EXEMPT_PATHS
                 and _auth_required() and not self._token_ok()):
             return self._send_unauthorized(method)
         for m, pattern, fn_name in ROUTES:
@@ -591,6 +683,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "multi_vault": ctx.multi,
             "theme": cookies.get(THEME_COOKIE) or "auto",
             "version": _detect_version(),
+            # True when running without token auth (e.g. `make backend-start` /
+            # `tauri dev`) so the UIs can badge a local/dev run distinctly from
+            # the installed, tokened app.
+            "dev": DEV_MODE,
             "notifications": config_loader.load_notifications_settings(
                 config_loader.DEFAULT_CONFIG_PATH
             ),
@@ -615,6 +711,56 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(404, "We could not find that workspace.")
         self._send_json({"success": True, "name": name},
                         extra_set_cookie=(WORKSPACE_COOKIE, name))
+
+    # ── /api/env/obsidian — onboarding: is Obsidian installed? ───────────────
+
+    def api_env_obsidian(self) -> None:
+        """Report whether Obsidian is installed (R-2.1..R-2.4, R-2.8).
+
+        Read-only; does not require a configured vault, so it does not call
+        _context() (which would 503 during first-run onboarding)."""
+        installed, path = detect_obsidian()
+        self._send_json({"installed": installed, "path": path})
+
+    # ── /api/config/vault — onboarding: set the vault in config.toml ─────────
+
+    def api_config_vault(self) -> None:
+        """Persist the chosen vault as the default in ~/.squirrel/config.toml.
+
+        Validates name (R-3.13) and path (R-3.12) before any filesystem write;
+        creates the folder when requested (R-3.4); requires a directory after
+        (R-3.5); persists via the atomic idempotent upsert (R-3.6/R-3.10/R-3.11).
+        Does not require an existing vault, so no _context() call."""
+        payload = self._read_json_body()
+        name = (payload.get("name") or "personal").strip()
+        raw_path = (payload.get("path") or "").strip()
+        create = bool(payload.get("create", False))
+
+        if not raw_path:
+            raise _UserError(400, "Vault path is required.")
+        if not _VAULT_NAME_RE.match(name):
+            raise _UserError(
+                400,
+                "Vault name may only contain letters, numbers, dot, dash, "
+                "and underscore.",
+            )
+        try:
+            resolved = _validate_vault_path(raw_path)
+        except ValueError as ve:
+            raise _UserError(400, str(ve))
+
+        if create and not resolved.exists():
+            try:
+                resolved.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                raise _UserError(400, "Could not create the vault folder.")
+        if not resolved.is_dir():
+            raise _UserError(400, "Vault path is not a directory.")
+
+        vault = config_loader.upsert_default_vault(name, str(resolved))
+        self._send_json(
+            {"name": vault.name, "path": str(vault.path), "default": True}
+        )
 
     def api_set_theme(self) -> None:
         payload = self._read_json_body()
@@ -745,6 +891,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception:
             pass
 
+        # R-5.1 / R-4.3 — Quick Task Stack summary. Computed fresh (not cached) so
+        # the wake-commit runs on each poll; quick tasks are excluded from the
+        # cached scanners above so this does not affect their results.
+        qt_block = {"active": [], "active_count": 0, "snoozed_count": 0,
+                    "oldest": None, "return_blocked": False}
+        try:
+            from quick_task_writer import collect_quick_tasks
+            qt = collect_quick_tasks(ctx.active.path)
+            qt_block = {
+                "active": qt["active"],
+                "active_count": qt["active_count"],
+                "snoozed_count": qt["snoozed_count"],
+                "oldest": qt["active"][0] if qt["active"] else None,
+                "return_blocked": qt["return_blocked"],
+            }
+        except Exception:
+            pass
+
         self._send_json({
             "focus": focus_payload,
             "pressing": pressing[:5],
@@ -760,6 +924,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "active_count": len(rem.get("active", [])),
             },
             "journal": journal_block,
+            "quick_tasks": qt_block,
         })
 
     # ── /api/focus — manual picks ───────────────────────────────────────────
@@ -896,6 +1061,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_focus_checkout(self) -> None:
         ctx, _ = self._context()
+        # Optional free-text note: why the user is switching/leaving this task.
+        # Absent for a plain check-out (no body) — defaults to None.
+        body = self._read_json_body()
+        raw_note = body.get("note")
+        switch_note = raw_note.strip() if isinstance(raw_note, str) and raw_note.strip() else None
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         conn = db.get_conn()
         db.init_schema(conn)
@@ -909,7 +1079,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._send_json_error(409, "no_open_session")
                 return
             session_id, project_slug, intent_slug, checkin_at = row
-            conn.execute("UPDATE work_sessions SET checkout_at = ? WHERE id = ?", (now, session_id))
+            conn.execute(
+                "UPDATE work_sessions SET checkout_at = ?, switch_note = ? WHERE id = ?",
+                (now, switch_note, session_id),
+            )
             conn.commit()
             duration_minutes = conn.execute(
                 "SELECT CAST((julianday(checkout_at) - julianday(checkin_at)) * 1440 AS INTEGER)"
@@ -960,6 +1133,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
             conn.close()
         self._invalidate_vault_cache(ctx)
         self._send_json({"updated": len(intents)})
+
+    def api_intent_estimate(self) -> None:
+        """PUT /api/intent/estimate — persist or clear an intent's time estimate.
+
+        Body: {project_slug, intent_slug, minutes}  or  {project_slug, intent_slug, clear: true}
+        Variance is derived on read (in get_manual_focus); nothing variance-related
+        is stored here. (R-1.5, R-2.3, R-2.7, R-3.4)
+        """
+        body = self._read_json_body()
+        ctx, _ = self._context()
+        project_slug = body.get("project_slug", "")
+        intent_slug = body.get("intent_slug", "")
+        if not project_slug or not intent_slug:
+            self._send_json_error(400, "project_slug and intent_slug are required")
+            return
+        from estimate_buffer import (
+            apply_estimate_by_slugs, clear_estimate_by_slugs, EstimateError,
+        )
+        try:
+            if body.get("clear") is True:
+                clear_estimate_by_slugs(ctx.active.path, project_slug, intent_slug)
+                stored = None
+            else:
+                stored = apply_estimate_by_slugs(
+                    ctx.active.path, project_slug, intent_slug, body.get("minutes"),
+                )
+        except EstimateError as e:
+            status = 404 if e.code == "INTENT_NOT_FOUND" else 400
+            self._send_json_error(status, e.code)
+            return
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"ok": True, "estimate": stored})
 
     # ── projects ────────────────────────────────────────────────────────────
 
@@ -1407,6 +1612,93 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(500, "Could not snooze reminder.")
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id, "snoozed_until": until})
+
+    # ── /api/quick-tasks — Quick Task Stack ─────────────────────────────────
+
+    def api_quick_tasks_list(self) -> None:
+        """GET — scan + capacity-aware wake-commit (R-2.1, R-2.7, R-4.2–R-4.5)."""
+        ctx, _ = self._context()
+        from quick_task_writer import collect_quick_tasks
+        try:
+            data = collect_quick_tasks(ctx.active.path)
+        except Exception as exc:
+            _log_exception(exc)
+            data = {"active": [], "snoozed": [], "active_count": 0,
+                    "snoozed_count": 0, "limit": 5, "return_blocked": False}
+        self._send_json(data)
+
+    def api_quick_task_create(self) -> None:
+        """POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)."""
+        ctx, _ = self._context()
+        payload = self._read_json_body()
+        text = (payload.get("text") or "").strip()
+        if not text:
+            raise _UserError(400, "Please write the quick task before saving.")
+        from quick_task_writer import create_quick_task, QuickTaskError
+        try:
+            qt_id = create_quick_task(ctx.active.path, text)
+        except QuickTaskError as e:
+            if e.code == "QUICK_TASK_LIMIT_REACHED":
+                # R-2.3 / R-2.4: hard cap — block until one is cleared.
+                return self._send_json({"error": "QUICK_TASK_LIMIT_REACHED"}, status=409)
+            raise _UserError(400, "Could not add the quick task.")
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not add the quick task. Please try again.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id}, status=201)
+
+    def api_quick_task_complete(self, qt_id: str) -> None:
+        """PATCH — mark a Quick Task done (R-3.1, R-3.6)."""
+        ctx, _ = self._context()
+        from quick_task_writer import complete_quick_task, resolve_quick_task_path
+        path = resolve_quick_task_path(ctx.active.path, qt_id)
+        if path is None:
+            raise _UserError(404, "We could not find that quick task.")
+        try:
+            complete_quick_task(path)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not complete the quick task.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id})
+
+    def api_quick_task_delete(self, qt_id: str) -> None:
+        """DELETE — remove a Quick Task (R-3.2, R-3.6)."""
+        ctx, _ = self._context()
+        from quick_task_writer import delete_quick_task, resolve_quick_task_path
+        path = resolve_quick_task_path(ctx.active.path, qt_id)
+        if path is None:
+            raise _UserError(404, "We could not find that quick task.")
+        try:
+            delete_quick_task(path)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not delete the quick task.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id})
+
+    def api_quick_task_snooze(self, qt_id: str) -> None:
+        """PATCH — snooze a Quick Task (R-3.3, R-3.4, R-3.5)."""
+        ctx, _ = self._context()
+        from quick_task_writer import (
+            snooze_quick_task, resolve_quick_task_path, QuickTaskError,
+        )
+        path = resolve_quick_task_path(ctx.active.path, qt_id)
+        if path is None:
+            raise _UserError(404, "We could not find that quick task.")
+        until = (self._read_json_body().get("until") or "1h").strip() or "1h"
+        try:
+            wake_iso = snooze_quick_task(path, until)
+        except QuickTaskError as e:
+            if e.code == "QUICK_TASK_SNOOZE_LIMIT":
+                return self._send_json({"error": "QUICK_TASK_SNOOZE_LIMIT"}, status=409)
+            raise _UserError(400, "Could not snooze the quick task.")
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not snooze the quick task.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": qt_id, "snoozed_until": wake_iso})
 
     def api_reveal(self) -> None:
         # The server already binds to 127.0.0.1 by default; this extra check
@@ -1959,7 +2251,10 @@ def _content_type(name: str) -> str:
 
 
 def _detect_version() -> str:
-    pj = _REPO / ".claude-plugin" / "plugin.json"
+    # plugin.json was relocated under agent-pack/ during the monorepo
+    # restructure; the old _REPO/.claude-plugin path now misses, which is why
+    # the sidebar showed "v?". Point at the current location.
+    pj = _REPO / "agent-pack" / ".claude-plugin" / "plugin.json"
     if pj.is_file():
         try:
             return json.loads(pj.read_text()).get("version", "?")

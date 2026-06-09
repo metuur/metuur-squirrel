@@ -248,6 +248,44 @@ class TestMethodNotAllowed(_ServerCase):
             self.assertEqual(he.code, 404)
 
 
+class TestCorsPreflight(_ServerCase):
+    """The webview sends the custom ``X-Squirrel-Token`` header cross-origin, so
+    a non-simple request triggers a CORS preflight. The preflight OPTIONS
+    response MUST list ``X-Squirrel-Token`` in ``Access-Control-Allow-Headers`` —
+    otherwise the browser blocks every authenticated request before it is sent
+    (root cause of the onboarding "Obsidian not found" failure). ``curl`` never
+    performs a preflight, so only a browser (and this test) catches it."""
+
+    def _preflight(self, path):
+        req = urllib.request.Request(
+            self._url(path),
+            method="OPTIONS",
+            headers={
+                "Origin": "tauri://localhost",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "x-squirrel-token, content-type",
+            },
+        )
+        try:
+            return urllib.request.urlopen(req, timeout=3)
+        except urllib.error.HTTPError as he:
+            return he
+
+    def test_preflight_allows_x_squirrel_token_header(self):
+        r = self._preflight("/api/env/obsidian")
+        allow = (r.headers.get("Access-Control-Allow-Headers") or "").lower()
+        self.assertIn(
+            "x-squirrel-token", allow,
+            f"preflight must allow the auth header so the webview fetch is not "
+            f"blocked; got Access-Control-Allow-Headers={allow!r}",
+        )
+
+    def test_preflight_still_allows_content_type(self):
+        r = self._preflight("/api/env/obsidian")
+        allow = (r.headers.get("Access-Control-Allow-Headers") or "").lower()
+        self.assertIn("content-type", allow)
+
+
 # ─── Bind address (R-1.3) ────────────────────────────────────────────────────
 
 
@@ -397,6 +435,16 @@ class TestTokenEnforcement(_ServerCase):
     def test_matching_header_returns_200(self):
         r = self._get("/api/me", headers={"X-Squirrel-Token": self.GOOD})
         self.assertEqual(r.status, 200)
+
+    def test_obsidian_probe_is_exempt_from_token(self):
+        # /api/env/obsidian is a read-only first-run onboarding probe. It must
+        # answer even with NO token, so onboarding detects Obsidian before the
+        # per-launch token is reliably propagated to the webview. (Root cause of
+        # the persistent "Obsidian not found".)
+        r = self._get("/api/env/obsidian")
+        self.assertEqual(r.status, 200)
+        body = json.loads(r.read())
+        self.assertIn("installed", body)
 
     def test_static_asset_is_also_gated(self):
         # R-2.6 decision: the SPA shell / static routes are gated too, so a

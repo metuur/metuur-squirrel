@@ -1,6 +1,6 @@
 # Working Smarter (Intermediate) — 10 Commands for Complex Situations
 
-> 🎯 *What you'll learn:* The next level of Squirrel commands for stakeholder updates, deadlines, big tasks, decision logging, recovery, and status reporting. Use these once or twice a week.
+> 🎯 _What you'll learn:_ The next level of Squirrel commands for stakeholder updates, deadlines, big tasks, decision logging, recovery, and status reporting. Use these once or twice a week.
 
 **Version:** Squirrel v0.5.0  
 **Last updated:** 2026-05-24  
@@ -78,7 +78,7 @@ Subject: Context Bridge: FREELANCE-CLIENT-B Progress Update
 ---
 
 ## 🎯 What I'm working on
-CSS grid layout for the dashboard cards. Testing responsiveness across 
+CSS grid layout for the dashboard cards. Testing responsiveness across
 three breakpoints (mobile, tablet, desktop).
 
 ## ✅ What I finished
@@ -146,6 +146,7 @@ You read this and feel proud. Three intents done, three to go. You're on track.
 ### What you see
 
 A 6-section brief:
+
 1. **NOW** — current active intent + next action
 2. **DONE** — completed intents (checkmarks)
 3. **NEXT** — pending/in-progress intents
@@ -155,12 +156,12 @@ A 6-section brief:
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-brief [PROJECT]` | Full 6-section brief |
-| `/sq-brief [PROJECT] --short` | 3 lines, perfect for Slack |
-| `/sq-brief [PROJECT] --email you@example.com` | Open mailto draft |
-| `/sq-brief --all` | Brief for every active project (useful for Friday review) |
+| Command                                       | Effect                                                    |
+| --------------------------------------------- | --------------------------------------------------------- |
+| `/sq-brief [PROJECT]`                         | Full 6-section brief                                      |
+| `/sq-brief [PROJECT] --short`                 | 3 lines, perfect for Slack                                |
+| `/sq-brief [PROJECT] --email you@example.com` | Open mailto draft                                         |
+| `/sq-brief --all`                             | Brief for every active project (useful for Friday review) |
 
 ### Anti-pattern to avoid
 
@@ -172,7 +173,7 @@ A 6-section brief:
 
 ### What it does
 
-Creates a structured decision record that captures *why* you chose Option A over Option B. Future-you will forget the reasoning; this note preserves it.
+Creates a structured decision record that captures _why_ you chose Option A over Option B. Future-you will forget the reasoning; this note preserves it.
 
 ### How it works
 
@@ -191,8 +192,8 @@ You're Tomás. Your team decided to use SQLite instead of PostgreSQL for the MVP
 Squirrel asks you to fill in:
 
 ```
-**Context**: 
-We're building a payment processing service. Need a database NOW, 
+**Context**:
+We're building a payment processing service. Need a database NOW,
 not in 2 weeks.
 
 **Alternatives considered**:
@@ -207,8 +208,8 @@ not in 2 weeks.
 - Con: max ~100K records before perf degrades
 
 **Rationale**:
-MVP validation > perfect architecture. If the product sells, 
-we'll have budget for a real database engineer to migrate. 
+MVP validation > perfect architecture. If the product sells,
+we'll have budget for a real database engineer to migrate.
 If it doesn't, we didn't waste 3 weeks on setup.
 ```
 
@@ -236,10 +237,10 @@ Squirrel walks you through a structured form, then saves a decision memo. Format
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-decision "Topic"` | Standard decision log |
-| `/sq-decision "Topic" --quick` | Skip some fields, just record the decision |
+| Command                             | Effect                                         |
+| ----------------------------------- | ---------------------------------------------- |
+| `/sq-decision "Topic"`              | Standard decision log                          |
+| `/sq-decision "Topic" --quick`      | Skip some fields, just record the decision     |
 | `/sq-decision "Topic" --reversible` | Flag this as "can be reversed" vs. "permanent" |
 
 ### Anti-pattern to avoid
@@ -325,12 +326,12 @@ A prioritized list of all deadlines, grouped by 6 urgency levels. Each deadline 
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-deadlines` | All deadlines, all levels |
-| `/sq-deadlines --level critical,urgent` | Only red and orange |
-| `/sq-deadlines --level critical,urgent,soon` | Red, orange, yellow |
-| `/sq-deadlines --this-week` | Only deadlines < 7 days |
+| Command                                      | Effect                    |
+| -------------------------------------------- | ------------------------- |
+| `/sq-deadlines`                              | All deadlines, all levels |
+| `/sq-deadlines --level critical,urgent`      | Only red and orange       |
+| `/sq-deadlines --level critical,urgent,soon` | Red, orange, yellow       |
+| `/sq-deadlines --this-week`                  | Only deadlines < 7 days   |
 
 ### Anti-pattern to avoid
 
@@ -406,11 +407,11 @@ Your estimate + the multiplier + the realistic total. Includes a note on why the
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-estimate "2 hours"` | Apply standard ADHD multiplier |
-| `/sq-estimate "2 hours" --low` | Conservative multiplier (×1.5) |
-| `/sq-estimate "2 hours" --high` | Pessimistic multiplier (×3.5) |
+| Command                              | Effect                                  |
+| ------------------------------------ | --------------------------------------- |
+| `/sq-estimate "2 hours"`             | Apply standard ADHD multiplier          |
+| `/sq-estimate "2 hours" --low`       | Conservative multiplier (×1.5)          |
+| `/sq-estimate "2 hours" --high`      | Pessimistic multiplier (×3.5)           |
 | `/sq-estimate "2 hours" --no-buffer` | Just the raw estimate (not recommended) |
 
 ### Anti-pattern to avoid
@@ -447,16 +448,16 @@ Squirrel breaks it down:
 Phases:
   🔬 Research & Planning     (120min) → 1 chunk
     (Read current auth code, document flow, plan new flow)
-  
+
   🛠  Setup & Scaffolding     (120min) → 1 chunk
     (Create new auth module structure, imports, stubs)
-  
+
   ⚙️  Core Implementation    (1800min) → 6 chunks
     (Token generation, validation, refresh logic, etc.)
-  
+
   ✨ Polish & Edge Cases      (180min) → 2 chunks
     (Error handling, logging, security checks)
-  
+
   🧪 Testing & Docs          (180min) → 2 chunks
     (Unit tests, integration tests, API docs)
 
@@ -498,11 +499,11 @@ A breakdown of the big task into phases, with time estimates for each, plus a re
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-chunk 8 hours` | Break into optimal chunk sizes |
+| Command                                 | Effect                          |
+| --------------------------------------- | ------------------------------- |
+| `/sq-chunk 8 hours`                     | Break into optimal chunk sizes  |
 | `/sq-chunk 8 hours --session-length 2h` | Make sessions shorter (2h each) |
-| `/sq-chunk 8 hours --sessions 3` | Force exactly 3 sessions |
+| `/sq-chunk 8 hours --sessions 3`        | Force exactly 3 sessions        |
 
 ### Anti-pattern to avoid
 
@@ -514,7 +515,7 @@ A breakdown of the big task into phases, with time estimates for each, plus a re
 
 ### What it does
 
-You're staring at something and your brain won't let you begin. This command figures out *why* you're stuck and applies the matching anti-paralysis trick.
+You're staring at something and your brain won't let you begin. This command figures out _why_ you're stuck and applies the matching anti-paralysis trick.
 
 ### How it works
 
@@ -612,12 +613,12 @@ Squirrel asks "what kind of stuck?", you answer, and Squirrel suggests the match
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-task-initiation` | Ask what kind of stuck |
+| Command                                 | Effect                        |
+| --------------------------------------- | ----------------------------- |
+| `/sq-task-initiation`                   | Ask what kind of stuck        |
 | `/sq-task-initiation --smallest-action` | Jump to smallest action trick |
-| `/sq-task-initiation --two-minute` | Jump to 2-minute timer trick |
-| `/sq-task-initiation --decompose` | Jump to decompose trick |
+| `/sq-task-initiation --two-minute`      | Jump to 2-minute timer trick  |
+| `/sq-task-initiation --decompose`       | Jump to decompose trick       |
 
 ### Anti-pattern to avoid
 
@@ -703,11 +704,11 @@ A deadline list with tone-adjusted messaging. Critical deadlines are calm, gentl
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-parakeet` | Full reminder, kind tone |
-| `/sq-parakeet --critical` | Show only the red ones (but still kind) |
-| `/sq-parakeet --motivational` | More encouraging tone |
+| Command                       | Effect                                  |
+| ----------------------------- | --------------------------------------- |
+| `/sq-parakeet`                | Full reminder, kind tone                |
+| `/sq-parakeet --critical`     | Show only the red ones (but still kind) |
+| `/sq-parakeet --motivational` | More encouraging tone                   |
 
 ### Anti-pattern to avoid
 
@@ -743,7 +744,7 @@ Squirrel reads yesterday's chat and reconstructs:
 ### 2026-05-23 16:30 [reconstructed from chat history]
 - **Estado**: Finished implementing password reset flow. Tests pending.
 
-- **Next physical action**: Run test_auth_password_reset.py with -vv flag 
+- **Next physical action**: Run test_auth_password_reset.py with -vv flag
                             to see detailed output. Likely quick fix.
 
 - **Hipótesis activa**: The email mock isn't being called correctly in the test.
@@ -751,7 +752,7 @@ Squirrel reads yesterday's chat and reconstructs:
 - **Open loops**: Need to verify email sending actually works (not just mocked).
 ```
 
-It's not perfect (Squirrel guessed the timestamp), but it's 80% there. You can confirm or edit, then save.
+It's not perfect (Squirrel estimated time the timestamp), but it's 80% there. You can confirm or edit, then save.
 
 ---
 
@@ -773,11 +774,11 @@ A draft shutdown note reconstructed from your chat history. Marked `[reconstruct
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-recover` | Reconstruct most recent session |
+| Command                           | Effect                             |
+| --------------------------------- | ---------------------------------- |
+| `/sq-recover`                     | Reconstruct most recent session    |
 | `/sq-recover --project [PROJECT]` | Reconstruct for a specific project |
-| `/sq-recover --hours 24` | Look back 24 hours (default is 12) |
+| `/sq-recover --hours 24`          | Look back 24 hours (default is 12) |
 
 ### Anti-pattern to avoid
 
@@ -846,15 +847,15 @@ A self-contained HTML file (no dependencies, no cloud calls). Shows projects, de
 
 ### Flags / variants
 
-| Command | Effect |
-|---|---|
-| `/sq-dashboard` | Generate and open in browser |
-| `/sq-dashboard --file /path/to/save` | Save to a custom path |
-| `/sq-dashboard --refresh 10` | Refresh every 10 minutes (not 5) |
+| Command                              | Effect                           |
+| ------------------------------------ | -------------------------------- |
+| `/sq-dashboard`                      | Generate and open in browser     |
+| `/sq-dashboard --file /path/to/save` | Save to a custom path            |
+| `/sq-dashboard --refresh 10`         | Refresh every 10 minutes (not 5) |
 
 ### Anti-pattern to avoid
 
-❌ **Don't stare at the dashboard all day.** It's a *view*, not a replacement for `/sq-start` and `/sq-end`. Use it for glance-checks, not as your primary interface.
+❌ **Don't stare at the dashboard all day.** It's a _view_, not a replacement for `/sq-start` and `/sq-end`. Use it for glance-checks, not as your primary interface.
 
 ---
 

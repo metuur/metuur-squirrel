@@ -1,11 +1,120 @@
+import { useRef, useState } from "react";
 import type { HomeState } from "../hooks/useHome";
-import type { ManualPick } from "../api/client";
+import type { ManualPick, OpenSession } from "../api/client";
 
 interface Props {
   home: HomeState;
   online: boolean;
+  // Live focus session + derived elapsed minutes (HH:MM timer on the open pick).
+  session?: OpenSession | null;
+  elapsedMinutes?: number;
   onPick?: (slot: "today" | "week") => void;
   onClear?: (slot: "today" | "week") => void;
+  onSetEstimate?: (
+    projectSlug: string,
+    intentSlug: string,
+    minutes: number | null,
+  ) => void;
+  // Check in to a pick / check out the open session. Only provided when online.
+  onCheckin?: (pick: ManualPick) => void;
+  onCheckout?: () => void;
+}
+
+// Format minutes as "Xh Ym" / "Ym".
+function fmtMins(m: number): string {
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+// Elapsed minutes as a zero-padded HH:MM with unbounded hours (e.g. "00:07",
+// "12:34"). Drives the live focus timer; minute granularity by design.
+function fmtHHMM(totalMinutes: number): string {
+  const safe = Math.max(0, Math.floor(totalMinutes));
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+// True when the open session belongs to this pick.
+function isSessionFor(
+  session: OpenSession | null | undefined,
+  pick: ManualPick,
+): boolean {
+  return (
+    !!session &&
+    session.project_slug === pick.project_slug &&
+    session.intent_slug === pick.intent_slug
+  );
+}
+
+// Green chip used for the live timer pill.
+const TIMER_CHIP_STYLE: React.CSSProperties = {
+  background: "rgba(47, 107, 79, 0.10)",
+  borderColor: "rgba(47, 107, 79, 0.18)",
+  color: "var(--color-ok)",
+};
+
+// Check in / live HH:MM timer + Check out, shown under a focused intent. Rendered
+// only when online (handlers present). Tapping Check in while another session is
+// open is gated by a friendly confirm in App — here we just emit the intent.
+function CheckinControls({
+  pick,
+  session,
+  elapsedMinutes,
+  onCheckin,
+  onCheckout,
+}: {
+  pick: ManualPick;
+  session: OpenSession | null | undefined;
+  elapsedMinutes: number;
+  onCheckin?: (pick: ManualPick) => void;
+  onCheckout?: () => void;
+}) {
+  if (!onCheckin && !onCheckout) return null; // offline / not wired
+
+  if (isSessionFor(session, pick)) {
+    return (
+      <div className="flex items-center gap-2 shrink-0 self-center">
+        <span
+          className="chip chip-am shrink-0 tabular-nums"
+          style={TIMER_CHIP_STYLE}
+          title="Time on this sitting"
+        >
+          ⏱ {fmtHHMM(elapsedMinutes)}
+        </span>
+        <button
+          type="button"
+          onClick={onCheckout}
+          disabled={!onCheckout}
+          className="btn disabled:opacity-50"
+          style={{ borderColor: "var(--color-critical)", color: "var(--color-critical)" }}
+        >
+          Check out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onCheckin?.(pick)}
+      disabled={!onCheckin}
+      className="btn shrink-0 self-center disabled:opacity-50"
+    >
+      Check in
+    </button>
+  );
+}
+
+// Neutral, non-shaming variance copy by ratio band (R-4.3, R-4.4). Inlined here
+// (not a shared cross-surface helper) — the web HomePage carries its own copy.
+function varianceLabel(ratio: number): string {
+  if (ratio >= 0.85 && ratio <= 1.15) return "about right — learning your pace";
+  if (ratio > 1.15) return "ran longer than planned — learning your pace";
+  return "finished ahead of plan";
 }
 
 interface PillProps {
@@ -94,9 +203,149 @@ interface FocusRowProps {
   chipStyle?: React.CSSProperties;
   pick: ManualPick;
   separator: boolean;
+  onSetEstimate?: (
+    projectSlug: string,
+    intentSlug: string,
+    minutes: number | null,
+  ) => void;
+  session?: OpenSession | null;
+  elapsedMinutes?: number;
+  onCheckin?: (pick: ManualPick) => void;
+  onCheckout?: () => void;
 }
 
-function ManualFocusRow({ badge, chipStyle, pick, separator }: FocusRowProps) {
+// The estimate/actual/variance line shown under a focused intent.
+// - has_variance:   "estimated time 45m · est 1h53m · actual 2h10m · 1.0× — copy"
+// - estimate only:  "est 1h53m · not started yet"
+// - actual only:    "actual 2h10m · + estimate"  (prompt to add an estimate)
+function EstimateLine({
+  pick,
+  onSetEstimate,
+}: {
+  pick: ManualPick;
+  onSetEstimate?: FocusRowProps["onSetEstimate"];
+}) {
+  // Inline estimate editor. window.prompt() is a no-op in the Tauri webview and
+  // the dialog plugin has no text-input prompt, so we edit in place: clicking the
+  // trigger reveals a small minutes input. Enter / blur commits, Esc cancels,
+  // empty value clears the estimate.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const skipCommit = useRef(false);
+
+  const startEdit = () => {
+    setDraft(pick.estimate_minutes ? String(pick.estimate_minutes) : "");
+    setEditing(true);
+  };
+
+  const commit = () => {
+    if (onSetEstimate) {
+      const trimmed = draft.trim();
+      if (trimmed === "") {
+        onSetEstimate(pick.project_slug, pick.intent_slug, null);
+      } else {
+        const mins = Number(trimmed);
+        if (Number.isFinite(mins) && mins > 0) {
+          onSetEstimate(pick.project_slug, pick.intent_slug, Math.round(mins));
+        }
+      }
+    }
+    setEditing(false);
+  };
+
+  const editor = (
+    <span className="inline-flex items-center gap-1">
+      <input
+        type="number"
+        min={1}
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (skipCommit.current) {
+            skipCommit.current = false;
+            setEditing(false);
+            return;
+          }
+          commit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          } else if (e.key === "Escape") {
+            skipCommit.current = true;
+            e.currentTarget.blur();
+          }
+        }}
+        placeholder="min"
+        className="w-12 px-1 py-0.5 text-[10.5px] rounded border border-hairline bg-surface text-ink-2 outline-none focus:border-ink-3 tabular-nums"
+      />
+      <span className="text-[10.5px] text-ink-4">min</span>
+    </span>
+  );
+
+  const setBtn = onSetEstimate ? (
+    editing ? (
+      editor
+    ) : (
+      <button
+        type="button"
+        onClick={startEdit}
+        className="text-[10.5px] underline-offset-2 hover:underline text-ink-3"
+      >
+        {pick.estimate_minutes ? "Update estimate" : "+ estimate"}
+      </button>
+    )
+  ) : null;
+
+  if (pick.has_variance && pick.estimate_minutes && pick.variance_ratio != null) {
+    return (
+      <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
+        {pick.estimate_user_minutes ? `estimated time ${fmtMins(pick.estimate_user_minutes)} · ` : ""}
+        est {fmtMins(pick.estimate_minutes)} · actual {fmtMins(pick.time_invested_minutes)} ·{" "}
+        <span className="text-ink-2">{pick.variance_ratio.toFixed(1)}×</span>{" "}
+        <span className="italic">— {varianceLabel(pick.variance_ratio)}</span> {setBtn}
+      </p>
+    );
+  }
+  if (pick.estimate_minutes) {
+    // Surface the ADHD buffer: the user estimated time `estimate_user_minutes`, which was
+    // multiplied up to the plan-around `estimate_minutes`. Showing "estimated time 1h →
+    // est 2h30m (2.5×)" makes the inflation explicit instead of looking broken.
+    const guess = pick.estimate_user_minutes;
+    const mult = guess && guess > 0 ? pick.estimate_minutes / guess : null;
+    return (
+      <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
+        {guess ? `Initial guess: ${fmtMins(guess)} · ` : ""}
+        More realistic: ~{fmtMins(pick.estimate_minutes)}
+        {mult ? ` (${mult.toFixed(1)}×)` : ""} · Status: Not started yet · {setBtn}
+      </p>
+    );
+  }
+  if (pick.time_invested_minutes > 0) {
+    return (
+      <p className="mt-1 text-[10.5px] text-ink-3 leading-snug">
+        actual {fmtMins(pick.time_invested_minutes)} {setBtn}
+      </p>
+    );
+  }
+  return setBtn ? (
+    <p className="mt-1 text-[10.5px] leading-snug">{setBtn}</p>
+  ) : null;
+}
+
+function ManualFocusRow({
+  badge,
+  chipStyle,
+  pick,
+  separator,
+  onSetEstimate,
+  session,
+  elapsedMinutes = 0,
+  onCheckin,
+  onCheckout,
+}: FocusRowProps) {
   // If next_action exists, the slug line carries project + intent context and
   // the title line carries the action. Otherwise project goes to the slug and
   // intent_title becomes the title (avoids printing intent twice).
@@ -127,15 +376,36 @@ function ManualFocusRow({ badge, chipStyle, pick, separator }: FocusRowProps) {
             </span>
           )}
         </div>
+        <EstimateLine pick={pick} onSetEstimate={onSetEstimate} />
       </div>
+      <CheckinControls
+        pick={pick}
+        session={session}
+        elapsedMinutes={elapsedMinutes}
+        onCheckin={onCheckin}
+        onCheckout={onCheckout}
+      />
     </div>
   );
 }
 
-export function FocusWidget({ home, online, onPick, onClear }: Props) {
+export function FocusWidget({
+  home,
+  online,
+  session,
+  elapsedMinutes,
+  onPick,
+  onClear,
+  onSetEstimate,
+  onCheckin,
+  onCheckout,
+}: Props) {
   const focus = home.data?.focus ?? null;
   const manualFocus = home.data?.manual_focus ?? null;
   const dimmed = !online;
+
+  // Check-in props shared by every focus row.
+  const checkinProps = { session, elapsedMinutes, onCheckin, onCheckout };
 
   const amPick = manualFocus?.today ?? null;
   const pmPick = manualFocus?.today_pm ?? null;
@@ -165,6 +435,8 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
               badge="Today"
               pick={amPick!}
               separator={false}
+              onSetEstimate={onSetEstimate}
+              {...checkinProps}
             />
           ) : (
             <div className="flex flex-col">
@@ -173,6 +445,8 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
                   badge="AM"
                   pick={amPick}
                   separator={false}
+                  onSetEstimate={onSetEstimate}
+                  {...checkinProps}
                 />
               )}
               {pmPick && (
@@ -181,6 +455,8 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
                   chipStyle={VIOLET_CHIP_STYLE}
                   pick={pmPick}
                   separator={!!amPick}
+                  onSetEstimate={onSetEstimate}
+                  {...checkinProps}
                 />
               )}
             </div>
@@ -211,6 +487,8 @@ export function FocusWidget({ home, online, onPick, onClear }: Props) {
             chipStyle={WEEK_CHIP_STYLE}
             pick={weekPick}
             separator={false}
+            onSetEstimate={onSetEstimate}
+            {...checkinProps}
           />
         </div>
       )}

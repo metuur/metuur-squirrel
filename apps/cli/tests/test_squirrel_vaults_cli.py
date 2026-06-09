@@ -188,17 +188,28 @@ class TestVaultFlagOnExistingSubcommands(unittest.TestCase):
 
 
 class TestVaultIndependentSubcommandsUnchanged(unittest.TestCase):
-    """R-5.7 — chunk, estimate, install are not vault-aware."""
+    """R-5.7 — chunk, install are not vault-aware.
+
+    NOTE: `estimate` became vault-aware via the estimate-actual-reconciliation
+    feature — `--intent` persists the adjusted estimate to a vault intent, so
+    `--vault` selects the target vault. This relaxes the original
+    cli-pattern-b-parity R-5.7 assumption for `estimate` only (see
+    docs/ears/estimate-actual-reconciliation.md R-2.1/R-2.2).
+    """
 
     def test_chunk_help_has_no_vault_flag(self):
         r = run_cli("chunk", "--help")
         self.assertEqual(r.returncode, 0)
         self.assertNotIn("--vault", r.stdout)
 
-    def test_estimate_help_has_no_vault_flag(self):
+    def test_estimate_help_has_intent_and_vault_flags(self):
+        # estimate-actual-reconciliation R-2.1/R-2.2: --intent persists to a
+        # vault intent; --vault selects which vault. Bare `estimate` is still
+        # stateless (R-2.2), but the flags are now offered.
         r = run_cli("estimate", "--help")
         self.assertEqual(r.returncode, 0)
-        self.assertNotIn("--vault", r.stdout)
+        self.assertIn("--intent", r.stdout)
+        self.assertIn("--vault", r.stdout)
 
 
 if __name__ == "__main__":

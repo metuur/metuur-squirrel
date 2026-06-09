@@ -6,9 +6,39 @@
 // full surface (projects, notes, deadlines, history, search, settings,
 // theme, vault). Do not import this client from the browser SPA.
 
+import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
+
 export const BACKEND_ORIGIN = "http://127.0.0.1:3939";
 
 const REQUEST_TIMEOUT_MS = 3000;
+
+// Per-launch shared secret minted by the Tauri shell (R-1.1). The installed
+// backend rejects unauthenticated requests with 401; the popup must present it
+// via `X-Squirrel-Token`. Fetched once and cached. Outside a Tauri host (plain
+// browser dev, vitest) `invoke` is unavailable/throws — we degrade to no token
+// so dev and tests keep working against a token-less backend.
+let tokenPromise: Promise<string | null> | undefined;
+function runtimeToken(): Promise<string | null> {
+  if (!tokenPromise) {
+    tokenPromise = invoke<string>("runtime_token").catch(() => null);
+  }
+  return tokenPromise;
+}
+
+// Open a Squirrel web-UI URL in the external browser, carrying the per-launch
+// runtime token as `?token=…`. The backend gates `/api/*` on `X-Squirrel-Token`
+// and the SPA reads that token from its launch URL; opening the web UI without
+// it leaves every API call 401 and the page empty. Accepts an absolute web path
+// ("/notes/VISA-001"), "" for the dashboard root, or a full BACKEND_ORIGIN URL
+// (e.g. a notification's item_url). Degrades to the un-tokened URL in dev/tests.
+export async function openWebUrl(pathOrUrl = ""): Promise<void> {
+  const token = await runtimeToken();
+  const base = pathOrUrl.startsWith("http") ? pathOrUrl : `${BACKEND_ORIGIN}${pathOrUrl}`;
+  const sep = base.includes("?") ? "&" : "?";
+  const url = token ? `${base}${sep}token=${encodeURIComponent(token)}` : base;
+  await openUrl(url);
+}
 
 export class ApiError extends Error {
   status: number;
@@ -24,10 +54,15 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
+    const token = await runtimeToken();
     const resp = await fetch(BACKEND_ORIGIN + path, {
-      headers: { "Content-Type": "application/json" },
-      signal: ctrl.signal,
       ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "X-Squirrel-Token": token } : {}),
+        ...(init?.headers as Record<string, string> | undefined),
+      },
+      signal: ctrl.signal,
     });
     const text = await resp.text();
     let data: unknown = null;
@@ -69,6 +104,9 @@ export interface Me {
   multi_vault: boolean;
   theme: "auto" | "light" | "dark";
   version: string;
+  /** True when the backend runs without token auth (local/dev), so the UI can
+   *  badge this as a non-installed build. */
+  dev?: boolean;
 }
 
 export interface FocusItem {
@@ -121,12 +159,54 @@ export interface ManualPick {
   next_action: string | null;
   picked_on: string;
   note: string | null;
+  // Estimate↔actual reconciliation (derived on read; null when absent).
+  estimate_minutes: number | null;
+  estimate_user_minutes: number | null;
+  time_invested_minutes: number;
+  variance_minutes: number | null;
+  variance_ratio: number | null;
+  has_variance: boolean;
 }
 
 export interface ManualFocusPayload {
   today: ManualPick | null;
   today_pm: ManualPick | null;
   week: ManualPick | null;
+}
+
+// The single open work session for the vault (checked in, not yet checked out).
+// `checkin_at` is a UTC ISO-8601 string written by the backend; the desktop
+// derives the live timer from it against the computer's local clock.
+export interface OpenSession {
+  project_slug: string;
+  intent_slug: string;
+  checkin_at: string;
+}
+
+export interface QuickTask {
+  id: string;
+  text: string;
+  path?: string;
+  qt_created_at?: string;
+  qt_snoozed_until?: string;
+  return_blocked?: boolean;
+}
+
+export interface QuickTasksPayload {
+  active: QuickTask[];
+  snoozed: QuickTask[];
+  active_count: number;
+  snoozed_count: number;
+  limit: number;
+  return_blocked: boolean;
+}
+
+export interface HomeQuickTasks {
+  active: QuickTask[];
+  active_count: number;
+  snoozed_count: number;
+  oldest: QuickTask | null;
+  return_blocked: boolean;
 }
 
 export interface HomePayload {
@@ -136,6 +216,7 @@ export interface HomePayload {
   manual_focus: ManualFocusPayload;
   parakeet: string;
   journal?: { due: boolean; next_due: string | null };
+  quick_tasks?: HomeQuickTasks;
 }
 
 export type Mood = "happy" | "neutral" | "sad";
@@ -203,10 +284,29 @@ export interface NotificationsPayload {
   total_count: number;
 }
 
+// `GET /api/env/obsidian` — onboarding Obsidian probe (server.py::api_env_obsidian)
+export interface ObsidianStatus {
+  installed: boolean;
+  path: string | null;
+}
+
+// `POST /api/config/vault` — onboarding vault write (server.py::api_config_vault)
+export interface VaultConfigResult {
+  name: string;
+  path: string;
+  default: boolean;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
   me: () => call<Me>("/api/me"),
+  obsidianStatus: () => call<ObsidianStatus>("/api/env/obsidian"),
+  setVaultConfig: (body: { name?: string; path: string; create?: boolean }) =>
+    call<VaultConfigResult>("/api/config/vault", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   home: () => call<HomePayload>("/api/home"),
   parakeet: () => call<ParakeetPayload>("/api/parakeet"),
   journal: () => call<JournalPayload>("/api/journal"),
@@ -240,6 +340,44 @@ export const api = {
       body: JSON.stringify({ ...body, slot: half }),
     });
   },
+  setEstimate: (
+    body:
+      | { project_slug: string; intent_slug: string; minutes: number }
+      | { project_slug: string; intent_slug: string; clear: true },
+  ) =>
+    call<{ ok: true; estimate: unknown }>("/api/intent/estimate", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  // Focus check-in / check-out. Backend keeps one open work session per vault.
+  focusCheckin: (body: {
+    project_slug: string;
+    intent_slug: string;
+    slot: "today" | "today_pm" | "week";
+  }) =>
+    call<{ session_id: number }>("/api/focus/checkin", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  // `note` (optional): why the user is switching focus, stored on the session.
+  focusCheckout: (note?: string | null) =>
+    call<{
+      session_id: number;
+      duration_minutes: number;
+      time_invested_minutes: number;
+    }>("/api/focus/checkout", {
+      method: "POST",
+      body: JSON.stringify(note ? { note } : {}),
+    }),
+  // 404 (`no_open_session`) is a normal "nothing checked in" state, not an error.
+  focusSession: async (): Promise<OpenSession | null> => {
+    try {
+      return await call<OpenSession>("/api/focus/session");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  },
   notifications: (params: { limit?: number; unread?: boolean } = {}) => {
     const qs = new URLSearchParams();
     if (params.limit !== undefined) qs.set("limit", String(params.limit));
@@ -261,4 +399,20 @@ export const api = {
     call<{ success: true }>(`/api/notification/${id}/dismiss`, {
       method: "PATCH",
     }),
+  // ── Quick Tasks ────────────────────────────────────────────────────────────
+  quickTasks: () => call<QuickTasksPayload>("/api/quick-tasks"),
+  quickTaskCreate: (text: string) =>
+    call<{ success: true; id: string }>("/api/quick-tasks", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+  quickTaskComplete: (id: string) =>
+    call<{ success: true }>(`/api/quick-task/${id}/complete`, { method: "PATCH" }),
+  quickTaskDelete: (id: string) =>
+    call<{ success: true }>(`/api/quick-task/${id}`, { method: "DELETE" }),
+  quickTaskSnooze: (id: string, until: string) =>
+    call<{ success: true; snoozed_until: string }>(
+      `/api/quick-task/${id}/snooze`,
+      { method: "PATCH", body: JSON.stringify({ until }) },
+    ),
 };

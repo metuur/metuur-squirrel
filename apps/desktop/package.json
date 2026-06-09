@@ -1,13 +1,15 @@
 {
   "name": "@squirrel/desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.7.20",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "tauri:build:dev": "tauri build --config src-tauri/tauri.dev.conf.json",
     "tauri:prebuild-backend": "bash scripts/build-backend-sidecar.sh",
     "tauri:build": "bash scripts/tauri-build.sh",
     "test": "vitest run"
@@ -16,6 +18,7 @@
     "@squirrel/design-system": "workspace:*",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-autostart": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-notification": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2",

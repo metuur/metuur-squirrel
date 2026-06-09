@@ -192,10 +192,26 @@ chmod +x "$BACKEND_BIN"
 ok "squirrel-backend → $BACKEND_BIN"
 
 # ─── 5. Write launchd plist ───────────────────────────────────────────────────
+# The bundled template is the dev shape (__PYTHON__ __SERVER_PY__ … __TOKEN_FILE__).
+# Installed runs use the compiled squirrel-backend binary, which needs no separate
+# server.py, so we point __PYTHON__ at the binary and drop the __SERVER_PY__ arg.
 info "Configuring background service..."
+TOKEN_FILE="$SQUIRREL_HOME/launchd-token"
+if [[ ! -f "$TOKEN_FILE" ]]; then
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32 > "$TOKEN_FILE"
+  else
+    head -c 32 /dev/urandom | xxd -p -c 256 > "$TOKEN_FILE"
+  fi
+  chmod 600 "$TOKEN_FILE"
+fi
 plist="$(cat "$RESOURCES/plist.template")"
-plist="${plist//__BINARY__/$BACKEND_BIN}"
+plist="$(printf '%s\n' "$plist" | grep -v '__SERVER_PY__')"   # binary needs no server.py
+plist="${plist//__PYTHON__/$BACKEND_BIN}"
+plist="${plist//__BINARY__/$BACKEND_BIN}"                     # tolerate either template
+plist="${plist//__SERVER_PY__/}"
 plist="${plist//__PORT__/3939}"
+plist="${plist//__TOKEN_FILE__/$TOKEN_FILE}"
 plist="${plist//__HOME__/$HOME}"
 printf '%s\n' "$plist" > "$PLIST_PATH"
 ok "launchd plist → $PLIST_PATH"

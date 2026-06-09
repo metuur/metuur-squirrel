@@ -420,6 +420,48 @@ struct HomeResponse {
     /// backends → defaults to not-due.
     #[serde(default)]
     journal: JournalState,
+    /// Quick Task Stack summary (R-5.1). Absent on older backends → empty.
+    #[serde(default)]
+    quick_tasks: QuickTasksSummary,
+}
+
+/// Mirror of /api/home.quick_tasks.active[] — the fields the tray section and
+/// the in-app notification need.
+#[derive(Debug, Clone, Deserialize)]
+pub struct QuickTaskItem {
+    pub id: String,
+    pub text: String,
+}
+
+impl QuickTaskItem {
+    /// Compact single-line tray/notification label, e.g. "⚡ Reply to Ana".
+    pub fn menu_label(&self) -> String {
+        let t = self.text.trim();
+        let short: String = if t.chars().count() > 48 {
+            format!("{}…", t.chars().take(47).collect::<String>())
+        } else {
+            t.to_string()
+        };
+        format!("⚡ {}", short)
+    }
+}
+
+/// Mirror of /api/home.quick_tasks. Absent on older backends → empty/false.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct QuickTasksSummary {
+    #[serde(default)]
+    pub active: Vec<QuickTaskItem>,
+    // active_count / snoozed_count mirror the wire shape; the tray derives its
+    // visible count from `active.len()`, so Rust never reads these two.
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub active_count: u32,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub snoozed_count: u32,
+    /// A due snoozed task is waiting for a free slot (R-4.3, R-5.5).
+    #[serde(default)]
+    pub return_blocked: bool,
 }
 
 /// Mirror of /api/home `journal` block. `due` already reflects the waking-hours
@@ -452,6 +494,32 @@ fn today_date_string() -> String {
     format!("{:04}-{:02}-{:02}", y, m, d)
 }
 
+/// Build a human-readable label for today's focus plan from the `/api/focus`
+/// JSON body, combining the AM slot (`today`) with the optional PM slot
+/// (`today_pm`). Returns `None` when no focus is set for today.
+fn focus_plan_label(body: &serde_json::Value) -> Option<String> {
+    fn slot_label(slot: &serde_json::Value) -> Option<String> {
+        if slot.is_null() {
+            return None;
+        }
+        let project = slot["project_title"].as_str().unwrap_or("").trim();
+        let intent = slot["intent_title"].as_str().unwrap_or("").trim();
+        match (project.is_empty(), intent.is_empty()) {
+            (false, false) => Some(format!("{project} · {intent}")),
+            (false, true) => Some(project.to_string()),
+            (true, false) => Some(intent.to_string()),
+            (true, true) => None,
+        }
+    }
+
+    match (slot_label(&body["today"]), slot_label(&body["today_pm"])) {
+        (Some(am), Some(pm)) => Some(format!("AM: {am} · PM: {pm}")),
+        (Some(am), None) => Some(am),
+        (None, Some(pm)) => Some(format!("PM: {pm}")),
+        (None, None) => None,
+    }
+}
+
 async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, reqwest::Error> {
     let mut resp = client
         .get("http://127.0.0.1:3939/api/reminders")
@@ -467,7 +535,9 @@ async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, 
     Ok(resp)
 }
 
-async fn fetch_pressing(client: &reqwest::Client) -> Result<(Vec<Alert>, bool), reqwest::Error> {
+async fn fetch_pressing(
+    client: &reqwest::Client,
+) -> Result<(Vec<Alert>, bool, QuickTasksSummary), reqwest::Error> {
     let resp = client
         .get(BACKEND_HOME)
         .timeout(REQUEST_TIMEOUT)
@@ -477,8 +547,9 @@ async fn fetch_pressing(client: &reqwest::Client) -> Result<(Vec<Alert>, bool), 
         .json::<HomeResponse>()
         .await?;
     let journal_due = resp.journal.due;
+    let quick_tasks = resp.quick_tasks;
     let alerts = resp.pressing.into_iter().take(MAX_ALERTS).collect();
-    Ok((alerts, journal_due))
+    Ok((alerts, journal_due, quick_tasks))
 }
 
 // R-3.1–R-3.6: Apply all guards and return at most 3 qualifying candidates.
@@ -759,8 +830,23 @@ async fn check_break_reminder<R: Runtime>(app: &AppHandle<R>, client: &reqwest::
 /// that callers should only invoke this once (from `lib::run`'s setup).
 pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
     tauri::async_runtime::spawn(async move {
+        // Authenticate every poll request with the per-launch runtime token —
+        // the same X-Squirrel-Token the webview sends (Runtime Trust Handshake,
+        // R-1.1). Without it the tokened backend returns 401 to /api/home,
+        // /api/reminders, etc., so the tray silently degraded to "No pressing
+        // items" in the installed app. Auth is enforced only when a token is set
+        // (off in dev), which is why this went unnoticed until packaging.
+        let mut default_headers = reqwest::header::HeaderMap::new();
+        let token = app.state::<crate::RuntimeToken>().0.clone();
+        match reqwest::header::HeaderValue::from_str(&token) {
+            Ok(val) => {
+                default_headers.insert("X-Squirrel-Token", val);
+            }
+            Err(e) => tracing::warn!(error = %e, "tray-alerts: runtime token not a valid header value"),
+        }
         let client = match reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
+            .default_headers(default_headers)
             .build()
         {
             Ok(c) => c,
@@ -793,38 +879,6 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
             }
         }
 
-        // R-6.1–R-6.5: fire a "What's your focus?" notification if today's focus
-        // is not set and we haven't already prompted today.
-        {
-            let today = today_date_string();
-            let focus_prompted_today = {
-                let state = app.state::<Mutex<TauriNotificationState>>();
-                let s = state.lock().unwrap_or_else(|p| p.into_inner());
-                s.focus_prompted_date.as_deref() == Some(today.as_str())
-            };
-            if !focus_prompted_today {
-                match client.get(format!("{}/api/focus", BACKEND_ORIGIN)).send().await {
-                    Ok(resp) if resp.status().is_success() => {
-                        if let Ok(body) = resp.json::<serde_json::Value>().await {
-                            let today_set = !body["today"].is_null();
-                            if !today_set {
-                                let _ = tauri_plugin_notification::NotificationExt::notification(&app)
-                                    .builder()
-                                    .title("What's your focus today?")
-                                    .body("Tap to pick your focus for the morning.")
-                                    .show();
-                                let state = app.state::<Mutex<TauriNotificationState>>();
-                                let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
-                                s.focus_prompted_date = Some(today);
-                                tracing::info!("focus-prompt: notification fired");
-                            }
-                        }
-                    }
-                    _ => tracing::debug!("focus-prompt: backend unreachable, skipping"),
-                }
-            }
-        }
-
         let mut last_break_check: Option<Instant> = None;
         // Sleep cadence between polls. Starts at POLL_INTERVAL; doubles up
         // to MAX_BACKOFF_INTERVAL on each consecutive fetch_pressing Err;
@@ -832,11 +886,64 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
         let mut current_interval: Duration = POLL_INTERVAL;
 
         loop {
+            // R-6.1–R-6.5: fire the daily planning prompt once per day. If a
+            // focus is already set for today, ask the user to confirm or change
+            // it; otherwise ask them to pick one. Lives inside the poll loop (not
+            // a one-shot before it) so that on a cold start — where we spawn our
+            // own backend and it takes a few seconds to become reachable — we
+            // retry each cycle instead of silently dropping the prompt. The
+            // `focus_prompted_today` guard short-circuits before any fetch once
+            // it has fired, so this stays a once-per-day notification.
+            {
+                let today = today_date_string();
+                let focus_prompted_today = {
+                    let state = app.state::<Mutex<TauriNotificationState>>();
+                    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+                    s.focus_prompted_date.as_deref() == Some(today.as_str())
+                };
+                if !focus_prompted_today {
+                    match client.get(format!("{}/api/focus", BACKEND_ORIGIN)).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                                // macOS desktop note: Tauri v2 notification taps are
+                                // not delivered to the app (the plugin's Actions API is
+                                // mobile-only), so the banner can't be made clickable.
+                                // Point the user at the menu-bar icon instead of
+                                // promising a tap that does nothing.
+                                let (title, prompt_body) = match focus_plan_label(&body) {
+                                    Some(plan) => (
+                                        "Your plan for today".to_string(),
+                                        format!(
+                                            "{plan} — open Squirrel from the menu bar to confirm or change it."
+                                        ),
+                                    ),
+                                    None => (
+                                        "What's your focus today?".to_string(),
+                                        "Open Squirrel from the menu bar to pick your focus."
+                                            .to_string(),
+                                    ),
+                                };
+                                let _ = tauri_plugin_notification::NotificationExt::notification(&app)
+                                    .builder()
+                                    .title(title)
+                                    .body(prompt_body)
+                                    .show();
+                                let state = app.state::<Mutex<TauriNotificationState>>();
+                                let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+                                s.focus_prompted_date = Some(today);
+                                tracing::info!("focus-prompt: notification fired");
+                            }
+                        }
+                        _ => tracing::debug!("focus-prompt: backend unreachable, will retry next cycle"),
+                    }
+                }
+            }
+
             // R-3.3/R-3.4 (Story 2.1): read notification settings every cycle; default on failure
             let settings = fetch_notif_settings(&client).await;
 
             match fetch_pressing(&client).await {
-                Ok((alerts, journal_due)) => {
+                Ok((alerts, journal_due, quick_tasks)) => {
                     current_interval = POLL_INTERVAL;
                     let reminders = fetch_reminders(&client).await.unwrap_or_else(|_| RemindersResponse {
                         approaching: vec![],
@@ -889,12 +996,49 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                                 Err(e) => tracing::warn!(error = %e, reminder_id = %reminder.id, "tray-alerts: reminder notif insert failed"),
                             }
                         }
+
+                        // R-5.2: surface the OLDEST active Quick Task as a low-key
+                        // in-app notification (badge + center entry, no sound — kept
+                        // gentle). Per-day dedup keeps a single task from repeating.
+                        if let Some(oldest) = quick_tasks.active.first() {
+                            let item_url = format!("{}/notes/{}", BACKEND_ORIGIN, oldest.id);
+                            let label = oldest.menu_label();
+                            let result = with_cached_conn(&app, &db_path, |conn| {
+                                insert_notification_if_new_on_conn(
+                                    conn, "quick_task", &oldest.id, &oldest.id, &label, &item_url,
+                                )
+                            });
+                            match result {
+                                Ok(true) => update_badge_and_emit(&app, &db_path),
+                                Ok(false) => {}
+                                Err(e) => tracing::warn!(error = %e, quick_task_id = %oldest.id, "tray-alerts: quick-task notif insert failed"),
+                            }
+                        }
+
+                        // R-4.3/R-5.5: a snoozed task ready to return but blocked by a
+                        // full stack → one gentle "clear a slot" nudge (per-day dedup).
+                        if quick_tasks.return_blocked {
+                            const RETURN_BLOCKED_ID: &str = "QUICK-TASK-RETURN-BLOCKED";
+                            let result = with_cached_conn(&app, &db_path, |conn| {
+                                insert_notification_if_new_on_conn(
+                                    conn,
+                                    "quick_task",
+                                    RETURN_BLOCKED_ID,
+                                    "Quick Task ready",
+                                    "A snoozed quick task is ready — clear a slot.",
+                                    BACKEND_ORIGIN,
+                                )
+                            });
+                            if let Ok(true) = result {
+                                update_badge_and_emit(&app, &db_path);
+                            }
+                        }
                     }
 
                     // R-8.2: pass current unread count so the menu shows/hides
                     // "Notifications (N)" correctly after any new INSERTs above.
                     let current_unread = with_cached_conn(&app, &db_path, unread_count_on_conn).unwrap_or(0);
-                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, current_unread, journal_due) {
+                    if let Err(e) = crate::tray::update_alerts(&app, &alerts, &reminders.approaching, &reminders.active, &quick_tasks.active, current_unread, journal_due) {
                         tracing::warn!(error = %e, "tray-alerts: menu rebuild failed");
                     } else {
                         tracing::debug!(count = alerts.len(), "tray-alerts: refreshed");
@@ -914,7 +1058,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
                         "tray-alerts: backend unreachable, clearing and backing off",
                     );
                     current_interval = next;
-                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], 0, false);
+                    let _ = crate::tray::update_alerts(&app, &[], &[], &[], &[], 0, false);
                 }
             }
 
@@ -984,6 +1128,32 @@ mod tests {
     fn test_home_response_journal_defaults_when_absent() {
         let resp: HomeResponse = serde_json::from_str(r#"{"pressing":[]}"#).unwrap();
         assert!(!resp.journal.due);
+    }
+
+    // R-5.1: /api/home quick_tasks block parses (active items + return_blocked).
+    #[test]
+    fn test_home_response_parses_quick_tasks() {
+        let json = r#"{"pressing":[],"quick_tasks":{"active":[{"id":"QT-001","text":"Reply to Ana"}],"active_count":1,"snoozed_count":2,"return_blocked":true}}"#;
+        let resp: HomeResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.quick_tasks.active.len(), 1);
+        assert_eq!(resp.quick_tasks.active[0].id, "QT-001");
+        assert_eq!(resp.quick_tasks.active_count, 1);
+        assert!(resp.quick_tasks.return_blocked);
+    }
+
+    // Older backend without a quick_tasks block → empty, not blocked (no panic).
+    #[test]
+    fn test_home_response_quick_tasks_default_when_absent() {
+        let resp: HomeResponse = serde_json::from_str(r#"{"pressing":[]}"#).unwrap();
+        assert!(resp.quick_tasks.active.is_empty());
+        assert!(!resp.quick_tasks.return_blocked);
+    }
+
+    // Quick Task tray label is compact and prefixed.
+    #[test]
+    fn test_quick_task_menu_label() {
+        let q = QuickTaskItem { id: "QT-002".into(), text: "Approve transaction".into() };
+        assert_eq!(q.menu_label(), "⚡ Approve transaction");
     }
 
     #[test]

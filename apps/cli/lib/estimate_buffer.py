@@ -17,6 +17,7 @@ import argparse
 import json
 import re
 import sys
+from pathlib import Path
 
 
 # Multiplier rules: (max_minutes, multiplier)
@@ -95,6 +96,144 @@ def _explain(minutes: float, multiplier: float) -> str:
     if minutes <= 480:
         return "Día de trabajo (4-8h): 2× — un día 'completo' suele requerir 2 días."
     return "Tareas grandes (>8h): 1.5× — el error relativo se reduce con tareas mayores."
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Estimate↔Actual reconciliation — persist an estimate onto an intent, and derive
+# variance against tracked actual time. See docs/{hld,lld,ears}/
+# estimate-actual-reconciliation.md.
+#
+# Persisted intent frontmatter keys (alongside the existing `time_invested_minutes`
+# written by the focus checkout flow):
+#   estimate_user_minutes  — raw user input (int minutes)
+#   estimate_multiplier    — ADHD multiplier applied (float)
+#   estimate_minutes       — adjusted estimate the user plans around (int minutes)
+# Scope is `01-Proyectos-Activos` only — the same scope where actuals are tracked
+# and variance is displayed, so an estimate can never be set where it won't pay off.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# @spec R-1.1..R-1.7, R-2.1, R-2.2, R-2.7, R-3.1..R-3.3, R-3.6, R-5.2, R-5.4
+
+# Sane bounds for a single intent estimate (R-2.7). 6000 min = 100h.
+MIN_ESTIMATE_MINUTES = 1
+MAX_ESTIMATE_MINUTES = 6000
+
+_ESTIMATE_KEYS = ("estimate_user_minutes", "estimate_multiplier", "estimate_minutes")
+
+
+class EstimateError(Exception):
+    """Raised when an estimate cannot be set (bad input or unresolvable intent)."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+def _validate_minutes(minutes) -> float:
+    """Coerce + bounds-check an estimate input (R-2.7)."""
+    try:
+        m = float(minutes)
+    except (TypeError, ValueError):
+        raise EstimateError("INVALID_MINUTES", "minutes must be numeric")
+    if m <= 0 or m > MAX_ESTIMATE_MINUTES:
+        raise EstimateError(
+            "INVALID_MINUTES",
+            f"minutes must be in (0, {MAX_ESTIMATE_MINUTES}]",
+        )
+    return m
+
+
+def _coerce_num(value):
+    """Tolerantly coerce a frontmatter scalar (always a string from the parser)
+    to int. Returns None for missing/blank/non-numeric (R-3.6, R-5.2)."""
+    if value is None:
+        return None
+    try:
+        return int(float(str(value).strip()))
+    except (TypeError, ValueError):
+        return None
+
+
+def _wip_intent_paths(vault_path: Path):
+    """Yield every intent .md under 01-Proyectos-Activos/*/ (Quick Tasks already
+    excluded by find_intents_for_project — R-5.3, structural)."""
+    sys.path.insert(0, str(Path(__file__).parent))
+    from status_aggregator import find_intents_for_project, find_projects
+    for project_md in find_projects(vault_path).get("wip", []):
+        for intent_md in find_intents_for_project(project_md):
+            yield intent_md
+
+
+def resolve_wip_intent(vault_path, intent_id: str) -> Path:
+    """Resolve an intent id to its file within active projects only (R-1.4).
+    Raises EstimateError if not found in scope (R-1.5)."""
+    for intent_md in _wip_intent_paths(Path(vault_path)):
+        if intent_md.stem == intent_id:
+            return intent_md
+    raise EstimateError("INTENT_NOT_FOUND", f"intent not found in active projects: {intent_id}")
+
+
+def _write_estimate(intent_path: Path, minutes) -> dict:
+    """Write the three estimate keys atomically; leaves all other frontmatter
+    (incl. time_invested_minutes) untouched (R-1.1, R-1.6, R-5.4)."""
+    m = _validate_minutes(minutes)
+    data = adjust_estimate(m)
+    sys.path.insert(0, str(Path(__file__).parent))
+    from intent_parser import write_frontmatter
+    stored = {
+        "estimate_user_minutes": data["user_estimate_minutes"],
+        "estimate_multiplier": data["multiplier"],
+        "estimate_minutes": data["adjusted_minutes"],
+    }
+    write_frontmatter(intent_path, dict(stored))
+    return stored
+
+
+def apply_estimate_to_intent(vault_path, intent_id: str, minutes) -> dict:
+    """CLI path: resolve `intent_id` within active projects and persist (R-2.1)."""
+    return _write_estimate(resolve_wip_intent(vault_path, intent_id), minutes)
+
+
+def apply_estimate_by_slugs(vault_path, project_slug: str, intent_slug: str, minutes) -> dict:
+    """API path: deterministic `01-Proyectos-Activos/<project>/<intent>.md` (R-1.4)."""
+    path = Path(vault_path) / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+    if not path.is_file():
+        raise EstimateError("INTENT_NOT_FOUND", f"intent not found: {project_slug}/{intent_slug}")
+    return _write_estimate(path, minutes)
+
+
+def clear_estimate_by_slugs(vault_path, project_slug: str, intent_slug: str) -> None:
+    """Remove all three estimate keys in one atomic update (R-1.7)."""
+    path = Path(vault_path) / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+    if not path.is_file():
+        raise EstimateError("INTENT_NOT_FOUND", f"intent not found: {project_slug}/{intent_slug}")
+    sys.path.insert(0, str(Path(__file__).parent))
+    from intent_parser import _DELETE, write_frontmatter
+    write_frontmatter(path, {k: _DELETE for k in _ESTIMATE_KEYS})
+
+
+def estimate_variance(frontmatter: dict) -> dict:
+    """Derive estimate-vs-actual variance from an intent's frontmatter (read-side).
+    Pure arithmetic, never raises; missing/malformed values are treated as absent
+    (R-3.1, R-3.2, R-3.3, R-3.6)."""
+    fm = frontmatter or {}
+    est = _coerce_num(fm.get("estimate_minutes"))
+    raw = _coerce_num(fm.get("estimate_user_minutes"))
+    actual = _coerce_num(fm.get("time_invested_minutes"))
+
+    out = {
+        "estimate_minutes": est if (est and est > 0) else None,
+        "estimate_user_minutes": raw if (raw and raw > 0) else None,
+        "time_invested_minutes": actual if (actual and actual > 0) else None,
+        "variance_minutes": None,
+        "variance_ratio": None,
+        "has_variance": False,
+    }
+    if out["estimate_minutes"] and out["time_invested_minutes"]:
+        out["variance_minutes"] = out["time_invested_minutes"] - out["estimate_minutes"]
+        out["variance_ratio"] = round(out["time_invested_minutes"] / out["estimate_minutes"], 2)
+        out["has_variance"] = True
+    return out
 
 
 def main():

@@ -24,7 +24,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::tray_alerts::{Alert, ReminderAlert};
+use crate::tray_alerts::{Alert, QuickTaskItem, ReminderAlert};
 
 pub const TRAY_ID: &str = "main";
 
@@ -32,13 +32,72 @@ pub const TRAY_ID: &str = "main";
 /// vite proxy all agree on this single backend origin.
 pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
 
-/// Obsidian vault name opened from the tray menu item.
-const OBSIDIAN_VAULT: &str = "vault-tdah";
+/// Name of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
+/// Returns `None` when no config / no default vault exists yet, so the tray can
+/// disable "Open Obsidian Vault" during first-run onboarding (R-4.4).
+fn default_vault_name() -> Option<String> {
+    let path = dirs::home_dir()?.join(".squirrel/config.toml");
+    let text = std::fs::read_to_string(path).ok()?;
+    parse_default_vault_name(&text)
+}
+
+/// Pure parse of the default vault `name` from config.toml text. Scans
+/// `[[vaults]]` blocks and returns the `name` of the first block with
+/// `default = true`. Only reads `name`/`default` (charset-safe fields), so a
+/// naive `#`-comment strip is sufficient.
+fn parse_default_vault_name(text: &str) -> Option<String> {
+    fn strip_comment(s: &str) -> &str {
+        match s.find('#') {
+            Some(i) => &s[..i],
+            None => s,
+        }
+    }
+    fn unquote(v: &str) -> Option<String> {
+        let t = v.trim();
+        let b = t.as_bytes();
+        if t.len() >= 2 && (b[0] == b'"' || b[0] == b'\'') && b[t.len() - 1] == b[0] {
+            return Some(t[1..t.len() - 1].to_string());
+        }
+        None
+    }
+
+    let mut blocks: Vec<(Option<String>, bool)> = Vec::new();
+    let mut cur: Option<(Option<String>, bool)> = None;
+    for raw in text.lines() {
+        let line = strip_comment(raw).trim();
+        if line == "[[vaults]]" {
+            if let Some(b) = cur.take() {
+                blocks.push(b);
+            }
+            cur = Some((None, false));
+        } else if line.starts_with('[') {
+            // any other section header ends the current vault block
+            if let Some(b) = cur.take() {
+                blocks.push(b);
+            }
+        } else if let Some(b) = cur.as_mut() {
+            if let Some((key, val)) = line.split_once('=') {
+                match key.trim() {
+                    "name" => b.0 = unquote(val),
+                    "default" => b.1 = val.trim() == "true",
+                    _ => {}
+                }
+            }
+        }
+    }
+    if let Some(b) = cur.take() {
+        blocks.push(b);
+    }
+    blocks.into_iter().find(|(_, d)| *d).and_then(|(n, _)| n)
+}
 
 /// Menu item IDs. The alert items use the `ALERT_PREFIX` so the menu-event
 /// handler can detect them and extract the task id.
 pub mod ids {
     pub const OPEN: &str = "open";
+    /// Captures a Quick Task in-app — shows the window and emits
+    /// `quick-task-capture-open` so the React capture modal opens (R-1.1, R-1.5).
+    pub const ADD_QUICK_TASK: &str = "add_quick_task";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
     /// Always-visible help item. Opens the dashboard and emits `show-how-to`
     /// so the React How-to overlay renders the quick-start guide.
@@ -52,6 +111,10 @@ pub mod ids {
     pub const RADAR_HEADER: &str = "radar_header";
     pub const REMINDER_HEADER: &str = "reminder_header";
     pub const REMINDER_PREFIX: &str = "reminder:";
+    /// Quick Task Stack section (R-5.1). Items use `QUICK_TASK_PREFIX`; clicking
+    /// one shows the main window so the user acts via the in-app widget.
+    pub const QUICK_TASKS_HEADER: &str = "quick_tasks_header";
+    pub const QUICK_TASK_PREFIX: &str = "quick_task:";
     /// Mind Journal check-in item — shown only while the recurring check-in is
     /// `due` (R-4.1). Opens the journal entry form (R-4.4).
     pub const JOURNAL_CHECKIN: &str = "journal_checkin";
@@ -101,14 +164,23 @@ fn build_menu<R: Runtime>(
     alerts: &[Alert],
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
+    quick_tasks: &[QuickTaskItem],
     unread_count: u32,
     journal_due: bool,
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
+    let add_quick_task_item =
+        MenuItem::with_id(app, ids::ADD_QUICK_TASK, "Add Quick Task", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
-    let open_obsidian_item =
-        MenuItem::with_id(app, ids::OPEN_OBSIDIAN, "Open Obsidian Vault", true, None::<&str>)?;
+    // R-4.4: disabled until a vault is configured (first-run onboarding).
+    let open_obsidian_item = MenuItem::with_id(
+        app,
+        ids::OPEN_OBSIDIAN,
+        "Open Obsidian Vault",
+        default_vault_name().is_some(),
+        None::<&str>,
+    )?;
     let how_to_item =
         MenuItem::with_id(app, ids::HOW_TO, "How to use Squirrel", true, None::<&str>)?;
     let restart_service_item =
@@ -122,6 +194,8 @@ fn build_menu<R: Runtime>(
         None::<&str>,
     )?;
     let sep_bot = PredefinedMenuItem::separator(app)?;
+    // Splits the bottom block into "open external" vs "help/system" (Option C).
+    let sep_system = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, ids::QUIT, "Quit Squirrel", true, None::<&str>)?;
 
     // R-6.1: when adoption was refused, surface a "Why?" item near the top that
@@ -139,6 +213,7 @@ fn build_menu<R: Runtime>(
 
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
         &open_item,
+        &add_quick_task_item,
         &sep_top,
         &pressing_header,
     ];
@@ -212,9 +287,36 @@ fn build_menu<R: Runtime>(
         }
     }
 
-    // "Mind Journal — check in" item — visible only while the recurring
-    // check-in is due (R-4.1). Opens the journal entry form (R-4.4).
-    let sep_journal = PredefinedMenuItem::separator(app)?;
+    // "QUICK TASKS (N)" section — R-5.1. Visible only when active > 0.
+    let sep_quick = PredefinedMenuItem::separator(app)?;
+    let quick_header = MenuItem::with_id(
+        app,
+        ids::QUICK_TASKS_HEADER,
+        "QUICK TASKS",
+        false, // disabled — section label
+        None::<&str>,
+    )?;
+    let quick_items: Vec<MenuItem<R>> = quick_tasks
+        .iter()
+        .map(|q| {
+            let id = format!("{}{}", ids::QUICK_TASK_PREFIX, q.id);
+            MenuItem::with_id(app, id, q.menu_label(), true, None::<&str>)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+    if !quick_tasks.is_empty() {
+        items.push(&sep_quick);
+        items.push(&quick_header);
+        for qi in quick_items.iter() {
+            items.push(qi);
+        }
+    }
+
+    // "Attention" group: Mind Journal check-in (R-4.1) and Notifications
+    // (R-8.1–R-8.3). Both share a SINGLE leading separator so they always
+    // form one clean box, regardless of which is present — previously the
+    // separator was tied to the journal item, so a notifications-only state
+    // rendered as a label-less item glued onto the section above.
+    let sep_attention = PredefinedMenuItem::separator(app)?;
     let journal_item_opt: Option<MenuItem<R>> = if journal_due {
         Some(MenuItem::with_id(
             app,
@@ -226,31 +328,32 @@ fn build_menu<R: Runtime>(
     } else {
         None
     };
-    if let Some(ref ji) = journal_item_opt {
-        items.push(&sep_journal);
-        items.push(ji);
-    }
-
-    // "Notifications (N)" item — visible only when unread_count > 0 (R-8.1, R-8.2, R-8.3)
     let notif_item_opt: Option<MenuItem<R>> = if unread_count > 0 {
         Some(MenuItem::with_id(
             app,
             ids::VIEW_NOTIFICATIONS,
-            format!("Notifications ({})", unread_count),
+            format!("🔔 Notifications ({})", unread_count),
             true,
             None::<&str>,
         )?)
     } else {
         None
     };
+    if journal_item_opt.is_some() || notif_item_opt.is_some() {
+        items.push(&sep_attention);
+    }
+    if let Some(ref ji) = journal_item_opt {
+        items.push(ji);
+    }
     if let Some(ref ni) = notif_item_opt {
         items.push(ni);
     }
 
-    // Bottom section: actions + quit
+    // Bottom section: external-open actions, a separator, then help/system.
     items.push(&sep_bot);
     items.push(&open_web_ui_item);
     items.push(&open_obsidian_item);
+    items.push(&sep_system);
     items.push(&how_to_item);
     if let Some(ref w) = why_item {
         items.push(w);
@@ -262,7 +365,7 @@ fn build_menu<R: Runtime>(
 }
 
 pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let menu = build_menu(app, &[], &[], &[], 0, false)?;
+    let menu = build_menu(app, &[], &[], &[], &[], 0, false)?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_image(IconState::Normal)?)
@@ -272,10 +375,22 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             let id = event.id().as_ref();
             match id {
                 ids::OPEN => show_main_window(app),
-                ids::OPEN_WEB_UI => open_url(app, BACKEND_ORIGIN),
+                ids::ADD_QUICK_TASK => {
+                    // R-1.1 / R-1.5: capture IN-APP — show the window and emit so
+                    // the React capture modal opens (same path as Ctrl+Cmd+Q).
+                    show_main_window(app);
+                    if let Err(e) = app.emit("quick-task-capture-open", ()) {
+                        tracing::warn!(error = %e, "tray: failed to emit quick-task-capture-open");
+                    }
+                }
+                ids::OPEN_WEB_UI => open_web_url(app, ""),
                 ids::OPEN_OBSIDIAN => {
-                    let url = format!("obsidian://open?vault={}", OBSIDIAN_VAULT);
-                    open_url(app, &url);
+                    // R-4.2: use the configured vault name. R-4.3: do nothing if
+                    // none is configured (the item is also disabled in that state).
+                    if let Some(name) = default_vault_name() {
+                        let url = format!("obsidian://open?vault={}", name);
+                        open_url(app, &url);
+                    }
                 }
                 ids::RESTART_SERVICE => {
                     let handle = app.clone();
@@ -316,18 +431,22 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 | ids::NO_PRESSING
                 | ids::BACKEND_ERROR
                 | ids::RADAR_HEADER
-                | ids::REMINDER_HEADER => {
+                | ids::REMINDER_HEADER
+                | ids::QUICK_TASKS_HEADER => {
                     // Disabled items; menu-event still fires on some platforms.
+                }
+                other if other.starts_with(ids::QUICK_TASK_PREFIX) => {
+                    // R-5.1: act on Quick Tasks in-app — show the window so the
+                    // user completes/snoozes/deletes via the widget.
+                    show_main_window(app);
                 }
                 other if other.starts_with(ids::ALERT_PREFIX) => {
                     let task_id = &other[ids::ALERT_PREFIX.len()..];
-                    let url = format!("{}/notes/{}", BACKEND_ORIGIN, task_id);
-                    open_url(app, &url);
+                    open_web_url(app, &format!("/notes/{}", task_id));
                 }
                 other if other.starts_with(ids::REMINDER_PREFIX) => {
                     let reminder_id = &other[ids::REMINDER_PREFIX.len()..];
-                    let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder_id);
-                    open_url(app, &url);
+                    open_web_url(app, &format!("/notes/{}", reminder_id));
                 }
                 other => {
                     tracing::info!(menu_item = other, "tray menu clicked (unhandled)");
@@ -347,10 +466,11 @@ pub fn update_alerts<R: Runtime>(
     alerts: &[Alert],
     approaching: &[ReminderAlert],
     active: &[ReminderAlert],
+    quick_tasks: &[QuickTaskItem],
     unread_count: u32,
     journal_due: bool,
 ) -> tauri::Result<()> {
-    let menu = build_menu(app, alerts, approaching, active, unread_count, journal_due)?;
+    let menu = build_menu(app, alerts, approaching, active, quick_tasks, unread_count, journal_due)?;
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         tray.set_menu(Some(menu))?;
     }
@@ -363,6 +483,18 @@ fn open_url<R: Runtime>(app: &AppHandle<R>, url: &str) {
     } else {
         tracing::info!(url, "tray: opened url");
     }
+}
+
+/// Open a Squirrel web-UI URL in the external browser, carrying the per-launch
+/// runtime token as `?token=…`. The backend gates `/api/*` on `X-Squirrel-Token`
+/// (runtime-trust-handshake), and the SPA's bootstrap reads that token from the
+/// launch URL; without it every API call returns 401 and the page stays empty.
+/// `path` is an absolute web path beginning with `/` (e.g. "/notes/VISA-001"),
+/// or empty for the dashboard root.
+fn open_web_url<R: Runtime>(app: &AppHandle<R>, path: &str) {
+    let token = app.state::<crate::RuntimeToken>().0.clone();
+    let url = format!("{}{}?token={}", BACKEND_ORIGIN, path, token);
+    open_url(app, &url);
 }
 
 /// Switch the tray icon to a different state. Story 2.4 exposes this through
@@ -416,6 +548,34 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── R-4.2 / R-4.4: default vault name parsing ────────────────────────────
+
+    #[test]
+    fn parses_single_default_vault_name() {
+        let cfg = "default_email = \"u@x.z\"\n\n[[vaults]]\nname = \"personal\"\npath = \"~/v\"\ndefault = true\n";
+        assert_eq!(parse_default_vault_name(cfg), Some("personal".to_string()));
+    }
+
+    #[test]
+    fn picks_the_block_marked_default_among_several() {
+        let cfg = "[[vaults]]\nname = \"personal\"\npath = \"~/a\"\ndefault = false\n\n[[vaults]]\nname = \"work\"\npath = \"/abs/b\"\ndefault = true\n\n[projects]\nactive = [\"A\"]\n";
+        assert_eq!(parse_default_vault_name(cfg), Some("work".to_string()));
+    }
+
+    #[test]
+    fn returns_none_when_no_default_or_no_vaults() {
+        assert_eq!(parse_default_vault_name(""), None);
+        assert_eq!(
+            parse_default_vault_name("default_email = \"u@x.z\"\nmachine_environment = \"p\"\n"),
+            None
+        );
+        // vault present but none marked default
+        assert_eq!(
+            parse_default_vault_name("[[vaults]]\nname = \"only\"\npath = \"~/v\"\ndefault = false\n"),
+            None
+        );
+    }
 
     #[test]
     fn every_icon_state_has_embedded_bytes() {
@@ -509,8 +669,8 @@ mod tests {
 
     #[test]
     fn view_notifications_label_format() {
-        assert_eq!(format!("Notifications ({})", 3u32), "Notifications (3)");
-        assert_eq!(format!("Notifications ({})", 12u32), "Notifications (12)");
+        assert_eq!(format!("🔔 Notifications ({})", 3u32), "🔔 Notifications (3)");
+        assert_eq!(format!("🔔 Notifications ({})", 12u32), "🔔 Notifications (12)");
     }
 
     #[test]

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Product definition for the all-in-one Squirrel installer. -->
+<!-- __VERSION__ is substituted by scripts/build-pkg.sh at build time. -->
+<installer-gui-script minSpecVersion="2">
+    <title>Squirrel</title>
+    <organization>com.metuur</organization>
+    <welcome    file="welcome.html"    mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+
+    <!-- One bundle, no component picker. Requires the postinstall script. -->
+    <options customize="never" require-scripts="true" hostArchitectures="arm64"/>
+    <domains enable_localSystem="true"/>
+
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.metuur.squirrel"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.metuur.squirrel" visible="false">
+        <pkg-ref id="com.metuur.squirrel"/>
+    </choice>
+
+    <pkg-ref id="com.metuur.squirrel" version="__VERSION__" onConclusion="none">squirrel-component.pkg</pkg-ref>
+</installer-gui-script>

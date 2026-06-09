@@ -31,6 +31,14 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Expose the per-launch runtime token to the webview so the popup API client
+/// can authenticate to the backend via the `X-Squirrel-Token` header (R-1.1).
+/// The value lives only in process memory and is never persisted.
+#[tauri::command]
+fn runtime_token(state: tauri::State<RuntimeToken>) -> String {
+    state.0.clone()
+}
+
 /// Apply the squirrel dock icon via NSApplication.
 /// Must be called from the main thread; re-apply after every activation-policy
 /// change because macOS resets the dock icon when the policy switches.
@@ -65,10 +73,11 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder
-            .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {
-                // Wired in Story 1.1: focus the existing main window when a second
-                // instance launches. For Story 0.2 the plugin is registered only to
-                // prove it compiles and links.
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                // When a second instance launches (e.g. Cmd+Space / Spotlight
+                // spawns a new process), surface the existing window instead of
+                // silently no-op'ing. Mirrors the macOS Reopen handler.
+                tray::show_main_window(app);
             }))
             .plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -87,6 +96,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
@@ -165,6 +175,30 @@ pub fn run() {
                 } else {
                     tracing::info!("global shortcut Ctrl+Cmd+S registered");
                 }
+
+                // R-1.1 / R-1.6: Ctrl+Cmd+Q captures a Quick Task from anywhere —
+                // show the window and emit so the React capture modal opens. Soft
+                // failure (hotkey held elsewhere): the tray/web surfaces still work.
+                use tauri::Emitter;
+                if let Err(e) = app.handle().global_shortcut().on_shortcut(
+                    "Ctrl+Cmd+Q",
+                    |app, _shortcut, event| {
+                        use tauri_plugin_global_shortcut::ShortcutState;
+                        if event.state == ShortcutState::Pressed {
+                            tray::show_main_window(app);
+                            if let Err(e) = app.emit("quick-task-capture-open", ()) {
+                                tracing::warn!(error = %e, "failed to emit quick-task-capture-open");
+                            }
+                        }
+                    },
+                ) {
+                    tracing::warn!(
+                        error = %e,
+                        "global shortcut Ctrl+Cmd+Q could not be registered (held by another app?)"
+                    );
+                } else {
+                    tracing::info!("global shortcut Ctrl+Cmd+Q registered");
+                }
             }
 
             // R-4.1: wire deep-link URL handler (story 3.3).
@@ -207,41 +241,65 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet, drain_pending_deep_link])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            drain_pending_deep_link,
+            runtime_token
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
             match event {
-                // External quit attempts (Cmd+Q, Dock right-click → Quit, etc.).
-                // We redirect them to the same hide+Accessory behaviour as the
-                // window X button so the app continues running as a tray app.
-                // The only real exit path is the tray "Quit Squirrel" item,
-                // which calls app.exit(0) directly and fires Exit, not this.
-                tauri::RunEvent::ExitRequested { api, .. } => {
-                    api.prevent_exit();
-                    if let Some(window) = app.get_webview_window("main") {
-                        if window.is_visible().unwrap_or(false) {
-                            if let Err(e) = window.hide() {
-                                tracing::warn!(error = %e, "ExitRequested: failed to hide window");
-                            } else {
-                                #[cfg(target_os = "macos")]
-                                if let Err(e) = app
-                                    .set_activation_policy(tauri::ActivationPolicy::Accessory)
-                                {
-                                    tracing::warn!(
-                                        error = %e,
-                                        "ExitRequested: failed to set Accessory policy"
-                                    );
+                // Tauri v2 routes BOTH user-interaction exits and the
+                // programmatic `app.exit(0)` through ExitRequested, distinguished
+                // by `code`:
+                //   • `code: None`  — user interaction (Cmd+Q, Dock/app-menu
+                //     Quit, `osascript … quit`, last window closed). We redirect
+                //     these to the same hide+Accessory behaviour as the window X
+                //     button so the app keeps running as a tray app.
+                //   • `code: Some(_)` — a genuine programmatic quit, which for us
+                //     is ONLY the tray "Quit Squirrel" item calling app.exit(0).
+                //     We must let it fall through to RunEvent::Exit (which shuts
+                //     the backend down). Calling prevent_exit() here — as the code
+                //     previously did unconditionally — made the Quit item a no-op.
+                tauri::RunEvent::ExitRequested { code, api, .. } => {
+                    if code.is_none() {
+                        api.prevent_exit();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                if let Err(e) = window.hide() {
+                                    tracing::warn!(error = %e, "ExitRequested: failed to hide window");
+                                } else {
+                                    #[cfg(target_os = "macos")]
+                                    if let Err(e) = app
+                                        .set_activation_policy(tauri::ActivationPolicy::Accessory)
+                                    {
+                                        tracing::warn!(
+                                            error = %e,
+                                            "ExitRequested: failed to set Accessory policy"
+                                        );
+                                    }
+                                    tracing::info!("ExitRequested intercepted; window hidden");
                                 }
-                                tracing::info!("ExitRequested intercepted; window hidden");
                             }
                         }
+                    } else {
+                        tracing::info!(?code, "ExitRequested (programmatic); exiting");
                     }
                 }
                 // R-9.3: kill the Managed backend child on a real exit (only
                 // reached when app.exit(0) is called from the tray "Quit" item).
                 tauri::RunEvent::Exit => {
                     backend_supervisor::shutdown(app);
+                }
+                // Launching the already-running app (Cmd+Space / Spotlight,
+                // Finder, Dock) fires applicationShouldHandleReopen → Reopen.
+                // As an Accessory/tray app we have no visible window by default,
+                // so bring the popup forward — same routine as the tray's
+                // "Open Squirrel" item — instead of doing nothing.
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { .. } => {
+                    tray::show_main_window(app);
                 }
                 _ => {}
             }

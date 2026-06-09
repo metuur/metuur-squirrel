@@ -2,7 +2,7 @@
 #
 # apps/desktop/scripts/tauri-build.sh
 #
-# Wrapper around `pnpm tauri build -- --target universal-apple-darwin` that
+# Wrapper around `pnpm tauri build --target universal-apple-darwin` that
 # guards against missing signing credentials before cargo starts.
 #
 # Signing behaviour (R-2.6, R-2.7, R-2.8):
@@ -18,6 +18,19 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_ROOT="$(cd "$HERE/.." && pwd)"
+REPO_ROOT="$(cd "$DESKTOP_ROOT/../.." && pwd)"
+
+# Build target. Defaults to a universal (arm64 + x86_64) binary; override with
+# e.g. TAURI_TARGET=aarch64-apple-darwin for an Apple-Silicon-only build.
+TARGET="${TAURI_TARGET:-universal-apple-darwin}"
+
+# For an Apple-Silicon-only build, tell the sidecar builder to skip the x86_64
+# slice + universal lipo and emit a host-triple-named arm64 binary (which is
+# what Tauri's externalBin resolution looks for at this target). Propagates to
+# the beforeBundleCommand (`pnpm tauri:prebuild-backend`) as a child process.
+if [[ "$TARGET" == "aarch64-apple-darwin" ]]; then
+  export SQUIRREL_ARM64_ONLY=1
+fi
 
 if [[ -t 1 ]]; then
   C_GREEN=$'\033[32m'; C_BLUE=$'\033[34m'; C_RED=$'\033[31m'
@@ -55,30 +68,65 @@ if (( SIGNING )); then
 fi
 
 # ─── Build ────────────────────────────────────────────────────────────────────
-info "running: pnpm tauri build -- --target universal-apple-darwin $*"
+info "running: pnpm tauri build --target $TARGET $*"
 cd "$DESKTOP_ROOT"
-pnpm tauri build -- --target universal-apple-darwin "$@"
+# Don't let set -e abort before we can inspect the result: Tauri's DMG
+# Finder-window AppleScript step can exit non-zero in a headless/non-GUI context
+# AFTER both artifacts are already built, signed, and (for the .app) notarized.
+set +e
+# --target is a TAURI flag, not a cargo flag: it must come BEFORE any `--`.
+# Passing it after `--` forwards it to cargo only, so cargo builds into
+# target/<triple>/release but tauri's bundler looks in target/release and
+# fails with "failed to bundle project `No such file or directory`"
+# (tauri-cli 2.11+ enforces this `--` boundary strictly).
+pnpm tauri build --target "$TARGET" "$@"
 BUILD_EXIT=$?
+set -e
 
+# ─── Locate artifacts (robust to workspace target layout) ─────────────────────
+# Cargo workspace places target/ at the repo root; Tauri may emit the bundle at
+# either target/release/bundle or target/<triple>/release/bundle. Discover it.
+APP="$(find "$REPO_ROOT/target" -type d -name 'Squirrel.app' -path '*/bundle/macos/*' 2>/dev/null | head -1 || true)"
+DMG="$(find "$REPO_ROOT/target" -type f -name 'Squirrel_*.dmg'  -path '*/bundle/dmg/*'  2>/dev/null | head -1 || true)"
+
+# Treat the build as failed only if the .app was not produced. A non-zero exit
+# with artifacts present is the cosmetic DMG-window step — warn and continue.
+if [[ -z "$APP" || ! -d "$APP" ]]; then
+  printf 'failed: tauri-path, step: pnpm tauri build, exit=%d (no Squirrel.app produced)\n' "$BUILD_EXIT" >&2
+  exit "$(( BUILD_EXIT == 0 ? 1 : BUILD_EXIT ))"
+fi
 if (( BUILD_EXIT )); then
-  printf 'failed: tauri-path, step: pnpm tauri build, exit=%d\n' "$BUILD_EXIT" >&2
-  exit "$BUILD_EXIT"
+  warn "tauri exited $BUILD_EXIT but artifacts were produced — treating as success (cosmetic DMG window step)"
+fi
+
+# ─── Notarize + staple the DMG ───────────────────────────────────────────────
+# Tauri notarizes and staples the .app, but only *signs* the .dmg. Notarize and
+# staple the .dmg too so the download mounts without a Gatekeeper warning.
+if (( SIGNING )) && [[ -n "$DMG" && -f "$DMG" ]]; then
+  if xcrun stapler validate "$DMG" >/dev/null 2>&1; then
+    ok "DMG already stapled: $DMG"
+  else
+    info "notarizing DMG (Tauri signs but does not notarize it)..."
+    NOTARIZE_OUT="$(xcrun notarytool submit "$DMG" \
+      --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+      --wait 2>&1)"
+    printf '%s\n' "$NOTARIZE_OUT"
+    grep -q 'status: Accepted' <<< "$NOTARIZE_OUT" \
+      || die "DMG notarization did not return Accepted — see output above"
+    xcrun stapler staple "$DMG" \
+      || die "DMG stapling failed after a successful notarization"
+    ok "DMG notarized + stapled"
+  fi
 fi
 
 # ─── R-6.1: Summary log (Tauri path) ─────────────────────────────────────────
 if (( SIGNING )); then
-  APP="$DESKTOP_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/Squirrel.app"
-  DMG_GLOB=("$DESKTOP_ROOT"/src-tauri/target/universal-apple-darwin/release/bundle/dmg/Squirrel_*_universal.dmg)
-
   IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
     | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"' \
     || echo "$APPLE_SIGNING_IDENTITY")"
 
   [[ -d "$APP" ]] \
     && printf 'signed: %s identity=%s stapled=yes\n' "$APP" "$IDENTITY"
-
-  for dmg in "${DMG_GLOB[@]}"; do
-    [[ -f "$dmg" ]] \
-      && printf 'signed: %s identity=%s stapled=yes\n' "$dmg" "$IDENTITY"
-  done
+  [[ -n "$DMG" && -f "$DMG" ]] \
+    && printf 'signed: %s identity=%s stapled=yes\n' "$DMG" "$IDENTITY"
 fi

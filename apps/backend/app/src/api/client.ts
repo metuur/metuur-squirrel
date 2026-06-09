@@ -73,6 +73,8 @@ export interface Me {
   theme: 'auto' | 'light' | 'dark';
   version: string;
   notifications?: { in_app: boolean; os_popups: boolean; sound: 'Glass' | 'Funk' | 'Silent' };
+  /** True when the backend runs without token auth (local/dev). */
+  dev?: boolean;
 }
 export interface FocusItem {
   slug: string;
@@ -113,6 +115,12 @@ export interface ManualPick {
   next_action: string | null;
   picked_on: string;
   time_invested_minutes: number;
+  // Estimate↔actual reconciliation (derived on read; null when absent).
+  estimate_minutes: number | null;
+  estimate_user_minutes: number | null;
+  variance_minutes: number | null;
+  variance_ratio: number | null;
+  has_variance: boolean;
 }
 export interface ManualFocusPayload {
   today: ManualPick | null;
@@ -291,6 +299,22 @@ export interface NotificationsPayload {
   total_count: number;
 }
 
+export interface QuickTask {
+  id: string;
+  text: string;
+  qt_snoozed_until?: string;
+  return_blocked?: boolean;
+}
+
+export interface QuickTasksPayload {
+  active: QuickTask[];
+  snoozed: QuickTask[];
+  active_count: number;
+  snoozed_count: number;
+  limit: number;
+  return_blocked: boolean;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -366,6 +390,21 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ until }),
     }),
+  quickTasks: () => call<QuickTasksPayload>('/quick-tasks'),
+  quickTaskCreate: (text: string) =>
+    call<{ success: true; id: string }>('/quick-tasks', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+  quickTaskComplete: (id: string) =>
+    call<{ success: true }>(`/quick-task/${encodeURIComponent(id)}/complete`, { method: 'PATCH' }),
+  quickTaskDelete: (id: string) =>
+    call<{ success: true }>(`/quick-task/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  quickTaskSnooze: (id: string, until: string) =>
+    call<{ success: true; snoozed_until: string }>(`/quick-task/${encodeURIComponent(id)}/snooze`, {
+      method: 'PATCH',
+      body: JSON.stringify({ until }),
+    }),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>
@@ -405,6 +444,15 @@ export const api = {
   checkin: (body: { project_slug: string; intent_slug: string; slot: string }) =>
     call<CheckinResult>('/focus/checkin', { method: 'POST', body: JSON.stringify(body) }),
   checkout: () => call<CheckoutResult>('/focus/checkout', { method: 'POST' }),
+  setEstimate: (
+    body:
+      | { project_slug: string; intent_slug: string; minutes: number }
+      | { project_slug: string; intent_slug: string; clear: true },
+  ) =>
+    call<{ ok: true; estimate: unknown }>('/intent/estimate', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   focusHistory: (params: { date?: string; from?: string; to?: string } = {}) => {
     const qs = new URLSearchParams();
     if (params.date) qs.set('date', params.date);

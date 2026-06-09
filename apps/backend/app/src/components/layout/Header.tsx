@@ -6,6 +6,7 @@ import { useFetch } from '@/hooks/useFetch';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useCapture } from '@/components/CaptureModal';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { QuickTaskPopover } from '@/components/QuickTaskPopover';
 
 export type ViewMode = 'List' | 'Board';
 
@@ -26,6 +27,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
   const journalDue = !!journal?.exists && !!journal.due;
   const notifications = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [quickTasksOpen, setQuickTasksOpen] = useState(false);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -67,6 +69,17 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
     window.location.reload();
   }
 
+  // Mark a local/dev run distinctly from the installed app, in the tab title.
+  // me.dev reflects the backend that served this SPA (DEV_MODE when untokened),
+  // which is authoritative for the browser UI.
+  const isDev = !!me?.dev;
+  useEffect(() => {
+    if (!isDev) return;
+    const original = document.title;
+    if (!original.startsWith('[DEV] ')) document.title = `[DEV] ${original}`;
+    return () => { document.title = original; };
+  }, [isDev]);
+
   return (
     <div className="flex flex-col sticky top-0 z-20">
       <header className="h-14 border-b border-hairline bg-surface flex items-center px-6 gap-10">
@@ -78,6 +91,23 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             <img src="/squirrel.svg" alt="" aria-hidden="true" className="w-8 h-8" />
             <span className="tracking-tight">Squirrel</span>
           </Link>
+          {isDev && (
+            <span
+              title="Local dev build — not the installed app"
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                padding: '2px 6px',
+                borderRadius: 4,
+                background: 'var(--warn-bg, #f59e0b22)',
+                color: 'var(--warn, #b45309)',
+                border: '1px solid var(--warn, #b4530955)',
+              }}
+            >
+              DEV
+            </span>
+          )}
 
           <div className="hidden md:flex bg-surface-2 p-0.5 rounded border border-hairline">
             <button
@@ -163,6 +193,31 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               <span className="material-icons text-lg">add</span>
               Add a note
             </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setQuickTasksOpen((v) => !v)}
+                className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                title="Quick Tasks"
+                aria-label="Quick Tasks"
+              >
+                {/* lightning bolt — lucide "zap" */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+                </svg>
+              </button>
+              <QuickTaskPopover open={quickTasksOpen} onClose={() => setQuickTasksOpen(false)} />
+            </div>
 
             <Link
               to="/journal"

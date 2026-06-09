@@ -12,11 +12,10 @@
 //   the web UI's /notes/<id> in the browser)
 
 import { useEffect, useRef } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import type { HomeState } from "../hooks/useHome";
 import type { DeepLinkTarget } from "../hooks/useDeepLink";
 import type { PressingItem, ProjectListItem } from "../api/client";
-import { BACKEND_ORIGIN } from "../api/client";
+import { openWebUrl } from "../api/client";
 import { projectForTask } from "../lib/projectForTask";
 import { timeAgo } from "../lib/timeAgo";
 import styles from "./DeadlinesWidget.module.css";
@@ -62,7 +61,7 @@ function tail(item: PressingItem): string {
 }
 
 function openTaskDetails(taskId: string) {
-  void openUrl(`${BACKEND_ORIGIN}/notes/${taskId}`);
+  void openWebUrl(`/notes/${taskId}`);
 }
 
 // Compact .btn — matches the per-card action button padding from code.html

@@ -28,7 +28,9 @@ DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
 .PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
-        build-installers _build-binaries _assemble-dmg
+	deploy-pages \
+        build-installers build-installers-arm64 build-pkg build-pkg-fast build-pkg-dry \
+        _maybe-bump _build-binaries _assemble-dmg
 
 help:
 	@awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' $(MAKEFILE_LIST)
@@ -72,15 +74,62 @@ backend-build:
 backend-dev-ui:
 	pnpm -F squirrel-web-ui dev
 
+deploy-pages:
+	npx wrangler pages deploy ./landing/pages --project-name squirrel --commit-dirty=true
+
 # ─── Installer (macOS DMG) ───────────────────────────────────────────────────
 
 # Produces squirrel-installer-macos.dmg.
 # Requires: pip install pyinstaller  (dev machine only — not shipped to users)
-build-installers:
+# Optional version bump: `make build-installers BUMP=patch` (or minor/major)
+# syncs every manifest to the new version before building. No BUMP → no change.
+BUMP ?=
+
+_maybe-bump:
+	@if [ -n "$(BUMP)" ]; then python3 $(ROOT)/scripts/bump_version.py $(BUMP); fi
+
+build-installers: _maybe-bump
 	bash $(ROOT)/scripts/build-dmg.sh
+
+# arm64-only build (skips x86_64 slice + lipo). Use on Apple Silicon when you
+# don't have an x86_64-capable Python. Result won't run on Intel Macs.
+build-installers-arm64: _maybe-bump
+	bash $(ROOT)/scripts/build-dmg.sh --arm64-only
 
 build-installers-dry:
 	bash $(ROOT)/scripts/build-dmg.sh --dry-run
+
+# ─── All-in-one installer (macOS .pkg) — Apple Silicon only ──────────────────
+# Guided double-click installer: desktop app + CLI + agent-pack, auto-configured.
+# arm64-only: avoids the universal (x86_64) slice + lipo, which can't be produced
+# on an Apple Silicon machine without an x86_64 Python toolchain.
+#   make build-pkg [BUMP=patch|minor]  → fresh arm64 app + CLI binaries, then package
+#   make build-pkg-fast                → reuse existing arm64 app + dist/ binaries
+#   make build-pkg-dry                 → print steps without executing
+# With BUMP, build-pkg recompiles so the .pkg version matches its contents.
+# (build-pkg-fast reuses prior artifacts — do NOT combine it with BUMP.)
+# build-dmg.sh runs with --skip-dmg here: build-pkg only needs its dist/ CLI
+# binaries, not the manual drag-install DMG. The single public artifact is
+# squirrel-macos.dmg (the .pkg wrapped in a DMG) from build-pkg.sh.
+build-pkg: _maybe-bump
+	# Remove stale Squirrel.app bundles from every target tree BEFORE building.
+	# Cargo's incremental cache + the --target split mean a leftover bundle from a
+	# prior (or differently-targeted) build can survive and get packaged instead
+	# of the fresh one — that's why installs kept shipping an old version. Clearing
+	# them first guarantees the only Squirrel.app present afterwards is this build's.
+	rm -rf $(ROOT)/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/target/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app
+	TAURI_TARGET=aarch64-apple-darwin pnpm -F @squirrel/desktop tauri:build
+	bash $(ROOT)/scripts/build-dmg.sh --arm64-only --skip-dmg
+	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
+
+build-pkg-fast: _maybe-bump
+	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
+
+build-pkg-dry:
+	bash $(ROOT)/scripts/build-pkg.sh --dry-run --arm64-only
 
 # Produces squirrel-manual-install-<version>.zip (no signing required).
 # Compiles all three apps (CLI, backend, desktop) and bundles install-manual.sh.

@@ -151,6 +151,33 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
+  // Neutral, non-shaming variance copy by ratio band (R-4.3, R-4.4). Inlined
+  // here — the desktop popup carries its own copy (no shared cross-surface helper).
+  const varianceLabel = (ratio: number) => {
+    if (ratio >= 0.85 && ratio <= 1.15) return 'about right — learning your pace';
+    if (ratio > 1.15) return 'ran longer than planned — learning your pace';
+    return 'finished ahead of plan';
+  };
+
+  // Persist (or clear) the estimate on a focused intent, then refresh.
+  const handleSetEstimate = async (pick: ManualPick) => {
+    const raw = window.prompt('Estimate for this task — minutes (blank to clear):', '');
+    if (raw === null) return;
+    const trimmed = raw.trim();
+    try {
+      if (trimmed === '') {
+        await api.setEstimate({ project_slug: pick.project_slug, intent_slug: pick.intent_slug, clear: true });
+      } else {
+        const mins = Number(trimmed);
+        if (!Number.isFinite(mins) || mins <= 0) return;
+        await api.setEstimate({ project_slug: pick.project_slug, intent_slug: pick.intent_slug, minutes: Math.round(mins) });
+      }
+      onRefresh();
+    } catch {
+      /* best-effort */
+    }
+  };
+
   const renderFocusRow = (pick: ManualPick, badge: string, chipClass: string, slot: string, separator: boolean) => {
     const isActive = activeSession?.slug === pick.intent_slug;
     const timeStr = formatTime(pick.time_invested_minutes);
@@ -170,6 +197,26 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
               {isActive && <span className="flex items-center gap-1 text-accent font-medium"><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />Active</span>}
             </div>
           )}
+          <div className="mt-0.5 text-[10.5px] text-ink-4 leading-snug">
+            {pick.has_variance && pick.estimate_minutes && pick.variance_ratio != null ? (
+              <>
+                {pick.estimate_user_minutes ? `estimated time ${formatTime(pick.estimate_user_minutes)} · ` : ''}
+                est {formatTime(pick.estimate_minutes)} · actual {formatTime(pick.time_invested_minutes)} ·{' '}
+                <span className="text-ink-2">{pick.variance_ratio.toFixed(1)}×</span>{' '}
+                <span className="italic">— {varianceLabel(pick.variance_ratio)}</span>{' '}
+                <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">Update estimate</button>
+              </>
+            ) : pick.estimate_minutes ? (
+              <>
+                {pick.estimate_user_minutes ? `Initial guess: ${formatTime(pick.estimate_user_minutes)} · ` : ''}
+                More realistic: ~{formatTime(pick.estimate_minutes)}
+                {pick.estimate_user_minutes ? ` (${(pick.estimate_minutes / pick.estimate_user_minutes).toFixed(1)}×)` : ''} · Status: Not started yet ·{' '}
+                <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">Update estimate</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => handleSetEstimate(pick)} className="hover:underline underline-offset-2">+ estimate</button>
+            )}
+          </div>
         </div>
         {isActive ? (
           <button

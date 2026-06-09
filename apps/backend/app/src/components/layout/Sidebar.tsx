@@ -103,8 +103,18 @@ export function Sidebar() {
           </div>
           <div className="text-sm font-medium text-ink-2">Settings</div>
         </button>
-        <div className="px-2 pt-2 text-[10px] text-ink-4">
-          v{me?.version ?? '?'}
+        <div className="px-2 pt-2 text-[10px] leading-relaxed text-ink-4">
+          <div>
+            © 2026 Squirrel <span className="tabular">v{me?.version ?? '?'}</span>. Made with ❤️ by @javierhbr.
+          </div>
+          <a
+            href="https://buymeacoffee.com/javierhbr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 mt-1 text-accent hover:underline"
+          >
+            ☕ Buy me a coffee
+          </a>
         </div>
       </div>
 

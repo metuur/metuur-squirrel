@@ -46,8 +46,10 @@
 | R-4.6 | IF the probe connect, send, or read exceeds the 3-second budget, THE SYSTEM SHALL refuse adoption, set the tray icon to `Error`, and emit an event tagged `NotResponding`. |
 | R-4.7 | WHEN Tauri refuses adoption, THE SYSTEM SHALL NOT issue any subsequent API request to `127.0.0.1:3939` for the lifetime of the Tauri process. |
 | R-4.8 | WHEN Tauri refuses adoption, THE SYSTEM SHALL NOT attempt to bind a fallback TCP port. |
-| R-4.9 | WHEN Tauri refuses adoption, THE SYSTEM SHALL NOT spawn a new sidecar in an attempt to displace the existing listener. |
+| R-4.9 | WHEN Tauri refuses adoption against a listener that is NOT a self-owned orphaned sidecar (see R-4.11), THE SYSTEM SHALL NOT spawn a new sidecar in an attempt to displace the existing listener. |
 | R-4.10 | THE SYSTEM SHALL log every handshake outcome (`adopted`, `refused_dev`, `refused_401`, `refused_unknown`, `refused_timeout`) at `info` level via the existing `tracing` subscriber with fields `outcome` and `elapsed_ms`. |
+| R-4.11 | WHEN the handshake outcome is `refused_401`, `refused_unknown`, or `refused_timeout`, AND the process bound to port 3939 is verifiably one of Squirrel's own `squirrel-backend` executables that the Tauri process is permitted to terminate (i.e. a self-owned orphan from a prior launch), THE SYSTEM SHALL terminate that process (`SIGKILL`), wait up to 2 seconds for the port to free, and then spawn a fresh `Managed` sidecar. This reclaim SHALL NOT apply to `refused_dev` (a deliberate `make backend-start`) nor to `refused_launchd_token`. |
+| R-4.12 | IF the process bound to port 3939 is NOT identifiable as a self-owned `squirrel-backend` (a foreign listener) or cannot be terminated by the Tauri process, THE SYSTEM SHALL preserve the refusal behavior of R-4.7/R-4.8/R-4.9 (no displacing kill, no fallback port, no further requests) and surface the refusal banner. |
 
 ## Unit 5: Launchd-supervised path (installer + on-disk token)
 

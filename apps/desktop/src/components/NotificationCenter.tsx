@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import type { NotificationsHook } from "../hooks/useNotifications";
 import type { NotificationItem } from "../api/client";
+import { openWebUrl } from "../api/client";
 
 interface Props {
   notifications: NotificationsHook;
@@ -46,7 +46,7 @@ function NotifRow({ item, onDismiss }: RowProps) {
       <div className="mt-1.5 ml-4 flex items-center justify-between gap-2">
         <button
           type="button"
-          onClick={() => item.item_url && void openUrl(item.item_url)}
+          onClick={() => item.item_url && void openWebUrl(item.item_url)}
           disabled={!item.item_url}
           className="btn disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ padding: "4px 8px", fontSize: 10 }}

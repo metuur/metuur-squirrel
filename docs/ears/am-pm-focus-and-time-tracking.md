@@ -58,8 +58,8 @@
 
 | ID | EARS statement |
 |----|----------------|
-| R-6.1 | WHEN the desktop app starts, THE SYSTEM SHALL call `GET /api/focus` and check whether `today` is null. |
-| R-6.2 | IF `today` is null AND `last_focus_prompt` in vault state JSON does not equal today's date, THE SYSTEM SHALL fire a tray notification: "What's your focus today? Tap to pick." |
+| R-6.1 | WHEN the desktop app starts, THE SYSTEM SHALL call `GET /api/focus` to read today's focus plan (`today` AM slot and `today_pm` PM slot). |
+| R-6.2 | IF the daily prompt has not already fired today, THE SYSTEM SHALL fire a tray notification regardless of whether a focus is set: when a focus plan exists, "Your plan for today — {plan} — tap to confirm or change it." (where `{plan}` combines the AM and PM slots); otherwise "What's your focus today? Tap to pick your focus for the morning." |
 | R-6.3 | WHEN the morning prompt notification is fired, THE SYSTEM SHALL write `last_focus_prompt: YYYY-MM-DD` (today) to vault state JSON. |
 | R-6.4 | THE SYSTEM SHALL NOT fire the morning prompt more than once per calendar day per vault. |
 | R-6.5 | WHEN the user clicks the morning prompt notification, THE SYSTEM SHALL open `http://localhost:3939` (the web UI). |
