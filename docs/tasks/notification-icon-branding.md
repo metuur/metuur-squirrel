@@ -9,7 +9,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
 
 ## Unit 1: Notification-identity bootstrap (Tauri)
 
-- [ ] 1.1 Permission-gated one-shot bootstrap module (est: ~50m)
+- [x] 1.1 Permission-gated one-shot bootstrap module (est: ~50m)
   - acceptance:
     - R-1.1 — on start, if `~/.squirrel/.notif_identity` is absent, query `permission_state()`; if `NotDetermined`, `request_permission()`.
     - R-1.2 — only IF authorized, emit one `tauri-plugin-notification` banner; create the sentinel **only after** `.show()` returns `Ok`.
@@ -25,7 +25,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
 
 ## Unit 2: `terminal-notifier` sender branding (daemon)
 
-- [ ] 2.1 Add `-sender com.metuur.squirrel` to both terminal-notifier branches (est: ~15m)
+- [x] 2.1 Add `-sender com.metuur.squirrel` to both terminal-notifier branches (est: ~15m)
   - acceptance:
     - R-2.1 — `-sender com.metuur.squirrel` added alongside existing `-group/-title/-subtitle/-message/-open <url>`; the `-open` URL (incl. `?action=` from `compose_deeplink`) is unchanged.
     - R-2.2 — sounded branch keeps `-sound <SOUND>` with `-sender`; Silent branch omits `-sound`, keeps `-sender`.

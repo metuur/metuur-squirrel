@@ -74,7 +74,9 @@ compose_deeplink() {
 
 # Emit a banner via terminal-notifier (R-1.5/R-1.6).
 # Args: title subtitle body url
-# -sender is intentionally omitted (R-1.10 v1 deferral).
+# notification-icon-branding R-2.1/R-2.2: -sender com.metuur.squirrel brands the
+# banner with the Squirrel icon and routes clicks to the app; it is orthogonal to
+# -sound and leaves the -open URL (incl. ?action=) untouched.
 # notification-sound R-2.2 / R-2.3: $SOUND is set from config; when Silent the
 # -sound flag is omitted entirely so terminal-notifier produces no audio.
 show_notification_terminal_notifier() {
@@ -82,6 +84,7 @@ show_notification_terminal_notifier() {
     if [ "$SOUND" = "Silent" ]; then
         terminal-notifier \
             -group org.squirrel.reminders \
+            -sender com.metuur.squirrel \
             -title "$title" \
             -subtitle "$subtitle" \
             -message "$body" \
@@ -89,6 +92,7 @@ show_notification_terminal_notifier() {
     else
         terminal-notifier \
             -group org.squirrel.reminders \
+            -sender com.metuur.squirrel \
             -title "$title" \
             -subtitle "$subtitle" \
             -message "$body" \

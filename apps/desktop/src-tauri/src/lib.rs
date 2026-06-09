@@ -1,6 +1,7 @@
 mod backend_supervisor;
 mod deep_link;
 mod logging;
+mod notif_identity;
 mod tray;
 mod tray_alerts;
 
@@ -114,6 +115,13 @@ pub fn run() {
 
             #[cfg(desktop)]
             tray::setup(app.handle())?;
+
+            // notification-icon-branding R-1.1–R-1.5: one-shot that warms the
+            // macOS notification identity so the daemon's `-sender` is honored.
+            // Best-effort and idempotent (sentinel-gated); must never block
+            // startup, so it runs alongside tray::setup before the supervisor.
+            #[cfg(desktop)]
+            notif_identity::bootstrap_once(app.handle());
 
             // R-9.1/R-9.2/R-9.6: decide backend lifecycle BEFORE the tray
             // poller starts. spawn_or_adopt picks Managed (we spawned the
