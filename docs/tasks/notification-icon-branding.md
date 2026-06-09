@@ -18,7 +18,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
   - verify: unit/harness test (R-6.3) — authorized → emit + sentinel created; denied → no sentinel, retried; sentinel present → no-op. `cargo build` clean.
   - note: gating on authorization (not on `.show()` Ok) is the load-bearing fix — `.show()` returns `Ok` even when denied.
 
-- [ ] 1.2 Wire bootstrap into `lib::run()` setup hook (deps: 1.1, est: ~15m)
+- [x] 1.2 Wire bootstrap into `lib::run()` setup hook (deps: 1.1, est: ~15m)
   - acceptance:
     - R-1.5 — called alongside `tray::setup` / `backend_supervisor::spawn_or_adopt`; best-effort, never blocks startup; no change to any existing organic notification, tray, supervisor, or cache behaviour.
   - verify: `cargo build`; manual — first launch (permission granted) fires exactly one bootstrap banner; relaunch fires none; existing tray/notifications unaffected.
@@ -34,7 +34,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
 
 ## Unit 3: Unbranded fallbacks (unchanged)
 
-- [ ] 3.1 Confirm osascript / dialog fallbacks + emitter order untouched (deps: 2.1, est: ~10m)
+- [x] 3.1 Confirm osascript / dialog fallbacks + emitter order untouched (deps: 2.1, est: ~10m)
   - acceptance:
     - R-3.1 / R-3.2 — `show_notification_osascript()` and the `display dialog` last-resort path are byte-unchanged.
     - R-3.3 — emitter-selection order (terminal-notifier → osascript → dialog) preserved; only the terminal-notifier branch augmented.
@@ -42,7 +42,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
 
 ## Unit 4: Platform constraints & scope (guards)
 
-- [ ] 4.1 Constraint audit — no `-appIcon`, no Tauri per-notification image, scope held (deps: 1.2, 2.1, est: ~10m)
+- [x] 4.1 Constraint audit — no `-appIcon`, no Tauri per-notification image, scope held (deps: 1.2, 2.1, est: ~10m)
   - acceptance:
     - R-4.1 — no `-appIcon`/`-contentImage` added to terminal-notifier.
     - R-4.2 — no per-notification image set on the Tauri side (banner = app-bundle icon).
@@ -57,7 +57,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
     - R-5.2 — R-1.6 requires `-sender`, defers sound to `notification-sound-selection`; R-1.10 marked delivered/superseded; LLD D-6 / invocation block reflect `-sender`.
   - verify: done this session — `grep "-sender" docs/ears/native-notification-banner.md` and `grep DELIVERED docs/lld/native-notification-banner.md`.
 
-- [ ] 5.1 Document permission grant + daemon reinstall in `docs/release.md` / companion README (deps: 2.1, est: ~20m)
+- [x] 5.1 Document permission grant + daemon reinstall in `docs/release.md` / companion README (deps: 2.1, est: ~20m)
   - acceptance:
     - R-5.1 — document (a) grant System Settings → Notifications → Squirrel, and (b) reinstall the daemon (R-2.5) for existing installs.
   - verify: `docs/release.md` (or README) contains both steps; cross-links the branding spec.
