@@ -1,6 +1,6 @@
 [package]
 name = "squirrel"
-version = "0.7.20"
+version = "0.7.21"
 description = "Squirrel — local-first focus & productivity companion"
 authors = ["Javier Benavides <javierhbr@gmail.com>"]
 edition = "2021"

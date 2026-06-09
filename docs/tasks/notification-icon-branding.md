@@ -62,7 +62,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
     - R-5.1 — document (a) grant System Settings → Notifications → Squirrel, and (b) reinstall the daemon (R-2.5) for existing installs.
   - verify: `docs/release.md` (or README) contains both steps; cross-links the branding spec.
 
-- [ ] 5.3 Produce branded release via bundle rebuild (deps: 1.2, 2.1, 6.1, est: ~20m)
+- [x] 5.3 Produce branded release via bundle rebuild (deps: 1.2, 2.1, 6.1, est: ~20m)
   - acceptance:
     - R-2.5 / R-5.3 — run `make build-installers-arm64 BUMP=patch` (or `make build-pkg BUMP=patch`); version bumps and `dmg-staging/`/`pkg-staging/` regenerate from `agent-pack/`, so the shipped installer carries the `-sender` daemon at a new version.
   - verify: built DMG/.pkg staged daemon contains `-sender com.metuur.squirrel`; `VERSION`/manifests reflect the bump.
