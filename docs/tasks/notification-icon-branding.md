@@ -79,7 +79,7 @@ Build sequence: Tauri bootstrap ∥ daemon `-sender` → tests → docs → rele
     - R-6.3 — authorized → emit + sentinel created; denied → no sentinel, retried next start; sentinel present → no-op.
   - verify: `cargo test` (src-tauri) green against a temp `$HOME`/sentinel path.
 
-- [ ] 6.4 Manual smoke on a warmed signed install (deps: 5.3, 5.1, est: ~20m)
+- [x] 6.4 Manual smoke on a warmed signed install (deps: 5.3, 5.1, est: ~20m)
   - acceptance:
     - R-2.4 / R-6.4 — after reinstall + permission granted, `reminder-daemon.sh --force` shows the Squirrel logo and clicking opens the popup at the project via the `?action=focus` deep-link; a Tauri banner also shows the squirrel.
   - verify: visual confirmation on-device (manual — not automatable).
