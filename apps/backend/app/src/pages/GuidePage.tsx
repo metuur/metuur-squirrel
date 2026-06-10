@@ -195,6 +195,62 @@ const CLI_COMMANDS: CommandEntry[] = [
   },
 ];
 
+const POPUP_FEATURES: [string, string, string][] = [
+  [
+    'keyboard_command_key',
+    'Summon it anywhere',
+    'Press ⌃⌘S to open the popup over whatever you’re doing; ⌃⌘Q captures a quick task without even opening it.',
+  ],
+  [
+    'center_focus_strong',
+    'Focus widget',
+    'Your AM / PM / week picks, with check-in and check-out: a session timer runs while you work and banks the time into the task, with estimate-vs-actual reconciliation.',
+  ],
+  [
+    'event',
+    'Deadlines widget',
+    'Pressing items at a glance, each with a “+ note” button that captures straight into that task.',
+  ],
+  [
+    'bolt',
+    'Quick Tasks & Parakeet',
+    'The quick-task stack (max 5) and the parakeet — a deadline reminder whose tone matches the urgency.',
+  ],
+  [
+    'psychology',
+    'Mind Journal & notifications',
+    'The brain icon shows a dot when a check-in is due; the bell collects reminders fired by the background daemon.',
+  ],
+  [
+    'open_in_new',
+    'Jump out',
+    'Footer buttons open this Web UI or your vault in Obsidian; the “?” icon opens the same how-to guide in-app.',
+  ],
+];
+
+const TRAY_FEATURES: [string, string, string][] = [
+  [
+    'menu_open',
+    'Always one click away',
+    'Open Squirrel, Add Quick Task, Open Web UI, Open Obsidian Vault, How to use Squirrel, Restart Service, and Quit live in the menu-bar dropdown.',
+  ],
+  [
+    'priority_high',
+    'Pressing now',
+    'Items due now are listed right in the menu — click one to jump to it.',
+  ],
+  [
+    'notifications_active',
+    'On your radar / Reminder due',
+    'Approaching and active reminders surface as their own menu sections as they come due.',
+  ],
+  [
+    'bolt',
+    'Quick tasks & check-ins',
+    'A QUICK TASKS section appears while you have active ones, and a “🧠 Mind Journal — check in” entry shows up when a check-in is due. On macOS, notification banners aren’t clickable — the menu-bar icon is where you act on them.',
+  ],
+];
+
 const CONCEPTS: { icon: string; term: string; def: string }[] = [
   {
     icon: 'folder',
@@ -267,8 +323,9 @@ export default function GuidePage() {
       <h1 className="title mb-2">Guide</h1>
       <p className="text-ink-3 mb-8">
         Squirrel keeps your projects, tasks, and working context in a plain-Markdown
-        vault, and meets you on three surfaces: your coding agent (slash commands),
-        the <Cmd>squirrel</Cmd> CLI, and this Web UI.
+        vault, and meets you on four surfaces: your coding agent (slash commands),
+        the native desktop app with its menu-bar icon, this Web UI, and the{' '}
+        <Cmd>squirrel</Cmd> CLI.
       </p>
 
       {/* ── Core concepts ── */}
@@ -328,6 +385,46 @@ export default function GuidePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ── Native desktop app ── */}
+      <section className="mb-10">
+        <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the popup</h2>
+        <p className="text-sm text-ink-3 mb-4">
+          The native app is a compact popup designed for glancing, not dwelling:
+          see your focus, check in, capture, and get back to work.
+        </p>
+        <ul className="space-y-2 text-sm text-ink-2">
+          {POPUP_FEATURES.map(([icon, term, def]) => (
+            <li key={term} className="panel p-3 flex items-start gap-3">
+              <span className="material-icons text-base text-accent mt-0.5">{icon}</span>
+              <div className="min-w-0">
+                <span className="font-medium text-ink">{term}</span>
+                <span className="text-ink-3"> — {def}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ── Menu-bar icon ── */}
+      <section className="mb-10">
+        <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the menu-bar icon</h2>
+        <p className="text-sm text-ink-3 mb-4">
+          The squirrel in your menu bar is more than a launcher: its dropdown
+          updates with what needs attention right now.
+        </p>
+        <ul className="space-y-2 text-sm text-ink-2">
+          {TRAY_FEATURES.map(([icon, term, def]) => (
+            <li key={term} className="panel p-3 flex items-start gap-3">
+              <span className="material-icons text-base text-accent mt-0.5">{icon}</span>
+              <div className="min-w-0">
+                <span className="font-medium text-ink">{term}</span>
+                <span className="text-ink-3"> — {def}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* ── CLI ── */}
