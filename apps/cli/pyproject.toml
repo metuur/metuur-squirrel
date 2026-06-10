@@ -32,6 +32,7 @@ py-modules = [
   "status_aggregator",
   "switch_tracker",
   "tag_parser",
+  "vault_migrator",
   "vocabulary",
   "where_am_i_formatter",
 ]
