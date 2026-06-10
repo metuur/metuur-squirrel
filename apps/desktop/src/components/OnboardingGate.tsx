@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { isOnboardingDone } from "../lib/onboarding";
 import { OnboardingWizard } from "./OnboardingWizard";
 
@@ -35,6 +36,17 @@ export function OnboardingGate() {
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     let cancelled = false;
+    // Query on mount as well as listening: the one-shot startup event can fire
+    // before this listener registers (Tauri does not replay), which would let
+    // the wizard run and fire API calls at a backend the app already refused —
+    // surfacing a confusing "Load failed" instead of the recovery banner.
+    invoke<string | null>("handshake_state")
+      .then((c) => {
+        if (!cancelled && c) setHandshakeActive(true);
+      })
+      .catch(() => {
+        // Non-Tauri host — nothing to yield to.
+      });
     listen("handshake-refused", () => setHandshakeActive(true)).then((fn) => {
       if (cancelled) fn();
       else unlisten = fn;

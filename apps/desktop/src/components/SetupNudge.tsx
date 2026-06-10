@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { isOnboardingDone } from "../lib/onboarding";
 import { shouldShowSetupNudge, ackSetupNudge } from "../lib/setupNudge";
@@ -40,10 +41,17 @@ export function SetupNudge() {
     };
   }, []);
 
-  // Yield to the handshake banner (mirrors OnboardingGate, R-1.3).
+  // Yield to the handshake banner (mirrors OnboardingGate, R-1.3). Query on
+  // mount as well as listening, since the one-shot startup event is not replayed
+  // and may fire before this listener registers.
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     let cancelled = false;
+    invoke<string | null>("handshake_state")
+      .then((c) => {
+        if (!cancelled && c) setHandshakeActive(true);
+      })
+      .catch(() => {});
     listen("handshake-refused", () => setHandshakeActive(true)).then((fn) => {
       if (cancelled) fn();
       else unlisten = fn;

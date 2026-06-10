@@ -126,6 +126,26 @@ pub(crate) struct HandshakeRefusalPayload {
     pub cause: &'static str,
 }
 
+/// Current handshake-refusal cause, or `None` when adoption was not refused.
+///
+/// The `handshake-refused` event is a one-shot emitted during early startup,
+/// before the webview registers its listener — and Tauri does not replay events,
+/// so a banner mounting late would miss it and the user falls through to a
+/// confusing "Load failed" during onboarding instead of the recovery banner.
+/// Exposing the state as a queryable command lets the frontend recover the
+/// banner on mount regardless of emit timing.
+pub(crate) fn current_refusal_cause<R: Runtime>(app: &AppHandle<R>) -> Option<&'static str> {
+    let state = app.try_state::<Mutex<SupervisorState>>()?;
+    let mode = {
+        let s = state.lock().unwrap_or_else(|p| p.into_inner());
+        s.mode
+    };
+    match mode {
+        SupervisionMode::RefusedAdoption(o) => handshake_refusal_cause(o),
+        _ => None,
+    }
+}
+
 /// R-4.3..R-4.6: when the supervisor refused adoption, set the tray to Error
 /// and emit a typed `handshake-refused` event carrying the cause so the React
 /// shell can render the recovery banner. No-op in any non-refusal mode.

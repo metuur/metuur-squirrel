@@ -40,6 +40,22 @@ fn runtime_token(state: tauri::State<RuntimeToken>) -> String {
     state.0.clone()
 }
 
+/// Query the current backend-trust state so the webview can show the handshake
+/// recovery banner on mount even if it missed the one-shot `handshake-refused`
+/// event (which fires during early startup, before React registers listeners).
+/// Returns the typed cause string when adoption was refused, else `None`.
+#[cfg(desktop)]
+#[tauri::command]
+fn handshake_state(app: tauri::AppHandle) -> Option<String> {
+    backend_supervisor::current_refusal_cause(&app).map(str::to_string)
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+fn handshake_state() -> Option<String> {
+    None
+}
+
 /// Apply the squirrel dock icon via NSApplication.
 /// Must be called from the main thread; re-apply after every activation-policy
 /// change because macOS resets the dock icon when the policy switches.
@@ -252,7 +268,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             drain_pending_deep_link,
-            runtime_token
+            runtime_token,
+            handshake_state
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

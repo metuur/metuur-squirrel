@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 
 // Mirrors the Rust `handshake_refusal_cause` strings. Any unknown value falls
 // back to the generic message so a future cause never renders an empty banner.
@@ -115,6 +116,17 @@ export function HandshakeBanner() {
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     let cancelled = false;
+
+    // Query the current state on mount: the `handshake-refused` event fires
+    // during early startup and Tauri does not replay it, so a late-mounting
+    // banner would otherwise miss a refused adoption entirely.
+    invoke<string | null>("handshake_state")
+      .then((c) => {
+        if (!cancelled && c) setCause(c as RefusalCause);
+      })
+      .catch(() => {
+        // Non-Tauri host (browser dev) — no handshake state to query.
+      });
 
     listen<RefusalPayload>("handshake-refused", (event) => {
       setCause(event.payload.cause);
