@@ -12,8 +12,9 @@
 #   DMG will be refused by installer/install.sh.
 #
 # Usage:
-#   ./scripts/build-dmg.sh                       # build universal squirrel-installer-macos.dmg
-#   ./scripts/build-dmg.sh --arm64-only          # arm64 slice only (no Rosetta/lipo, dev build)
+#   ./scripts/build-dmg.sh                       # universal → squirrel-installer-macos.dmg
+#   ./scripts/build-dmg.sh --arm64-only          # Apple Silicon → squirrel-installer-macos-arm64.dmg
+#   ./scripts/build-dmg.sh --x86-only            # Intel (run on Intel host) → …-x86_64.dmg
 #   ./scripts/build-dmg.sh --dry-run             # print steps without executing
 #
 # Required env vars for signing:
@@ -33,25 +34,44 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST="$ROOT/dist"
 BUILD="$ROOT/build/pyinstaller"
 STAGING="$ROOT/dmg-staging"
-DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
+# DMG_OUT is resolved after arg parsing — single-arch builds get an arch suffix
+# (-arm64 / -x86_64) so the two installers don't overwrite each other; the
+# universal build keeps the canonical squirrel-installer-macos.dmg name.
 # Hardened-runtime entitlements for the PyInstaller --onefile binaries. Without
 # com.apple.security.cs.disable-library-validation the extracted libpython fails
 # to dlopen ("different Team IDs") and the backend crash-loops. See the plist.
 ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
 DRY_RUN=0
 ARM64_ONLY=0
+X86_ONLY=0
 SKIP_DMG=0   # --skip-dmg: build the SPA + dist/ CLI binaries, then stop before
              # assembling the manual drag-install .dmg. Used by `make build-pkg`,
              # which only needs dist/ and ships the .pkg-in-DMG instead.
 
 for arg in "$@"; do
   case "$arg" in
-    --dry-run)    DRY_RUN=1 ;;
-    --arm64-only) ARM64_ONLY=1 ;;
-    --skip-dmg)   SKIP_DMG=1 ;;
+    --dry-run)         DRY_RUN=1 ;;
+    --arm64-only)      ARM64_ONLY=1 ;;
+    --x86-only|--intel) X86_ONLY=1 ;;
+    --skip-dmg)        SKIP_DMG=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
+
+if (( ARM64_ONLY && X86_ONLY )); then
+  printf 'error: --arm64-only and --x86-only are mutually exclusive\n' >&2
+  exit 1
+fi
+
+# Arch-suffixed output for single-arch installers; canonical name for universal.
+if (( ARM64_ONLY )); then
+  DMG_OUT="$ROOT/squirrel-installer-macos-arm64.dmg"
+elif (( X86_ONLY )); then
+  DMG_OUT="$ROOT/squirrel-installer-macos-x86_64.dmg"
+else
+  DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
+fi
+DMG_NAME="$(basename "$DMG_OUT")"
 
 # ─── Colors ──────────────────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -80,7 +100,8 @@ VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/ve
 say ""
 printf '%s🐿  Building Squirrel v%s installer%s\n' "$C_BOLD" "$VERSION" "$C_RESET"
 (( DRY_RUN ))    && printf '%s    (dry-run — no files written)%s\n'  "$C_BOLD" "$C_RESET"
-(( ARM64_ONLY )) && warn "arm64-only mode — skipping x86_64 slice and lipo (dev build, not universal)"
+(( ARM64_ONLY )) && warn "arm64-only mode — Apple Silicon installer ($DMG_NAME); no x86_64 slice or lipo"
+(( X86_ONLY ))   && warn "x86_64-only mode — Intel installer ($DMG_NAME); no arm64 slice or lipo"
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
 hdr "Preflight"
@@ -94,10 +115,17 @@ if (( SIGNING )); then
 fi
 
 HOST_ARCH="$(uname -m)"
-if [[ "$HOST_ARCH" == "arm64" ]] && (( ! DRY_RUN )) && (( ! ARM64_ONLY )); then
+# Rosetta is only needed to cross-build the x86_64 slice on Apple Silicon, which
+# only happens for a universal build. Single-arch builds are native to their host.
+if [[ "$HOST_ARCH" == "arm64" ]] && (( ! DRY_RUN )) && (( ! ARM64_ONLY )) && (( ! X86_ONLY )); then
   if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
     die "Rosetta is not available — run 'softwareupdate --install-rosetta' to install it"
   fi
+fi
+# An Intel-only installer must be built on an Intel host (native x86_64 Python);
+# cross-building it on Apple Silicon silently yields an arm64 slice (lipo's twin).
+if (( X86_ONLY )) && (( ! DRY_RUN )) && [[ "$HOST_ARCH" != "x86_64" ]]; then
+  die "error: --x86-only requires an Intel host (got $HOST_ARCH). Build the Intel installer on an Intel Mac or x86_64 CI runner."
 fi
 ok "pyinstaller, pnpm, hdiutil, lipo available"
 
@@ -267,38 +295,48 @@ if (( ! DRY_RUN )); then
 fi
 ok "SPA built → apps/backend/app/dist/"
 
-# ─── Step 2: CLI binary — universal (R-1.3, R-1.5) ───────────────────────────
-hdr "Step 2 — Compile CLI binary (squirrel) — universal"
+# ─── Step 2: CLI binary (R-1.3, R-1.5) ───────────────────────────────────────
+if (( ARM64_ONLY ));   then BUILD_KIND="arm64"
+elif (( X86_ONLY ));   then BUILD_KIND="x86_64"
+else                        BUILD_KIND="universal"; fi
+hdr "Step 2 — Compile CLI binary (squirrel) — $BUILD_KIND"
 
 CLI_ARM64_DIST="$DIST/slices/cli/arm64"
 CLI_ARM64_BUILD="$BUILD/cli-arm64"
 CLI_X86_DIST="$DIST/slices/cli/x86_64"
 CLI_X86_BUILD="$BUILD/cli-x86_64"
 
-_pyinstaller_slice arm64  squirrel "$ROOT/apps/cli/squirrel" "$CLI_ARM64_DIST" "$CLI_ARM64_BUILD"
+if (( ! X86_ONLY )); then
+  _pyinstaller_slice arm64  squirrel "$ROOT/apps/cli/squirrel" "$CLI_ARM64_DIST" "$CLI_ARM64_BUILD"
+fi
 if (( ! ARM64_ONLY )); then
   _pyinstaller_slice x86_64 squirrel "$ROOT/apps/cli/squirrel" "$CLI_X86_DIST"  "$CLI_X86_BUILD"
 fi
 
 if (( ! DRY_RUN )); then
-  [[ -f "$CLI_ARM64_DIST/squirrel" ]] || die "CLI arm64 slice missing"
-  xattr -cr "$CLI_ARM64_DIST/squirrel"
   mkdir -p "$DIST"
   if (( ARM64_ONLY )); then
+    [[ -f "$CLI_ARM64_DIST/squirrel" ]] || die "CLI arm64 slice missing"
+    xattr -cr "$CLI_ARM64_DIST/squirrel"
     cp "$CLI_ARM64_DIST/squirrel" "$DIST/squirrel"
-  else
+  elif (( X86_ONLY )); then
     [[ -f "$CLI_X86_DIST/squirrel" ]] || die "CLI x86_64 slice missing"
     xattr -cr "$CLI_X86_DIST/squirrel"
+    cp "$CLI_X86_DIST/squirrel" "$DIST/squirrel"
+  else
+    [[ -f "$CLI_ARM64_DIST/squirrel" ]] || die "CLI arm64 slice missing"
+    [[ -f "$CLI_X86_DIST/squirrel" ]]   || die "CLI x86_64 slice missing"
+    xattr -cr "$CLI_ARM64_DIST/squirrel" "$CLI_X86_DIST/squirrel"
     lipo -create -output "$DIST/squirrel" "$CLI_ARM64_DIST/squirrel" "$CLI_X86_DIST/squirrel"
     ARCHS="$(lipo -archs "$DIST/squirrel")"
     [[ "$ARCHS" == "arm64 x86_64" ]] \
       || die "CLI binary has unexpected archs: '$ARCHS' (expected 'arm64 x86_64')"
   fi
 fi
-(( ARM64_ONLY )) && ok "CLI binary → dist/squirrel (arm64)" || ok "CLI binary → dist/squirrel (universal)"
+ok "CLI binary → dist/squirrel ($BUILD_KIND)"
 
-# ─── Step 3: Backend binary — universal (R-1.4, R-1.5) ───────────────────────
-hdr "Step 3 — Compile backend binary (squirrel-backend) — universal"
+# ─── Step 3: Backend binary (R-1.4, R-1.5) ───────────────────────────────────
+hdr "Step 3 — Compile backend binary (squirrel-backend) — $BUILD_KIND"
 
 SPA_DIST="$ROOT/apps/backend/app/dist"
 BE_ARM64_DIST="$DIST/slices/backend/arm64"
@@ -306,21 +344,28 @@ BE_ARM64_BUILD="$BUILD/backend-arm64"
 BE_X86_DIST="$DIST/slices/backend/x86_64"
 BE_X86_BUILD="$BUILD/backend-x86_64"
 
-_pyinstaller_slice arm64  squirrel-backend "$ROOT/apps/backend/server.py" \
-  "$BE_ARM64_DIST" "$BE_ARM64_BUILD" --add-data "$SPA_DIST:app/dist"
+if (( ! X86_ONLY )); then
+  _pyinstaller_slice arm64  squirrel-backend "$ROOT/apps/backend/server.py" \
+    "$BE_ARM64_DIST" "$BE_ARM64_BUILD" --add-data "$SPA_DIST:app/dist"
+fi
 if (( ! ARM64_ONLY )); then
   _pyinstaller_slice x86_64 squirrel-backend "$ROOT/apps/backend/server.py" \
     "$BE_X86_DIST"  "$BE_X86_BUILD"  --add-data "$SPA_DIST:app/dist"
 fi
 
 if (( ! DRY_RUN )); then
-  [[ -f "$BE_ARM64_DIST/squirrel-backend" ]] || die "backend arm64 slice missing"
-  xattr -cr "$BE_ARM64_DIST/squirrel-backend"
   if (( ARM64_ONLY )); then
+    [[ -f "$BE_ARM64_DIST/squirrel-backend" ]] || die "backend arm64 slice missing"
+    xattr -cr "$BE_ARM64_DIST/squirrel-backend"
     cp "$BE_ARM64_DIST/squirrel-backend" "$DIST/squirrel-backend"
-  else
+  elif (( X86_ONLY )); then
     [[ -f "$BE_X86_DIST/squirrel-backend" ]] || die "backend x86_64 slice missing"
     xattr -cr "$BE_X86_DIST/squirrel-backend"
+    cp "$BE_X86_DIST/squirrel-backend" "$DIST/squirrel-backend"
+  else
+    [[ -f "$BE_ARM64_DIST/squirrel-backend" ]] || die "backend arm64 slice missing"
+    [[ -f "$BE_X86_DIST/squirrel-backend" ]]   || die "backend x86_64 slice missing"
+    xattr -cr "$BE_ARM64_DIST/squirrel-backend" "$BE_X86_DIST/squirrel-backend"
     lipo -create -output "$DIST/squirrel-backend" \
       "$BE_ARM64_DIST/squirrel-backend" "$BE_X86_DIST/squirrel-backend"
     ARCHS="$(lipo -archs "$DIST/squirrel-backend")"
@@ -328,7 +373,7 @@ if (( ! DRY_RUN )); then
       || die "backend binary has unexpected archs: '$ARCHS' (expected 'arm64 x86_64')"
   fi
 fi
-(( ARM64_ONLY )) && ok "Backend binary → dist/squirrel-backend (arm64)" || ok "Backend binary → dist/squirrel-backend (universal)"
+ok "Backend binary → dist/squirrel-backend ($BUILD_KIND)"
 
 # --skip-dmg: dist/ binaries are now built; the caller (build-pkg.sh flow) does
 # not want the manual drag-install DMG. Stop here before Step 4.
@@ -386,12 +431,12 @@ run "hdiutil create \
   -ov \
   -format UDZO \
   '$DMG_OUT'"
-ok "DMG created → squirrel-installer-macos.dmg"
+ok "DMG created → $DMG_NAME"
 
 # ─── Step 8: Sign the DMG (R-3.4) ────────────────────────────────────────────
 hdr "Step 8 — Sign DMG"
 if (( SIGNING )); then
-  info "codesign → squirrel-installer-macos.dmg"
+  info "codesign → $DMG_NAME"
   if (( ! DRY_RUN )); then
     local_stderr="$(mktemp)"
     exit_code=0
@@ -420,7 +465,7 @@ fi
 # ─── Step 10: spctl final-state assertion (R-3.7) ────────────────────────────
 hdr "Step 10 — Gatekeeper assertion"
 if (( SIGNING && ! DRY_RUN )); then
-  info "spctl --assess → squirrel-installer-macos.dmg"
+  info "spctl --assess → $DMG_NAME"
   spctl_out="$(mktemp)"
   spctl_code=0
   # -v makes spctl print the "source=..." line. Note: spctl emits "accepted"
@@ -459,6 +504,6 @@ if (( SIGNING && ! DRY_RUN )); then
   printf 'signed: %s identity=%s stapled=yes\n' "$DMG_OUT" "$SIGNING_IDENTITY_LABEL"
 fi
 
-printf '%sDone.%s  Distribute: %s\n' "$C_BOLD" "$C_RESET" "squirrel-installer-macos.dmg"
+printf '%sDone.%s  Distribute: %s\n' "$C_BOLD" "$C_RESET" "$DMG_NAME"
 printf '       Size: %s\n' "$(du -sh "$DMG_OUT" 2>/dev/null | cut -f1 || echo "n/a (dry-run)")"
 say ""

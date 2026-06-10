@@ -9,7 +9,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-export const BACKEND_ORIGIN = "http://127.0.0.1:3939";
+// Backend origin. Defaults to :3939; the dev build overrides it to :3940 via the
+// Vite env var `VITE_SQUIRREL_BACKEND_ORIGIN` (set in package.json dev scripts),
+// kept in lockstep with the Rust side (backend_supervisor::BACKEND_PORT) so the
+// dev app never collides with an installed prod app on the same port.
+export const BACKEND_ORIGIN =
+  import.meta.env.VITE_SQUIRREL_BACKEND_ORIGIN ?? "http://127.0.0.1:3939";
 
 const REQUEST_TIMEOUT_MS = 3000;
 

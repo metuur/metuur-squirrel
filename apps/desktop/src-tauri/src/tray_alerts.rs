@@ -19,8 +19,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
-const BACKEND_HOME: &str = "http://127.0.0.1:3939/api/home";
+// Single source of truth for the backend origin (build-time overridable to :3940
+// for the dev build — see tray::BACKEND_ORIGIN). BACKEND_HOME is derived from it
+// at its one call site rather than duplicating the literal.
+use crate::tray::BACKEND_ORIGIN;
 const POLL_INTERVAL: Duration = Duration::from_secs(30);
 // Cap the exponential backoff applied while the backend is unreachable.
 // 30s → 60s → 120s → 240s → 300s; resets to POLL_INTERVAL on first success.
@@ -539,7 +541,7 @@ async fn fetch_pressing(
     client: &reqwest::Client,
 ) -> Result<(Vec<Alert>, bool, QuickTasksSummary), reqwest::Error> {
     let resp = client
-        .get(BACKEND_HOME)
+        .get(format!("{BACKEND_ORIGIN}/api/home"))
         .timeout(REQUEST_TIMEOUT)
         .send()
         .await?

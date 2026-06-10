@@ -15,7 +15,9 @@
 #   make backend-dev-ui    → pnpm -F squirrel-web-ui dev
 #
 # Installer (macOS DMG, dev machine only — requires pyinstaller):
-#   make build-installers  → compile binaries + assemble squirrel-installer-macos.dmg
+#   make build-installers        → universal squirrel-installer-macos.dmg
+#   make build-installers-arm64  → Apple Silicon → …-arm64.dmg
+#   make build-installers-intel  → Intel (run on Intel host) → …-x86_64.dmg
 #
 # Phase 2 dev workflow:
 #   1. Backend runs separately. The user's launchd plist may already serve
@@ -29,7 +31,8 @@ DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
 .PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
 	deploy-pages \
-        build-installers build-installers-arm64 build-pkg build-pkg-fast build-pkg-dry \
+        build-installers build-installers-arm64 build-installers-intel \
+        build-pkg build-pkg-intel build-pkg-fast build-pkg-dry \
         _maybe-bump _build-binaries _assemble-dmg
 
 help:
@@ -85,25 +88,38 @@ deploy-pages:
 # syncs every manifest to the new version before building. No BUMP → no change.
 BUMP ?=
 
+# Auto-load Apple signing + notarization creds from .envrc (gitignored) so signed
+# builds work without manually `source`-ing it. Each recipe line runs in its own
+# shell, so this prefixes every line that signs or notarizes. No-op if .envrc is
+# absent; an already-exported env (direnv) just gets harmlessly re-applied.
+LOAD_ENV = set -a; . $(ROOT)/.envrc 2>/dev/null || true; set +a;
+
 _maybe-bump:
 	@if [ -n "$(BUMP)" ]; then python3 $(ROOT)/scripts/bump_version.py $(BUMP); fi
 
 build-installers: _maybe-bump
-	bash $(ROOT)/scripts/build-dmg.sh
+	$(LOAD_ENV) bash $(ROOT)/scripts/build-dmg.sh
 
-# arm64-only build (skips x86_64 slice + lipo). Use on Apple Silicon when you
-# don't have an x86_64-capable Python. Result won't run on Intel Macs.
+# Apple Silicon build (skips x86_64 slice + lipo) → squirrel-installer-macos-arm64.dmg.
+# Use on Apple Silicon when you don't have an x86_64-capable Python. Won't run on Intel.
 build-installers-arm64: _maybe-bump
-	bash $(ROOT)/scripts/build-dmg.sh --arm64-only
+	$(LOAD_ENV) bash $(ROOT)/scripts/build-dmg.sh --arm64-only
+
+# Intel build (skips arm64 slice + lipo) → squirrel-installer-macos-x86_64.dmg.
+# MUST run on an Intel Mac or x86_64 CI runner: cross-building the x86_64 slice on
+# Apple Silicon silently yields an arm64 binary, so build-dmg.sh refuses it there.
+build-installers-intel: _maybe-bump
+	$(LOAD_ENV) bash $(ROOT)/scripts/build-dmg.sh --x86-only
 
 build-installers-dry:
 	bash $(ROOT)/scripts/build-dmg.sh --dry-run
 
-# ─── All-in-one installer (macOS .pkg) — Apple Silicon only ──────────────────
+# ─── All-in-one installer (macOS .pkg) ───────────────────────────────────────
 # Guided double-click installer: desktop app + CLI + agent-pack, auto-configured.
-# arm64-only: avoids the universal (x86_64) slice + lipo, which can't be produced
-# on an Apple Silicon machine without an x86_64 Python toolchain.
-#   make build-pkg [BUMP=patch|minor]  → fresh arm64 app + CLI binaries, then package
+# Split per-arch (no universal lipo, which can't be produced on Apple Silicon
+# without an x86_64 Python toolchain):
+#   make build-pkg [BUMP=patch|minor]  → Apple Silicon → squirrel-macos-arm64.dmg
+#   make build-pkg-intel               → Intel (RUN ON AN INTEL HOST) → …-x86_64.dmg
 #   make build-pkg-fast                → reuse existing arm64 app + dist/ binaries
 #   make build-pkg-dry                 → print steps without executing
 # With BUMP, build-pkg recompiles so the .pkg version matches its contents.
@@ -121,12 +137,24 @@ build-pkg: _maybe-bump
 	       $(ROOT)/target/release/bundle/macos/Squirrel.app \
 	       $(ROOT)/apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Squirrel.app \
 	       $(ROOT)/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app
-	TAURI_TARGET=aarch64-apple-darwin pnpm -F @squirrel/desktop tauri:build
+	$(LOAD_ENV) TAURI_TARGET=aarch64-apple-darwin pnpm -F @squirrel/desktop tauri:build
 	bash $(ROOT)/scripts/build-dmg.sh --arm64-only --skip-dmg
-	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
+	$(LOAD_ENV) bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
+
+# Intel .pkg → squirrel-macos-x86_64.dmg. MUST run on an Intel Mac / x86_64 CI:
+# the x86_64 app sidecar + CLI binaries can only be produced with a native x86_64
+# Python (cross-building on Apple Silicon silently yields arm64).
+build-pkg-intel: _maybe-bump
+	rm -rf $(ROOT)/target/x86_64-apple-darwin/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/target/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/apps/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Squirrel.app \
+	       $(ROOT)/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app
+	$(LOAD_ENV) TAURI_TARGET=x86_64-apple-darwin pnpm -F @squirrel/desktop tauri:build
+	bash $(ROOT)/scripts/build-dmg.sh --x86-only --skip-dmg
+	$(LOAD_ENV) bash $(ROOT)/scripts/build-pkg.sh --skip-build --x86-only
 
 build-pkg-fast: _maybe-bump
-	bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
+	$(LOAD_ENV) bash $(ROOT)/scripts/build-pkg.sh --skip-build --arm64-only
 
 build-pkg-dry:
 	bash $(ROOT)/scripts/build-pkg.sh --dry-run --arm64-only

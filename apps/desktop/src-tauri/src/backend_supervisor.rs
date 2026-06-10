@@ -30,8 +30,27 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
-pub(crate) const BACKEND_PORT: u16 = 3939;
-const HEALTH_URL: &str = "http://127.0.0.1:3939/api/me";
+/// Parse a decimal `u16` at compile time (no std const str→int). Used only on
+/// the `SQUIRREL_BACKEND_PORT` build-time override below.
+const fn parse_port(s: &str) -> u16 {
+    let bytes = s.as_bytes();
+    let mut n: u16 = 0;
+    let mut i = 0;
+    while i < bytes.len() {
+        n = n * 10 + (bytes[i] - b'0') as u16;
+        i += 1;
+    }
+    n
+}
+
+/// Backend port. Defaults to 3939; the dev build overrides it to 3940 by setting
+/// `SQUIRREL_BACKEND_PORT=3940` at compile time (see package.json dev scripts) so
+/// `tauri dev` / "Squirrel Dev.app" never collides with an installed prod app on
+/// the same port. `option_env!` bakes the value in; build.rs reruns on change.
+pub(crate) const BACKEND_PORT: u16 = match option_env!("SQUIRREL_BACKEND_PORT") {
+    Some(s) => parse_port(s),
+    None => 3939,
+};
 const PORT_PROBE_TIMEOUT: Duration = Duration::from_millis(200);
 const HEALTH_REQ_TIMEOUT: Duration = Duration::from_secs(3);
 const STARTUP_BUDGET_ATTEMPTS: u32 = 10;
@@ -817,7 +836,8 @@ fn build_client(token: &str) -> Option<reqwest::Client> {
 }
 
 async fn probe_health(client: &reqwest::Client) -> bool {
-    match client.get(HEALTH_URL).send().await {
+    let health_url = format!("http://127.0.0.1:{BACKEND_PORT}/api/me");
+    match client.get(&health_url).send().await {
         Ok(r) => r.status().is_success(),
         Err(_) => false,
     }

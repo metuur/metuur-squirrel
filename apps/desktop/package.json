@@ -1,15 +1,15 @@
 {
   "name": "@squirrel/desktop",
   "private": true,
-  "version": "0.7.21",
+  "version": "0.7.23",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "tauri:build:dev": "tauri build --config src-tauri/tauri.dev.conf.json",
+    "tauri:dev": "SQUIRREL_BACKEND_PORT=3940 SQUIRREL_BACKEND_ORIGIN=http://127.0.0.1:3940 VITE_SQUIRREL_BACKEND_ORIGIN=http://127.0.0.1:3940 tauri dev --config src-tauri/tauri.dev.conf.json",
+    "tauri:build:dev": "SQUIRREL_BACKEND_PORT=3940 SQUIRREL_BACKEND_ORIGIN=http://127.0.0.1:3940 VITE_SQUIRREL_BACKEND_ORIGIN=http://127.0.0.1:3940 tauri build --config src-tauri/tauri.dev.conf.json",
     "tauri:prebuild-backend": "bash scripts/build-backend-sidecar.sh",
     "tauri:build": "bash scripts/tauri-build.sh",
     "test": "vitest run"

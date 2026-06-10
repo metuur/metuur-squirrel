@@ -29,8 +29,14 @@ use crate::tray_alerts::{Alert, QuickTaskItem, ReminderAlert};
 pub const TRAY_ID: &str = "main";
 
 /// Phase 2 (LLD D6, EARS R-1.1, R-4.3): the popup, the tray menu, and the
-/// vite proxy all agree on this single backend origin.
-pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
+/// vite proxy all agree on this single backend origin. Defaults to :3939; the
+/// dev build overrides it to :3940 via `SQUIRREL_BACKEND_ORIGIN` at compile time
+/// (kept in lockstep with `backend_supervisor::BACKEND_PORT`) so the dev app
+/// never collides with an installed prod app on the same port.
+pub const BACKEND_ORIGIN: &str = match option_env!("SQUIRREL_BACKEND_ORIGIN") {
+    Some(o) => o,
+    None => "http://127.0.0.1:3939",
+};
 
 /// Name of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
 /// Returns `None` when no config / no default vault exists yet, so the tray can

@@ -24,10 +24,19 @@
 
 set -euo pipefail
 
-# Set SQUIRREL_ARM64_ONLY=1 to skip the x86_64 slice and lipo step.
-# Used by build-manual-zip.sh --arm64-only on machines without Rosetta or the
-# x86_64-apple-darwin Rust target.
+# Single-arch selectors (mutually exclusive). Either skips the universal lipo
+# step and emits a host-/target-triple-named thin sidecar:
+#   SQUIRREL_ARM64_ONLY=1 → Apple Silicon only (no x86_64 slice, no Rosetta)
+#   SQUIRREL_X86_ONLY=1   → Intel only (no arm64 slice); build on an Intel host
+# Set by tauri-build.sh from TAURI_TARGET={aarch64,x86_64}-apple-darwin. With
+# neither set, a universal (arm64 + x86_64) binary is produced via lipo.
 ARM64_ONLY="${SQUIRREL_ARM64_ONLY:-0}"
+X86_ONLY="${SQUIRREL_X86_ONLY:-0}"
+
+if (( ARM64_ONLY && X86_ONLY )); then
+  printf 'error: SQUIRREL_ARM64_ONLY and SQUIRREL_X86_ONLY are mutually exclusive\n' >&2
+  exit 1
+fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_ROOT="$(cd "$HERE/.." && pwd)"
@@ -70,6 +79,13 @@ HOST_ARCH="$(uname -m)"  # arm64 on Apple Silicon, x86_64 on Intel
 
 if (( ARM64_ONLY )); then
   info "arm64-only mode (SQUIRREL_ARM64_ONLY=1) — skipping x86_64 slice and lipo"
+elif (( X86_ONLY )); then
+  # Intel-only: a single native x86_64 slice (build on an Intel host). No lipo,
+  # no Rosetta, no arm64 Rust target needed — the host IS x86_64.
+  info "x86_64-only mode (SQUIRREL_X86_ONLY=1) — skipping arm64 slice and lipo"
+  if [[ "$HOST_ARCH" != "x86_64" ]]; then
+    die "error: x86_64-only build requires an Intel host (got $HOST_ARCH). Build the Intel installer on an Intel Mac or x86_64 CI runner."
+  fi
 else
   # R-1.6: Rust x86_64-apple-darwin target must be installed for universal Tauri build
   if ! rustup target list --installed 2>/dev/null | grep -q "x86_64-apple-darwin"; then
@@ -102,59 +118,49 @@ fi
   || die "backend SPA dist still missing after build: $BACKEND_SPA_DIST"
 ok "backend SPA present at apps/backend/app/dist/"
 
-# ─── PyInstaller — arm64 slice ───────────────────────────────────────────────
+# ─── PyInstaller — arm64 slice (skipped in x86_64-only mode) ──────────────────
+if (( ! X86_ONLY )); then
+  info "building arm64 slice..."
+  ARM64_DIST="$PYINSTALLER_DIST/slices/arm64"
+  ARM64_BUILD="$PYINSTALLER_BUILD/arm64"
 
-info "building arm64 slice..."
-ARM64_DIST="$PYINSTALLER_DIST/slices/arm64"
-ARM64_BUILD="$PYINSTALLER_BUILD/arm64"
+  if [[ "$HOST_ARCH" == "arm64" ]]; then
+    PYTHONWARNINGS="ignore:pkg_resources is deprecated:UserWarning" \
+      pyinstaller \
+        --onefile \
+        --name squirrel-backend \
+        --distpath "$ARM64_DIST" \
+        --workpath "$ARM64_BUILD" \
+        --specpath "$ARM64_BUILD" \
+        --paths "$CLI_LIB" \
+        --add-data "$BACKEND_SPA_DIST:app/dist" \
+        --clean \
+        --noconfirm \
+        "$BACKEND_PY" >/dev/null
+  else
+    mkdir -p "$ARM64_DIST" "$ARM64_BUILD"
+    PYTHONWARNINGS="ignore:pkg_resources is deprecated:UserWarning" \
+      arch -arm64 pyinstaller \
+        --onefile \
+        --name squirrel-backend \
+        --distpath "$ARM64_DIST" \
+        --workpath "$ARM64_BUILD" \
+        --specpath "$ARM64_BUILD" \
+        --paths "$CLI_LIB" \
+        --add-data "$BACKEND_SPA_DIST:app/dist" \
+        --clean \
+        --noconfirm \
+        "$BACKEND_PY" >/dev/null
+  fi
 
-if [[ "$HOST_ARCH" == "arm64" ]]; then
-  PYTHONWARNINGS="ignore:pkg_resources is deprecated:UserWarning" \
-    pyinstaller \
-      --onefile \
-      --name squirrel-backend \
-      --distpath "$ARM64_DIST" \
-      --workpath "$ARM64_BUILD" \
-      --specpath "$ARM64_BUILD" \
-      --paths "$CLI_LIB" \
-      --add-data "$BACKEND_SPA_DIST:app/dist" \
-      --clean \
-      --noconfirm \
-      "$BACKEND_PY" >/dev/null
-else
-  mkdir -p "$ARM64_DIST" "$ARM64_BUILD"
-  PYTHONWARNINGS="ignore:pkg_resources is deprecated:UserWarning" \
-    arch -arm64 pyinstaller \
-      --onefile \
-      --name squirrel-backend \
-      --distpath "$ARM64_DIST" \
-      --workpath "$ARM64_BUILD" \
-      --specpath "$ARM64_BUILD" \
-      --paths "$CLI_LIB" \
-      --add-data "$BACKEND_SPA_DIST:app/dist" \
-      --clean \
-      --noconfirm \
-      "$BACKEND_PY" >/dev/null
+  ARM64_BIN="$ARM64_DIST/squirrel-backend"
+  [[ -f "$ARM64_BIN" ]] || die "arm64 slice not produced at $ARM64_BIN"
+  ok "arm64 slice → $ARM64_BIN ($(du -h "$ARM64_BIN" | cut -f1))"
+  xattr -cr "$ARM64_BIN"   # Strip extended attributes (R-1.5)
 fi
 
-ARM64_BIN="$ARM64_DIST/squirrel-backend"
-[[ -f "$ARM64_BIN" ]] || die "arm64 slice not produced at $ARM64_BIN"
-ok "arm64 slice → $ARM64_BIN ($(du -h "$ARM64_BIN" | cut -f1))"
-
-# ─── Strip extended attributes (R-1.5) ───────────────────────────────────────
-xattr -cr "$ARM64_BIN"
-
-if (( ARM64_ONLY )); then
-  # ─── arm64-only: copy the single slice directly as the sidecar ───────────────
-  mkdir -p "$BIN_OUT_DIR"
-  OUT_BIN="$BIN_OUT_DIR/squirrel-backend-$TARGET_TRIPLE"
-  cp "$ARM64_BIN" "$OUT_BIN"
-  chmod +x "$OUT_BIN"
-  ok "arm64 sidecar at apps/desktop/src-tauri/bin/squirrel-backend-$TARGET_TRIPLE"
-  say ""
-  ok "backend sidecar ready for tauri bundle (arm64-only)"
-else
-  # ─── PyInstaller — x86_64 slice ──────────────────────────────────────────────
+# ─── PyInstaller — x86_64 slice (skipped in arm64-only mode) ──────────────────
+if (( ! ARM64_ONLY )); then
   info "building x86_64 slice..."
   X86_DIST="$PYINSTALLER_DIST/slices/x86_64"
   X86_BUILD="$PYINSTALLER_BUILD/x86_64"
@@ -192,14 +198,33 @@ else
   [[ -f "$X86_BIN" ]] || die "x86_64 slice not produced at $X86_BIN"
   ok "x86_64 slice → $X86_BIN ($(du -h "$X86_BIN" | cut -f1))"
   xattr -cr "$X86_BIN"
+fi
 
+# ─── Assemble the sidecar at the name Tauri's externalBin resolution expects ──
+mkdir -p "$BIN_OUT_DIR"
+if (( ARM64_ONLY )); then
+  # Apple Silicon thin binary; Tauri --target aarch64-apple-darwin looks for this.
+  OUT_BIN="$BIN_OUT_DIR/squirrel-backend-$TARGET_TRIPLE"
+  cp "$ARM64_BIN" "$OUT_BIN"
+  chmod +x "$OUT_BIN"
+  ok "arm64 sidecar at apps/desktop/src-tauri/bin/squirrel-backend-$TARGET_TRIPLE"
+  say ""
+  ok "backend sidecar ready for tauri bundle (arm64-only)"
+elif (( X86_ONLY )); then
+  # Intel thin binary; Tauri --target x86_64-apple-darwin looks for this exact name.
+  OUT_BIN="$BIN_OUT_DIR/squirrel-backend-x86_64-apple-darwin"
+  cp "$X86_BIN" "$OUT_BIN"
+  chmod +x "$OUT_BIN"
+  ok "x86_64 sidecar at apps/desktop/src-tauri/bin/squirrel-backend-x86_64-apple-darwin"
+  say ""
+  ok "backend sidecar ready for tauri bundle (x86_64-only)"
+else
   # ─── Lipo — create universal binary ──────────────────────────────────────────
   # The Tauri universal build target is `universal-apple-darwin`, so Tauri's
   # externalBin resolution looks for `squirrel-backend-universal-apple-darwin`
   # in src-tauri/bin/. Using the host triple (e.g. aarch64-apple-darwin) causes
   # the sidecar to be silently omitted from the .app bundle.
   info "creating universal binary..."
-  mkdir -p "$BIN_OUT_DIR"
   OUT_BIN="$BIN_OUT_DIR/squirrel-backend-universal-apple-darwin"
 
   lipo -create -output "$OUT_BIN" "$ARM64_BIN" "$X86_BIN"

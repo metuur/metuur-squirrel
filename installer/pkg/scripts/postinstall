@@ -52,6 +52,25 @@ install_pack ".codex"    ".codex/squirrel"
 install_pack ".cursor"   ".cursor/rules/squirrel"
 install_pack ".windsurf" ".windsurf/rules/squirrel"
 
+# ── 3. Record installed version + upgrade-migration seam ──────────────────────
+# Stamp the installed version so an upgrade can detect a version change and run
+# data/config migrations. There are no migrations today (config is additive and
+# the SQLite schema self-initialises via init_schema); this records the baseline
+# and is the ONE place to add `old→new` migrations when a future release changes
+# the config.toml keys or the vault/DB layout — keyed off "$oldver".
+verfile="$sqdir/version"
+newver="$(/usr/bin/defaults read /Applications/Squirrel.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo unknown)"
+oldver="$(as_user /bin/cat "$verfile" 2>/dev/null || echo none)"
+if [ "$oldver" != "$newver" ]; then
+  echo "postinstall: version $oldver → $newver"
+  # ── migration seam ──────────────────────────────────────────────────────────
+  # Add version-gated migrations here when a release first breaks compatibility:
+  #   case "$oldver" in
+  #     0.7.*) as_user /usr/local/bin/squirrel migrate --from "$oldver" ;;
+  #   esac
+fi
+as_user /bin/sh -c "printf '%s\n' '$newver' > '$verfile'" 2>/dev/null || true
+
 # Clear the quarantine bit on the freshly installed app so first launch is clean.
 /usr/bin/xattr -dr com.apple.quarantine /Applications/Squirrel.app 2>/dev/null || true
 
@@ -64,6 +83,22 @@ as_user /usr/bin/osascript -e 'tell application "Squirrel" to quit' 2>/dev/null 
 /usr/bin/pkill -f 'Squirrel.app/Contents/MacOS/squirrel' 2>/dev/null || true
 /usr/bin/pkill -f 'squirrel-backend --port 3939' 2>/dev/null || true
 /bin/sleep 1
+
+# Retire a prior DRAG-installed launchd backend (org.squirrel.web-ui). The .pkg
+# app manages its OWN sidecar; a leftover launchd service would keep serving
+# :3939 from an OLD-version binary (frontend/backend version skew) or with a
+# stale token the new app can't verify → "Backend offline". Boot it out, remove
+# its plist, and drop the stale adoption token so the app starts clean.
+webui_plist="$userHome/Library/LaunchAgents/org.squirrel.web-ui.plist"
+uid="$(/usr/bin/id -u "$consoleUser" 2>/dev/null || true)"
+if [ -n "$uid" ]; then
+  as_user /bin/launchctl bootout "gui/$uid/org.squirrel.web-ui" 2>/dev/null || true
+fi
+if [ -f "$webui_plist" ]; then
+  as_user /bin/rm -f "$webui_plist" 2>/dev/null || true
+  echo "postinstall: retired prior drag-install launchd backend (org.squirrel.web-ui)"
+fi
+as_user /bin/rm -f "$sqdir/launchd-token" 2>/dev/null || true
 
 # Purge stale LaunchServices registrations and (re)register the freshly installed
 # bundle, so `open` resolves to /Applications and not an old mounted-DMG copy.
