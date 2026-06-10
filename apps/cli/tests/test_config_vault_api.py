@@ -104,9 +104,14 @@ class ConfigVaultApiTest(unittest.TestCase):
         status, _ = self._req("POST", "/api/config/vault",
                               {"path": str(target), "create": True})
         self.assertEqual(status, 200)
-        # A freshly created vault gets the default skeleton eagerly, not on a
-        # later /api/me bootstrap.
-        scratch = target / "01-Proyectos-Activos" / "SCRATCH-PAD"
+        # A freshly created vault gets the full canonical skeleton eagerly, not
+        # on a later /api/me bootstrap.
+        for folder in ("01-Active-Projects", "02-Parking-Lot", "03-Areas",
+                       "06-Archive", "99-Resources"):
+            self.assertTrue((target / folder).is_dir(), f"missing {folder}")
+            self.assertTrue((target / folder / "README.md").is_file(),
+                            f"missing {folder}/README.md")
+        scratch = target / "01-Active-Projects" / "SCRATCH-PAD"
         self.assertTrue((scratch / "SCRATCH-PAD.md").is_file())
         self.assertTrue((scratch / "MIND-JOURNAL.md").is_file())
 

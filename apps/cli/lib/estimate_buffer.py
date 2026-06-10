@@ -108,7 +108,7 @@ def _explain(minutes: float, multiplier: float) -> str:
 #   estimate_user_minutes  — raw user input (int minutes)
 #   estimate_multiplier    — ADHD multiplier applied (float)
 #   estimate_minutes       — adjusted estimate the user plans around (int minutes)
-# Scope is `01-Proyectos-Activos` only — the same scope where actuals are tracked
+# Scope is `01-Active-Projects` only — the same scope where actuals are tracked
 # and variance is displayed, so an estimate can never be set where it won't pay off.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -155,7 +155,7 @@ def _coerce_num(value):
 
 
 def _wip_intent_paths(vault_path: Path):
-    """Yield every intent .md under 01-Proyectos-Activos/*/ (Quick Tasks already
+    """Yield every intent .md under 01-Active-Projects/*/ (Quick Tasks already
     excluded by find_intents_for_project — R-5.3, structural)."""
     sys.path.insert(0, str(Path(__file__).parent))
     from status_aggregator import find_intents_for_project, find_projects
@@ -195,8 +195,8 @@ def apply_estimate_to_intent(vault_path, intent_id: str, minutes) -> dict:
 
 
 def apply_estimate_by_slugs(vault_path, project_slug: str, intent_slug: str, minutes) -> dict:
-    """API path: deterministic `01-Proyectos-Activos/<project>/<intent>.md` (R-1.4)."""
-    path = Path(vault_path) / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+    """API path: deterministic `01-Active-Projects/<project>/<intent>.md` (R-1.4)."""
+    path = Path(vault_path) / "01-Active-Projects" / project_slug / f"{intent_slug}.md"
     if not path.is_file():
         raise EstimateError("INTENT_NOT_FOUND", f"intent not found: {project_slug}/{intent_slug}")
     return _write_estimate(path, minutes)
@@ -204,7 +204,7 @@ def apply_estimate_by_slugs(vault_path, project_slug: str, intent_slug: str, min
 
 def clear_estimate_by_slugs(vault_path, project_slug: str, intent_slug: str) -> None:
     """Remove all three estimate keys in one atomic update (R-1.7)."""
-    path = Path(vault_path) / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+    path = Path(vault_path) / "01-Active-Projects" / project_slug / f"{intent_slug}.md"
     if not path.is_file():
         raise EstimateError("INTENT_NOT_FOUND", f"intent not found: {project_slug}/{intent_slug}")
     sys.path.insert(0, str(Path(__file__).parent))

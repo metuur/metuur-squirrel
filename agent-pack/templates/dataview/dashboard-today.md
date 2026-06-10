@@ -14,7 +14,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   status AS Status,
   project AS Project
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE deadline <= date(today) AND status != "done" AND status != "done" AND status != "archived"
 SORT deadline ASC
 ```
@@ -27,7 +27,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   priority AS Priority,
   project AS Project
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE deadline > date(today) AND deadline <= date(today) + dur(1 day)
   AND status != "done" AND status != "done"
 SORT deadline ASC
@@ -41,7 +41,7 @@ TABLE WITHOUT ID
   project AS Project,
   deadline AS Deadline,
   file.mtime AS "Last Modified"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "in-progress"
 SORT file.mtime DESC
 LIMIT 5
@@ -55,7 +55,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   status AS Status,
   priority AS Priority
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE deadline > date(today) + dur(1 day)
   AND deadline <= date(today) + dur(7 days)
   AND status != "done" AND status != "done"

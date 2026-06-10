@@ -296,8 +296,11 @@ def _ensure_scratch_pad_once(vault_path: pathlib.Path) -> None:
         return
     _scratch_pad_ensured.add(key)
     try:
-        from new_project_writer import ensure_scratch_pad
-        ensure_scratch_pad(vault_path)
+        # ensure_vault_skeleton creates the canonical PARA folders + SCRATCH-PAD;
+        # running it here backfills the structure on app start for vaults created
+        # before eager scaffolding existed. Idempotent.
+        from new_project_writer import ensure_vault_skeleton
+        ensure_vault_skeleton(vault_path)
     except Exception:
         pass  # Non-fatal
 
@@ -762,14 +765,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         # Scaffold the default vault structure now, rather than waiting for the
         # first /api/me bootstrap — a freshly created vault should not be empty.
-        # Both helpers are idempotent (existing folders keep their contents; the
-        # SCRATCH-PAD / MIND-JOURNAL skeleton is added once). Call them directly
-        # (not the _once wrappers) so a failure here doesn't suppress the lazy
-        # /api/me retry; non-fatal so it never blocks vault creation.
+        # ensure_vault_skeleton creates the canonical PARA folders (each with a
+        # stub README) plus SCRATCH-PAD; ensure_mind_journal seeds the journal.
+        # All idempotent (existing folders/notes are preserved). Call them
+        # directly (not the _once wrappers) so a failure here doesn't suppress
+        # the lazy /api/me retry; non-fatal so it never blocks vault creation.
         try:
-            from new_project_writer import ensure_scratch_pad
+            from new_project_writer import ensure_vault_skeleton
             from mind_journal import ensure_mind_journal
-            ensure_scratch_pad(resolved)
+            ensure_vault_skeleton(resolved)
             ensure_mind_journal(resolved, name)
         except Exception:
             pass
@@ -1068,7 +1072,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             " FROM work_sessions WHERE vault = ? AND project_slug = ? AND intent_slug = ? AND checkout_at IS NOT NULL",
             (vault_path.name, project_slug, intent_slug),
         ).fetchone()[0]
-        intent_path = vault_path / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+        intent_path = vault_path / "01-Active-Projects" / project_slug / f"{intent_slug}.md"
         if intent_path.is_file():
             from intent_parser import write_frontmatter
             write_frontmatter(intent_path, {"time_invested_minutes": int(total)})
@@ -1185,7 +1189,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_projects_list(self) -> None:
         ctx, _ = self._context()
-        proj_root = ctx.active.path / "01-Proyectos-Activos"
+        proj_root = ctx.active.path / "01-Active-Projects"
         out = []
         if proj_root.is_dir():
             for sub in sorted(proj_root.iterdir()):
@@ -1199,7 +1203,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_project_detail(self, slug: str) -> None:
         ctx, _ = self._context()
-        proj_dir = ctx.active.path / "01-Proyectos-Activos" / slug
+        proj_dir = ctx.active.path / "01-Active-Projects" / slug
         if not is_path_inside(proj_dir, ctx.active.path) or not proj_dir.is_dir():
             raise _UserError(404, "We could not find that project.")
         proj_md = proj_dir / f"{slug}.md"
@@ -1285,7 +1289,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_project_save(self, slug: str) -> None:
         ctx, _ = self._context()
-        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        proj_md = ctx.active.path / "01-Active-Projects" / slug / f"{slug}.md"
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         self._save_with_mtime(proj_md, ctx.active.path, self._read_json_body())
@@ -1295,7 +1299,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_project_delete(self, slug: str) -> None:
         ctx, _ = self._context()
-        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        proj_md = ctx.active.path / "01-Active-Projects" / slug / f"{slug}.md"
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         text = proj_md.read_text(encoding="utf-8", errors="replace")
@@ -1303,7 +1307,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if str(fm.get("protected", "")).lower() in ("true", "1", "yes"):
             raise _UserError(403, "PROJECT_PROTECTED")
         import shutil
-        project_dir = ctx.active.path / "01-Proyectos-Activos" / slug
+        project_dir = ctx.active.path / "01-Active-Projects" / slug
         if not is_path_inside(project_dir, ctx.active.path):
             raise _UserError(403, "That path is outside your workspace.")
         shutil.rmtree(project_dir)
@@ -1319,7 +1323,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         the rest of the project page is preserved verbatim.
         """
         ctx, _ = self._context()
-        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        proj_md = ctx.active.path / "01-Active-Projects" / slug / f"{slug}.md"
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         payload = self._read_json_body()
@@ -1369,7 +1373,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not _INTENT_TAG_RE.match(filename):
             raise _UserError(422, f"{filename!r} is not a valid filename (UPPERCASE, dash-separated, e.g. TRABAJO-PROYECTO-A).")
         vault_root = ctx.active.path
-        project_dir = vault_root / "01-Proyectos-Activos" / project_slug
+        project_dir = vault_root / "01-Active-Projects" / project_slug
         if not is_path_inside(project_dir, vault_root) or not project_dir.is_dir():
             raise _UserError(404, "Project not found.")
         intent_path = project_dir / f"{filename}.md"
@@ -2222,7 +2226,7 @@ def _find_note(vault_path: pathlib.Path, note_id: str) -> Optional[pathlib.Path]
 
 
 _PROJECT_PARENT_DIRS = frozenset({
-    "01-Proyectos-Activos",
+    "01-Active-Projects",
     "02-Parking-Lot",
     "06-Archive",
 })

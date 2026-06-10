@@ -29,7 +29,7 @@ from intent_parser import write_frontmatter, parse_intent
 
 
 def _path(vault: Path, qt_id: str) -> Path:
-    return vault / "01-Proyectos-Activos" / "SCRATCH-PAD" / f"{qt_id}.md"
+    return vault / "01-Active-Projects" / "SCRATCH-PAD" / f"{qt_id}.md"
 
 
 # ── A.3: complete / delete ───────────────────────────────────────────────────

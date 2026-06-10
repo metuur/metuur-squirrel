@@ -98,11 +98,11 @@ class VaultMigratorTestCase(unittest.TestCase):
         self.assertTrue(plan["captures"][0]["target"].endswith("UNFILED-002.md"))
 
     def test_plan_dest_active(self):
-        plan = self._plan(dest_bucket="01-Proyectos-Activos")
-        self.assertIn("01-Proyectos-Activos/MY-APP", plan["projects"][0]["page"]["target"])
+        plan = self._plan(dest_bucket="01-Active-Projects")
+        self.assertIn("01-Active-Projects/MY-APP", plan["projects"][0]["page"]["target"])
 
     def test_plan_refuses_squirrel_source(self):
-        (self.source / "01-Proyectos-Activos").mkdir()
+        (self.source / "01-Active-Projects").mkdir()
         with self.assertRaises(MigrationError) as ctx:
             self._plan()
         self.assertEqual(ctx.exception.code, "SOURCE_INVALID")

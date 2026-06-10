@@ -29,7 +29,7 @@ The **LLM** (you) fills in the domain-specific meaning — the script can't know
 If a tag is provided, read the intent from the vault:
 ```bash
 # Find the intent file
-find "$VAULT_PATH/01-Proyectos-Activos" -name "*.md" | xargs grep -l "^id: $TAG" 2>/dev/null | head -1
+find "$VAULT_PATH/01-Active-Projects" -name "*.md" | xargs grep -l "^id: $TAG" 2>/dev/null | head -1
 ```
 
 Extract:

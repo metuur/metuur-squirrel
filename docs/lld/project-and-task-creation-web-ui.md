@@ -22,7 +22,7 @@ Request body (JSON):
 Handler logic:
 1. Resolve vault path via the existing `squirrel_vault` cookie (same pattern as all other write routes).
 2. Validate `tag` against the same regexp used for project tags in `new_project_writer.py:57`.
-3. Resolve the target project directory: `<vault>/01-Proyectos-Activos/<project_slug>/`.
+3. Resolve the target project directory: `<vault>/01-Active-Projects/<project_slug>/`.
 4. Return 404 if the project directory does not exist.
 5. Check for a conflicting file `<project_dir>/<tag>.md` — return 409 if present.
 6. Write the intent file by rendering `agent-pack/templates/intent.md` with the supplied fields.

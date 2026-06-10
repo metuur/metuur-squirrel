@@ -4,7 +4,7 @@
 - **Date:** 2026-06-10
 - **Scope decisions (user-confirmed):**
   - Copy mode — source Obsidian vault is never modified
-  - Migrated projects land in `02-Parking-Lot/` by default (`--dest active` opts into `01-Proyectos-Activos/`)
+  - Migrated projects land in `02-Parking-Lot/` by default (`--dest active` opts into `01-Active-Projects/`)
   - Auto heuristics + dry-run plan; apply only after explicit confirmation
   - Target folders follow the code readers (`status_aggregator.py:60-63`), not the sq-init scaffold drift
 

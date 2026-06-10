@@ -40,14 +40,14 @@
 
 ## 📑 Package summary
 
-- `01-Proyectos-Activos/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-RESEARCH-001.md` — create — Auth.js vs Clerk vs Lucia comparison
-- `01-Proyectos-Activos/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-DECISION-001.md` — create — Preliminary decision: Auth.js v5
+- `01-Active-Projects/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-RESEARCH-001.md` — create — Auth.js vs Clerk vs Lucia comparison
+- `01-Active-Projects/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-DECISION-001.md` — create — Preliminary decision: Auth.js v5
 
 ---
 
 ## 📂 Files to apply
 
-### File 1: 01-Proyectos-Activos/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-RESEARCH-001.md
+### File 1: 01-Active-Projects/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-RESEARCH-001.md
 
 **Operation**: create
 **Tag**: `TRABAJO-PROYECTO-A-RESEARCH-001`
@@ -108,7 +108,7 @@ Lucia is more flexible but requires too much boilerplate code for our timeline.
 
 ---
 
-### File 2: 01-Proyectos-Activos/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-DECISION-001.md
+### File 2: 01-Active-Projects/TRABAJO-PROYECTO-A/TRABAJO-PROYECTO-A-DECISION-001.md
 
 **Operation**: create
 **Tag**: `TRABAJO-PROYECTO-A-DECISION-001`

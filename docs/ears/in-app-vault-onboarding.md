@@ -40,13 +40,13 @@
 | R-3.10 | WHEN persisting the chosen vault, THE SYSTEM SHALL append the vault entry and mark it the sole `default = true` vault such that the resulting `config.toml` has exactly one default; IF persistence cannot complete, THE SYSTEM SHALL leave `config.toml` unchanged. |
 | R-3.11 | IF a vault with the target name already exists in `config.toml`, THE SYSTEM SHALL update that vault's path to the chosen path and mark it default (idempotent upsert), rather than failing on a duplicate-name error. |
 | R-3.12 | THE SYSTEM SHALL reject a vault `path` that, after `~`/symlink expansion, is not absolute or escapes the user home directory, responding 400 without creating any directory. |
-| R-3.13 | THE SYSTEM SHALL reject a vault `name` that does not match `[A-Za-z0-9._-]+`, responding 400 before any config write, since `name` is interpolated into `config.toml` and into an `obsidian://open?vault=<name>` URL (R-4.1). |
+| R-3.13 | THE SYSTEM SHALL reject a vault `name` that does not match `[A-Za-z0-9._-]+`, responding 400 before any config write, since `name` is interpolated into `config.toml`. |
 
 ## Unit 4: Vault wiring (un-hardcode)
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-4.1 | WHEN the "Open Vault" action is invoked after onboarding, THE SYSTEM SHALL open `obsidian://open?vault=<configured vault name>` using the active vault name from `/api/me`, not a hardcoded value. |
-| R-4.2 | WHEN the tray menu is built, THE SYSTEM SHALL use the configured vault name rather than the hardcoded `vault-tdah`. |
-| R-4.3 | IF no vault name is available from configuration, THE SYSTEM SHALL omit or disable the "Open Vault" action rather than open a non-existent vault. |
+| R-4.1 | WHEN the "Open Vault" action is invoked after onboarding, THE SYSTEM SHALL open `obsidian://open?path=<configured vault path>` using the active vault path from `/api/me`, not a hardcoded value. Path (not vault name) is used because Obsidian registers vaults under their folder name, which may differ from squirrel's configured vault name. |
+| R-4.2 | WHEN the tray menu is built, THE SYSTEM SHALL use the configured vault's path rather than a hardcoded value. |
+| R-4.3 | IF no vault is available from configuration, THE SYSTEM SHALL omit or disable the "Open Vault" action rather than open a non-existent vault. |
 | R-4.4 | IF `/api/me` is unavailable or returns no active vault (e.g. 503 before onboarding completes), THE SYSTEM SHALL treat the Open Vault action as disabled (R-4.3) and SHALL NOT block tray construction or app mount. |

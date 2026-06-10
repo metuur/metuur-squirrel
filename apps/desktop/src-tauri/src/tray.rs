@@ -38,20 +38,25 @@ pub const BACKEND_ORIGIN: &str = match option_env!("SQUIRREL_BACKEND_ORIGIN") {
     None => "http://127.0.0.1:3939",
 };
 
-/// Name of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
+/// Path of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
 /// Returns `None` when no config / no default vault exists yet, so the tray can
 /// disable "Open Obsidian Vault" during first-run onboarding (R-4.4).
-fn default_vault_name() -> Option<String> {
+fn default_vault_path() -> Option<String> {
     let path = dirs::home_dir()?.join(".squirrel/config.toml");
     let text = std::fs::read_to_string(path).ok()?;
-    parse_default_vault_name(&text)
+    let raw = parse_default_vault_path(&text)?;
+    // expand a leading `~/` the way the CLI/backend config loaders do
+    if let Some(rest) = raw.strip_prefix("~/") {
+        return Some(dirs::home_dir()?.join(rest).to_string_lossy().into_owned());
+    }
+    Some(raw)
 }
 
-/// Pure parse of the default vault `name` from config.toml text. Scans
-/// `[[vaults]]` blocks and returns the `name` of the first block with
-/// `default = true`. Only reads `name`/`default` (charset-safe fields), so a
-/// naive `#`-comment strip is sufficient.
-fn parse_default_vault_name(text: &str) -> Option<String> {
+/// Pure parse of the default vault `path` from config.toml text. Scans
+/// `[[vaults]]` blocks and returns the `path` of the first block with
+/// `default = true`. Quoted values are scanned to their closing quote, so a
+/// `#` inside a path is not mistaken for a comment.
+fn parse_default_vault_path(text: &str) -> Option<String> {
     fn strip_comment(s: &str) -> &str {
         match s.find('#') {
             Some(i) => &s[..i],
@@ -59,12 +64,14 @@ fn parse_default_vault_name(text: &str) -> Option<String> {
         }
     }
     fn unquote(v: &str) -> Option<String> {
-        let t = v.trim();
-        let b = t.as_bytes();
-        if t.len() >= 2 && (b[0] == b'"' || b[0] == b'\'') && b[t.len() - 1] == b[0] {
-            return Some(t[1..t.len() - 1].to_string());
+        let t = v.trim_start();
+        let q = *t.as_bytes().first()?;
+        if q != b'"' && q != b'\'' {
+            return None;
         }
-        None
+        let rest = &t[1..];
+        let end = rest.find(q as char)?;
+        Some(rest[..end].to_string())
     }
 
     let mut blocks: Vec<(Option<String>, bool)> = Vec::new();
@@ -82,10 +89,11 @@ fn parse_default_vault_name(text: &str) -> Option<String> {
                 blocks.push(b);
             }
         } else if let Some(b) = cur.as_mut() {
-            if let Some((key, val)) = line.split_once('=') {
+            // split the raw line so quoted values keep any `#` they contain
+            if let Some((key, val)) = raw.split_once('=') {
                 match key.trim() {
-                    "name" => b.0 = unquote(val),
-                    "default" => b.1 = val.trim() == "true",
+                    "path" => b.0 = unquote(val),
+                    "default" => b.1 = strip_comment(val).trim() == "true",
                     _ => {}
                 }
             }
@@ -94,7 +102,22 @@ fn parse_default_vault_name(text: &str) -> Option<String> {
     if let Some(b) = cur.take() {
         blocks.push(b);
     }
-    blocks.into_iter().find(|(_, d)| *d).and_then(|(n, _)| n)
+    blocks.into_iter().find(|(_, d)| *d).and_then(|(p, _)| p)
+}
+
+/// Percent-encode a string for use as a URL query value (RFC 3986 unreserved
+/// characters pass through; everything else, including `/`, is escaped).
+fn percent_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
 
 /// Menu item IDs. The alert items use the `ALERT_PREFIX` so the menu-event
@@ -184,7 +207,7 @@ fn build_menu<R: Runtime>(
         app,
         ids::OPEN_OBSIDIAN,
         "Open Obsidian Vault",
-        default_vault_name().is_some(),
+        default_vault_path().is_some(),
         None::<&str>,
     )?;
     let how_to_item =
@@ -391,10 +414,12 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                 }
                 ids::OPEN_WEB_UI => open_web_url(app, ""),
                 ids::OPEN_OBSIDIAN => {
-                    // R-4.2: use the configured vault name. R-4.3: do nothing if
+                    // R-4.2: open the configured vault by *path* — Obsidian
+                    // registers vaults under their folder name, which can differ
+                    // from squirrel's configured vault name. R-4.3: do nothing if
                     // none is configured (the item is also disabled in that state).
-                    if let Some(name) = default_vault_name() {
-                        let url = format!("obsidian://open?vault={}", name);
+                    if let Some(path) = default_vault_path() {
+                        let url = format!("obsidian://open?path={}", percent_encode(&path));
                         open_url(app, &url);
                     }
                 }
@@ -555,32 +580,50 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 mod tests {
     use super::*;
 
-    // ── R-4.2 / R-4.4: default vault name parsing ────────────────────────────
+    // ── R-4.2 / R-4.4: default vault path parsing ────────────────────────────
 
     #[test]
-    fn parses_single_default_vault_name() {
+    fn parses_single_default_vault_path() {
         let cfg = "default_email = \"u@x.z\"\n\n[[vaults]]\nname = \"personal\"\npath = \"~/v\"\ndefault = true\n";
-        assert_eq!(parse_default_vault_name(cfg), Some("personal".to_string()));
+        assert_eq!(parse_default_vault_path(cfg), Some("~/v".to_string()));
     }
 
     #[test]
     fn picks_the_block_marked_default_among_several() {
         let cfg = "[[vaults]]\nname = \"personal\"\npath = \"~/a\"\ndefault = false\n\n[[vaults]]\nname = \"work\"\npath = \"/abs/b\"\ndefault = true\n\n[projects]\nactive = [\"A\"]\n";
-        assert_eq!(parse_default_vault_name(cfg), Some("work".to_string()));
+        assert_eq!(parse_default_vault_path(cfg), Some("/abs/b".to_string()));
     }
 
     #[test]
     fn returns_none_when_no_default_or_no_vaults() {
-        assert_eq!(parse_default_vault_name(""), None);
+        assert_eq!(parse_default_vault_path(""), None);
         assert_eq!(
-            parse_default_vault_name("default_email = \"u@x.z\"\nmachine_environment = \"p\"\n"),
+            parse_default_vault_path("default_email = \"u@x.z\"\nmachine_environment = \"p\"\n"),
             None
         );
         // vault present but none marked default
         assert_eq!(
-            parse_default_vault_name("[[vaults]]\nname = \"only\"\npath = \"~/v\"\ndefault = false\n"),
+            parse_default_vault_path("[[vaults]]\nname = \"only\"\npath = \"~/v\"\ndefault = false\n"),
             None
         );
+    }
+
+    #[test]
+    fn keeps_hash_inside_quoted_path_and_ignores_trailing_comment() {
+        let cfg = "[[vaults]]\nname = \"p\"\npath = \"/v/with #tag\" # the vault\ndefault = true # yes\n";
+        assert_eq!(
+            parse_default_vault_path(cfg),
+            Some("/v/with #tag".to_string())
+        );
+    }
+
+    #[test]
+    fn percent_encodes_for_query_value() {
+        assert_eq!(
+            percent_encode("/Users/me/my vault"),
+            "%2FUsers%2Fme%2Fmy%20vault"
+        );
+        assert_eq!(percent_encode("plain-name_0.~"), "plain-name_0.~");
     }
 
     #[test]

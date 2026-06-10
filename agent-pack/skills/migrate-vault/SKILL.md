@@ -1,6 +1,6 @@
 ---
 name: squirrel-migrate-vault
-description: Migrate an existing Obsidian vault's notes into the squirrel-vault format and structure. Use when the user says "migrate my obsidian vault", "import my notes", "convert my vault to squirrel", or invokes `/sq-migrate-vault`. Copy-only — the source vault is never modified. Always shows a dry-run migration plan first and writes only after the user confirms. Migrated projects land in `02-Parking-Lot/` by default (`--dest active` for `01-Proyectos-Activos/`). Accepts an optional `vault_name`; when omitted, writes to the default vault (R-7.1, R-7.3).
+description: Migrate an existing Obsidian vault's notes into the squirrel-vault format and structure. Use when the user says "migrate my obsidian vault", "import my notes", "convert my vault to squirrel", or invokes `/sq-migrate-vault`. Copy-only — the source vault is never modified. Always shows a dry-run migration plan first and writes only after the user confirms. Migrated projects land in `02-Parking-Lot/` by default (`--dest active` for `01-Active-Projects/`). Accepts an optional `vault_name`; when omitted, writes to the default vault (R-7.1, R-7.3).
 token_budget: 300
 ---
 

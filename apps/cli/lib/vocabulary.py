@@ -27,13 +27,18 @@ from typing import Optional
 # A None value means "never render this in user-visible HTML" (admin-only).
 
 _BASE_TERMS: dict[str, Optional[str]] = {
-    # PARA folder names → friendly section titles
-    "01-Proyectos-Activos": "My projects",
+    # PARA folder names → friendly section titles (canonical English names)
+    "01-Active-Projects": "My projects",
     "02-Areas": "Areas",                 # admin only
-    "03-Recursos": "Reference",          # admin only
-    "04-Archivo": "Archive",             # admin only
+    "03-Resources": "Reference",         # admin only
+    "04-Archive": "Archive",             # admin only
     "02-Parking-Lot": "On hold",
     "99-Resources": None,                # never user-visible
+
+    # Legacy Spanish folder names — kept for existing vaults that haven't been migrated
+    "01-Proyectos-Activos": "My projects",
+    "03-Recursos": "Reference",
+    "04-Archivo": "Archive",
 
     # Note types
     "intent": "note",
@@ -84,9 +89,12 @@ FORBIDDEN_IN_USER_HTML: frozenset[str] = frozenset(
         "project",
         "type",
         "status",
+        "01-Active-Projects",
         "01-Proyectos-Activos",
         "02-Areas",
+        "03-Resources",
         "03-Recursos",
+        "04-Archive",
         "04-Archivo",
         "02-Parking-Lot",
         "99-Resources",
@@ -143,14 +151,14 @@ def workspace_word(*, multi_vault: bool) -> Optional[str]:
 def project_title(slug: str, vault_path: Optional[pathlib.Path] = None) -> str:
     """Return the user-facing human title for a project slug (R-4.5).
 
-    Looks for `<vault>/01-Proyectos-Activos/<slug>/<slug>.md` and reads the
+    Looks for `<vault>/01-Active-Projects/<slug>/<slug>.md` and reads the
     first `# Heading` line. Falls back to a Capitalized form of the slug if
     no title is found or vault_path was not provided.
     """
     if vault_path is not None:
         candidate = (
             pathlib.Path(vault_path)
-            / "01-Proyectos-Activos"
+            / "01-Active-Projects"
             / slug
             / f"{slug}.md"
         )

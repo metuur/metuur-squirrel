@@ -9,7 +9,7 @@
 `status_aggregator.py` computes the WIP count as a pure folder count:
 
 ```python
-wip_count = len(projects_by_loc["wip"])   # every folder under 01-Proyectos-Activos
+wip_count = len(projects_by_loc["wip"])   # every folder under 01-Active-Projects
 ```
 
 There is **no active-vs-stale filtering** on this path. A `wip_max` (currently 3,
@@ -24,7 +24,7 @@ count toward the active WIP cap?**
 ## Decision
 
 **Keep the current behaviour: the WIP cap counts every open folder under
-`01-Proyectos-Activos/`, including the Scratch Pad and stale projects.**
+`01-Active-Projects/`, including the Scratch Pad and stale projects.**
 
 Rationale:
 

@@ -310,7 +310,7 @@ class TestIntentCreate(_ServerCase):
         self.assertEqual(r.status, 201)
         data = json.loads(r.read())
         self.assertIn("path", data)
-        intent_file = FIXTURE_VAULT / "01-Proyectos-Activos" / "TEST-PROJECT" / "NEW-TASK.md"
+        intent_file = FIXTURE_VAULT / "01-Active-Projects" / "TEST-PROJECT" / "NEW-TASK.md"
         self.assertTrue(intent_file.is_file(), "intent file should have been written")
         intent_file.unlink()
 

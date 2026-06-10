@@ -116,7 +116,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
       open={open}
       onClose={close}
       title="New project"
-      subtitle="Scaffolds the project page under 01-Proyectos-Activos/."
+      subtitle="Scaffolds the project page under 01-Active-Projects/."
       icon="folder_special"
       size="md"
       footer={

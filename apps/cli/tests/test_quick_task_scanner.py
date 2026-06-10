@@ -4,7 +4,7 @@ test_quick_task_scanner.py — Tests for quick_task_scanner.scan_quick_tasks (A.
 Covers EARS R-2.1, R-2.2, R-2.6, R-2.7, R-4.1, R-4.5.
 
 Fixtures are real QT-*.md files in a tmp vault's SCRATCH-PAD folder:
-  01-Proyectos-Activos/SCRATCH-PAD/
+  01-Active-Projects/SCRATCH-PAD/
     QT-001.md  — active, qt_created_at oldest
     QT-002.md  — active, qt_created_at middle
     QT-003.md  — active, qt_created_at newest
@@ -52,7 +52,7 @@ def _write(path: Path, content: str) -> None:
 @pytest.fixture()
 def vault(tmp_path: Path) -> Path:
     now = datetime.datetime.now()
-    sp = tmp_path / "01-Proyectos-Activos" / "SCRATCH-PAD"
+    sp = tmp_path / "01-Active-Projects" / "SCRATCH-PAD"
 
     t_old = (now - datetime.timedelta(minutes=30)).isoformat()
     t_mid = (now - datetime.timedelta(minutes=20)).isoformat()

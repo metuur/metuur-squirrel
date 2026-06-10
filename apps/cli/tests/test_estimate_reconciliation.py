@@ -5,7 +5,7 @@ Estimate↔Actual Reconciliation — engine + variance derivation.
 Acceptance:
   R-1.1, R-1.6 — write 3 estimate keys atomically; leave time_invested_minutes + body untouched.
   R-1.3        — re-set overwrites.
-  R-1.4, R-1.5 — resolution scoped to 01-Proyectos-Activos; out-of-scope / missing → error.
+  R-1.4, R-1.5 — resolution scoped to 01-Active-Projects; out-of-scope / missing → error.
   R-1.7        — clear removes all 3 keys, keeps time_invested_minutes.
   R-2.7        — minutes bounds (0 / negative / >6000) rejected.
   R-3.1, R-3.3, R-3.6, R-5.2 — variance derivation w/ string coercion + graceful absence.
@@ -40,7 +40,7 @@ class EstimateEngineTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.vault = pathlib.Path(self.tmp.name)
-        self.proj = self.vault / "01-Proyectos-Activos" / "PROJ"
+        self.proj = self.vault / "01-Active-Projects" / "PROJ"
         _write(self.proj / "PROJ.md", _intent({"id": "PROJ", "status": "wip"}, "Project"))
         _write(
             self.proj / "PROJ-001.md",

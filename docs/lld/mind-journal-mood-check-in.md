@@ -20,7 +20,7 @@ tray poll ─► GET /api/home ─► if journal.due and within waking window �
 
 ### The journal task file
 
-Seeded at `<vault>/01-Proyectos-Activos/SCRATCH-PAD/MIND-JOURNAL.md`. Written directly (like `ensure_scratch_pad`), bypassing intent-tag validation. Discovered by the `journal: true` frontmatter marker, **not** by filename, so a manual rename does not orphan it.
+Seeded at `<vault>/01-Active-Projects/SCRATCH-PAD/MIND-JOURNAL.md`. Written directly (like `ensure_scratch_pad`), bypassing intent-tag validation. Discovered by the `journal: true` frontmatter marker, **not** by filename, so a manual rename does not orphan it.
 
 ```markdown
 ---

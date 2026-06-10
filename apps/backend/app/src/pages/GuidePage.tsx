@@ -260,7 +260,7 @@ const CONCEPTS: { icon: string; term: string; def: string }[] = [
   {
     icon: 'rocket_launch',
     term: 'Project',
-    def: 'A folder with a project page, e.g. MYAPP/MYAPP.md. Active projects live in 01-Proyectos-Activos/; parked ones in the 02-Parking-Lot/.',
+    def: 'A folder with a project page, e.g. MYAPP/MYAPP.md. Active projects live in 01-Active-Projects/; parked ones in the 02-Parking-Lot/.',
   },
   {
     icon: 'task_alt',
@@ -341,6 +341,27 @@ export default function GuidePage() {
               <p className="text-xs leading-relaxed text-ink-3">{c.def}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Configuration ── */}
+      <section className="mb-10">
+        <h2 className="eyebrow text-ink-2 mb-3">Where the configuration lives</h2>
+        <div className="panel p-4 text-sm leading-relaxed text-ink-2 space-y-2">
+          <p>
+            Everything Squirrel knows about your setup is in one file:{' '}
+            <Cmd>~/.squirrel/config.toml</Cmd>. It registers your vaults — each
+            with a <Cmd>name</Cmd>, a <Cmd>path</Cmd>, and a <Cmd>default</Cmd>{' '}
+            flag — plus capture and notification preferences. Every surface (this
+            Web UI, the desktop app, the CLI, your agent) reads the same file.
+          </p>
+          <p>
+            If you move a vault folder, just update its <Cmd>path</Cmd> there (or
+            run <Cmd>squirrel vaults</Cmd>) — the “Open Vault” buttons and all
+            commands follow the configured path; nothing is hardcoded. The same{' '}
+            <Cmd>~/.squirrel/</Cmd> directory also holds runtime files like logs
+            and reminder state.
+          </p>
         </div>
       </section>
 

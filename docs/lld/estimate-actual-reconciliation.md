@@ -4,7 +4,7 @@
 
 ### Data model (new intent frontmatter keys)
 
-Written to an intent file `01-Proyectos-Activos/<project_slug>/<intent_slug>.md`, alongside the
+Written to an intent file `01-Active-Projects/<project_slug>/<intent_slug>.md`, alongside the
 existing `time_invested_minutes`:
 
 | Key                     | Type  | Source                                                      |
@@ -60,12 +60,12 @@ variance_ratio   = round(time_invested_minutes / estimate_minutes, 2)
 - Add `apply_estimate_to_intent(vault_path, intent_id, minutes) -> dict`: resolves the intent file,
   calls `adjust_estimate(minutes)`, writes the three keys via `intent_parser.write_frontmatter`,
   returns the stored dict. Atomic write (reuse existing temp+replace).
-- **Resolution scope (authoritative): `01-Proyectos-Activos` only.** The CLI `--intent <id>` path
+- **Resolution scope (authoritative): `01-Active-Projects` only.** The CLI `--intent <id>` path
   resolves the id within WIP projects using the same scope as `_iter_intent_paths`
   (`focus_picker.py:125`) — _not_ a whole-vault `rglob`. The API path resolves the deterministic
-  `01-Proyectos-Activos/<project_slug>/<intent_slug>.md` pattern (same as `set_manual_focus`,
+  `01-Active-Projects/<project_slug>/<intent_slug>.md` pattern (same as `set_manual_focus`,
   `focus_picker.py:237`, and `_update_time_invested`, `server.py:1028`). An intent outside
-  `01-Proyectos-Activos` (e.g. `03-Areas`, `02-Parking-Lot`) is **rejected** — estimate-setting,
+  `01-Active-Projects` (e.g. `03-Areas`, `02-Parking-Lot`) is **rejected** — estimate-setting,
   actual-tracking, and variance display must share one scope so an estimate can never be set where
   variance will never render. Do not introduce a third scanner; do not reuse the vault-wide
   `_find_note` (`server.py:2101`).
@@ -130,7 +130,7 @@ Defined once (e.g. a small constant map) and reused desktop + web:
 
 - Markdown frontmatter is the source of truth; SQLite holds only the existing time-series
   (`work_sessions`). No new SQLite table.
-- Estimates are per-intent and resolve to `01-Proyectos-Activos/<project>/<intent>.md` only
+- Estimates are per-intent and resolve to `01-Active-Projects/<project>/<intent>.md` only
   (Areas/Parking/Archive rejected — see component 1).
 - Frontmatter writes are atomic **per `write_frontmatter` call** (temp + `os.replace`,
   `intent_parser.py:266`). There is no cross-process file lock today (pre-existing). A concurrent
@@ -138,7 +138,7 @@ Defined once (e.g. a small constant map) and reused desktop + web:
   but two overlapping read-modify-write cycles are last-writer-wins at the file level — an accepted
   pre-existing risk, not a new guarantee. The EARS does not claim stronger.
 - Quick-Task exclusion is **structural, not a special-case check**: `QT-NNN` files never flow
-  through `_iter_intent_paths`/`_build_pick`, and `01-Proyectos-Activos`-scoped resolution won't
+  through `_iter_intent_paths`/`_build_pick`, and `01-Active-Projects`-scoped resolution won't
   match them — so they are inherently excluded from estimate-setting and variance display.
 - Pure stdlib (CLI), no new dependencies; no LLM, no network for any of this feature's math.
 - Spanish/English vocabulary handling follows existing `vocabulary.py` conventions for any
@@ -160,7 +160,7 @@ Defined once (e.g. a small constant map) and reused desktop + web:
 - **Clearing is supported** via the existing `_DELETE` sentinel (`intent_parser.py:131`, already
   used by `focus_picker.py:254`) — removing all three estimate keys in one atomic write. Cheap,
   no new primitive; in scope for v1 (R-1.7).
-- **Scope = `01-Proyectos-Activos` only.** Estimate-setting, actual-tracking, and variance display
+- **Scope = `01-Active-Projects` only.** Estimate-setting, actual-tracking, and variance display
   share one directory scope so an estimate can never be set where variance will never render.
 
 ## Out of Scope

@@ -87,7 +87,7 @@ def collect_files_by_scope(vault_path: Path, scope: str) -> list[dict]:
 
     Scopes:
         TAG                       — single file matching <TAG>.md
-        PROJECT:*                 — all files in 01-Proyectos-Activos/<PROJECT>/
+        PROJECT:*                 — all files in 01-Active-Projects/<PROJECT>/
         PROJECT:research          — files with `tipo: research` in project folder
         PROJECT:decisions         — files with `tipo: decision` in project folder
     """
@@ -110,7 +110,7 @@ def collect_files_by_scope(vault_path: Path, scope: str) -> list[dict]:
                 })
         return files
 
-    project_dir = vault_path / "01-Proyectos-Activos" / project
+    project_dir = vault_path / "01-Active-Projects" / project
     if not project_dir.exists():
         # Try in areas
         project_dir = vault_path / "03-Areas"

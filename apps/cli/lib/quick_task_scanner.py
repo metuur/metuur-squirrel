@@ -2,7 +2,7 @@
 """
 quick_task_scanner.py — Scans the Quick Task Stack in SCRATCH-PAD, classifies by state.
 
-Quick Tasks are markdown files in 01-Proyectos-Activos/SCRATCH-PAD/ carrying
+Quick Tasks are markdown files in 01-Active-Projects/SCRATCH-PAD/ carrying
 `quick_task: true` in their frontmatter. This scanner is pure classification — it
 never mutates files (the wake-commit that reactivates due snoozed tasks lives in the
 writer, driven by the API handler).
@@ -36,7 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent
 
-SCRATCH_PAD_DIR = Path("01-Proyectos-Activos") / "SCRATCH-PAD"
+SCRATCH_PAD_DIR = Path("01-Active-Projects") / "SCRATCH-PAD"
 
 
 def _parse_dt(value) -> datetime.datetime | None:

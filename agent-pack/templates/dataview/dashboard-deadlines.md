@@ -13,7 +13,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   status AS Status,
   project AS Project
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE deadline < date(today)
   AND status != "done" AND status != "done" AND status != "archived"
 SORT deadline ASC
@@ -26,7 +26,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
   priority AS Priority
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE deadline = date(today)
   AND status != "done" AND status != "done"
 SORT deadline ASC
@@ -40,7 +40,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   project AS Project,
   priority AS Priority
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE deadline > date(today) AND deadline <= date(today) + dur(1 day)
   AND status != "done" AND status != "done"
 SORT deadline ASC
@@ -53,7 +53,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
   project AS Project
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE deadline > date(today) + dur(1 day)
   AND deadline <= date(today) + dur(3 days)
   AND status != "done" AND status != "done"
@@ -68,7 +68,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   project AS Project,
   status AS Status
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE deadline > date(today) + dur(3 days)
   AND deadline <= date(today) + dur(7 days)
   AND status != "done" AND status != "done"
@@ -83,7 +83,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   project AS Project,
   status AS Status
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE deadline > date(today) + dur(7 days)
   AND status != "done" AND status != "done"
 SORT deadline ASC
@@ -97,7 +97,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   deadline AS Deadline,
   file.mtime AS "Completed Around"
-FROM "01-Proyectos-Activos" OR "03-Areas"
+FROM "01-Active-Projects" OR "03-Areas"
 WHERE (status = "done") AND deadline != null
 SORT file.mtime DESC
 LIMIT 5

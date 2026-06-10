@@ -36,7 +36,7 @@ _log = logging.getLogger("mind_journal")
 
 JOURNAL_ID = "MIND-JOURNAL"
 SCRATCH_PAD_SLUG = "SCRATCH-PAD"
-PROJECTS_DIR = "01-Proyectos-Activos"
+PROJECTS_DIR = "01-Active-Projects"
 
 DEFAULT_INTERVAL_HOURS = 4
 DEFAULT_WAKING_START = "08:00"

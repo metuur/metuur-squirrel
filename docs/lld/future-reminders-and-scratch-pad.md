@@ -35,7 +35,7 @@ Uses Python's `dateutil.relativedelta` (already available) or `datetime` arithme
 
 ### New lib module: `reminder_scanner.py`
 
-Mirrors `deadline_scanner.py` in structure. Scans `01-Proyectos-Activos` and `03-Areas` for files with `reminder_date` set.
+Mirrors `deadline_scanner.py` in structure. Scans `01-Active-Projects` and `03-Areas` for files with `reminder_date` set.
 
 Classification logic:
 
@@ -81,7 +81,7 @@ New function `ensure_scratch_pad(vault_path)` in `new_project_writer.py`:
 
 ```python
 def ensure_scratch_pad(vault_path: Path) -> None:
-    project_dir = vault_path / "01-Proyectos-Activos" / "SCRATCH-PAD"
+    project_dir = vault_path / "01-Active-Projects" / "SCRATCH-PAD"
     if project_dir.exists():
         return
     create_project(

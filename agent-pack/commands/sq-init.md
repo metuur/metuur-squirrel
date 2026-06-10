@@ -84,10 +84,10 @@ auto_link_project_page = true
    - `<vault>/.squirrel/switches.jsonl` ← empty file, switches ledger (VAULT-006)
 
 4. Verify that the vault's PARA folders exist (VAULT-001 + VAULT-006):
-   - `01-Proyectos-Activos/`   ← PARA: Projects
+   - `01-Active-Projects/`   ← PARA: Projects
    - `02-Areas/`               ← PARA: Areas
-   - `03-Recursos/`            ← PARA: Resources
-   - `04-Archivo/`             ← PARA: Archive
+   - `03-Resources/`            ← PARA: Resources
+   - `04-Archive/`             ← PARA: Archive
 
    Also create auxiliary folders if they don't exist:
    - `00-Dashboard/`
@@ -98,9 +98,9 @@ auto_link_project_page = true
    If any are missing, create them with a stub README.
 
 4b. Write a sample intent from `templates/intent.md` (VAULT-006):
-   - Destination: `<vault>/01-Proyectos-Activos/DEMO-INICIO/DEMO-INICIO-SETUP-001.md`
+   - Destination: `<vault>/01-Active-Projects/DEMO-INICIO/DEMO-INICIO-SETUP-001.md`
    - Fill in `<TAG>` → `DEMO-INICIO-SETUP-001`, `<PROJECT>` → `DEMO-INICIO`, `<YYYY-MM-DD>` → today's date.
-   - Also create the project page `<vault>/01-Proyectos-Activos/DEMO-INICIO/DEMO-INICIO.md` with minimal frontmatter:
+   - Also create the project page `<vault>/01-Active-Projects/DEMO-INICIO/DEMO-INICIO.md` with minimal frontmatter:
      ```yaml
      ---
      id: DEMO-INICIO

@@ -111,7 +111,7 @@ Notes here"""
         self.assertEqual(notes[1]["timestamp"], "2026-05-20 10:00")
 
     def test_parse_full_intent(self):
-        path = FIXTURES / "01-Proyectos-Activos" / "TEST-PROJECT" / "TEST-PROJECT-AUTH-002.md"
+        path = FIXTURES / "01-Active-Projects" / "TEST-PROJECT" / "TEST-PROJECT-AUTH-002.md"
         data = parse_intent(path)
         self.assertEqual(data["id"], "TEST-PROJECT-AUTH-002")
         self.assertEqual(data["frontmatter"]["status"], "in-progress")
@@ -372,7 +372,7 @@ class TestEndToEnd(unittest.TestCase):
     """Test that the CLI tools work end-to-end."""
 
     def test_intent_parser_cli(self):
-        path = FIXTURES / "01-Proyectos-Activos" / "TEST-PROJECT" / "TEST-PROJECT-AUTH-002.md"
+        path = FIXTURES / "01-Active-Projects" / "TEST-PROJECT" / "TEST-PROJECT-AUTH-002.md"
         script = Path(__file__).parent.parent / "lib" / "intent_parser.py"
         result = subprocess.run(
             ["python3", str(script), str(path), "--field", "stats"],
@@ -390,14 +390,14 @@ class TestEndToEnd(unittest.TestCase):
         data = json.loads(result.stdout)
         wip = data["wip"]
 
-        # Drift-proof oracle: every folder under 01-Proyectos-Activos counts
+        # Drift-proof oracle: every folder under 01-Active-Projects counts
         # toward WIP (the WIP-cap contract — see
         # docs/lld/future-reminders-and-scratch-pad.md). Deriving the expected
         # count from the filesystem stops this smoke test from re-acquiring a
         # stale magic number whenever the fixture gains a project. The
         # load-bearing checks are the contract invariants below, not the raw
         # count. (Exact intended inventory lives in TestWipCount.)
-        active_dir = FIXTURES / "01-Proyectos-Activos"
+        active_dir = FIXTURES / "01-Active-Projects"
         expected_wip = sum(1 for d in active_dir.iterdir() if d.is_dir())
         self.assertEqual(wip["count"], expected_wip)
 
@@ -600,7 +600,7 @@ class TestSchemaVersion(unittest.TestCase):
 class TestWipCount(unittest.TestCase):
     """Canonical WIP inventory for the minimal fixture.
 
-    Every folder under 01-Proyectos-Activos occupies a WIP slot — including the
+    Every folder under 01-Active-Projects occupies a WIP slot — including the
     Scratch Pad and a deliberately stale project. Per
     docs/lld/future-reminders-and-scratch-pad.md: "The Scratch Pad counts toward
     the WIP cap like any other project." The cap is a load signal ("how many

@@ -19,7 +19,7 @@ global-shortcut registration in `lib.rs`.
 
 ### Storage: markdown files in `SCRATCH-PAD`
 
-Each Quick Task is a markdown file in `01-Proyectos-Activos/SCRATCH-PAD/`, named
+Each Quick Task is a markdown file in `01-Active-Projects/SCRATCH-PAD/`, named
 `QT-NNN.md` where `NNN` is allocated by the existing `_next_number(folder, "QT-")`
 helper (same one used for intents/captures). Frontmatter:
 

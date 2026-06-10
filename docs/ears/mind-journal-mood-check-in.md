@@ -5,7 +5,7 @@
 | ID    | EARS statement |
 |-------|----------------|
 | R-1.1 | WHEN the backend server starts, THE SYSTEM SHALL check the vault state JSON for a `mind_journal_seeded` flag. |
-| R-1.2 | IF `mind_journal_seeded` is absent or false, THE SYSTEM SHALL create a Mind Journal task at `01-Proyectos-Activos/SCRATCH-PAD/MIND-JOURNAL.md` with frontmatter `id: MIND-JOURNAL`, `type: C`, `status: wip`, `project: SCRATCH-PAD`, `journal: true`, `reminder_interval_hours: 4`, `waking_start: "08:00"`, `waking_end: "22:00"`, and `reminder_last_logged` set to the creation timestamp. |
+| R-1.2 | IF `mind_journal_seeded` is absent or false, THE SYSTEM SHALL create a Mind Journal task at `01-Active-Projects/SCRATCH-PAD/MIND-JOURNAL.md` with frontmatter `id: MIND-JOURNAL`, `type: C`, `status: wip`, `project: SCRATCH-PAD`, `journal: true`, `reminder_interval_hours: 4`, `waking_start: "08:00"`, `waking_end: "22:00"`, and `reminder_last_logged` set to the creation timestamp. |
 | R-1.3 | WHEN the Mind Journal task is created, THE SYSTEM SHALL render a `## Entries` heading in the body and an explanatory line stating the task may be deleted at any time. |
 | R-1.4 | WHEN the Mind Journal task is successfully seeded, THE SYSTEM SHALL set `mind_journal_seeded: true` in the vault state JSON. |
 | R-1.5 | IF `mind_journal_seeded` is true, THE SYSTEM SHALL NOT create a Mind Journal task at server start, even if no journal task exists in the vault. |

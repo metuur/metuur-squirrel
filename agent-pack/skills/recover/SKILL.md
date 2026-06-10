@@ -127,7 +127,7 @@ Handle each option:
 
 **inbox**: Write to `<vault>/99-Resources/Captures/RECOVERED-<date>-<hash>.md` with frontmatter `tipo: recovered-session` and `estado: inbox`.
 
-**project**: Ask which project, then write to `<vault>/01-Proyectos-Activos/<PROJECT>/RECOVERED-<date>-<hash>.md`.
+**project**: Ask which project, then write to `<vault>/01-Active-Projects/<PROJECT>/RECOVERED-<date>-<hash>.md`.
 
 **raw**: Already displayed — confirm "Done, only displayed."
 

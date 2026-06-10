@@ -36,7 +36,7 @@ Dependency layers:
 - [x] **1.2** Implement `ensure_mind_journal()` seeding with vault-state flag (deps: 1.1, est: ~40m)
   - acceptance:
     - R-1.1 — At server start, reads `mind_journal_seeded` from vault state JSON.
-    - R-1.2 — IF flag absent/false, creates `01-Proyectos-Activos/SCRATCH-PAD/MIND-JOURNAL.md` with frontmatter `id: MIND-JOURNAL`, `type: C`, `status: wip`, `project: SCRATCH-PAD`, `journal: true`, `reminder_interval_hours: 4`, `waking_start: "08:00"`, `waking_end: "22:00"`, `reminder_last_logged: <creation ts>`.
+    - R-1.2 — IF flag absent/false, creates `01-Active-Projects/SCRATCH-PAD/MIND-JOURNAL.md` with frontmatter `id: MIND-JOURNAL`, `type: C`, `status: wip`, `project: SCRATCH-PAD`, `journal: true`, `reminder_interval_hours: 4`, `waking_start: "08:00"`, `waking_end: "22:00"`, `reminder_last_logged: <creation ts>`.
     - R-1.3 — Body renders a `## Entries` heading and a line stating the task may be deleted anytime.
     - R-1.4 — On successful seed, sets `mind_journal_seeded: true` in vault state JSON.
     - R-1.5 — IF flag true, does NOT create the task even when none exists.

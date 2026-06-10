@@ -57,7 +57,7 @@ def find_projects(vault_path: Path) -> dict[str, list[Path]]:
     }
 
     locations = {
-        "01-Proyectos-Activos": "wip",
+        "01-Active-Projects": "wip",
         "02-Parking-Lot": "parking",
         "03-Areas": "areas",
         "06-Archive": "archive",
@@ -122,7 +122,7 @@ def active_intent_for(vault: Path, project_slug: str) -> Optional[str]:
     - Returns: the intent's file stem (e.g. "MY-PROJECT-i01") or None if no intents
       have any shutdown notes / activity.
     """
-    project_folder = vault / "01-Proyectos-Activos" / project_slug
+    project_folder = vault / "01-Active-Projects" / project_slug
     if not project_folder.exists():
         return None
 

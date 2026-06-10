@@ -124,7 +124,7 @@ class TestHomeManualFocus(_Case):
 
     def test_home_includes_today_pick_when_set(self):
         today = datetime.date.today().isoformat()
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-FOCUS-T01",
                      {"focus_today": today}, title="Today focus")
 
@@ -148,7 +148,7 @@ class TestHomeManualFocus(_Case):
 
         # Seed a manual pick on TEST-PROJECT (the canonical fixture project).
         today = datetime.date.today().isoformat()
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-MANUAL-T01",
                      {"focus_today": today}, title="Manually picked")
 
@@ -169,7 +169,7 @@ class TestHomeManualFocus(_Case):
     def test_home_returns_null_for_stale_focus_today_yaml_still_on_disk(self):
         # R-9.1: read-time expiry — stale YAML value yields null at HTTP boundary
         # without mutating the file.
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         intent_path = _make_intent(
             proj, "TEST-PROJECT-FOCUS-STALE",
             {"focus_today": "2020-01-01"}, title="Stale pick",

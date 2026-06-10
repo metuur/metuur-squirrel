@@ -12,7 +12,7 @@ Suppression rules (R-2.2–R-2.4):
   - reminder_snoozed_until set AND future → suppressed (snoozed)
   - reminder_snoozed_until set AND past   → no suppression (snooze expired)
 
-Scans 01-Proyectos-Activos and 03-Areas (same as deadline_scanner).
+Scans 01-Active-Projects and 03-Areas (same as deadline_scanner).
 
 Usage CLI:
     python3 reminder_scanner.py --vault ~/vault-squirrel
@@ -43,7 +43,7 @@ def _parse_date_str(s: str) -> datetime.date | None:
 
 def scan_vault_reminders(vault_path: Path) -> dict:
     """
-    Scan all .md files in 01-Proyectos-Activos and 03-Areas for reminder_date.
+    Scan all .md files in 01-Active-Projects and 03-Areas for reminder_date.
 
     Returns:
         {
@@ -59,7 +59,7 @@ def scan_vault_reminders(vault_path: Path) -> dict:
     approaching: list[dict] = []
     active: list[dict] = []
 
-    locations = ["01-Proyectos-Activos", "03-Areas"]
+    locations = ["01-Active-Projects", "03-Areas"]
     for loc_name in locations:
         loc = vault_path / loc_name
         if not loc.exists():

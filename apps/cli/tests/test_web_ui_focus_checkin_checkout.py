@@ -117,7 +117,7 @@ class TestCheckinCheckout(unittest.TestCase):
         self.home = _make_home(self.tmp, vault_name)
         self.vault = self.home / "vaults" / vault_name
         # Create a test intent
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-001")
         self.srv, self.port = _spawn(self.home)
         self.cookie = f"squirrel_vault={vault_name}"
@@ -175,7 +175,7 @@ class TestCheckinCheckout(unittest.TestCase):
         })
         _post(self.port, "/api/focus/checkout", self.cookie)
 
-        intent_path = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT" / "TEST-001.md"
+        intent_path = self.vault / "01-Active-Projects" / "TEST-PROJECT" / "TEST-001.md"
         content = intent_path.read_text()
         self.assertIn("time_invested_minutes", content)
 
@@ -212,7 +212,7 @@ class TestFocusHistory(unittest.TestCase):
         vault_name = "testvault"
         self.home = _make_home(self.tmp, vault_name)
         self.vault = self.home / "vaults" / vault_name
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-001")
         self.srv, self.port = _spawn(self.home)
         self.cookie = f"squirrel_vault={vault_name}"

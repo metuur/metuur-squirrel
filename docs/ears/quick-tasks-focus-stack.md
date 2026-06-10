@@ -9,7 +9,7 @@ Keywords: `THE SYSTEM SHALL` (always-on) · `WHEN <trigger>` (event) ·
 | ID    | EARS statement |
 |-------|----------------|
 | R-1.1 | WHEN the user activates an Add Quick Task surface (global shortcut `Ctrl+Cmd+Q`, tray menu item, or web-UI button), THE SYSTEM SHALL open a single one-line capture box focused for text entry. |
-| R-1.2 | WHEN the user submits non-empty text from the capture box, THE SYSTEM SHALL create a `QT-NNN.md` file in `01-Proyectos-Activos/SCRATCH-PAD/` with `type: quick_task`, `quick_task: true`, `qt_state: active`, `qt_created_at` set to the current timestamp, and `qt_snooze_count: 0`. |
+| R-1.2 | WHEN the user submits non-empty text from the capture box, THE SYSTEM SHALL create a `QT-NNN.md` file in `01-Active-Projects/SCRATCH-PAD/` with `type: quick_task`, `quick_task: true`, `qt_state: active`, `qt_created_at` set to the current timestamp, and `qt_snooze_count: 0`. |
 | R-1.3 | WHEN the user submits empty or whitespace-only text, THE SYSTEM SHALL reject the capture and keep the box open without creating a file. |
 | R-1.4 | WHEN a Quick Task is created via the global shortcut, THE SYSTEM SHALL return keyboard focus to the previously active application after submission or cancellation. |
 | R-1.5 | THE SYSTEM SHALL route all three capture surfaces through the same `POST /api/quick-tasks` endpoint and the same capture box. |

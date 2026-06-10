@@ -81,7 +81,7 @@ def scan_vault_deadlines(vault_path: Path) -> dict:
     parse_errors = 0
 
     # Scan project folders for intents
-    locations = ["01-Proyectos-Activos", "03-Areas"]
+    locations = ["01-Active-Projects", "03-Areas"]
     for loc_name in locations:
         loc = vault_path / loc_name
         if not loc.exists():

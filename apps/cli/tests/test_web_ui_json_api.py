@@ -65,7 +65,7 @@ class _Case(unittest.TestCase):
         shutil.copytree(FIXTURE_VAULT, self.vault)
         if self.multi_vault:
             second_vault = self.home / "other"
-            (second_vault / "01-Proyectos-Activos").mkdir(parents=True)
+            (second_vault / "01-Active-Projects").mkdir(parents=True)
             cfg = textwrap.dedent(f"""\
                 machine_environment = "test"
 
@@ -314,7 +314,7 @@ class TestProjectsEndpoints(_Case):
         self.assertEqual(status, 200)
         self.assertTrue(data["success"])
         on_disk = (
-            self.vault / "01-Proyectos-Activos" / "TEST-PROJECT" / "TEST-PROJECT.md"
+            self.vault / "01-Active-Projects" / "TEST-PROJECT" / "TEST-PROJECT.md"
         ).read_text(encoding="utf-8")
         self.assertEqual(on_disk, new_body)
 
@@ -489,7 +489,7 @@ class TestItemDefer(_Case):
         return r.status, json.loads(r.read().decode("utf-8"))
 
     def _seed_note(self, note_id="DEFER-TEST-001", deadline="2020-01-01"):
-        note = (self.vault / "01-Proyectos-Activos" / "TEST-PROJECT" / f"{note_id}.md")
+        note = (self.vault / "01-Active-Projects" / "TEST-PROJECT" / f"{note_id}.md")
         note.write_text(textwrap.dedent(f"""\
             ---
             id: {note_id}

@@ -4,7 +4,7 @@ quick_task_writer.py — Create and mutate Quick Task files in SCRATCH-PAD.
 
 Quick Tasks are small (2–5 min) interruptions parked in a FIFO stack of at most
 MAX_ACTIVE active items. Each is a markdown file in
-01-Proyectos-Activos/SCRATCH-PAD/ named QT-NNN.md with:
+01-Active-Projects/SCRATCH-PAD/ named QT-NNN.md with:
 
     type: quick_task
     quick_task: true
@@ -38,7 +38,7 @@ from intent_parser import write_frontmatter, _DELETE, parse_intent  # noqa: E402
 MAX_ACTIVE = 5
 MAX_SNOOZES = 2
 
-SCRATCH_PAD_DIR = Path("01-Proyectos-Activos") / "SCRATCH-PAD"
+SCRATCH_PAD_DIR = Path("01-Active-Projects") / "SCRATCH-PAD"
 _ID_PREFIX = "QT"
 
 

@@ -118,7 +118,7 @@ class TestFocusGet(_Case):
 
     def test_focus_get_returns_today_pick_when_set(self):
         today = datetime.date.today().isoformat()
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-FOCUS-T01",
                      {"focus_today": today}, title="Today focus")
 
@@ -132,7 +132,7 @@ class TestFocusGet(_Case):
 
     def test_focus_get_returns_week_pick_when_set(self):
         week = datetime.date.today().strftime("%G-W%V")
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-FOCUS-W01",
                      {"focus_week": week}, title="Week focus")
 
@@ -146,7 +146,7 @@ class TestFocusGet(_Case):
 
     def test_focus_get_ignores_stale_today_token(self):
         # R-1.4 wired through the HTTP boundary.
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-FOCUS-STALE",
                      {"focus_today": "2020-01-01"}, title="Stale pick")
 

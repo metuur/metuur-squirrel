@@ -136,7 +136,7 @@ class _Case(unittest.TestCase):
 
 class TestFocusPut(_Case):
     def test_put_today_with_valid_pair_sets_focus(self):
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-i01", {}, title="Today candidate")
 
         status, body = self._put_json(
@@ -155,7 +155,7 @@ class TestFocusPut(_Case):
 
     def test_put_today_with_clear_removes_focus(self):
         today = datetime.date.today().isoformat()
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         intent_path = _make_intent(proj, "TEST-PROJECT-i02",
                                    {"focus_today": today},
                                    title="To clear")
@@ -173,7 +173,7 @@ class TestFocusPut(_Case):
         self.assertNotIn("focus_today:", text)
 
     def test_put_unknown_slug_returns_404_no_mutation(self):
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-i03", {}, title="Untouched")
 
         before = _snapshot_vault(self.vault)
@@ -197,7 +197,7 @@ class TestFocusPut(_Case):
         self.assertEqual(before, after)
 
     def test_put_week_with_valid_pair_sets_week_focus(self):
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-w01", {}, title="Week candidate")
 
         status, body = self._put_json(
@@ -212,7 +212,7 @@ class TestFocusPut(_Case):
 
     def test_put_today_does_not_touch_week_slot(self):
         week_token = datetime.date.today().strftime("%G-W%V")
-        proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         _make_intent(proj, "TEST-PROJECT-wkeep",
                      {"focus_week": week_token}, title="Keep week")
         _make_intent(proj, "TEST-PROJECT-tnew", {}, title="New today")

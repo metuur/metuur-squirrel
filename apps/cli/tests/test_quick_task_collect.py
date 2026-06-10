@@ -20,7 +20,7 @@ from quick_task_writer import (
 
 
 def _path(vault: Path, qt_id: str) -> Path:
-    return vault / "01-Proyectos-Activos" / "SCRATCH-PAD" / f"{qt_id}.md"
+    return vault / "01-Active-Projects" / "SCRATCH-PAD" / f"{qt_id}.md"
 
 
 def _past_iso() -> str:

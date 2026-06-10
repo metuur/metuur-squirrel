@@ -35,7 +35,7 @@ self-correcting signal.
 - Intents without an estimate (including all pre-existing/legacy intents) keep working exactly as
   before — actual shown alone, no variance, no errors.
 - An estimate set by mistake can be cleared.
-- Estimates apply only to active-project intents (`01-Proyectos-Activos`) — the same scope where
+- Estimates apply only to active-project intents (`01-Active-Projects`) — the same scope where
   actuals are tracked and variance is shown — so an estimate is never set where it can't pay off.
 
 ## Non-Goals

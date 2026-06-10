@@ -4,7 +4,7 @@ Story 7.1 — verify lib/capture_writer.write_capture.
 
 Acceptance (R-5.4, R-5.5, R-5.6):
   - project_slug=None  -> <vault>/99-Resources/Inbox/UNFILED-NNN.md
-  - project_slug="X"   -> <vault>/01-Proyectos-Activos/X/X-CAPTURE-NNN.md
+  - project_slug="X"   -> <vault>/01-Active-Projects/X/X-CAPTURE-NNN.md
   - numbering increments
   - atomic write (temp file + os.replace)
 """
@@ -25,7 +25,7 @@ class TestCaptureWriter(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.vault = pathlib.Path(self.tmp.name)
-        (self.vault / "01-Proyectos-Activos").mkdir()
+        (self.vault / "01-Active-Projects").mkdir()
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -42,7 +42,7 @@ class TestCaptureWriter(unittest.TestCase):
         self.assertIn("an idea", body)
 
     def test_writes_into_project_folder_when_slug_given(self):
-        proj = self.vault / "01-Proyectos-Activos" / "PROYECTO-A"
+        proj = self.vault / "01-Active-Projects" / "PROYECTO-A"
         proj.mkdir()
         p = write_capture(self.vault, "PROYECTO-A", "my project note")
         self.assertEqual(p.parent.resolve(), proj.resolve())

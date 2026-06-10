@@ -10,7 +10,7 @@ Two-phase, copy-only. The source vault is NEVER modified.
 
 Mapping heuristics (task: docs/tasks/obsidian-vault-migration-skill.md):
   - top-level folder with notes      -> project under 02-Parking-Lot/ (default)
-                                        or 01-Proyectos-Activos/ (--dest active)
+                                        or 01-Active-Projects/ (--dest active)
   - folder-note (Foo/Foo.md)         -> becomes the project page body
   - other notes in the folder        -> intents <TAG>-NOTE-NNN.md (flattened)
   - daily-notes folder               -> copied as-is into 04-Daily/
@@ -58,7 +58,7 @@ _DAILY_NAME_RE = re.compile(r"daily|diario", re.IGNORECASE)
 _H1_RE = re.compile(r"^# ", re.MULTILINE)
 
 _SKIP_DIRS = {".obsidian", ".trash", ".squirrel"}
-_ACTIVE_BUCKET = "01-Proyectos-Activos"
+_ACTIVE_BUCKET = "01-Active-Projects"
 _PARKING_BUCKET = "02-Parking-Lot"
 
 # Frontmatter keys the migrator owns; original values for these are replaced
