@@ -95,6 +95,15 @@ export function Sidebar() {
 
       <div className="mt-auto pt-6 border-t border-hairline space-y-1">
         <button
+          onClick={() => navigate('/guide')}
+          className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-surface-2 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center">
+            <span className="material-icons text-ink-3 text-base">menu_book</span>
+          </div>
+          <div className="text-sm font-medium text-ink-2">Guide</div>
+        </button>
+        <button
           onClick={() => navigate('/settings')}
           className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-surface-2 transition-colors"
         >
