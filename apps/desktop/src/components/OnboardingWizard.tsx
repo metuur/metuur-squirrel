@@ -257,6 +257,16 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               <div className="text-ink-4">{savedName}</div>
             </div>
 
+            <div className="flex flex-col gap-1 text-[13px]">
+              <span>Already have notes in Obsidian? Ask your coding agent to migrate them:</span>
+              <code className="w-fit rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[12px] text-ink-1 select-all">
+                /sq-migrate-vault ~/path/to/your-obsidian-vault
+              </code>
+              <span className="text-ink-4 text-[11px]">
+                Shows a dry-run plan first — your original vault is never modified.
+              </span>
+            </div>
+
             <RecommendedSetup />
 
             <div className="flex justify-end">
