@@ -2,6 +2,8 @@
 // Steps: welcome → obsidian → vault → done. Config only: checks Obsidian,
 // picks/creates a vault folder, and writes it to ~/.squirrel/config.toml via
 // the backend. Binaries/launchd/agent-pack remain the installer's job.
+// The final "done" step also surfaces recommended OS setup: notification
+// permission and launch-at-login.
 
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
@@ -9,6 +11,8 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { api, type ObsidianStatus } from "../api/client";
 import { markOnboardingDone } from "../lib/onboarding";
+import { ackSetupNudge } from "../lib/setupNudge";
+import { RecommendedSetup } from "./RecommendedSetup";
 
 const OBSIDIAN_DOWNLOAD = "https://obsidian.md/download";
 const DEFAULT_VAULT = "~/squirrel-vault";
@@ -97,6 +101,9 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
 
   const finish = async () => {
     await markOnboardingDone();
+    // Stamp the current version as setup-acknowledged so the post-update nudge
+    // doesn't immediately re-show the same card right after onboarding.
+    await ackSetupNudge();
     onComplete();
   };
 
@@ -249,6 +256,9 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               <div>Vault: <span className="tabular">{savedPath}</span></div>
               <div className="text-ink-4">{savedName}</div>
             </div>
+
+            <RecommendedSetup />
+
             <div className="flex justify-end">
               <button type="button" className="btn" onClick={() => void finish()}>
                 Launch Squirrel

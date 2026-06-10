@@ -4,13 +4,30 @@
 <style>
   body { font: -apple-system-body, system-ui; margin: 0; color: #1d1d1f; }
   h1 { font-size: 16px; margin: 0 0 8px; }
+  h2 { font-size: 13px; margin: 14px 0 6px; }
   p  { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
   code { background: #f2f2f2; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .note { background: #fff8e6; border: 1px solid #ffe2a8; border-radius: 6px;
+          padding: 8px 10px; margin: 0 0 10px; color: #5c4400; }
+  .note ul { font-size: 12.5px; line-height: 1.5; margin: 0; padding-left: 18px; }
 </style></head>
 <body>
   <h1>You're all set 🎉</h1>
   <p><b>Open Squirrel</b> from your Applications folder (or Spotlight) to finish
   setup — it'll walk you through pointing at your vault.</p>
+
+  <h2>Recommended setup</h2>
+  <div class="note">
+    <ul>
+      <li><b>Allow notifications</b> so reminders appear:
+        <code>System Settings → Notifications → Squirrel</code> →
+        turn on <b>Allow Notifications</b> (style: <i>Banners</i> or <i>Alerts</i>).</li>
+      <li><b>Launch at login</b> so Squirrel is always running: enable it on
+        Squirrel's first-run setup screen, or in
+        <code>System Settings → General → Login Items</code>.</li>
+    </ul>
+  </div>
+
   <p>Using an AI coding agent? Type <code>/sq-status</code> in Claude Code, Codex,
   Cursor, or Windsurf to see your vault at a glance.</p>
   <p>Terminal user? <code>squirrel status</code> works right away.</p>
