@@ -99,6 +99,17 @@ class ConfigVaultApiTest(unittest.TestCase):
         # path updated to the new folder
         self.assertEqual(str(pathlib.Path(data["path"])), str(target.resolve()))
 
+    def test_create_scaffolds_default_structure(self):
+        target = self.home / "fresh-vault"
+        status, _ = self._req("POST", "/api/config/vault",
+                              {"path": str(target), "create": True})
+        self.assertEqual(status, 200)
+        # A freshly created vault gets the default skeleton eagerly, not on a
+        # later /api/me bootstrap.
+        scratch = target / "01-Proyectos-Activos" / "SCRATCH-PAD"
+        self.assertTrue((scratch / "SCRATCH-PAD.md").is_file())
+        self.assertTrue((scratch / "MIND-JOURNAL.md").is_file())
+
     def test_idempotent_repeat_post(self):
         target = self.home / "fresh-vault"
         target.mkdir()

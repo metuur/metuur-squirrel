@@ -427,6 +427,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("DELETE", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),         "api_quick_task_delete"),
     ("POST", re.compile(r"^/api/reveal$"),                            "api_reveal"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
+    ("PATCH", re.compile(r"^/api/item/(?P<item_id>[A-Za-z0-9][A-Za-z0-9_-]*)/defer$"), "api_item_defer"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
     ("GET",  re.compile(r"^/api/search$"),                            "api_search"),
     ("GET",  re.compile(r"^/api/parakeet$"),                          "api_parakeet"),
@@ -758,6 +759,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(400, "Vault path is not a directory.")
 
         vault = config_loader.upsert_default_vault(name, str(resolved))
+
+        # Scaffold the default vault structure now, rather than waiting for the
+        # first /api/me bootstrap — a freshly created vault should not be empty.
+        # Both helpers are idempotent (existing folders keep their contents; the
+        # SCRATCH-PAD / MIND-JOURNAL skeleton is added once). Call them directly
+        # (not the _once wrappers) so a failure here doesn't suppress the lazy
+        # /api/me retry; non-fatal so it never blocks vault creation.
+        try:
+            from new_project_writer import ensure_scratch_pad
+            from mind_journal import ensure_mind_journal
+            ensure_scratch_pad(resolved)
+            ensure_mind_journal(resolved, name)
+        except Exception:
+            pass
         self._send_json(
             {"name": vault.name, "path": str(vault.path), "default": True}
         )
@@ -1612,6 +1627,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(500, "Could not snooze reminder.")
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id, "snoozed_until": until})
+
+    def api_item_defer(self, item_id: str) -> None:
+        """Push an item's deadline out (defer / snooze) by rewriting only the
+        `deadline` frontmatter of its own .md file. Works for any kind (note,
+        task, or project) because the deadline lives in the same place for all
+        of them. The board uses this to move a card out of the computed PRESSING
+        lane — the item resurfaces in a calmer lane once its deadline is later.
+        """
+        ctx, _ = self._context()
+        md_path = _find_note(ctx.active.path, item_id)
+        if md_path is None:
+            raise _UserError(404, "We could not find that item.")
+        until = (self._read_json_body().get("until") or "").strip()
+        if not until:
+            raise _UserError(400, "until date is required.")
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", until):
+            raise _UserError(400, "until must be a YYYY-MM-DD date.")
+        try:
+            text = md_path.read_text(encoding="utf-8", errors="replace")
+            new_text = _update_frontmatter_fields(text, {"deadline": until})
+            tmp = md_path.with_suffix(md_path.suffix + ".tmp")
+            tmp.write_text(new_text, encoding="utf-8")
+            os.replace(tmp, md_path)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not defer the item.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": item_id, "deadline": until})
 
     # ── /api/quick-tasks — Quick Task Stack ─────────────────────────────────
 

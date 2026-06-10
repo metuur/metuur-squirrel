@@ -469,5 +469,65 @@ class TestSPAShell(_Case):
             self.fail(f"valid SPA route returned {he.code}")
 
 
+# ── PATCH /api/item/{id}/defer ───────────────────────────────────────────────
+
+
+class TestItemDefer(_Case):
+    """Deferring any item rewrites only its `deadline` frontmatter so it leaves
+    the computed PRESSING lane. Used by the board's drag-from-PRESSING flow."""
+
+    def _patch_json(self, path, payload):
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self._url(path), data=data,
+            headers={"Content-Type": "application/json"}, method="PATCH",
+        )
+        try:
+            r = urllib.request.urlopen(req, timeout=3)
+        except urllib.error.HTTPError as he:
+            return he.code, json.loads(he.read().decode("utf-8"))
+        return r.status, json.loads(r.read().decode("utf-8"))
+
+    def _seed_note(self, note_id="DEFER-TEST-001", deadline="2020-01-01"):
+        note = (self.vault / "01-Proyectos-Activos" / "TEST-PROJECT" / f"{note_id}.md")
+        note.write_text(textwrap.dedent(f"""\
+            ---
+            id: {note_id}
+            type: A
+            status: wip
+            deadline: {deadline}
+            ---
+
+            # {note_id}
+
+            body
+            """))
+        return note
+
+    def test_defer_rewrites_deadline(self):
+        note = self._seed_note()
+        status, data = self._patch_json(
+            f"/api/item/{note.stem}/defer", {"until": "2099-12-31"})
+        self.assertEqual(status, 200)
+        self.assertEqual(data["deadline"], "2099-12-31")
+        self.assertIn("deadline: 2099-12-31", note.read_text())
+        self.assertNotIn("2020-01-01", note.read_text())
+
+    def test_defer_missing_item_404(self):
+        status, _ = self._patch_json("/api/item/NOPE-999/defer", {"until": "2099-12-31"})
+        self.assertEqual(status, 404)
+
+    def test_defer_bad_date_400(self):
+        note = self._seed_note(note_id="DEFER-TEST-002")
+        status, _ = self._patch_json(
+            f"/api/item/{note.stem}/defer", {"until": "next week"})
+        self.assertEqual(status, 400)
+
+    def test_defer_missing_until_400(self):
+        note = self._seed_note(note_id="DEFER-TEST-003")
+        status, _ = self._patch_json(f"/api/item/{note.stem}/defer", {})
+        self.assertEqual(status, 400)
+
+
 if __name__ == "__main__":
     unittest.main()

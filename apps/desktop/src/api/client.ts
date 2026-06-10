@@ -88,6 +88,21 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       throw new ApiError(resp.status, msg, data);
     }
     return data as T;
+  } catch (e) {
+    // An ApiError is a real HTTP response we already classified — rethrow as-is.
+    if (e instanceof ApiError) throw e;
+    // Otherwise `fetch` itself rejected: the backend sidecar isn't reachable
+    // (connection refused → WebKit's opaque "Load failed") or it didn't answer
+    // before REQUEST_TIMEOUT_MS (AbortError). Map both to a clear, actionable
+    // message so callers never surface the raw transport error to the user.
+    const aborted = e instanceof DOMException && e.name === "AbortError";
+    throw new ApiError(
+      0,
+      aborted
+        ? "Squirrel’s backend didn’t respond in time — it may still be starting up. Please try again in a moment."
+        : "Couldn’t reach Squirrel’s backend — it may still be starting up. Please try again in a moment.",
+      e,
+    );
   } finally {
     clearTimeout(timer);
   }

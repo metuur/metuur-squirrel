@@ -12,11 +12,17 @@ import {
   disable as autostartDisable,
 } from "@tauri-apps/plugin-autostart";
 
-// Deep link to the macOS Notifications settings pane (Ventura+; older versions
-// fall back to opening System Settings). The OS can't deep-link to a specific
-// app row, so the on-screen copy also spells out the path.
+// Deep links to the macOS settings panes (Ventura+; older versions fall back to
+// opening System Settings). The OS can't deep-link to a specific app row, so the
+// on-screen copy always spells out the full path too.
 const NOTIFICATIONS_SETTINGS_URL =
   "x-apple.systempreferences:com.apple.Notifications-Settings.extension";
+const LOGIN_ITEMS_SETTINGS_URL =
+  "x-apple.systempreferences:com.apple.LoginItems-Settings.extension";
+
+// Open a System Settings pane, swallowing the rejection if the scheme is blocked
+// (the on-screen path still tells the user where to go).
+const openSettings = (url: string) => void openUrl(url).catch(() => {});
 
 export function RecommendedSetup() {
   // null = unknown / not a Tauri host → that control is hidden.
@@ -70,7 +76,21 @@ export function RecommendedSetup() {
     <div className="flex flex-col gap-3 rounded border border-hairline bg-surface-2 px-3 py-3">
       <span className="title text-[13px]">Recommended setup</span>
 
-      {notifGranted === true && <span className="text-[13px]">✓ Notifications enabled</span>}
+      {notifGranted === true && (
+        <div className="flex flex-col gap-1 text-[13px]">
+          <span>✓ Notifications enabled</span>
+          <span className="text-ink-4 text-[11px]">
+            Manage in System Settings → Notifications → Squirrel.{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => openSettings(NOTIFICATIONS_SETTINGS_URL)}
+            >
+              Open
+            </button>
+          </span>
+        </div>
+      )}
       {notifGranted === false && (
         <div className="flex flex-col gap-2 text-[13px]">
           <span>
@@ -84,7 +104,7 @@ export function RecommendedSetup() {
             <button
               type="button"
               className="btn"
-              onClick={() => void openUrl(NOTIFICATIONS_SETTINGS_URL).catch(() => {})}
+              onClick={() => openSettings(NOTIFICATIONS_SETTINGS_URL)}
             >
               Open System Settings
             </button>
@@ -97,14 +117,26 @@ export function RecommendedSetup() {
       )}
 
       {autostartReady && (
-        <label className="flex items-center gap-2 text-[13px]">
-          <input
-            type="checkbox"
-            checked={autostartOn}
-            onChange={(e) => void toggleAutostart(e.target.checked)}
-          />
-          <span>Launch Squirrel at login</span>
-        </label>
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-[13px]">
+            <input
+              type="checkbox"
+              checked={autostartOn}
+              onChange={(e) => void toggleAutostart(e.target.checked)}
+            />
+            <span>Launch Squirrel at login</span>
+          </label>
+          <span className="text-ink-4 text-[11px]">
+            Manage in System Settings → General → Login Items.{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => openSettings(LOGIN_ITEMS_SETTINGS_URL)}
+            >
+              Open
+            </button>
+          </span>
+        </div>
       )}
     </div>
   );

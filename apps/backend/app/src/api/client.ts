@@ -327,6 +327,13 @@ export const api = {
       `/projects/${slug}/status`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  // Push any item's deadline out (defer / snooze) so it leaves the computed
+  // PRESSING lane. Works for notes, tasks, and projects alike.
+  itemDefer: (id: string, until: string) =>
+    call<{ success: true; id: string; deadline: string }>(
+      `/item/${encodeURIComponent(id)}/defer`,
+      { method: 'PATCH', body: JSON.stringify({ until }) },
+    ),
   projectSave: (slug: string, body: string, mtime: number) =>
     call<SaveResult>(`/projects/${slug}`, {
       method: 'POST',
