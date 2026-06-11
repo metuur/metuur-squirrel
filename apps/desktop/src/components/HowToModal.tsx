@@ -15,8 +15,7 @@
 //   • the tray "How to use Squirrel" item, which shows the window and emits
 //     a `show-how-to` event the App listens for.
 
-import { openPath, openUrl } from "@tauri-apps/plugin-opener";
-import { resolveResource } from "@tauri-apps/api/path";
+import { openWebUrl } from "../api/client";
 
 interface CommandEntry {
   cmd: string; // the command chip text
@@ -102,23 +101,13 @@ const CLI_COMMANDS: CommandEntry[] = [
   },
 ];
 
-// Canonical docs target. Primary: the README bundled as a Tauri resource
-// (see tauri.conf.json `resources`). Fallback: the repo README on GitHub, so
-// the button always does something even if the local file can't be opened
-// (e.g. in `tauri dev` before resources are staged, or no Markdown handler).
-const REPO_README_URL = "https://github.com/metuur/metuur-squirrel#readme";
-
+// Canonical docs target: the Web UI's Guide page (searchable, with FAQ) —
+// not the bundled README markdown.
 async function openGuide() {
   try {
-    const path = await resolveResource("README.md");
-    await openPath(path);
+    await openWebUrl("/guide");
   } catch (err) {
-    console.error("[HowToModal] local README open failed, opening GitHub:", err);
-    try {
-      await openUrl(REPO_README_URL);
-    } catch (err2) {
-      console.error("[HowToModal] README fallback failed:", err2);
-    }
+    console.error("[HowToModal] failed to open the Web UI guide:", err);
   }
 }
 

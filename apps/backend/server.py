@@ -1487,8 +1487,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             .replace("<TAG>", tag)
             .replace("<PROJECT>", project_slug)
             .replace("<YYYY-MM-DD>", today)
+            # English placeholder (current template) and Spanish one (older
+            # vault-local copies of agent-pack/templates/intent.md).
+            .replace("<short title>", title or tag)
             .replace("<Título corto>", title or tag)
         )
+        description = (payload.get("description") or "").strip()
+        if description:
+            rendered = rendered.replace(
+                "> What you want to achieve and why it matters",
+                "\n".join(f"> {ln}" if ln else ">" for ln in description.splitlines()),
+            )
         if not deadline:
             rendered = "\n".join(
                 line for line in rendered.splitlines()

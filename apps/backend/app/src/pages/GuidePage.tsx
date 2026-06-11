@@ -1,6 +1,11 @@
 // Guide / tutorial page — how to use Squirrel across its three surfaces:
 // your coding agent (slash commands), the `squirrel` CLI, and this Web UI.
 // Static content; commands mirror agent-pack/commands/ and apps/cli/squirrel.
+//
+// A sticky search box filters every section live (commands, concepts,
+// features, FAQ); quick-jump chips scroll to each section when not searching.
+
+import { useState, type ReactNode } from 'react';
 
 interface CommandEntry {
   cmd: string; // command chip text
@@ -251,6 +256,23 @@ const TRAY_FEATURES: [string, string, string][] = [
   ],
 ];
 
+const WEBUI_FEATURES: [string, string, string][] = [
+  ['home', 'My projects', 'Your active projects as a list or board; open one to read and edit its tasks.'],
+  ['event', 'Pressing', 'Deadlines grouped by urgency — the same data as /sq-deadlines.'],
+  ['add', 'Add a note', 'The header button (and search with Cmd+K) captures a note without leaving the page.'],
+  ['bolt', 'Quick Tasks', 'The lightning button parks 2–15 minute actions; knock them out between focus blocks.'],
+  ['psychology', 'Mind Journal', 'The brain button is a recurring mood and “what’s on your mind” check-in; a dot appears when one is due.'],
+  ['notifications', 'Notifications', 'Reminders and alerts fired by the background daemon land in the bell.'],
+  ['settings', 'Settings', 'Vault switching, notification sounds, and other preferences.'],
+];
+
+const DAY_STEPS: [string, string][] = [
+  ['/sq-start MYAPP', 'Open your agent and load yesterday’s context — what you were doing, the next physical action, and any blockers.'],
+  ['/sq-capture …', 'Ideas and interruptions go straight to the vault, tagged and linked, so you can stay on the task at hand.'],
+  ['/sq-focus today …', 'When everything feels urgent, pick one thing. The pick follows you to the desktop popup and this dashboard.'],
+  ['/sq-end', 'Before you stop, write the shutdown note. Tomorrow’s /sq-start pays it back with interest.'],
+];
+
 const CONCEPTS: { icon: string; term: string; def: string }[] = [
   {
     icon: 'folder',
@@ -284,6 +306,277 @@ const CONCEPTS: { icon: string; term: string; def: string }[] = [
   },
 ];
 
+// Searchable text for the configuration panel (rendered as prose below).
+const CONFIG_HAYSTACK =
+  'where the configuration lives ~/.squirrel/config.toml vaults name path default flag capture notification preferences move vault folder squirrel vaults open vault buttons logs reminder state';
+
+interface FaqEntry {
+  q: string;
+  haystack: string; // q + answer text, for search
+  body: ReactNode;
+}
+
+const FAQ_ENTRIES: FaqEntry[] = [
+  {
+    q: 'How do I install Squirrel?',
+    haystack:
+      'how do i install squirrel download dmg pkg installer applications double-click setup get started',
+    body: (
+      <>
+        <p>
+          Download <Cmd>squirrel-macos.dmg</Cmd>, open it, and double-click the{' '}
+          <Cmd>.pkg</Cmd> inside. The guided installer puts <strong>Squirrel.app</strong>{' '}
+          in <Cmd>/Applications</Cmd>, the <Cmd>squirrel</Cmd> CLI in{' '}
+          <Cmd>/usr/local/bin</Cmd>, wires the slash commands into any coding
+          agents you have installed, and seeds a starter config and vault. No
+          Terminal needed.
+        </p>
+        <p>
+          When it finishes, launch it with <Cmd>⌘ Space</Cmd> → “Squirrel” — the
+          squirrel icon appears in your menu bar.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'macOS says the app “can’t be opened” (unidentified developer)',
+    haystack:
+      'macos gatekeeper cant be opened unidentified developer damaged security warning right-click open unsigned',
+    body: (
+      <p>
+        Squirrel is currently unsigned, so Gatekeeper blocks a normal
+        double-click the first time. Right-click (or Ctrl-click){' '}
+        <strong>Squirrel.app</strong> → <strong>Open</strong> → confirm. You only
+        need to do this once — afterwards it opens normally.
+      </p>
+    ),
+  },
+  {
+    q: 'Do I need Claude Code (or another coding agent) to use Squirrel?',
+    haystack:
+      'do i need claude code codex cursor copilot windsurf coding agent required optional slash commands prerequisites',
+    body: (
+      <>
+        <p>
+          No. The desktop popup, the menu-bar icon, this Web UI, and the{' '}
+          <Cmd>squirrel</Cmd> CLI all work on their own — capture notes, manage
+          quick tasks, track deadlines, run focus sessions.
+        </p>
+        <p>
+          A coding agent (Claude Code, Codex, Cursor, Copilot, Windsurf) adds the{' '}
+          <Cmd>/sq-*</Cmd> slash commands for richer workflows like{' '}
+          <Cmd>/sq-start</Cmd> and <Cmd>/sq-brief</Cmd>. If you install an agent
+          later, run <Cmd>squirrel install --agent claude</Cmd> (auto-detects
+          others) to wire it up.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Do I need Obsidian?',
+    haystack: 'do i need obsidian required optional markdown editor view vault',
+    body: (
+      <p>
+        No. Your vault is plain Markdown — readable and editable with anything.
+        Obsidian is just a nice way to browse it (the vault format is
+        Obsidian-compatible, and the “Open Vault” buttons deep-link into it if
+        you use it), but nothing in Squirrel depends on it.
+      </p>
+    ),
+  },
+  {
+    q: 'I already have an Obsidian vault — how do I bring it in?',
+    haystack:
+      'existing obsidian vault import migrate bring notes sq-migrate-vault dry-run add vault register',
+    body: (
+      <>
+        <p>
+          Run <Cmd>/sq-migrate-vault ~/path/to/your-old-vault</Cmd> in your
+          coding agent. It scans the old vault, maps folders to projects and
+          notes to tasks, shows you a dry-run plan first, and{' '}
+          <strong>never modifies the original vault</strong>.
+        </p>
+        <p>
+          If you just want Squirrel to use a folder as-is, register it instead:{' '}
+          <Cmd>squirrel vaults add work ~/path/to/vault</Cmd>.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Where is my data? Does anything leave my machine?',
+    haystack:
+      'where is my data privacy local cloud sync telemetry security markdown files own your data offline',
+    body: (
+      <>
+        <p>
+          Everything is local. Your notes live as plain <Cmd>.md</Cmd> files in
+          your vault folder; settings and logs live in <Cmd>~/.squirrel/</Cmd>.
+          The backend serves this Web UI on <Cmd>127.0.0.1</Cmd> only — it is
+          not reachable from the network, and nothing is synced to a cloud or
+          phoned home.
+        </p>
+        <p>
+          That also means backups are your call: the vault is a normal folder,
+          so anything that backs up folders (Time Machine, git, iCloud Drive)
+          works.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'How do I open this Web UI again later?',
+    haystack:
+      'open web ui again url browser localhost 3939 squirrel web open tray menu dashboard',
+    body: (
+      <p>
+        Three ways: click <strong>Open Web UI</strong> in the menu-bar dropdown,
+        click the same button in the desktop popup’s footer, or run{' '}
+        <Cmd>squirrel web open</Cmd> in a terminal (it starts the server first
+        if needed).
+      </p>
+    ),
+  },
+  {
+    q: 'How do I update Squirrel?',
+    haystack: 'update upgrade new version installer latest release config preserved',
+    body: (
+      <p>
+        Download the newer DMG and run the installer again. It detects your
+        existing version, swaps the binaries, and replaces the agent commands —
+        your <Cmd>~/.squirrel/config.toml</Cmd> and your vault are never
+        touched.
+      </p>
+    ),
+  },
+  {
+    q: 'How do I uninstall?',
+    haystack:
+      'uninstall remove delete squirrel app cli config vault kept trash applications',
+    body: (
+      <>
+        <p>
+          Quit Squirrel from the menu bar, drag{' '}
+          <Cmd>/Applications/Squirrel.app</Cmd> to the Trash, and remove the CLI
+          with <Cmd>sudo rm /usr/local/bin/squirrel</Cmd>. Optionally delete{' '}
+          <Cmd>~/.squirrel/</Cmd> (config and logs) and the agent commands (e.g.{' '}
+          <Cmd>~/.claude/plugins/squirrel/</Cmd>).
+        </p>
+        <p>
+          Your vault is never deleted — it’s your folder of Markdown files and
+          stays exactly where it is.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'The popup says “Backend offline” — what do I do?',
+    haystack:
+      'backend offline unavailable not responding error red banner restart service logs squirrel.log troubleshoot',
+    body: (
+      <>
+        <p>
+          First try <strong>Restart Service</strong> in the menu-bar dropdown —
+          it relaunches the bundled backend. If it keeps happening, check the
+          log at <Cmd>~/.squirrel/squirrel.log</Cmd> for the reason.
+        </p>
+        <p>
+          A common cause is two Squirrels fighting over the same port (for
+          example, the installed app plus a development copy). Quit one of them
+          and restart the other.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'I clicked a notification and nothing happened',
+    haystack:
+      'notification banner click nothing happened macos not clickable menu bar icon act reminders',
+    body: (
+      <p>
+        That’s a macOS limitation — Squirrel’s notification banners aren’t
+        clickable. The menu-bar squirrel is where you act on them: reminders,
+        pressing items, and check-ins all appear in its dropdown, and the bell
+        in the popup and this Web UI collects them too.
+      </p>
+    ),
+  },
+  {
+    q: 'What does “Pressing” mean, and how does something get there?',
+    haystack:
+      'pressing what is it deadline urgency overdue critical urgent due today tomorrow how add deadline appears tray popup',
+    body: (
+      <>
+        <p>
+          “Pressing” is everything with a deadline that needs attention{' '}
+          <em>now</em>: items that are <strong>overdue</strong>, due{' '}
+          <strong>today</strong>, or due <strong>tomorrow</strong>. Anything
+          further out stays in the calmer urgency bands (soon, upcoming,
+          eventual) and only shows on the Pressing page and{' '}
+          <Cmd>/sq-deadlines</Cmd> report — not in your face.
+        </p>
+        <p>
+          An item becomes pressing automatically when its <Cmd>deadline</Cmd>{' '}
+          gets close — give a task or note a deadline (e.g.{' '}
+          <Cmd>/sq-capture pay the visa bill before June 30</Cmd>) and Squirrel
+          tracks it from there. Pressing items surface everywhere: the PRESSING
+          section of the desktop popup, “PRESSING NOW” in the menu-bar dropdown,
+          and the Pressing page in this Web UI.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Why can I only have 3 active projects?',
+    haystack:
+      'why only 3 active projects wip cap limit work in progress parking lot increase more projects',
+    body: (
+      <p>
+        The WIP cap is deliberate — it’s the core of Squirrel’s philosophy.
+        Letting everything be “in progress” is how projects stall; the cap
+        forces a real choice about what matters now. Extra projects aren’t
+        lost: park them in the Parking Lot and swap one in when you finish (or
+        consciously pause) an active one.
+      </p>
+    ),
+  },
+  {
+    q: '“Open Vault” shows an Obsidian error: Vault not found',
+    haystack:
+      'open vault obsidian error vault not found registry open folder as vault config.toml path one-time registration',
+    body: (
+      <>
+        <p>
+          Obsidian can only open vaults it already knows about. If your vault
+          folder was created by Squirrel (or has simply never been opened in
+          Obsidian), it exists on disk but isn’t in Obsidian’s registry yet —
+          so Obsidian replies “Vault not found”.
+        </p>
+        <p>
+          To fix it once: open Obsidian → vault switcher →{' '}
+          <strong>“Open folder as vault”</strong> → pick your vault folder
+          (the <Cmd>path</Cmd> registered in{' '}
+          <Cmd>~/.squirrel/config.toml</Cmd>). After that one-time
+          registration, the “Open Vault” buttons open it directly.
+        </p>
+      </>
+    ),
+  },
+];
+
+// Quick-jump targets — order matches the sections below.
+const NAV: [string, string][] = [
+  ['concepts', 'Concepts'],
+  ['configuration', 'Configuration'],
+  ['typical-day', 'A typical day'],
+  ['agent', 'Agent commands'],
+  ['popup', 'Desktop popup'],
+  ['menu-bar', 'Menu bar'],
+  ['cli', 'CLI'],
+  ['web-ui', 'Web UI'],
+  ['faq', 'FAQ'],
+];
+
 // Copy-pasteable command chip — monospace, click-to-select.
 function Cmd({ children }: { children: string }) {
   return (
@@ -294,9 +587,10 @@ function Cmd({ children }: { children: string }) {
 }
 
 // One collapsible command row (native <details> — dependency-free, accessible).
-function CommandRow({ entry }: { entry: CommandEntry }) {
+// `forceOpen` expands the row while a search is active so matches are readable.
+function CommandRow({ entry, forceOpen }: { entry: CommandEntry; forceOpen?: boolean }) {
   return (
-    <details className="group panel">
+    <details className="group panel" open={forceOpen || undefined}>
       <summary className="flex items-center gap-2.5 px-3 py-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <span className="material-icons text-base text-ink-4 transition-transform duration-150 group-open:rotate-90">
           chevron_right
@@ -317,206 +611,288 @@ function CommandRow({ entry }: { entry: CommandEntry }) {
   );
 }
 
+// Icon + term + definition list shared by the popup / menu-bar / Web UI sections.
+function FeatureList({ features }: { features: [string, string, string][] }) {
+  return (
+    <ul className="space-y-2 text-sm text-ink-2">
+      {features.map(([icon, term, def]) => (
+        <li key={term} className="panel p-3 flex items-start gap-3">
+          <span className="material-icons text-base text-accent mt-0.5">{icon}</span>
+          <div className="min-w-0">
+            <span className="font-medium text-ink">{term}</span>
+            <span className="text-ink-3"> — {def}</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function GuidePage() {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const searching = q.length > 0;
+  const hit = (...fields: string[]) =>
+    !searching || fields.some((f) => f.toLowerCase().includes(q));
+
+  // Filtered views of every section's data.
+  const concepts = CONCEPTS.filter((c) => hit(c.term, c.def));
+  const showConfig = hit(CONFIG_HAYSTACK);
+  const daySteps = DAY_STEPS.filter(([cmd, text]) => hit(cmd, text));
+  const agentGroups = AGENT_GROUPS.map((g) => ({
+    ...g,
+    entries: g.entries.filter((e) => hit(e.cmd, e.summary, e.what, e.example, g.title)),
+  })).filter((g) => g.entries.length > 0);
+  const cliCommands = CLI_COMMANDS.filter((e) => hit(e.cmd, e.summary, e.what, e.example));
+  const popupFeatures = POPUP_FEATURES.filter(([, term, def]) => hit(term, def));
+  const trayFeatures = TRAY_FEATURES.filter(([, term, def]) => hit(term, def));
+  const webuiFeatures = WEBUI_FEATURES.filter(([, term, def]) => hit(term, def));
+  const faqEntries = FAQ_ENTRIES.filter((f) => hit(f.haystack));
+
+  const matchCount =
+    concepts.length +
+    (showConfig ? 1 : 0) +
+    daySteps.length +
+    agentGroups.reduce((n, g) => n + g.entries.length, 0) +
+    cliCommands.length +
+    popupFeatures.length +
+    trayFeatures.length +
+    webuiFeatures.length +
+    faqEntries.length;
+
+  const jumpTo = (id: string) =>
+    document.getElementById(`guide-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   return (
     <div className="max-w-3xl">
       <h1 className="title mb-2">Guide</h1>
-      <p className="text-ink-3 mb-8">
+      <p className="text-ink-3 mb-6">
         Squirrel keeps your projects, tasks, and working context in a plain-Markdown
         vault, and meets you on four surfaces: your coding agent (slash commands),
         the native desktop app with its menu-bar icon, this Web UI, and the{' '}
         <Cmd>squirrel</Cmd> CLI.
       </p>
 
-      {/* ── Core concepts ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-3">Core concepts</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {CONCEPTS.map((c) => (
-            <div key={c.term} className="panel p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="material-icons text-base text-accent">{c.icon}</span>
-                <h3 className="font-medium text-ink">{c.term}</h3>
-              </div>
-              <p className="text-xs leading-relaxed text-ink-3">{c.def}</p>
-            </div>
-          ))}
+      {/* ── Search + quick-jump (sticky) ── */}
+      <div className="sticky top-0 z-10 -mx-2 px-2 pt-1 pb-3 mb-7 bg-paper border-b border-hairline">
+        <div className="relative">
+          <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-4 pointer-events-none">
+            search
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setQuery('');
+            }}
+            placeholder="Search the guide — commands, concepts, FAQ…"
+            aria-label="Search the guide"
+            className="w-full pl-10 pr-10 py-1.5 text-sm border border-hairline rounded-md bg-surface text-ink focus:border-accent focus:ring-0 outline-none transition-all placeholder-ink-4 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-ink-4 hover:text-ink hover:bg-surface-2"
+            >
+              <span className="material-icons text-base">close</span>
+            </button>
+          )}
         </div>
-      </section>
+        {searching ? (
+          <p className="mt-2 text-xs text-ink-4">
+            {matchCount === 0
+              ? 'No matches'
+              : `${matchCount} ${matchCount === 1 ? 'match' : 'matches'}`}{' '}
+            for “{query.trim()}”
+          </p>
+        ) : (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {NAV.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => jumpTo(id)}
+                className="px-2 py-0.5 text-xs rounded border border-hairline bg-surface text-ink-3 hover:text-ink hover:border-ink-4 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Empty state ── */}
+      {searching && matchCount === 0 && (
+        <div className="panel p-8 text-center">
+          <span className="material-icons text-3xl text-ink-4">search_off</span>
+          <p className="mt-2 text-sm text-ink-2">
+            Nothing in the guide matches “{query.trim()}”.
+          </p>
+          <button type="button" onClick={() => setQuery('')} className="btn mt-4">
+            Clear search
+          </button>
+        </div>
+      )}
+
+      {/* ── Core concepts ── */}
+      {concepts.length > 0 && (
+        <section id="guide-concepts" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-3">Core concepts</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {concepts.map((c) => (
+              <div key={c.term} className="panel p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-icons text-base text-accent">{c.icon}</span>
+                  <h3 className="font-medium text-ink">{c.term}</h3>
+                </div>
+                <p className="text-xs leading-relaxed text-ink-3">{c.def}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Configuration ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-3">Where the configuration lives</h2>
-        <div className="panel p-4 text-sm leading-relaxed text-ink-2 space-y-2">
-          <p>
-            Everything Squirrel knows about your setup is in one file:{' '}
-            <Cmd>~/.squirrel/config.toml</Cmd>. It registers your vaults — each
-            with a <Cmd>name</Cmd>, a <Cmd>path</Cmd>, and a <Cmd>default</Cmd>{' '}
-            flag — plus capture and notification preferences. Every surface (this
-            Web UI, the desktop app, the CLI, your agent) reads the same file.
-          </p>
-          <p>
-            If you move a vault folder, just update its <Cmd>path</Cmd> there (or
-            run <Cmd>squirrel vaults</Cmd>) — the “Open Vault” buttons and all
-            commands follow the configured path; nothing is hardcoded. The same{' '}
-            <Cmd>~/.squirrel/</Cmd> directory also holds runtime files like logs
-            and reminder state.
-          </p>
-        </div>
-      </section>
-
-      {/* ── A typical day ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-3">A typical day</h2>
-        <ol className="space-y-3">
-          {[
-            ['/sq-start MYAPP', 'Open your agent and load yesterday’s context — what you were doing, the next physical action, and any blockers.'],
-            ['/sq-capture …', 'Ideas and interruptions go straight to the vault, tagged and linked, so you can stay on the task at hand.'],
-            ['/sq-focus today …', 'When everything feels urgent, pick one thing. The pick follows you to the desktop popup and this dashboard.'],
-            ['/sq-end', 'Before you stop, write the shutdown note. Tomorrow’s /sq-start pays it back with interest.'],
-          ].map(([cmd, text], i) => (
-            <li key={cmd} className="panel p-4 flex items-start gap-3">
-              <span className="chip chip-count shrink-0 mt-0.5">{i + 1}</span>
-              <div className="min-w-0 text-sm text-ink-2 leading-relaxed">
-                <Cmd>{cmd}</Cmd>
-                <p className="mt-1">{text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* ── Agent slash commands ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-1">In your coding agent</h2>
-        <p className="text-sm text-ink-3 mb-4">
-          Type these in Claude Code, Codex, Cursor, or Copilot (after{' '}
-          <Cmd>squirrel install</Cmd>). Tap a command to see what it does.
-        </p>
-        <div className="space-y-6">
-          {AGENT_GROUPS.map((g) => (
-            <div key={g.title}>
-              <h3 className="font-medium text-ink mb-0.5">{g.title}</h3>
-              <p className="text-xs text-ink-4 mb-2">{g.blurb}</p>
-              <div className="space-y-2">
-                {g.entries.map((e) => (
-                  <CommandRow key={e.cmd} entry={e} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Native desktop app ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the popup</h2>
-        <p className="text-sm text-ink-3 mb-4">
-          The native app is a compact popup designed for glancing, not dwelling:
-          see your focus, check in, capture, and get back to work.
-        </p>
-        <ul className="space-y-2 text-sm text-ink-2">
-          {POPUP_FEATURES.map(([icon, term, def]) => (
-            <li key={term} className="panel p-3 flex items-start gap-3">
-              <span className="material-icons text-base text-accent mt-0.5">{icon}</span>
-              <div className="min-w-0">
-                <span className="font-medium text-ink">{term}</span>
-                <span className="text-ink-3"> — {def}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── Menu-bar icon ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the menu-bar icon</h2>
-        <p className="text-sm text-ink-3 mb-4">
-          The squirrel in your menu bar is more than a launcher: its dropdown
-          updates with what needs attention right now.
-        </p>
-        <ul className="space-y-2 text-sm text-ink-2">
-          {TRAY_FEATURES.map(([icon, term, def]) => (
-            <li key={term} className="panel p-3 flex items-start gap-3">
-              <span className="material-icons text-base text-accent mt-0.5">{icon}</span>
-              <div className="min-w-0">
-                <span className="font-medium text-ink">{term}</span>
-                <span className="text-ink-3"> — {def}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── CLI ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-1">In the terminal</h2>
-        <p className="text-sm text-ink-3 mb-4">
-          The <Cmd>squirrel</Cmd> CLI reads the vault directly — no agent needed.
-        </p>
-        <div className="space-y-2">
-          {CLI_COMMANDS.map((e) => (
-            <CommandRow key={e.cmd} entry={e} />
-          ))}
-        </div>
-      </section>
-
-      {/* ── This Web UI ── */}
-      <section className="mb-10">
-        <h2 className="eyebrow text-ink-2 mb-1">In this Web UI</h2>
-        <p className="text-sm text-ink-3 mb-4">
-          Everything here reads and writes the same Markdown files your agent uses.
-        </p>
-        <ul className="space-y-2 text-sm text-ink-2">
-          {[
-            ['home', 'My projects', 'Your active projects as a list or board; open one to read and edit its tasks.'],
-            ['event', 'Pressing', 'Deadlines grouped by urgency — the same data as /sq-deadlines.'],
-            ['add', 'Add a note', 'The header button (and search with Cmd+K) captures a note without leaving the page.'],
-            ['bolt', 'Quick Tasks', 'The lightning button parks 2–15 minute actions; knock them out between focus blocks.'],
-            ['psychology', 'Mind Journal', 'The brain button is a recurring mood and “what’s on your mind” check-in; a dot appears when one is due.'],
-            ['notifications', 'Notifications', 'Reminders and alerts fired by the background daemon land in the bell.'],
-            ['settings', 'Settings', 'Vault switching, notification sounds, and other preferences.'],
-          ].map(([icon, term, def]) => (
-            <li key={term} className="panel p-3 flex items-start gap-3">
-              <span className="material-icons text-base text-accent mt-0.5">{icon}</span>
-              <div className="min-w-0">
-                <span className="font-medium text-ink">{term}</span>
-                <span className="text-ink-3"> — {def}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section className="mb-4">
-        <h2 className="eyebrow text-ink-2 mb-3">FAQ</h2>
-        <details className="group panel">
-          <summary className="flex items-center gap-2.5 px-3 py-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-            <span className="material-icons text-base text-ink-4 transition-transform duration-150 group-open:rotate-90">
-              chevron_right
-            </span>
-            <span className="text-sm text-ink-2">
-              “Open Vault” shows an Obsidian error: <em>Vault not found</em>
-            </span>
-          </summary>
-          <div className="px-3 pb-3 pl-10 space-y-2 text-sm leading-relaxed text-ink-2">
+      {showConfig && (
+        <section id="guide-configuration" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-3">Where the configuration lives</h2>
+          <div className="panel p-4 text-sm leading-relaxed text-ink-2 space-y-2">
             <p>
-              Obsidian can only open vaults it already knows about. If your vault
-              folder was created by Squirrel (or has simply never been opened in
-              Obsidian), it exists on disk but isn’t in Obsidian’s registry yet —
-              so Obsidian replies “Vault not found”.
+              Everything Squirrel knows about your setup is in one file:{' '}
+              <Cmd>~/.squirrel/config.toml</Cmd>. It registers your vaults — each
+              with a <Cmd>name</Cmd>, a <Cmd>path</Cmd>, and a <Cmd>default</Cmd>{' '}
+              flag — plus capture and notification preferences. Every surface (this
+              Web UI, the desktop app, the CLI, your agent) reads the same file.
             </p>
             <p>
-              To fix it once: open Obsidian → vault switcher →{' '}
-              <strong>“Open folder as vault”</strong> → pick your vault folder
-              (the <Cmd>path</Cmd> registered in{' '}
-              <Cmd>~/.squirrel/config.toml</Cmd>). After that one-time
-              registration, the “Open Vault” buttons open it directly.
+              If you move a vault folder, just update its <Cmd>path</Cmd> there (or
+              run <Cmd>squirrel vaults</Cmd>) — the “Open Vault” buttons and all
+              commands follow the configured path; nothing is hardcoded. The same{' '}
+              <Cmd>~/.squirrel/</Cmd> directory also holds runtime files like logs
+              and reminder state.
             </p>
           </div>
-        </details>
-      </section>
+        </section>
+      )}
+
+      {/* ── A typical day ── */}
+      {daySteps.length > 0 && (
+        <section id="guide-typical-day" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-3">A typical day</h2>
+          <ol className="space-y-3">
+            {daySteps.map(([cmd, text]) => (
+              <li key={cmd} className="panel p-4 flex items-start gap-3">
+                <span className="chip chip-count shrink-0 mt-0.5">
+                  {DAY_STEPS.findIndex(([c]) => c === cmd) + 1}
+                </span>
+                <div className="min-w-0 text-sm text-ink-2 leading-relaxed">
+                  <Cmd>{cmd}</Cmd>
+                  <p className="mt-1">{text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {/* ── Agent slash commands ── */}
+      {agentGroups.length > 0 && (
+        <section id="guide-agent" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-1">In your coding agent</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            Type these in Claude Code, Codex, Cursor, or Copilot (after{' '}
+            <Cmd>squirrel install</Cmd>). Tap a command to see what it does.
+          </p>
+          <div className="space-y-6">
+            {agentGroups.map((g) => (
+              <div key={g.title}>
+                <h3 className="font-medium text-ink mb-0.5">{g.title}</h3>
+                <p className="text-xs text-ink-4 mb-2">{g.blurb}</p>
+                <div className="space-y-2">
+                  {g.entries.map((e) => (
+                    <CommandRow key={e.cmd} entry={e} forceOpen={searching} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Native desktop app ── */}
+      {popupFeatures.length > 0 && (
+        <section id="guide-popup" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the popup</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            The native app is a compact popup designed for glancing, not dwelling:
+            see your focus, check in, capture, and get back to work.
+          </p>
+          <FeatureList features={popupFeatures} />
+        </section>
+      )}
+
+      {/* ── Menu-bar icon ── */}
+      {trayFeatures.length > 0 && (
+        <section id="guide-menu-bar" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the menu-bar icon</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            The squirrel in your menu bar is more than a launcher: its dropdown
+            updates with what needs attention right now.
+          </p>
+          <FeatureList features={trayFeatures} />
+        </section>
+      )}
+
+      {/* ── CLI ── */}
+      {cliCommands.length > 0 && (
+        <section id="guide-cli" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-1">In the terminal</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            The <Cmd>squirrel</Cmd> CLI reads the vault directly — no agent needed.
+          </p>
+          <div className="space-y-2">
+            {cliCommands.map((e) => (
+              <CommandRow key={e.cmd} entry={e} forceOpen={searching} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── This Web UI ── */}
+      {webuiFeatures.length > 0 && (
+        <section id="guide-web-ui" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-1">In this Web UI</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            Everything here reads and writes the same Markdown files your agent uses.
+          </p>
+          <FeatureList features={webuiFeatures} />
+        </section>
+      )}
+
+      {/* ── FAQ ── */}
+      {faqEntries.length > 0 && (
+        <section id="guide-faq" className="mb-4 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-3">FAQ</h2>
+          <div className="space-y-2">
+            {faqEntries.map((f) => (
+              <details key={f.q} className="group panel" open={searching || undefined}>
+                <summary className="flex items-center gap-2.5 px-3 py-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                  <span className="material-icons text-base text-ink-4 transition-transform duration-150 group-open:rotate-90">
+                    chevron_right
+                  </span>
+                  <span className="text-sm text-ink-2">{f.q}</span>
+                </summary>
+                <div className="px-3 pb-3 pl-10 space-y-2 text-sm leading-relaxed text-ink-2">
+                  {f.body}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

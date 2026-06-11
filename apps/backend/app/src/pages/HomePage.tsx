@@ -630,7 +630,21 @@ function BoardView({ projects, pressing, onChanged }: {
           return (
             <div key={col.key} className="flex-shrink-0 w-72 flex flex-col">
               <div className={`flex items-center justify-between mb-4 border-b-2 ${col.accent} pb-2 px-1`}>
-                <h3 className="eyebrow text-ink-2">{col.label}</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="eyebrow text-ink-2">{col.label}</h3>
+                  {col.key === 'pressing' && (
+                    <span className="relative group flex items-center cursor-help">
+                      <span className="material-icons text-[14px] text-ink-4" aria-label="What appears in PRESSING">info_outline</span>
+                      <span
+                        role="tooltip"
+                        className="absolute left-0 top-full mt-1.5 z-30 hidden group-hover:block w-64 panel px-3 py-2 text-xs text-ink-2 normal-case font-normal tracking-normal shadow-lg"
+                      >
+                        Filled automatically: your 3 most urgent items by deadline — overdue or due soon.
+                        Give a task a deadline to surface it here.
+                      </span>
+                    </span>
+                  )}
+                </div>
                 <span className="chip chip-count">{col.count}</span>
               </div>
               <div

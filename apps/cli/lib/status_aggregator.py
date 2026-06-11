@@ -83,8 +83,13 @@ def find_projects(vault_path: Path) -> dict[str, list[Path]]:
                     md_files = sorted(item.glob("*.md"))
                     if md_files:
                         projects[category].append(md_files[0])
-            elif item.suffix == ".md" and not item.name.startswith("."):
-                # Top-level .md (mostly for Areas)
+            elif (
+                item.suffix == ".md"
+                and not item.name.startswith(".")
+                and item.stem.lower() != "readme"
+            ):
+                # Top-level .md (mostly for Areas). READMEs are scaffold
+                # documentation seeded by the installer, never projects.
                 projects[category].append(item)
 
     return projects
