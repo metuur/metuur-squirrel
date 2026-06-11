@@ -45,6 +45,9 @@ warn() { printf '%s⚠  %s%s\n' "$C_YELLOW" "$*" "$C_RESET"; }
 die()  { printf '%s✗  %s%s\n' "$C_RED"    "$*" "$C_RESET" >&2; exit 1; }
 hdr()  { printf '\n%s── %s ──%s\n' "$C_BOLD" "$*" "$C_RESET"; }
 ask()  { printf '%s%s%s ' "$C_BOLD" "$*" "$C_RESET"; read -r REPLY; }
+# Escape &, \ and the | delimiter so a vault path can't corrupt the sed
+# replacement that writes it into config.toml.
+escape_sed_repl() { printf '%s' "$1" | sed -e 's/[&\\|]/\\&/g'; }
 
 # ─── Banner ──────────────────────────────────────────────────────────────────
 printf '%s' "$C_BOLD"
@@ -221,7 +224,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   info "Creating config..."
   cp "$RESOURCES/squirrel.toml.example" "$CONFIG_FILE"
   if [[ -n "$VAULT_PATH" ]]; then
-    sed -i '' "s|path = \".*\"|path = \"$VAULT_PATH\"|" "$CONFIG_FILE" 2>/dev/null || true
+    sed -i '' "s|path = \".*\"|path = \"$(escape_sed_repl "$VAULT_PATH")\"|" "$CONFIG_FILE" 2>/dev/null || true
   fi
   ok "config → $CONFIG_FILE"
 fi

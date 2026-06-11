@@ -48,6 +48,9 @@ warn() { printf '%s⚠  %s%s\n' "$C_YELLOW" "$*" "$C_RESET"; }
 die()  { printf '%s✗  %s%s\n' "$C_RED"    "$*" "$C_RESET" >&2; exit 1; }
 hdr()  { printf '\n%s── %s ──%s\n' "$C_BOLD" "$*" "$C_RESET"; }
 ask()  { printf '%s%s%s ' "$C_BOLD" "$*" "$C_RESET"; read -r REPLY; }
+# Escape &, \ and the | delimiter so a vault path can't corrupt the sed
+# replacement that writes it into config.toml.
+escape_sed_repl() { printf '%s' "$1" | sed -e 's/[&\\|]/\\&/g'; }
 
 # ─── Validate bundle ──────────────────────────────────────────────────────────
 [[ -f "$SCRIPT_DIR/bin/squirrel"         ]] || die "bin/squirrel not found next to this script"
@@ -111,6 +114,7 @@ info "squirrel → $CLI_BIN"
 cp "$SCRIPT_DIR/bin/squirrel" "$CLI_BIN"
 chmod +x "$CLI_BIN"
 xattr -d com.apple.quarantine "$CLI_BIN" 2>/dev/null || true
+codesign -v "$CLI_BIN" 2>/dev/null || warn "squirrel binary is not codesigned — expected for dev bundles, but verify the download source"
 ok "squirrel installed"
 
 # ─── Step 3: Copy backend binary ──────────────────────────────────────────────
@@ -119,6 +123,7 @@ info "squirrel-backend → $BACKEND_BIN"
 cp "$SCRIPT_DIR/bin/squirrel-backend" "$BACKEND_BIN"
 chmod +x "$BACKEND_BIN"
 xattr -d com.apple.quarantine "$BACKEND_BIN" 2>/dev/null || true
+codesign -v "$BACKEND_BIN" 2>/dev/null || warn "squirrel-backend binary is not codesigned — expected for dev bundles, but verify the download source"
 ok "squirrel-backend installed"
 
 # ─── Step 3b: Install Squirrel.app → /Applications ───────────────────────────
@@ -288,7 +293,7 @@ TOML
     VAULT_PATH="${REPLY:-$HOME/squirrel-vault}"
     VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
     # Replace the placeholder path
-    sed -i '' "s|path = \"~/squirrel-vault\"|path = \"$VAULT_PATH\"|" "$CONFIG_FILE" 2>/dev/null || true
+    sed -i '' "s|path = \"~/squirrel-vault\"|path = \"$(escape_sed_repl "$VAULT_PATH")\"|" "$CONFIG_FILE" 2>/dev/null || true
     [[ -d "$VAULT_PATH" ]] || mkdir -p "$VAULT_PATH"
     ok "Vault: $VAULT_PATH"
   fi
