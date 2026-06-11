@@ -2142,9 +2142,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctx, _ = self._context()
         out = []
         candidates = []
+        post_its_dir = ctx.active.path / "05-Post-its"
         for md in ctx.active.path.rglob("*.md"):
             rel = md.relative_to(ctx.active.path)
             if any(part.startswith(".") for part in rel.parts):
+                continue
+            if is_path_inside(md, post_its_dir):
                 continue
             candidates.append(md)
         candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
