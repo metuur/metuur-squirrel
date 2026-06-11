@@ -532,10 +532,25 @@ pub fn update_alerts<R: Runtime>(
 
 fn open_url<R: Runtime>(app: &AppHandle<R>, url: &str) {
     if let Err(e) = app.opener().open_url(url, None::<&str>) {
-        tracing::warn!(error = %e, url, "tray: failed to open url");
+        tracing::warn!(error = %e, url = %redact_token(url), "tray: failed to open url");
     } else {
-        tracing::info!(url, "tray: opened url");
+        tracing::info!(url = %redact_token(url), "tray: opened url");
     }
+}
+
+/// Replace the value of any `token=` query param with `***` so the per-launch
+/// runtime token never lands in the log file (runtime-trust-handshake keeps
+/// the token in process memory only).
+fn redact_token(url: &str) -> String {
+    let Some(start) = url.find("token=") else {
+        return url.to_string();
+    };
+    let value_start = start + "token=".len();
+    let value_end = url[value_start..]
+        .find('&')
+        .map(|i| value_start + i)
+        .unwrap_or(url.len());
+    format!("{}***{}", &url[..value_start], &url[value_end..])
 }
 
 /// Open a Squirrel web-UI URL in the external browser, carrying the per-launch
@@ -601,6 +616,36 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── H1: token redaction in url logging ──────────────────────────────────
+
+    #[test]
+    fn redacts_token_at_end_of_query() {
+        assert_eq!(
+            redact_token("http://127.0.0.1:3939/?token=abc123"),
+            "http://127.0.0.1:3939/?token=***"
+        );
+    }
+
+    #[test]
+    fn redacts_token_mid_query() {
+        assert_eq!(
+            redact_token("http://127.0.0.1:3939/notes/X?token=abc&x=1"),
+            "http://127.0.0.1:3939/notes/X?token=***&x=1"
+        );
+    }
+
+    #[test]
+    fn leaves_obsidian_urls_untouched() {
+        let url = "obsidian://open?vault=v&file=note";
+        assert_eq!(redact_token(url), url);
+    }
+
+    #[test]
+    fn leaves_urls_without_query_untouched() {
+        let url = "http://127.0.0.1:3939/notes/VISA-001";
+        assert_eq!(redact_token(url), url);
+    }
 
     // ── R-4.2 / R-4.4: default vault path parsing ────────────────────────────
 
