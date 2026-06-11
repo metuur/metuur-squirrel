@@ -473,6 +473,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  postItUpdateLayout: (id: string, layout: { x: number; y: number; rotation: number; z?: number }) =>
+    call<{ success: boolean }>(`/post-it/${id}/layout`, {
+      method: "PATCH",
+      body: JSON.stringify(layout),
+    }),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>

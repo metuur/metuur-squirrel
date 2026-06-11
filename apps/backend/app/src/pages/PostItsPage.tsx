@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PostIt, PostItLayout, api } from "@/api/client";
 import { usePostIts } from "@/hooks/usePostIts";
 
@@ -32,15 +32,84 @@ function defaultLayout(id: string, index: number): PostItLayout {
 }
 
 interface PostItCardProps {
-  item: PostIt;
+  item: PostIt & { layout: PostItLayout };
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  onLayoutChange: (id: string, layout: PostItLayout) => void;
+  onCardClick: (id: string) => void;
 }
 
-function PostItCard({ item }: PostItCardProps) {
+function PostItCard({ item, containerRef, onLayoutChange, onCardClick }: PostItCardProps) {
   const bgColor = getColor(item.color);
-  const layout = item.layout ?? { x: 5, y: 5, rotation: 0, z: 1 };
+  const layout = item.layout;
+
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    dragging: boolean;
+  } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: layout.x,
+      origY: layout.y,
+      dragging: false,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    if (!dragRef.current.dragging && Math.sqrt(dx * dx + dy * dy) > 5) {
+      dragRef.current.dragging = true;
+    }
+    if (dragRef.current.dragging) {
+      const el = e.currentTarget as HTMLElement;
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const newX = ((e.clientX - rect.left) / rect.width) * 100;
+        const newY = ((e.clientY - rect.top) / rect.height) * 100;
+        el.style.left = `${newX}%`;
+        el.style.top = `${newY}%`;
+      }
+    }
+  };
+
+  const handlePointerUp = async (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const wasDragging = dragRef.current.dragging;
+    dragRef.current = null;
+    if (wasDragging) {
+      const el = e.currentTarget as HTMLElement;
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const newX = ((e.clientX - rect.left) / rect.width) * 100;
+        const newY = ((e.clientY - rect.top) / rect.height) * 100;
+        const newLayout = { ...layout, x: newX, y: newY };
+        onLayoutChange(item.id, newLayout);
+        try {
+          await api.postItUpdateLayout(item.id, newLayout);
+        } catch (err) {
+          console.error("Failed to persist layout", err);
+        }
+      }
+    } else {
+      onCardClick(item.id);
+    }
+  };
 
   return (
     <div
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       style={{
         position: "absolute",
         left: `${layout.x}%`,
@@ -48,6 +117,8 @@ function PostItCard({ item }: PostItCardProps) {
         transform: `rotate(${layout.rotation}deg)`,
         zIndex: item.pinned ? 50 : layout.z,
         width: 180,
+        cursor: "grab",
+        touchAction: "none",
       }}
     >
       {/* Top strip */}
@@ -207,6 +278,8 @@ function PostItComposer({ onCreated }: { onCreated: (item: PostIt) => void }) {
 
 export default function PostItsPage() {
   const { data, loading, error, setData } = usePostIts();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const active = data.filter((it) => it.state !== "archived");
 
   const handleCreated = (item: PostIt) => {
@@ -214,6 +287,14 @@ export default function PostItsPage() {
       const withLayout = item.layout ?? defaultLayout(item.id, prev.length);
       return [...prev, { ...item, layout: withLayout }];
     });
+  };
+
+  const handleLayoutChange = (id: string, layout: PostItLayout) => {
+    setData(prev => prev.map(item => item.id === id ? { ...item, layout } : item));
+  };
+
+  const handleCardClick = (id: string) => {
+    setOpenCardId(id);
   };
 
   if (loading) {
@@ -242,6 +323,7 @@ export default function PostItsPage() {
         </div>
       ) : (
         <div
+          ref={containerRef}
           style={{
             position: "relative",
             minHeight: "calc(100vh - 8rem)",
@@ -251,7 +333,13 @@ export default function PostItsPage() {
           }}
         >
           {active.map((item) => (
-            <PostItCard key={item.id} item={item} />
+            <PostItCard
+              key={item.id}
+              item={{ ...item, layout: item.layout ?? defaultLayout(item.id, active.indexOf(item)) }}
+              containerRef={containerRef}
+              onLayoutChange={handleLayoutChange}
+              onCardClick={handleCardClick}
+            />
           ))}
         </div>
       )}
