@@ -306,6 +306,235 @@ const CONCEPTS: { icon: string; term: string; def: string }[] = [
   },
 ];
 
+// ── Concept illustrations ────────────────────────────────────────────
+// Two schematic diagrams rendered under the Core concepts grid: how the
+// pieces nest inside the vault, and the lifecycle each piece moves through.
+// Decorative JSX only — search matches via the haystacks below.
+
+const CONCEPT_MAP_HAYSTACK =
+  'how the pieces fit together diagram illustration vault folder anatomy active projects parking lot inbox scratch pad wip cap max 3 tasks inside projects captures land triage swap park free slot surfaces same files';
+
+interface LifecycleStep {
+  icon: string;
+  label: string;
+  sub: string;
+  end?: boolean; // terminal state — rendered in the "ok" green
+}
+
+const LIFECYCLES: { icon: string; term: string; intro: string; steps: LifecycleStep[]; loop?: string }[] = [
+  {
+    icon: 'inbox',
+    term: 'A capture',
+    intro: 'From stray thought to real task — without derailing what you were doing.',
+    steps: [
+      { icon: 'edit', label: 'Jot it', sub: '/sq-capture, ⌘K, “Add a note”, or the popup' },
+      { icon: 'inbox', label: 'Lands in the Inbox', sub: 'with a semantic tag, linked from its project page' },
+      { icon: 'call_split', label: 'Triage it', sub: 'when you review — not when it interrupts you' },
+      { icon: 'task_alt', label: 'Becomes a task', sub: 'in a project — or gets done, or dropped', end: true },
+    ],
+  },
+  {
+    icon: 'bolt',
+    term: 'A quick task',
+    intro: 'Too small for a project, too easy to forget.',
+    steps: [
+      { icon: 'bolt', label: 'Park it', sub: '⌃⌘Q anywhere, or the ⚡ button' },
+      { icon: 'layers', label: 'Sits on the stack', sub: 'the Scratch Pad — max 5 active' },
+      { icon: 'check_circle', label: 'Knock it out', sub: '2–15 minutes between focus blocks', end: true },
+    ],
+  },
+  {
+    icon: 'task_alt',
+    term: 'A task (intent)',
+    intro: 'The daily loop: each session ends on paper so the next one starts instantly.',
+    steps: [
+      { icon: 'play_arrow', label: '/sq-start', sub: 'loads the last shutdown note — state, next action, blockers' },
+      { icon: 'center_focus_strong', label: 'Work', sub: 'check in to run a session timer that banks time into the task' },
+      { icon: 'stop_circle', label: '/sq-end', sub: 'writes the shutdown note tomorrow-you will read' },
+      { icon: 'flag', label: 'Done', sub: 'when its definition of done is met', end: true },
+    ],
+    loop: 'start → work → end repeats each session. Forgot /sq-end? /sq-recover reconstructs the context.',
+  },
+  {
+    icon: 'rocket_launch',
+    term: 'A project',
+    intro: 'Held to at most 3 active at a time by the WIP cap.',
+    steps: [
+      { icon: 'add_circle', label: 'Created', sub: '/sq-new-project — refused if it would blow the WIP cap' },
+      { icon: 'autorenew', label: 'Active', sub: 'one of ≤3 in 01-Active-Projects/' },
+      { icon: 'pause_circle', label: 'Parked', sub: 'waits in the Parking Lot, off the cap' },
+      { icon: 'inventory_2', label: 'Delivered', sub: '100% done — lands in the board’s DELIVERED lane', end: true },
+    ],
+    loop: 'Active ⇄ Parked is a swap, not a loss — park one to free a slot, reactivate it later.',
+  },
+];
+
+const LIFECYCLE_HAYSTACK =
+  'lifecycle life cycle journey flow diagram illustration steps stages ' +
+  LIFECYCLES.map((l) => `${l.term} ${l.intro} ${l.steps.map((s) => `${s.label} ${s.sub}`).join(' ')} ${l.loop ?? ''}`)
+    .join(' ')
+    .toLowerCase();
+
+// Mini folder box used inside the vault diagram (Inbox / Parking Lot / Scratch Pad).
+function VaultBox({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-md border border-hairline bg-paper p-2.5">
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="material-icons text-sm text-accent">{icon}</span>
+        <span className="text-[11px] font-semibold text-ink">{title}</span>
+      </div>
+      <p className="text-[11px] text-ink-4 leading-snug">{children}</p>
+    </div>
+  );
+}
+
+// Labeled connector between vault diagram rows (an interaction, not a folder).
+function VaultArrow({ icon, children }: { icon: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5 my-1.5 pl-3 text-[11px] text-ink-4">
+      <span className="material-icons text-sm">{icon}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+// Illustration 1 — the vault's anatomy: projects (under the WIP cap) hold
+// tasks; captures land in the Inbox; quick tasks sit on the Scratch Pad
+// outside any project.
+function ConceptMapIllustration() {
+  const miniTask = (id: string) => (
+    <div className="flex items-center gap-1 rounded bg-surface-2 border border-hairline px-1.5 py-0.5">
+      <span className="material-icons text-[12px] text-ink-4">task_alt</span>
+      <span className="text-[10px] text-ink-3 truncate">{id} · task</span>
+    </div>
+  );
+  return (
+    <div className="panel p-4 overflow-x-auto">
+      <div className="min-w-[540px]">
+        <div className="rounded-lg border-2 border-dashed border-ink-4 bg-surface p-3">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-icons text-base text-accent">folder</span>
+            <span className="text-xs font-bold tracking-wide text-ink">VAULT</span>
+            <span className="text-[11px] text-ink-4 truncate">
+              one plain-Markdown folder — every box below is just .md files inside it
+            </span>
+          </div>
+
+          {/* Active projects under the WIP cap */}
+          <div className="rounded-md border border-hairline bg-paper p-2.5">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="material-icons text-sm text-accent">rocket_launch</span>
+                <span className="text-[11px] font-semibold text-ink">01-Active-Projects/</span>
+              </div>
+              <span className="chip">
+                <span className="material-icons text-sm">speed</span>
+                WIP cap · max 3
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded border border-hairline bg-surface p-2">
+                <div className="text-[10px] font-mono text-ink-3 mb-1.5">MYAPP/MYAPP.md</div>
+                <div className="space-y-1">
+                  {miniTask('AUTH-001')}
+                  {miniTask('API-002')}
+                </div>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-2">
+                <div className="text-[10px] font-mono text-ink-3 mb-1.5">FOO/FOO.md</div>
+                {miniTask('FOO-001')}
+              </div>
+              <div className="rounded border border-dashed border-hairline p-2 flex items-center justify-center">
+                <span className="text-[10px] text-ink-4 text-center leading-snug">
+                  free slot — the cap forces a choice
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <VaultArrow icon="swap_vert">
+            <strong className="text-ink-3">swap</strong> — park an active project or activate a parked
+            one; the WIP cap guards this door
+          </VaultArrow>
+
+          <VaultBox icon="pause_circle" title="02-Parking-Lot/">
+            paused projects wait here, off the cap — nothing is lost, it just isn’t “in progress”
+          </VaultBox>
+
+          <VaultArrow icon="north">
+            <strong className="text-ink-3">triage</strong> — an Inbox capture graduates into a task
+            inside a project
+          </VaultArrow>
+
+          <div className="grid grid-cols-2 gap-2">
+            <VaultBox icon="inbox" title="Inbox">
+              captures land here with a semantic tag — in via <strong className="text-ink-3">/sq-capture</strong>,
+              “Add a note”, ⌘K, or the popup
+            </VaultBox>
+            <VaultBox icon="bolt" title="Scratch Pad">
+              quick tasks (max 5) — 2–15 min actions that belong to no project; in via ⌃⌘Q or the ⚡ button
+            </VaultBox>
+          </div>
+        </div>
+
+        <p className="mt-2 text-[11px] text-ink-4 flex items-center gap-1.5">
+          <span className="material-icons text-sm">sync_alt</span>
+          Every surface — your agent, the CLI, the desktop popup, this Web UI — reads and writes these
+          same files. There is no separate database.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Illustration 2 — the lifecycle each piece moves through, as arrowed steppers.
+function LifecycleIllustration() {
+  return (
+    <div className="space-y-3">
+      {LIFECYCLES.map((lc) => (
+        <div key={lc.term} className="panel p-4">
+          <div className="flex items-baseline gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="material-icons text-base text-accent self-center">{lc.icon}</span>
+              <span className="text-sm font-medium text-ink">{lc.term}</span>
+            </div>
+            <span className="text-xs text-ink-4">{lc.intro}</span>
+          </div>
+          <div className="flex flex-wrap items-stretch gap-y-2">
+            {lc.steps.map((s, i) => (
+              // Arrow + box form one flex item so a line-wrap never strands an arrow.
+              <div key={s.label} className="flex items-stretch">
+                {i > 0 && (
+                  <span className="material-icons self-center text-base text-ink-4 mx-1.5" aria-hidden>
+                    east
+                  </span>
+                )}
+                <div className="rounded-md border border-hairline bg-surface px-2.5 py-1.5 max-w-[190px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`material-icons text-[14px] ${s.end ? 'text-ok' : 'text-ink-3'}`}>
+                      {s.icon}
+                    </span>
+                    <span className={`text-xs font-semibold whitespace-nowrap ${s.end ? 'text-ok' : 'text-ink'}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-4 leading-snug mt-0.5">{s.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {lc.loop && (
+            <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-ink-4">
+              <span className="material-icons text-[14px]">replay</span>
+              <span>{lc.loop}</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Searchable text for the configuration panel (rendered as prose below).
 const CONFIG_HAYSTACK =
   'where the configuration lives ~/.squirrel/config.toml vaults name path default flag capture notification preferences move vault folder squirrel vaults open vault buttons logs reminder state';
@@ -755,6 +984,8 @@ export default function GuidePage() {
 
   // Filtered views of every section's data.
   const concepts = CONCEPTS.filter((c) => hit(c.term, c.def));
+  const showConceptMap = hit(CONCEPT_MAP_HAYSTACK);
+  const showLifecycles = hit(LIFECYCLE_HAYSTACK);
   const showConfig = hit(CONFIG_HAYSTACK);
   const daySteps = DAY_STEPS.filter(([cmd, text]) => hit(cmd, text));
   const agentGroups = AGENT_GROUPS.map((g) => ({
@@ -770,6 +1001,8 @@ export default function GuidePage() {
 
   const matchCount =
     concepts.length +
+    (showConceptMap ? 1 : 0) +
+    (showLifecycles ? 1 : 0) +
     (showConfig ? 1 : 0) +
     (showDashboard ? 1 : 0) +
     daySteps.length +
@@ -858,20 +1091,47 @@ export default function GuidePage() {
       )}
 
       {/* ── Core concepts ── */}
-      {concepts.length > 0 && (
+      {(concepts.length > 0 || showConceptMap || showLifecycles) && (
         <section id="guide-concepts" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-3">Core concepts</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {concepts.map((c) => (
-              <div key={c.term} className="panel p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="material-icons text-base text-accent">{c.icon}</span>
-                  <h3 className="font-medium text-ink">{c.term}</h3>
-                </div>
-                <p className="text-xs leading-relaxed text-ink-3">{c.def}</p>
+          {concepts.length > 0 && (
+            <>
+              <h2 className="eyebrow text-ink-2 mb-3">Core concepts</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {concepts.map((c) => (
+                  <div key={c.term} className="panel p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="material-icons text-base text-accent">{c.icon}</span>
+                      <h3 className="font-medium text-ink">{c.term}</h3>
+                    </div>
+                    <p className="text-xs leading-relaxed text-ink-3">{c.def}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+
+          {showConceptMap && (
+            <>
+              <h2 className="eyebrow text-ink-2 mt-8 mb-1">How the pieces fit together</h2>
+              <p className="text-sm text-ink-3 mb-3">
+                Everything above is just files nested inside one folder — projects hold tasks,
+                captures land in the Inbox, quick tasks sit on the Scratch Pad, and the WIP cap
+                guards the active shelf.
+              </p>
+              <ConceptMapIllustration />
+            </>
+          )}
+
+          {showLifecycles && (
+            <>
+              <h2 className="eyebrow text-ink-2 mt-8 mb-1">The life of each piece</h2>
+              <p className="text-sm text-ink-3 mb-3">
+                Each piece moves through a small, predictable loop — green marks where it comes
+                to rest.
+              </p>
+              <LifecycleIllustration />
+            </>
+          )}
         </section>
       )}
 
