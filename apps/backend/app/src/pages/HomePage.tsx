@@ -1,5 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import { useEffect, useState, type MouseEvent, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type DragEvent } from 'react';
 import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick, type EntityKind } from '@/api/client';
 import { fromNow } from '@/lib/utils';
@@ -476,6 +476,8 @@ function BoardView({ projects, pressing, onChanged }: {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPressingInfo, setShowPressingInfo] = useState(false);
+  const pressingInfoButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Auto-dismiss the "can't move here" toast.
   useEffect(() => {
@@ -600,6 +602,8 @@ function BoardView({ projects, pressing, onChanged }: {
     />
   );
 
+  const pressingInfoRect = pressingInfoButtonRef.current?.getBoundingClientRect();
+
   return (
     <>
       {notice && (
@@ -633,16 +637,56 @@ function BoardView({ projects, pressing, onChanged }: {
                 <div className="flex items-center gap-1.5">
                   <h3 className="eyebrow text-ink-2">{col.label}</h3>
                   {col.key === 'pressing' && (
-                    <span className="relative group flex items-center cursor-help">
-                      <span className="material-icons text-[14px] text-ink-4" aria-label="What appears in PRESSING">info_outline</span>
-                      <span
-                        role="tooltip"
-                        className="absolute left-0 top-full mt-1.5 z-30 hidden group-hover:block w-64 panel px-3 py-2 text-xs text-ink-2 normal-case font-normal tracking-normal shadow-lg"
+                    <>
+                      <button
+                        ref={pressingInfoButtonRef}
+                        type="button"
+                        onClick={() => setShowPressingInfo((v) => !v)}
+                        aria-label="What appears in PRESSING"
+                        aria-expanded={showPressingInfo}
+                        className="relative z-10 flex items-center text-ink-4 hover:text-ink-2"
                       >
-                        Filled automatically: your 3 most urgent items by deadline — overdue or due soon.
-                        Give a task a deadline to surface it here.
-                      </span>
-                    </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-info-icon lucide-info"
+                          aria-hidden="true"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 16v-4" />
+                          <path d="M12 8h.01" />
+                        </svg>
+                      </button>
+                      {showPressingInfo && pressingInfoRect && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Close PRESSING help"
+                            className="fixed inset-0 z-[240] cursor-default"
+                            onClick={() => setShowPressingInfo(false)}
+                          />
+                          <div
+                            role="tooltip"
+                            className="fixed z-[250] w-80 panel px-3 py-2 text-xs text-ink-2 normal-case font-normal tracking-normal shadow-lg"
+                            style={{
+                              left: pressingInfoRect.right + 8,
+                              top: pressingInfoRect.top + (pressingInfoRect.height / 2),
+                              transform: 'translateY(-50%)',
+                            }}
+                          >
+                            Filled automatically: your 3 most urgent items by deadline — overdue or due soon.
+                            Give a task a deadline to surface it here.
+                          </div>
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
                 <span className="chip chip-count">{col.count}</span>
