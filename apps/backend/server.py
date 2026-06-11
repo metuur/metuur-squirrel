@@ -502,6 +502,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/archive$"),   "api_post_it_archive"),
     ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/restore$"),   "api_post_it_restore"),
     ("DELETE", re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),           "api_post_it_delete"),
+    ("POST",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/convert$"),   "api_post_it_convert"),
     ("GET",  re.compile(r"^/api/quick-tasks$"),                       "api_quick_tasks_list"),
     ("POST", re.compile(r"^/api/quick-tasks$"),                       "api_quick_task_create"),
     ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/complete$"), "api_quick_task_complete"),
@@ -1931,6 +1932,61 @@ class Handler(http.server.BaseHTTPRequestHandler):
         conn.close()
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_convert(self, pi_id: str) -> None:
+        """POST /api/post-it/{id}/convert (R-3.1–R-3.6, R-6.6)."""
+        ctx, _ = self._context()
+        from post_it_writer import resolve_post_it_path, record_conversion
+        from intent_parser import parse_frontmatter
+
+        path = resolve_post_it_path(ctx.active.path, pi_id)
+        if path is None:
+            raise _UserError(404, "Post-it not found.")
+
+        payload = self._read_json_body()
+        target = (payload.get("target") or "").strip()
+        project_slug = (payload.get("project_slug") or "").strip() or None
+
+        # Read Post-it body text (the content after the frontmatter block)
+        try:
+            raw = path.read_text(encoding="utf-8")
+            _, body = parse_frontmatter(raw)
+            text = body.strip()
+            if not text:
+                text = pi_id  # last resort
+        except Exception:
+            text = pi_id  # last resort
+
+        if target == "quick_task":
+            from quick_task_writer import create_quick_task, QuickTaskError
+            try:
+                qt_id = create_quick_task(ctx.active.path, text)
+            except QuickTaskError as e:
+                if e.code == "QUICK_TASK_LIMIT_REACHED":
+                    return self._send_json(
+                        {"error": "CAP_FULL",
+                         "message": "Quick Task stack is full — complete one first"},
+                        status=409,
+                    )
+                raise _UserError(400, "Could not create the Quick Task.")
+            except Exception as exc:
+                _log_exception(exc)
+                raise _UserError(500, "Could not convert the Post-it.")
+            # R-3.4: mark source AFTER target created (crash safety)
+            ref = f"quick_task:{qt_id}"
+            try:
+                record_conversion(ctx.active.path, pi_id, ref)
+            except Exception as exc:
+                _log_exception(exc)
+                # Non-fatal: Quick Task exists; Post-it may still show as active
+            self._invalidate_vault_cache(ctx)
+            return self._send_json({"success": True, "ref": ref})
+
+        elif target in ("project_task", "project_note"):
+            # Implemented in task 3.2
+            raise _UserError(400, f"target '{target}' requires a project_slug — not yet supported.")
+        else:
+            raise _UserError(400, f"Unknown target: {target!r}")
 
     def api_quick_task_create(self) -> None:
         """POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)."""

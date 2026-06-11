@@ -298,5 +298,66 @@ class TestPostItItemRoutes(_CaseWithGet):
         self.assertEqual(status, 404)
 
 
+class TestPostItConvert(_Case):
+    """Task 3.1 — POST /api/post-it/{id}/convert (R-3.1–R-3.5, R-6.6)."""
+
+    def test_convert_quick_task_success(self):
+        """R-3.1, R-3.4 — converts a Post-it to a Quick Task; Post-it archived."""
+        # Create a Post-it
+        status, d = self._post_json("/api/post-its", {"text": "buy milk"})
+        self.assertEqual(status, 201)
+        pi_id = d["id"]
+
+        # Convert it
+        status, body = self._post_json(
+            f"/api/post-it/{pi_id}/convert", {"target": "quick_task"}
+        )
+        self.assertEqual(status, 200, f"expected 200, got {status}: {body}")
+        self.assertTrue(body.get("success"))
+        self.assertIn("ref", body)
+        self.assertTrue(body["ref"].startswith("quick_task:QT-"), f"ref was {body['ref']!r}")
+
+        # Post-it should be archived with converted_to set
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        content = pi_file.read_text(encoding="utf-8")
+        self.assertIn("state: archived", content)
+        self.assertIn("quick_task:QT-", content)
+
+        # QT file should exist in SCRATCH-PAD
+        qt_id = body["ref"].split(":", 1)[1]
+        qt_file = self.vault / "01-Active-Projects" / "SCRATCH-PAD" / f"{qt_id}.md"
+        self.assertTrue(qt_file.exists(), f"Quick Task file not found: {qt_file}")
+
+    def test_convert_quick_task_cap_full(self):
+        """R-3.5, R-6.6 — 409 CAP_FULL when stack is full; Post-it unchanged."""
+        # Seed 5 active Quick Tasks directly
+        scratch = self.vault / "01-Active-Projects" / "SCRATCH-PAD"
+        scratch.mkdir(parents=True, exist_ok=True)
+        for i in range(1, 6):
+            (scratch / f"QT-00{i}.md").write_text(
+                f"---\nid: QT-00{i}\ntype: quick_task\nquick_task: true\n"
+                f"qt_state: active\nqt_created_at: 2026-06-11T10:0{i}:00-05:00\n"
+                f"qt_snooze_count: 0\nstatus: open\n---\n\n# Quick task {i}\n"
+            )
+
+        # Create a Post-it
+        status, d = self._post_json("/api/post-its", {"text": "blocked note"})
+        self.assertEqual(status, 201)
+        pi_id = d["id"]
+
+        # Attempt conversion — should be blocked
+        status, body = self._post_json(
+            f"/api/post-it/{pi_id}/convert", {"target": "quick_task"}
+        )
+        self.assertEqual(status, 409, f"expected 409, got {status}: {body}")
+        self.assertEqual(body.get("error"), "CAP_FULL")
+
+        # Post-it must remain unchanged (state still active)
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        content = pi_file.read_text(encoding="utf-8")
+        self.assertIn("state: active", content)
+        self.assertNotIn("archived", content)
+
+
 if __name__ == "__main__":
     unittest.main()
