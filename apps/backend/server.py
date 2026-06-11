@@ -497,6 +497,11 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
     ("GET",  re.compile(r"^/api/post-its$"),                          "api_post_its_list"),
     ("POST", re.compile(r"^/api/post-its$"),                          "api_post_it_create"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),           "api_post_it_update"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/layout$"),    "api_post_it_layout"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/archive$"),   "api_post_it_archive"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/restore$"),   "api_post_it_restore"),
+    ("DELETE", re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),           "api_post_it_delete"),
     ("GET",  re.compile(r"^/api/quick-tasks$"),                       "api_quick_tasks_list"),
     ("POST", re.compile(r"^/api/quick-tasks$"),                       "api_quick_task_create"),
     ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/complete$"), "api_quick_task_complete"),
@@ -1830,6 +1835,102 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "pinned": False, "state": "active", "created": None, "converted_to": "",
             "layout": None,
         }, status=201)
+
+    def api_post_it_update(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id} — update fields (R-2.4, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import update as pi_update, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        payload = self._read_json_body()
+        fields = {k: payload[k] for k in ("text", "color", "label", "pinned") if k in payload}
+        if not fields:
+            raise _UserError(400, "No fields to update.")
+        try:
+            pi_update(ctx.active.path, pi_id, fields)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not update the Post-it.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_layout(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id}/layout — upsert layout row (R-2.5, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        payload = self._read_json_body()
+        try:
+            x = float(payload["x"])
+            y = float(payload["y"])
+            rotation = float(payload["rotation"])
+        except (KeyError, TypeError, ValueError):
+            raise _UserError(400, "x, y, rotation are required numbers.")
+        z = int(payload.get("z") or 0)
+        import db as _db
+        conn = _db.get_conn()
+        _db.init_schema(conn)
+        now = datetime.datetime.now().astimezone().isoformat()
+        conn.execute(
+            "INSERT OR REPLACE INTO post_it_layout (vault, post_it_id, x, y, rotation, z, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (str(ctx.active.path), pi_id, x, y, rotation, z, now)
+        )
+        conn.commit()
+        conn.close()
+        # Layout update intentionally does NOT invalidate vault cache (R-2.5: no Markdown change)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_archive(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id}/archive (R-2.6, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import archive as pi_archive, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        try:
+            pi_archive(ctx.active.path, pi_id)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not archive the Post-it.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_restore(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id}/restore (R-2.6, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import restore as pi_restore, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        try:
+            pi_restore(ctx.active.path, pi_id)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not restore the Post-it.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_delete(self, pi_id: str) -> None:
+        """DELETE /api/post-it/{id} — remove file + layout row (R-2.7, R-1.6, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import delete as pi_delete, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        try:
+            pi_delete(ctx.active.path, pi_id)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not delete the Post-it.")
+        # Remove layout row (R-1.6)
+        import db as _db
+        conn = _db.get_conn()
+        _db.init_schema(conn)
+        conn.execute("DELETE FROM post_it_layout WHERE vault=? AND post_it_id=?",
+                     (str(ctx.active.path), pi_id))
+        conn.commit()
+        conn.close()
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
 
     def api_quick_task_create(self) -> None:
         """POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)."""
