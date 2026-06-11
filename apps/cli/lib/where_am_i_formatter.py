@@ -2,7 +2,7 @@
 """where_am_i_formatter.py — Full "¿en qué estaba?" render in one call.
 
 Replaces the multi-step Bash workflow that used to live in
-skills/where-am-i/SKILL.md. Resolves the vault, runs the aggregator,
+skills/squirrel-where-am-i/SKILL.md. Resolves the vault, runs the aggregator,
 switch tracker, and deadline scanner, and prints the final human text
 to stdout. The skill prints stdout verbatim — zero formatting tokens.
 

@@ -9,7 +9,7 @@ Breaks start-up paralysis. Use when the user can't get a task going.
 
 Optional arguments: `[INTENT-TAG]`, `--vault NAME` (default if omitted)
 
-Invokes the `squirrel-task-initiation` skill (see `skills/task-initiation/SKILL.md`).
+Invokes the `squirrel-task-initiation` skill (see `skills/squirrel-task-initiation/SKILL.md`).
 
 The skill:
 1. Identifies the blocked intent (from the TAG, from state, or by asking)

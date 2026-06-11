@@ -21,5 +21,5 @@
   - `apply`: execute a saved plan; never overwrite existing target files (skip + report); re-runnable
   - Refuses a source that is already a squirrel vault; documented exit codes
   - Acceptance: unit tests cover plan mapping, apply output frontmatter, UNFILED numbering continuation, no-overwrite idempotency, source-untouched, and migrated projects visible to `aggregate_status()` in the `parking` bucket
-- [x] **S2 — skill + command**: `agent-pack/skills/migrate-vault/SKILL.md` (`squirrel-migrate-vault`) and `agent-pack/commands/sq-migrate-vault.md`, following the new-project pattern (skill delegates all I/O to the lib; dry-run plan shown and confirmed before apply)
+- [x] **S2 — skill + command**: `agent-pack/skills/squirrel-migrate-vault/SKILL.md` (`squirrel-migrate-vault`) and `agent-pack/commands/sq-migrate-vault.md`, following the new-project pattern (skill delegates all I/O to the lib; dry-run plan shown and confirmed before apply)
 - [x] **S3 — registration**: add `vault_migrator` to `apps/cli/pyproject.toml` py-modules; targeted tests green

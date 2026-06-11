@@ -11,7 +11,7 @@ Optional arguments:
 - `--dest parking|active` — where migrated projects land (default `parking` → `02-Parking-Lot/`)
 - `--vault NAME` — target a specific vault (default vault if omitted)
 
-Invokes the `squirrel:migrate-vault` skill, which:
+Invokes the `squirrel-migrate-vault` skill, which:
 
 1. Runs `lib/vault_migrator.py plan --source <path>` — a read-only scan that maps
    top-level folders → projects, folder-notes → project pages, notes → intents,

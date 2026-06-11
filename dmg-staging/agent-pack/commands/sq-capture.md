@@ -10,7 +10,7 @@ Capture: $ARGUMENTS
 Optional arguments:
 - `--vault NAME` — operate on a specific vault (default if omitted)
 
-Invokes the `squirrel:capture` skill, which:
+Invokes the `squirrel-capture` skill, which:
 1. Determines the appropriate semantic tag (`PROJECT-SUBAREA-NNN`)
 2. Detects the note type (intent / research / constraint / reference)
 3. Composes the note with frontmatter

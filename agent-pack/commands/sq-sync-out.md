@@ -7,7 +7,7 @@ allowed-tools: [Read, Glob, Grep, Bash]
 
 Generates a package to transfer to the other environment. Arguments: $ARGUMENTS
 
-Invokes the `squirrel:sync-out` skill, which:
+Invokes the `squirrel-sync-out` skill, which:
 1. Determines the scope (intent / project / research / decisions / manual)
 2. Collects files from the local vault
 3. Runs a compliance check (secret scanning, address validation)

@@ -242,7 +242,7 @@ What lands where, for each combination of agent + components:
                             │ invokes skill
                             ▼
    ┌────────────────────────────────────────────────────────────┐
-   │  skills/where-am-i/SKILL.md  (AI prompt + tool plan)       │
+   │  skills/squirrel-where-am-i/SKILL.md  (AI prompt + tool plan)       │
    └────────────────────────┬───────────────────────────────────┘
                             │ runs python3 lib/...
                             ▼

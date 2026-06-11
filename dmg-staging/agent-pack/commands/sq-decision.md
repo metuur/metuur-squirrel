@@ -10,7 +10,7 @@ Captures a decision about $ARGUMENTS (or about the recent conversation).
 Optional arguments:
 - `--vault NAME` — operate on a specific vault (default if omitted)
 
-Invokes the `squirrel:decision` skill, which:
+Invokes the `squirrel-decision` skill, which:
 1. Assigns the tag `<PROJECT>-DECISION-<NNN>`
 2. Extracts from the conversation: context, decision, alternatives considered, consequences
 3. Asks for confirmation of the fields

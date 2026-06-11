@@ -7,7 +7,7 @@ allowed-tools: [Bash, Read, Write]
 
 Creates a new project in the vault with arguments `$ARGUMENTS`.
 
-Invokes the `squirrel:new-project` skill, which:
+Invokes the `squirrel-new-project` skill, which:
 
 1. Validates the project tag (UPPERCASE, no intent scheme).
 2. Validates `type` (A/B/C), `deadline` (ISO date), and the optional first-intent tag.

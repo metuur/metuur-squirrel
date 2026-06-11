@@ -359,7 +359,7 @@ def _copy_skill_for_copilot(
 ) -> None:
     """Copy/link a single skill to the Copilot agents directory.
 
-    src_skill_dir — e.g. agent-pack/skills/session-start/
+    src_skill_dir — e.g. agent-pack/skills/squirrel-session-start/
     dst_agents_dir — e.g. ~/.copilot/agents/
     Renames SKILL.md → squirrel-<skill-name>.agent.md and injects frontmatter.
     """

@@ -26,13 +26,13 @@
 
 ## Unit 5: session-start — checkin
 
-- [x] 5.1 Add Step 5.5 to `agent-pack/skills/session-start/SKILL.md` (deps: 3.1, est: ~10m)
+- [x] 5.1 Add Step 5.5 to `agent-pack/skills/squirrel-session-start/SKILL.md` (deps: 3.1, est: ~10m)
   - acceptance: R-5.1, R-5.2, R-5.3 — after state.json write, calls `focus_cli.py checkin`; failure logs warning and continues; loading note display is never blocked
   - verify: Step 5.5 block present in SKILL.md; error path documented as non-fatal
 
 ## Unit 6: session-end — checkout
 
-- [x] 6.1 Add Step 12.5 to `agent-pack/skills/session-end/SKILL.md` (deps: 3.1, est: ~10m)
+- [x] 6.1 Add Step 12.5 to `agent-pack/skills/squirrel-session-end/SKILL.md` (deps: 3.1, est: ~10m)
   - acceptance: R-6.1, R-6.2, R-6.3, R-6.4 — after state.json write, calls `focus_cli.py checkout`; success appends duration line to Step 13 output; `no_open_session` → silent skip; other errors → one-line warning
   - verify: Step 12.5 block present; Step 13 template includes `⏱` line; error paths documented
 

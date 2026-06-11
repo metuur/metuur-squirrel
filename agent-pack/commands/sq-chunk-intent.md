@@ -9,7 +9,7 @@ Takes an intent from the vault (or a free-form description) and breaks it into m
 
 Optional arguments: `[INTENT-TAG]`, `--vault NAME` (default if omitted)
 
-Invokes the `squirrel-chunk-intent` skill (see `skills/chunk-intent/SKILL.md`).
+Invokes the `squirrel-chunk-intent` skill (see `skills/squirrel-chunk-intent/SKILL.md`).
 
 The skill:
 1. Reads the intent from the vault (if a TAG is passed)
@@ -19,4 +19,4 @@ The skill:
 5. Fills in domain-specific names (the LLM's job)
 6. Presents the plan with a "Done when" for each chunk
 7. Offers to write the chunks as checkboxes in the intent
-8. Offers to hand off to the `task-initiation` skill for the first chunk
+8. Offers to hand off to the `squirrel-task-initiation` skill for the first chunk

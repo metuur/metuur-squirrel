@@ -7,7 +7,7 @@ allowed-tools: [Read, Write, Edit, Bash, Glob]
 
 Applies the package pasted into the chat (or the last one saved in `<vault>/.squirrel/incoming/`).
 
-Invokes the `squirrel:sync-in` skill, which:
+Invokes the `squirrel-sync-in` skill, which:
 1. Parses the SQUIRREL-PACKAGE block (start/end markers)
 2. Validates the SHA-256 hash
 3. Verifies that the `to` field matches this environment

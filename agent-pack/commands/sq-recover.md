@@ -12,4 +12,4 @@ Optional arguments:
 
 Recovers a lost session (when `/sq-end` was forgotten).
 
-Invokes the `squirrel:recover` skill with the received arguments.
+Invokes the `squirrel-recover` skill with the received arguments.
