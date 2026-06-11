@@ -1983,8 +1983,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send_json({"success": True, "ref": ref})
 
         elif target in ("project_task", "project_note"):
-            # Implemented in task 3.2
-            raise _UserError(400, f"target '{target}' requires a project_slug — not yet supported.")
+            if not project_slug:
+                raise _UserError(400, "project_slug is required for project_task and project_note.")
+
+            # Validate that the project folder exists
+            project_folder = ctx.active.path / "01-Active-Projects" / project_slug
+            if not project_folder.exists():
+                raise _UserError(400, f"Unknown project: {project_slug!r}")
+
+            from capture_writer import write_capture
+            try:
+                new_path = write_capture(ctx.active.path, project_slug, text)
+            except Exception as exc:
+                _log_exception(exc)
+                kind = "project task" if target == "project_task" else "project note"
+                raise _UserError(500, f"Could not create the {kind}.")
+
+            ref = f"{target}:{project_slug}/{new_path.name}"
+
+            # R-3.4: mark source AFTER target created (crash safety)
+            try:
+                record_conversion(ctx.active.path, pi_id, ref)
+            except Exception as exc:
+                _log_exception(exc)
+            self._invalidate_vault_cache(ctx)
+            return self._send_json({"success": True, "ref": ref})
+
         else:
             raise _UserError(400, f"Unknown target: {target!r}")
 

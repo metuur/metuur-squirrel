@@ -328,6 +328,103 @@ class TestPostItConvert(_Case):
         qt_file = self.vault / "01-Active-Projects" / "SCRATCH-PAD" / f"{qt_id}.md"
         self.assertTrue(qt_file.exists(), f"Quick Task file not found: {qt_file}")
 
+    def test_convert_project_note_success(self):
+        """R-3.3, R-3.4 — project_note creates capture file; Post-it archived."""
+        # Create project folder
+        (self.vault / "01-Active-Projects" / "my-project").mkdir(parents=True)
+
+        # Create a Post-it
+        status, d = self._post_json("/api/post-its", {"text": "meeting notes here"})
+        self.assertEqual(status, 201)
+        pi_id = d["id"]
+
+        # Convert to project_note
+        status, body = self._post_json(
+            f"/api/post-it/{pi_id}/convert",
+            {"target": "project_note", "project_slug": "my-project"},
+        )
+        self.assertEqual(status, 200, f"expected 200, got {status}: {body}")
+        self.assertTrue(body.get("success"))
+        self.assertIn("ref", body)
+        self.assertIn("project_note:my-project/", body["ref"])
+
+        # A file was created in the project folder
+        project_dir = self.vault / "01-Active-Projects" / "my-project"
+        created = list(project_dir.glob("my-project-CAPTURE-*.md"))
+        self.assertEqual(len(created), 1, f"Expected 1 capture file, found: {created}")
+
+        # Post-it should be archived with converted_to set
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        content = pi_file.read_text(encoding="utf-8")
+        self.assertIn("state: archived", content)
+        self.assertIn("project_note:my-project/", content)
+
+    def test_convert_project_task_success(self):
+        """R-3.2, R-3.4 — project_task creates capture file; Post-it archived."""
+        # Create project folder
+        (self.vault / "01-Active-Projects" / "work-project").mkdir(parents=True)
+
+        # Create a Post-it
+        status, d = self._post_json("/api/post-its", {"text": "fix the login bug"})
+        self.assertEqual(status, 201)
+        pi_id = d["id"]
+
+        # Convert to project_task
+        status, body = self._post_json(
+            f"/api/post-it/{pi_id}/convert",
+            {"target": "project_task", "project_slug": "work-project"},
+        )
+        self.assertEqual(status, 200, f"expected 200, got {status}: {body}")
+        self.assertTrue(body.get("success"))
+        self.assertIn("ref", body)
+        self.assertIn("project_task:work-project/", body["ref"])
+
+        # A file was created in the project folder
+        project_dir = self.vault / "01-Active-Projects" / "work-project"
+        created = list(project_dir.glob("work-project-CAPTURE-*.md"))
+        self.assertEqual(len(created), 1, f"Expected 1 capture file, found: {created}")
+
+        # Post-it should be archived with converted_to set
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        content = pi_file.read_text(encoding="utf-8")
+        self.assertIn("state: archived", content)
+        self.assertIn("project_task:work-project/", content)
+
+    def test_convert_missing_project_slug(self):
+        """R-3.6 — project_task/project_note without project_slug → 400; nothing created."""
+        status, d = self._post_json("/api/post-its", {"text": "orphan note"})
+        self.assertEqual(status, 201)
+        pi_id = d["id"]
+
+        for target in ("project_task", "project_note"):
+            status, body = self._post_json(
+                f"/api/post-it/{pi_id}/convert",
+                {"target": target},
+            )
+            self.assertEqual(status, 400, f"expected 400 for {target}, got {status}: {body}")
+
+        # Post-it must remain active
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        content = pi_file.read_text(encoding="utf-8")
+        self.assertIn("state: active", content)
+
+    def test_convert_unknown_project_slug(self):
+        """R-3.6 — unknown project_slug → 400; Post-it still active."""
+        status, d = self._post_json("/api/post-its", {"text": "send to nowhere"})
+        self.assertEqual(status, 201)
+        pi_id = d["id"]
+
+        status, body = self._post_json(
+            f"/api/post-it/{pi_id}/convert",
+            {"target": "project_note", "project_slug": "does-not-exist"},
+        )
+        self.assertEqual(status, 400, f"expected 400, got {status}: {body}")
+
+        # Post-it must remain active
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        content = pi_file.read_text(encoding="utf-8")
+        self.assertIn("state: active", content)
+
     def test_convert_quick_task_cap_full(self):
         """R-3.5, R-6.6 — 409 CAP_FULL when stack is full; Post-it unchanged."""
         # Seed 5 active Quick Tasks directly
