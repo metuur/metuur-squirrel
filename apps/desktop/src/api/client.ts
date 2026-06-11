@@ -453,6 +453,12 @@ export const api = {
     call<{ success: true }>(`/api/notification/${id}/dismiss`, {
       method: "PATCH",
     }),
+  // ── Post-its ───────────────────────────────────────────────────────────────
+  postItCreate: (text: string, color: string) =>
+    call<{ id: string }>("/api/post-its", {
+      method: "POST",
+      body: JSON.stringify({ text, color }),
+    }),
   // ── Quick Tasks ────────────────────────────────────────────────────────────
   quickTasks: () => call<QuickTasksPayload>("/api/quick-tasks"),
   quickTaskCreate: (text: string) =>

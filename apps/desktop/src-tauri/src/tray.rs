@@ -134,6 +134,9 @@ pub mod ids {
     /// Captures a Quick Task in-app — shows the window and emits
     /// `quick-task-capture-open` so the React capture modal opens (R-1.1, R-1.5).
     pub const ADD_QUICK_TASK: &str = "add_quick_task";
+    /// Captures a Post-it in-app — shows the window and emits
+    /// `post-it-capture-open` so the React capture modal opens (R-4.1, R-4.2).
+    pub const ADD_POST_IT: &str = "add_post_it";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
     /// Always-visible help item. Opens the dashboard and emits `show-how-to`
     /// so the React How-to overlay renders the quick-start guide.
@@ -213,6 +216,8 @@ fn build_menu<R: Runtime>(
     };
     let add_quick_task_item =
         MenuItem::with_id(app, ids::ADD_QUICK_TASK, "Add Quick Task", true, None::<&str>)?;
+    let add_post_it_item =
+        MenuItem::with_id(app, ids::ADD_POST_IT, "Add Post-it", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
     // R-4.4: disabled until a vault is configured (first-run onboarding).
@@ -256,6 +261,7 @@ fn build_menu<R: Runtime>(
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
         &open_item,
         &add_quick_task_item,
+        &add_post_it_item,
         &sep_top,
         &pressing_header,
     ];
@@ -432,6 +438,15 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     show_main_window(app);
                     if let Err(e) = app.emit("quick-task-capture-open", ()) {
                         tracing::warn!(error = %e, "tray: failed to emit quick-task-capture-open");
+                    }
+                }
+                ids::ADD_POST_IT => {
+                    // R-4.1 / R-4.2: capture IN-APP — show the window and emit so
+                    // the React Post-it capture modal opens. No new global shortcut
+                    // (R-4.5); tray item is the only trigger from outside the popup.
+                    show_main_window(app);
+                    if let Err(e) = app.emit("post-it-capture-open", ()) {
+                        tracing::warn!(error = %e, "tray: failed to emit post-it-capture-open");
                     }
                 }
                 ids::OPEN_WEB_UI => open_web_url(app, ""),
