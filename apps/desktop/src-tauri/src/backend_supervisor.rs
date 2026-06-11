@@ -923,37 +923,45 @@ mod tests {
     #[test]
     fn classify_200_matching_echo_is_adopted() {
         let raw = resp("HTTP/1.0 200 OK", &format!("{{\"token_echo\": \"{TKN}\"}}"));
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::Adopted);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::Adopted);
     }
 
     #[test]
     fn classify_200_mismatched_echo_is_refused_unknown() {
         let raw = resp("HTTP/1.0 200 OK", "{\"token_echo\": \"deadbeef\"}");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedUnknown);
     }
 
     #[test]
     fn classify_200_dev_mode_is_refused_dev() {
         let raw = resp("HTTP/1.0 200 OK", "{\"mode\": \"dev\"}");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedDev);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedDev);
+    }
+
+    #[test]
+    fn classify_200_dev_mode_is_adopted_when_dev_backend_allowed() {
+        // Dev builds (SQUIRREL_ALLOW_DEV_BACKEND) adopt make dev-local's
+        // unauthenticated live backend instead of refusing it.
+        let raw = resp("HTTP/1.0 200 OK", "{\"mode\": \"dev\"}");
+        assert_eq!(classify_handshake_response(&raw, TKN, true), HandshakeOutcome::Adopted);
     }
 
     #[test]
     fn classify_401_is_refused_401() {
         let raw = resp("HTTP/1.0 401 Unauthorized", "");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::Refused401);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::Refused401);
     }
 
     #[test]
     fn classify_200_unrecognized_body_is_refused_unknown() {
         let raw = resp("HTTP/1.0 200 OK", "{\"hello\": \"world\"}");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedUnknown);
     }
 
     #[test]
     fn classify_garbage_without_header_split_is_refused_unknown() {
         let raw = b"not even http".to_vec();
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedUnknown);
     }
 
     #[test]
