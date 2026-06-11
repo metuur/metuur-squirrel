@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import hmac
 import html
 import http.server
@@ -1773,8 +1774,40 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_json(data)
 
     def api_post_its_list(self) -> None:
-        """GET /api/post-its — placeholder; implemented in task 2.1."""
-        self._send_json([])
+        """GET /api/post-its — scan + layout join (R-2.1, R-2.2, R-1.5)."""
+        ctx, _ = self._context()
+        include_archived = "include=archived" in (self.path.split("?", 1)[1] if "?" in self.path else "")
+        from post_it_scanner import scan_post_its
+        import db as _db
+        try:
+            scanned = scan_post_its(ctx.active.path)
+        except Exception as exc:
+            _log_exception(exc)
+            scanned = {"active": [], "archived": []}
+
+        conn = _db.get_conn()
+        _db.init_schema(conn)
+        vault_key = str(ctx.active.path)
+
+        def _get_layout(items, start_index=0):
+            result = []
+            for idx, item in enumerate(items):
+                row = conn.execute(
+                    "SELECT x,y,rotation,z FROM post_it_layout WHERE vault=? AND post_it_id=?",
+                    (vault_key, item["id"])
+                ).fetchone()
+                if row:
+                    layout = {"x": row[0], "y": row[1], "rotation": row[2], "z": row[3]}
+                else:
+                    layout = _default_layout(item["id"], start_index + idx)
+                result.append({**item, "layout": layout, "path": None})
+            return result
+
+        items = _get_layout(scanned["active"])
+        if include_archived:
+            items += _get_layout(scanned["archived"], start_index=len(scanned["active"]))
+        conn.close()
+        self._send_json(items)
 
     def api_post_it_create(self) -> None:
         """POST /api/post-its — create a Post-it (R-2.3, R-2.9)."""
@@ -2251,6 +2284,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _default_layout(pi_id: str, creation_order_index: int) -> dict:
+    """Deterministic non-overlapping default layout (R-1.5).
+
+    Uses MD5 of the id string for a stable (process-independent) hash.
+    Grid: 4 columns, rows expand downward; jitter and rotation derived from id.
+    """
+    h = int(hashlib.md5(pi_id.encode()).hexdigest(), 16)
+    col = creation_order_index % 4
+    row = creation_order_index // 4
+    x = 5.0 + col * 23.0 + (h % 7)
+    y = 5.0 + row * 20.0 + (h % 5)
+    rotation = float((h % 7) - 3)
+    return {"x": x, "y": y, "rotation": rotation, "z": 0}
 
 
 class _UserError(Exception):

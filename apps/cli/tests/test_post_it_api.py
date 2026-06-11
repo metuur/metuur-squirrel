@@ -87,6 +87,78 @@ class _Case(unittest.TestCase):
         return r.status, json.loads(r.read().decode("utf-8"))
 
 
+class _CaseWithGet(_Case):
+    def _get_json(self, path):
+        req = urllib.request.Request(self._url(path), method="GET")
+        try:
+            r = urllib.request.urlopen(req, timeout=3)
+        except urllib.error.HTTPError as he:
+            return he.code, json.loads(he.read().decode("utf-8"))
+        return r.status, json.loads(r.read().decode("utf-8"))
+
+
+class TestPostItList(_CaseWithGet):
+
+    def test_get_post_its_empty(self):
+        """R-2.1 — fresh vault with no post-its returns 200 empty list."""
+        status, data = self._get_json("/api/post-its")
+        self.assertEqual(status, 200)
+        self.assertEqual(data, [])
+
+    def test_get_post_its_returns_items(self):
+        """R-2.1 — two items returned; pinned one is first."""
+        _, d1 = self._post_json("/api/post-its", {"text": "first note"})
+        _, d2 = self._post_json("/api/post-its", {"text": "pinned note"})
+        pi_id_pinned = d2["id"]
+        # Directly set pinned: true in frontmatter
+        pi_file = self.vault / "05-Post-its" / f"{pi_id_pinned}.md"
+        text = pi_file.read_text(encoding="utf-8")
+        pi_file.write_text(text.replace("pinned: false", "pinned: true"), encoding="utf-8")
+
+        status, data = self._get_json("/api/post-its")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(data), 2)
+        self.assertTrue(data[0]["pinned"], "pinned item should be first")
+        self.assertEqual(data[0]["id"], pi_id_pinned)
+
+    def test_get_post_its_two_items_no_layout_distinct_positions(self):
+        """R-1.5 — two items without stored layout get distinct default positions."""
+        self._post_json("/api/post-its", {"text": "note alpha"})
+        self._post_json("/api/post-its", {"text": "note beta"})
+        status, data = self._get_json("/api/post-its")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(data), 2)
+        pos0 = (data[0]["layout"]["x"], data[0]["layout"]["y"])
+        pos1 = (data[1]["layout"]["x"], data[1]["layout"]["y"])
+        self.assertNotEqual(pos0, pos1, "two items should have different default layout positions")
+
+    def test_get_post_its_deterministic(self):
+        """R-1.5 — layout is deterministic: two GET calls return identical values."""
+        self._post_json("/api/post-its", {"text": "stable layout"})
+        _, data1 = self._get_json("/api/post-its")
+        _, data2 = self._get_json("/api/post-its")
+        self.assertEqual(data1[0]["layout"], data2[0]["layout"])
+
+    def test_get_post_its_include_archived(self):
+        """R-2.2 — archived item absent by default; present with ?include=archived."""
+        _, d = self._post_json("/api/post-its", {"text": "will be archived"})
+        pi_id = d["id"]
+        # Directly set state: archived in the file
+        pi_file = self.vault / "05-Post-its" / f"{pi_id}.md"
+        text = pi_file.read_text(encoding="utf-8")
+        pi_file.write_text(text.replace("state: active", "state: archived"), encoding="utf-8")
+
+        status_default, data_default = self._get_json("/api/post-its")
+        self.assertEqual(status_default, 200)
+        ids_default = [item["id"] for item in data_default]
+        self.assertNotIn(pi_id, ids_default, "archived item should not appear in default list")
+
+        status_arch, data_arch = self._get_json("/api/post-its?include=archived")
+        self.assertEqual(status_arch, 200)
+        ids_arch = [item["id"] for item in data_arch]
+        self.assertIn(pi_id, ids_arch, "archived item should appear with ?include=archived")
+
+
 class TestPostItCreate(_Case):
 
     def test_post_it_create_success(self):
