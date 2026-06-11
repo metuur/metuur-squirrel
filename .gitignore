@@ -66,6 +66,7 @@ graphify-out/.graphify_root
 graphify-out/.graphify_python
 graphify-out/graph.html
 graphify-out/manifest.json
+dmg-staging
 
 .uncle-dev/*
 !.uncle-dev/learns/
