@@ -122,7 +122,7 @@ def create_quick_task(vault_path: Path, text: str) -> str:
 
     # Microsecond precision keeps qt_created_at a strict FIFO key even when tasks
     # are captured within the same second (the callout shows only the date).
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
     body = _format_quick_task(qt_id=qt_id, text=text.strip(), created_iso=now.isoformat())
 
     _atomic_write(target, body)
@@ -168,7 +168,7 @@ def resolve_snooze_until(value: str | None) -> str:
                         next midnight)
       a bare ISO date/datetime string -> passed through (normalized)
     """
-    now = datetime.datetime.now().replace(microsecond=0)
+    now = datetime.datetime.now().astimezone().replace(microsecond=0)
     v = (value or "1h").strip()
 
     if v == "15m":
@@ -186,15 +186,19 @@ def resolve_snooze_until(value: str | None) -> str:
             target = midnight
         return target.isoformat()
 
-    # Bare ISO passthrough (date or datetime).
+    # Bare ISO passthrough (date or datetime), normalized to an aware local
+    # timestamp so scanner comparisons never mix naive and aware datetimes.
     try:
-        return datetime.datetime.fromisoformat(v.replace("Z", "")).isoformat()
+        dt = datetime.datetime.fromisoformat(v.replace("Z", ""))
     except ValueError:
         try:
             d = datetime.date.fromisoformat(v)
-            return datetime.datetime(d.year, d.month, d.day).isoformat()
+            dt = datetime.datetime(d.year, d.month, d.day)
         except ValueError:
             raise QuickTaskError("BAD_SNOOZE_UNTIL", f"unrecognized snooze value: {v!r}")
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
+    return dt.isoformat()
 
 
 def _snooze_count(path: Path) -> int:
@@ -291,7 +295,7 @@ def collect_quick_tasks(vault_path: Path) -> dict:
 def activate_quick_task(path: Path) -> None:
     """Reactivate a snoozed Quick Task, re-stamping qt_created_at so it re-enters
     at the bottom of the FIFO stack (R-4.2)."""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
     write_frontmatter(Path(path), {
         "qt_state": "active",
         "qt_snoozed_until": _DELETE,

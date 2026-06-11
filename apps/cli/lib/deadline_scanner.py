@@ -53,7 +53,12 @@ def classify_urgency(deadline: datetime.date, now: datetime.datetime) -> tuple[s
         }
 
     if days_left == 0:
-        deadline_dt = datetime.datetime.combine(deadline, datetime.time(23, 59, 59))
+        # Inherit now's tzinfo so the subtraction works with both naive and
+        # aware callers (aware everywhere is the repo-wide discipline; naive
+        # stays supported for older callers/tests).
+        deadline_dt = datetime.datetime.combine(
+            deadline, datetime.time(23, 59, 59), tzinfo=now.tzinfo
+        )
         hours_left = (deadline_dt - now).total_seconds() / 3600
         if hours_left < 4:
             return "critical", {"hours_left": round(hours_left, 1), "days_left": 0}
@@ -76,7 +81,7 @@ def classify_urgency(deadline: datetime.date, now: datetime.datetime) -> tuple[s
 
 def scan_vault_deadlines(vault_path: Path) -> dict:
     """Scan all .md files in the vault, classify by urgency."""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
 
     result = {level: [] for level in URGENCY_LEVELS}
     total_with_deadline = 0
