@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import hmac
+import html
 import http.server
 import json
 import logging
@@ -62,6 +63,7 @@ else:
 import config_loader  # noqa: E402
 import db  # noqa: E402
 import vocabulary  # noqa: E402
+from fs_atomic import atomic_write_text  # noqa: E402
 
 
 # ─── Paths / constants ───────────────────────────────────────────────────────
@@ -83,6 +85,10 @@ _TOKEN_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 # must work before the per-launch token is reliably propagated to the webview
 # (see _dispatch).
 _AUTH_EXEMPT_PATHS = frozenset({"/api/_handshake", "/api/env/obsidian"})
+
+# Serializes the mtime conflict-check + replace in _save_with_mtime so two
+# concurrent saves can't both pass the check and silently drop one edit.
+_NOTE_SAVE_LOCK = threading.Lock()
 
 
 def _auth_required() -> bool:
@@ -690,7 +696,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "<!doctype html><html><head><meta charset='utf-8'>"
             "<title>Squirrel</title></head><body style='font-family:system-ui;"
             "padding:2rem;text-align:center'><h1>Oh no</h1><p>"
-            + message.replace("<", "&lt;") + "</p><p><a href='/'>Back to home</a></p>"
+            + html.escape(message) + "</p><p><a href='/'>Back to home</a></p>"
             "</body></html>"
         )
         body = page.encode("utf-8")
@@ -1428,9 +1434,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(400, "Nothing to update — send a deadline and/or delivered.")
         text = proj_md.read_text(encoding="utf-8", errors="replace")
         new_text = _update_frontmatter_fields(text, updates)
-        tmp = proj_md.with_suffix(proj_md.suffix + ".tmp")
-        tmp.write_text(new_text, encoding="utf-8")
-        os.replace(tmp, proj_md)
+        atomic_write_text(proj_md, new_text)
         self._invalidate_vault_cache(ctx)
         fm = _parse_frontmatter_simple(new_text)
         self._send_json({
@@ -1495,9 +1499,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "deadline: <YYYY-MM-DD>   # ISO date; omit if no hard deadline",
                 f"deadline: {deadline}",
             )
-        tmp = intent_path.with_suffix(".md.tmp")
-        tmp.write_text(rendered, encoding="utf-8")
-        os.replace(tmp, intent_path)
+        atomic_write_text(intent_path, rendered)
         if reminder_date:
             try:
                 from reminder_writer import write_reminder_date
@@ -1578,26 +1580,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
         client_mtime = payload.get("mtime")
         if client_mtime is None:
             raise _UserError(400, "Missing the file timestamp. Reload and try again.")
-        try:
-            current_mtime = target.stat().st_mtime
-        except OSError:
-            raise _UserError(404, "We could not find that file.")
-        try:
-            if abs(float(client_mtime) - current_mtime) > 0.001:
-                conflict_body = target.read_text(encoding="utf-8", errors="replace")
-                self._send_json({
-                    "current_body": conflict_body,
-                    "current_mtime": current_mtime,
-                    "message": "Someone else just edited this. Pick which version to keep.",
-                }, status=409)
-                # _send_json returned; caller knows we replied.
-                # Raise to short-circuit downstream save attempt.
-                raise _ResponseSent()
-        except (TypeError, ValueError):
-            raise _UserError(400, "The file timestamp looks wrong. Reload and try again.")
-        tmp = target.with_suffix(target.suffix + ".tmp")
-        tmp.write_text(str(body), encoding="utf-8")
-        os.replace(tmp, target)
+        # The mtime conflict-check and the replace must be one critical section:
+        # without the lock, two in-flight saves can both pass the check and the
+        # slower one silently overwrites the faster one (server is threaded).
+        with _NOTE_SAVE_LOCK:
+            try:
+                current_mtime = target.stat().st_mtime
+            except OSError:
+                raise _UserError(404, "We could not find that file.")
+            try:
+                if abs(float(client_mtime) - current_mtime) > 0.001:
+                    conflict_body = target.read_text(encoding="utf-8", errors="replace")
+                    self._send_json({
+                        "current_body": conflict_body,
+                        "current_mtime": current_mtime,
+                        "message": "Someone else just edited this. Pick which version to keep.",
+                    }, status=409)
+                    # _send_json returned; caller knows we replied.
+                    # Raise to short-circuit downstream save attempt.
+                    raise _ResponseSent()
+            except (TypeError, ValueError):
+                raise _UserError(400, "The file timestamp looks wrong. Reload and try again.")
+            atomic_write_text(target, str(body))
 
     # ── mind journal ────────────────────────────────────────────────────────
 
@@ -1736,9 +1740,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             text = md_path.read_text(encoding="utf-8", errors="replace")
             new_text = _update_frontmatter_fields(text, {"deadline": until})
-            tmp = md_path.with_suffix(md_path.suffix + ".tmp")
-            tmp.write_text(new_text, encoding="utf-8")
-            os.replace(tmp, md_path)
+            atomic_write_text(md_path, new_text)
         except Exception as exc:
             _log_exception(exc)
             raise _UserError(500, "Could not defer the item.")
@@ -2039,8 +2041,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 q = f"SELECT {cols} FROM notifications ORDER BY fired_at DESC"
             if limit is not None:
-                q += f" LIMIT {limit}"
-            rows = conn.execute(q).fetchall()
+                q += " LIMIT ?"
+            rows = conn.execute(q, (limit,) if limit is not None else ()).fetchall()
         finally:
             conn.close()
 

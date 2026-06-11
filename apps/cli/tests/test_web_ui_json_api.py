@@ -529,5 +529,57 @@ class TestItemDefer(_Case):
         self.assertEqual(status, 400)
 
 
+class TestNotificationsListLimit(_Case):
+    """M2 audit fix — LIMIT is a bound parameter, not an f-string."""
+
+    def _insert_notifications(self, n: int) -> None:
+        import db
+        conn = db.get_conn()
+        try:
+            db.init_schema(conn)
+            for i in range(n):
+                conn.execute(
+                    "INSERT INTO notifications (type, item_id, title, body, fired_at) "
+                    "VALUES ('pressing', ?, ?, 'b', ?)",
+                    (f"N-{i}", f"title {i}", f"2026-06-0{i + 1}T00:00:00"),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_limit_caps_returned_rows(self):
+        self._insert_notifications(3)
+        status, data = self._get_json("/api/notifications?limit=2")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(data["items"]), 2)
+
+    def test_non_integer_limit_is_rejected(self):
+        status, _ = self._get_json("/api/notifications?limit=1;DROP")
+        self.assertEqual(status, 400)
+
+
+class TestHtmlErrorEscaping(unittest.TestCase):
+    """L1 audit fix — _send_html_error escapes <, >, & and quotes."""
+
+    def test_message_is_html_escaped(self):
+        import io
+        import server
+
+        h = server.Handler.__new__(server.Handler)
+        h.command = "GET"
+        h.path = "/x"
+        h.wfile = io.BytesIO()
+        h.send_response = lambda *a, **k: None
+        h.send_header = lambda *a, **k: None
+        h.end_headers = lambda *a, **k: None
+        h._send_common_headers = lambda *a, **k: None
+
+        h._send_html_error(500, "<script>alert('x')</script> & more")
+        page = h.wfile.getvalue().decode("utf-8")
+        self.assertNotIn("<script>", page)
+        self.assertIn("&lt;script&gt;", page)
+        self.assertIn("&amp; more", page)
+
+
 if __name__ == "__main__":
     unittest.main()

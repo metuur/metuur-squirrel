@@ -141,7 +141,8 @@ class TestServerScaffold(unittest.TestCase):
             "config_loader", "vocabulary", "capture_writer",
             "status_aggregator", "deadline_scanner", "new_project_writer",
             "focus_picker", "db", "intent_parser", "reminder_scanner",
-            "reminder_writer", "cache",
+            "reminder_writer", "cache", "estimate_buffer", "fs_atomic",
+            "mind_journal", "quick_task_writer",
         }
         stdlib = {
             "__future__", "argparse", "datetime", "hmac", "html", "http", "io",
