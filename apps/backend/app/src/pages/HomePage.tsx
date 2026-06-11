@@ -482,7 +482,7 @@ function BoardView({ projects, pressing, onChanged }: {
   // Auto-dismiss the "can't move here" toast.
   useEffect(() => {
     if (!notice) return;
-    const t = setTimeout(() => setNotice(null), 3500);
+    const t = setTimeout(() => setNotice(null), 7000);
     return () => clearTimeout(t);
   }, [notice]);
 
@@ -561,7 +561,7 @@ function BoardView({ projects, pressing, onChanged }: {
           setNotice('To finish an item, open it and mark it done — dragging out of PRESSING only defers its deadline.');
         }
       } else if (colKey === 'pressing') {
-        setNotice('PRESSING is automatic — items surface here by deadline and it holds at most 3. You can’t move cards into it.');
+        setNotice("PRESSING is your top 3 most urgent items, always first to keep it in focus. Items land here automatically by deadline — you can’t drop cards in, but drag one into a lane to defer it.");
       } else if (canDropHere(colKey)) {
         setPending({ id: drag.id, title: drag.title, from: drag.from, to: colKey as DropCol, isPressing: false });
       }
@@ -612,7 +612,15 @@ function BoardView({ projects, pressing, onChanged }: {
           className="fixed top-24 left-1/2 -translate-x-1/2 z-50 panel px-4 py-2.5 shadow-lg flex items-center gap-2 border-l-4 border-critical max-w-md"
         >
           <span className="material-icons text-sm text-critical">block</span>
-          <span className="text-sm text-ink-2">{notice}</span>
+          <span className="text-sm text-ink-2 flex-1">{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            className="ml-1 text-ink-3 hover:text-ink-1 leading-none"
+          >
+            <span className="material-icons text-base">close</span>
+          </button>
         </div>
       )}
       <div className="relative flex items-center justify-end mb-2 px-1">
