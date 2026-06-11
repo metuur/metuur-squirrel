@@ -25,6 +25,8 @@ import pathlib
 import re
 from typing import Optional
 
+from fs_atomic import atomic_write_text
+
 
 def write_capture(
     vault_path: pathlib.Path,
@@ -117,6 +119,4 @@ def _format_note(
 
 
 def _atomic_write(target: pathlib.Path, body: str) -> None:
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(body, encoding="utf-8")
-    os.replace(tmp, target)
+    atomic_write_text(target, body)

@@ -26,6 +26,7 @@ from using local-wall-clock by default.
 from __future__ import annotations
 
 import datetime
+import logging
 import re
 import sys
 from pathlib import Path
@@ -43,6 +44,8 @@ try:
     _HAS_DB = True
 except ImportError:
     _HAS_DB = False
+
+_log = logging.getLogger("focus_picker")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +148,8 @@ def get_manual_focus(vault: Path, now: Optional[datetime.datetime] = None) -> di
     for project_md, intent_path in _iter_intent_paths(vault):
         try:
             intent = parse_intent(intent_path)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", intent_path, exc)
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get("focus_today") == today_token:
@@ -257,7 +261,8 @@ def set_manual_focus(
     for _project_md, intent_path in _iter_intent_paths(vault):
         try:
             intent = parse_intent(intent_path)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", intent_path, exc)
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:
@@ -303,7 +308,8 @@ def clear_manual_focus(
     for _project_md, intent_path in _iter_intent_paths(vault):
         try:
             intent = parse_intent(intent_path)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", intent_path, exc)
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:

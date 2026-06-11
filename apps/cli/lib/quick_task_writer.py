@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from quick_task_scanner import scan_quick_tasks  # noqa: E402
 from intent_parser import write_frontmatter, _DELETE, parse_intent  # noqa: E402
+from fs_atomic import atomic_write_text  # noqa: E402
 
 MAX_ACTIVE = 5
 MAX_SNOOZES = 2
@@ -74,10 +75,8 @@ def _next_number(folder: Path, prefix: str) -> int:
 
 
 def _atomic_write(target: Path, body: str) -> None:
-    """Write atomically within the target folder (temp + os.replace)."""
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(body, encoding="utf-8")
-    os.replace(tmp, target)
+    """Write atomically within the target folder (temp + fsync + os.replace)."""
+    atomic_write_text(target, body)
 
 
 def _format_quick_task(*, qt_id: str, text: str, created_iso: str) -> str:

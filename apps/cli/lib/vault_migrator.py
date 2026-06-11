@@ -51,6 +51,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from intent_parser import parse_frontmatter  # noqa: E402
+from fs_atomic import atomic_write_text  # noqa: E402
 
 _PROJECT_TAG_RE = re.compile(r"^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$")
 _DATE_STEM_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
@@ -407,9 +408,7 @@ def _write_new(target: pathlib.Path, content: str, summary: dict) -> None:
         summary["skipped_existing"].append(str(target))
         return
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    tmp.replace(target)
+    atomic_write_text(target, content)
     summary["written"].append(str(target))
 
 

@@ -16,6 +16,7 @@ Uso CLI:
 import argparse
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -23,6 +24,8 @@ from typing import Optional
 # Import sibling
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent, parse_frontmatter
+
+_log = logging.getLogger("status_aggregator")
 
 
 def _is_quick_task_file(md: Path) -> bool:
@@ -133,7 +136,8 @@ def active_intent_for(vault: Path, project_slug: str) -> Optional[str]:
     for ip in intent_paths:
         try:
             intent = parse_intent(ip)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", ip, exc)
             continue
         notes = intent.get("shutdown_notes") or []
         if notes and notes[0].get("timestamp"):

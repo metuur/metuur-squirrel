@@ -146,7 +146,8 @@ def find_journal(vault_path: Path) -> Optional[Path]:
             seen.add(md)
             try:
                 fm, _ = parse_frontmatter(md.read_text(encoding="utf-8"))
-            except Exception:
+            except Exception as exc:
+                _log.warning("skipping unparseable file %s: %s", md, exc)
                 continue
             if str(fm.get("journal", "")).strip().lower() in ("true", "1", "yes"):
                 return md

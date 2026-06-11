@@ -30,11 +30,14 @@ Usage CLI:
 import argparse
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent
+
+_log = logging.getLogger("quick_task_scanner")
 
 SCRATCH_PAD_DIR = Path("01-Active-Projects") / "SCRATCH-PAD"
 
@@ -86,7 +89,8 @@ def scan_quick_tasks(vault_path: Path) -> dict:
 
             try:
                 data = parse_intent(md_file)
-            except Exception:
+            except Exception as exc:
+                _log.warning("skipping unparseable file %s: %s", md_file, exc)
                 continue
 
             fm = data["frontmatter"]

@@ -23,12 +23,14 @@ Uso CLI:
 import argparse
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent
 
+_log = logging.getLogger("deadline_scanner")
 
 URGENCY_LEVELS = ["critical", "urgent", "soon", "upcoming", "eventual", "distant"]
 
@@ -94,7 +96,8 @@ def scan_vault_deadlines(vault_path: Path) -> dict:
 
             try:
                 data = parse_intent(md_file)
-            except Exception:
+            except Exception as exc:
+                _log.warning("skipping unparseable file %s: %s", md_file, exc)
                 parse_errors += 1
                 continue
 
