@@ -115,6 +115,21 @@ class ConfigVaultApiTest(unittest.TestCase):
         self.assertTrue((scratch / "SCRATCH-PAD.md").is_file())
         self.assertTrue((scratch / "MIND-JOURNAL.md").is_file())
 
+    def test_existing_unstructured_folder_not_scaffolded(self):
+        # An existing folder with non-Squirrel content (e.g. a raw Obsidian
+        # vault) must be left intact so it can be *converted* with
+        # /sq-migrate-vault — scaffolding it would make it look already-Squirrel
+        # and block migration (source == target).
+        target = self.home / "obsidian"
+        target.mkdir()
+        (target / "00-Dashboard").mkdir()
+        (target / "Note.md").write_text("# hi\n")
+        status, _ = self._req("POST", "/api/config/vault",
+                              {"path": str(target), "create": True})
+        self.assertEqual(status, 200)
+        self.assertFalse((target / "01-Active-Projects").exists(),
+                         "must not scaffold an existing unstructured vault")
+
     def test_idempotent_repeat_post(self):
         target = self.home / "fresh-vault"
         target.mkdir()

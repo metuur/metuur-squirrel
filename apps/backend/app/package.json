@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "VITE_SQUIRREL_BACKEND_ORIGIN=http://127.0.0.1:3940 vite",
     "build": "vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit"

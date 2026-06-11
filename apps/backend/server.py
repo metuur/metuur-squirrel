@@ -264,6 +264,71 @@ def resolve_vault(cookie_name: Optional[str]) -> Optional[VaultContext]:
     return VaultContext(active=active, all_vaults=vaults, cookie_was_stale=cookie_was_stale)
 
 
+# ─── Vault structure classification ──────────────────────────────────────────
+
+# The canonical top-level folders the CLI and backend actually read. Presence of
+# any one of them marks a directory as a real Squirrel vault (mirrors
+# new_project_writer._VAULT_SKELETON and status_aggregator's read locations).
+_VAULT_STRUCTURE_MARKERS = (
+    "01-Active-Projects",
+    "02-Parking-Lot",
+    "03-Areas",
+    "06-Archive",
+    "99-Resources",
+)
+
+
+def classify_vault(path: pathlib.Path) -> str:
+    """Classify a configured vault directory so the UIs can guide recovery.
+
+    Returns one of:
+      - "ok"           — exists and has the Squirrel PARA structure.
+      - "missing"      — the path does not exist (or isn't a directory).
+      - "empty"        — the directory exists but holds no real content
+                         (only dotfiles like .DS_Store / .obsidian).
+      - "unstructured" — has files/folders but none of the Squirrel markers
+                         (e.g. a raw Obsidian vault → needs /sq-migrate-vault).
+    """
+    p = pathlib.Path(path)
+    if not p.is_dir():
+        return "missing"
+    if any((p / marker).is_dir() for marker in _VAULT_STRUCTURE_MARKERS):
+        return "ok"
+    try:
+        for child in p.iterdir():
+            if child.name == ".DS_Store" or child.name.startswith("."):
+                continue
+            return "unstructured"
+    except OSError:
+        return "missing"
+    return "empty"
+
+
+def _vault_setup_error(vault, status: str) -> "_UserError":
+    """Build a structured _UserError for a configured-but-unusable vault.
+
+    Carries a machine-readable `code` plus the vault name/path (and, for the
+    unstructured case, the exact migrate command) so the web UI and desktop
+    popup can render the right recovery step instead of a blank/broken page.
+    """
+    path = str(vault.path)
+    details = {"vault": {"name": vault.name, "path": path}, "vault_status": status}
+    if status == "missing":
+        code = "VAULT_MISSING"
+        msg = (f"Your workspace folder is missing: {path}. "
+               "Set it up again to keep going.")
+    elif status == "empty":
+        code = "VAULT_EMPTY"
+        msg = (f"Your workspace folder is empty: {path}. "
+               "Generate the Squirrel structure to get started.")
+    else:  # "unstructured"
+        code = "VAULT_UNSTRUCTURED"
+        details["migrate_command"] = f"/sq-migrate-vault {path}"
+        msg = (f"{path} has files but isn't a Squirrel vault yet. "
+               f"Run `/sq-migrate-vault {path}` to reorganize it.")
+    return _UserError(409, msg, code=code, details=details)
+
+
 # ─── Path security ───────────────────────────────────────────────────────────
 
 
@@ -504,8 +569,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     _ALLOWED_CORS_ORIGINS = frozenset({
         "tauri://localhost",
         "http://localhost:1420",
+        "http://localhost:1422",
         "http://localhost:5173",
         "http://127.0.0.1:1420",
+        "http://127.0.0.1:1422",
         "http://127.0.0.1:5173",
         "http://localhost:3939",
         "http://127.0.0.1:3939",
@@ -568,7 +635,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 handler_fn(**match.groupdict())
             except _UserError as ue:
-                self._send_plain_error(ue.status, ue.message)
+                if bare.startswith("/api/") and (ue.code or ue.details):
+                    extra = dict(ue.details or {})
+                    if ue.code:
+                        extra["code"] = ue.code
+                    self._send_json_error(ue.status, ue.message, extra)
+                else:
+                    self._send_plain_error(ue.status, ue.message)
             except Exception as exc:
                 _log_exception(exc)
                 if bare.startswith("/api/"):
@@ -598,8 +671,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_json_error(self, status: int, message: str) -> None:
-        body = json.dumps({"error": message}).encode("utf-8")
+    def _send_json_error(self, status: int, message: str,
+                         extra: Optional[dict] = None) -> None:
+        payload = {"error": message}
+        if extra:
+            payload.update(extra)
+        body = json.dumps(payload).encode("utf-8")
         _log_request(self.command, self.path, status)
         self.send_response(status)
         self._send_common_headers(no_store=True)
@@ -648,7 +725,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(
                 503,
                 "No workspace is set up yet. Run `squirrel vaults add <name> <path>`.",
+                code="NO_VAULT",
             )
+        # A vault is configured but its directory may have been moved, emptied,
+        # or never structured. Surface a recoverable, machine-readable error so
+        # the UIs can guide re-setup instead of silently returning empty data.
+        status = classify_vault(ctx.active.path)
+        if status != "ok":
+            raise _vault_setup_error(ctx.active, status)
         return ctx, cookies
 
     # Drop all cached vault-scan entries for the active vault. Called from
@@ -763,20 +847,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         vault = config_loader.upsert_default_vault(name, str(resolved))
 
-        # Scaffold the default vault structure now, rather than waiting for the
-        # first /api/me bootstrap — a freshly created vault should not be empty.
-        # ensure_vault_skeleton creates the canonical PARA folders (each with a
-        # stub README) plus SCRATCH-PAD; ensure_mind_journal seeds the journal.
-        # All idempotent (existing folders/notes are preserved). Call them
-        # directly (not the _once wrappers) so a failure here doesn't suppress
-        # the lazy /api/me retry; non-fatal so it never blocks vault creation.
-        try:
-            from new_project_writer import ensure_vault_skeleton
-            from mind_journal import ensure_mind_journal
-            ensure_vault_skeleton(resolved)
-            ensure_mind_journal(resolved, name)
-        except Exception:
-            pass
+        # Scaffold the structure now (not lazily on first /api/me) so a freshly
+        # created vault isn't empty. BUT only for an empty/new or already-Squirrel
+        # folder: an existing folder with non-Squirrel content (e.g. a raw
+        # Obsidian vault) is left untouched so the user can *convert* it with
+        # /sq-migrate-vault — scaffolding it here would make it look like a
+        # Squirrel vault and block migration (source==target / already-Squirrel).
+        # ensure_* are idempotent; non-fatal so they never block vault creation.
+        if classify_vault(resolved) != "unstructured":
+            try:
+                from new_project_writer import ensure_vault_skeleton
+                from mind_journal import ensure_mind_journal
+                ensure_vault_skeleton(resolved)
+                ensure_mind_journal(resolved, name)
+            except Exception:
+                pass
         self._send_json(
             {"name": vault.name, "path": str(vault.path), "default": True}
         )
@@ -2130,10 +2215,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 class _UserError(Exception):
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, *,
+                 code: Optional[str] = None, details: Optional[dict] = None):
         super().__init__(message)
         self.status = status
         self.message = message
+        # Optional machine-readable code + extra fields merged into the JSON
+        # error body (e.g. vault-recovery codes consumed by the UIs).
+        self.code = code
+        self.details = details
 
 
 class _ResponseSent(Exception):

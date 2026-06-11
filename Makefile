@@ -3,6 +3,9 @@
 # Tauri desktop:
 #   make dev               → pnpm tauri dev (assumes backend already running)
 #   make dev-all           → preflight check + dev (warns if backend offline)
+#   make dev-local         → full dev stack: one live backend :3940 (desktop
+#                            adopts it), web UI :5173, desktop :1420. Hot reload
+#                            + [DEV] label. Leaves the installed app on :3939 alone.
 #   make build             → pnpm tauri build
 #
 # CLI (apps/cli, Python stdlib, no deps):
@@ -29,7 +32,7 @@ ROOT := $(CURDIR)
 DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
-.PHONY: help dev dev-all build test-cli sq backend-start backend-build backend-dev-ui \
+.PHONY: help dev dev-all dev-local build test-cli sq backend-start backend-build backend-dev-ui \
 	deploy-pages \
         build-installers build-installers-arm64 build-installers-intel \
         build-pkg build-pkg-intel build-pkg-fast build-pkg-dry \
@@ -57,6 +60,32 @@ dev-all:
 
 build:
 	pnpm tauri build
+
+# Full local dev stack on non-production ports. Production app on :3939 is left
+# untouched. Runs ONE live backend (server.py) on :3940 — the port the dev
+# desktop build expects — so the desktop *adopts* it (DEV_MODE handshake) and
+# runs live backend code instead of the stale prebuilt sidecar. The web UI vite
+# dev server (:5173) proxies /api → :3940 too, so web UI + desktop share one
+# hot backend. Both show the [DEV] label. The live backend must start BEFORE
+# tauri dev so adoption wins over spawning. Ctrl-C stops the whole stack.
+dev-local:
+	@echo "▶ Squirrel dev stack — live backend :3940 · web UI :5173 · desktop :3940+:1420 (prod :3939 untouched)"
+	@trap 'echo; echo "⏹ stopping dev stack…"; [ -n "$$BACKEND_PID" ] && kill $$BACKEND_PID 2>/dev/null; [ -n "$$WEBUI_PID" ] && kill $$WEBUI_PID 2>/dev/null; exit 0' INT TERM EXIT; \
+	if curl -s -o /dev/null --max-time 1 http://127.0.0.1:3940/api/_handshake; then \
+		echo "✓ a backend is already listening on :3940 (reusing it)"; \
+	else \
+		python3 $(ROOT)/apps/backend/server.py --port 3940 & BACKEND_PID=$$!; \
+		printf "… starting live dev backend on :3940"; \
+		until curl -s -o /dev/null --max-time 1 http://127.0.0.1:3940/api/_handshake; do printf "."; sleep 0.3; done; \
+		echo " ✓"; \
+	fi; \
+	if ! curl -sf -o /dev/null --max-time 1 http://127.0.0.1:3940/api/me; then \
+		echo "ℹ no workspace yet on :3940 — the web UI & desktop will show the guided setup/recovery screen"; \
+	fi; \
+	pnpm -F squirrel-web-ui dev:local & WEBUI_PID=$$!; \
+	echo "✓ web UI → http://localhost:5173  ([DEV] badge, proxies /api → :3940)"; \
+	echo "▶ launching desktop (tauri dev — adopts :3940)… Ctrl-C here stops everything"; \
+	pnpm -F @squirrel/desktop tauri:dev
 
 # ─── CLI ────────────────────────────────────────────────────────────────────
 

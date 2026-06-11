@@ -317,6 +317,40 @@ export interface VaultConfigResult {
   default: boolean;
 }
 
+// ── Vault recovery ─────────────────────────────────────────────────────────
+// /api/me answers 409 (or 503 for NO_VAULT) with a machine-readable `code` when
+// the configured vault is missing / empty / not yet a Squirrel vault, so the
+// popup can guide re-setup instead of showing a backend-offline banner.
+export type VaultRecoveryCode =
+  | "NO_VAULT"
+  | "VAULT_MISSING"
+  | "VAULT_EMPTY"
+  | "VAULT_UNSTRUCTURED";
+
+export interface VaultRecoveryPayload {
+  error: string;
+  code: VaultRecoveryCode;
+  vault?: { name: string; path: string };
+  vault_status?: "missing" | "empty" | "unstructured";
+  migrate_command?: string;
+}
+
+/** Narrow an unknown error to a vault-recovery payload, or null. */
+export function asVaultRecovery(err: unknown): VaultRecoveryPayload | null {
+  if (!(err instanceof ApiError)) return null;
+  const p = err.payload as Partial<VaultRecoveryPayload> | undefined;
+  const code = p?.code;
+  if (
+    code === "NO_VAULT" ||
+    code === "VAULT_MISSING" ||
+    code === "VAULT_EMPTY" ||
+    code === "VAULT_UNSTRUCTURED"
+  ) {
+    return p as VaultRecoveryPayload;
+  }
+  return null;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
