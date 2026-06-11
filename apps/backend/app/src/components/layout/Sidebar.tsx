@@ -58,6 +58,13 @@ export function Sidebar() {
           <span className={`font-bold ${pressing > 0 ? 'text-warning' : 'text-ink-4'}`}>{pressing}</span>
         </Link>
         <Link
+          to="/post-its"
+          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
+        >
+          <span>Post-its</span>
+          <span className="material-icons text-base text-ink-4">sticky_note_2</span>
+        </Link>
+        <Link
           to="/history"
           className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
         >

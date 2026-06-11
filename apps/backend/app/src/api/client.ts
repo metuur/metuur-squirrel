@@ -334,6 +334,25 @@ export interface NotificationsPayload {
   total_count: number;
 }
 
+export interface PostItLayout {
+  x: number;
+  y: number;
+  rotation: number;
+  z: number;
+}
+
+export interface PostIt {
+  id: string;
+  text: string;
+  color: string;
+  label: string;
+  pinned: boolean;
+  state: string;
+  created: string | null;
+  converted_to: string;
+  layout: PostItLayout | null;
+}
+
 export interface QuickTask {
   id: string;
   text: string;
@@ -447,6 +466,8 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ until }),
     }),
+  postItsList: (includeArchived = false) =>
+    call<PostIt[]>(`/post-its${includeArchived ? "?include=archived" : ""}`),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>

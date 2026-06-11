@@ -15,6 +15,7 @@ const JournalPage = lazy(() => import('@/pages/JournalPage'));
 const HistoryPage = lazy(() => import('@/pages/HistoryPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const GuidePage = lazy(() => import('@/pages/GuidePage'));
+const PostItsPage = lazy(() => import('@/pages/PostItsPage'));
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/notes/:id" element={<NotePage />} />
               <Route path="/notes/:id/edit" element={<NoteEditPage />} />
               <Route path="/deadlines" element={<DeadlinesPage />} />
+              <Route path="/post-its" element={<PostItsPage />} />
               <Route path="/journal" element={<JournalPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/settings" element={<SettingsPage />} />
