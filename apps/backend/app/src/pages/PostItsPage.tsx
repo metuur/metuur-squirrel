@@ -31,6 +31,201 @@ function defaultLayout(id: string, index: number): PostItLayout {
   };
 }
 
+// ── PostItPopover ─────────────────────────────────────────────────────────────
+
+interface PostItPopoverProps {
+  item: PostIt & { layout: PostItLayout };
+  onClose: () => void;
+  onUpdate: (id: string, fields: Partial<PostIt>) => void;
+  onArchive: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItPopoverProps) {
+  const [text, setText] = useState(item.text);
+  const [color, setColor] = useState(item.color);
+  const [label, setLabel] = useState(item.label);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.postItUpdate(item.id, { text, color, label });
+      onUpdate(item.id, { text, color, label });
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const togglePin = async () => {
+    await api.postItUpdate(item.id, { pinned: !item.pinned });
+    onUpdate(item.id, { pinned: !item.pinned });
+    onClose();
+  };
+
+  const archive = async () => {
+    await api.postItArchive(item.id);
+    onArchive(item.id);
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    await api.postItDelete(item.id);
+    onDelete(item.id);
+    onClose();
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.3)",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 12,
+          padding: 20,
+          minWidth: 300,
+          maxWidth: 400,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          rows={4}
+          style={{
+            width: "100%",
+            padding: 8,
+            border: "1px solid #d1d5db",
+            borderRadius: 6,
+            fontFamily: "Caveat, cursive",
+            fontSize: 16,
+            boxSizing: "border-box",
+          }}
+        />
+        {/* Color swatches */}
+        <div style={{ display: "flex", gap: 4, margin: "8px 0" }}>
+          {Object.keys(COLOR_MAP).map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                background: COLOR_MAP[c],
+                border: color === c ? "2px solid #374151" : "2px solid transparent",
+                cursor: "pointer",
+              }}
+            />
+          ))}
+        </div>
+        <input
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          placeholder="Corner label (optional)"
+          style={{
+            width: "100%",
+            padding: "4px 8px",
+            border: "1px solid #d1d5db",
+            borderRadius: 6,
+            marginBottom: 8,
+            boxSizing: "border-box",
+          }}
+        />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            onClick={save}
+            disabled={busy}
+            style={{
+              background: "#374151",
+              color: "#fff",
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer",
+              opacity: busy ? 0.6 : 1,
+            }}
+          >
+            Save
+          </button>
+          <button
+            onClick={togglePin}
+            style={{ background: "#f3f4f6", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}
+          >
+            {item.pinned ? "Unpin" : "Pin"}
+          </button>
+          <button
+            onClick={archive}
+            style={{ background: "#f3f4f6", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}
+          >
+            Archive
+          </button>
+          {/* R-5.8: in-app confirmation, NOT window.confirm */}
+          {!confirmDelete ? (
+            <button
+              onClick={handleDelete}
+              style={{
+                background: "#fee2e2",
+                color: "#dc2626",
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Delete
+            </button>
+          ) : (
+            <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <span style={{ fontSize: 13, color: "#dc2626" }}>Sure?</span>
+              <button
+                onClick={handleDelete}
+                style={{ background: "#dc2626", color: "#fff", padding: "4px 8px", borderRadius: 4, border: "none", cursor: "pointer" }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ background: "#f3f4f6", padding: "4px 8px", borderRadius: 4, border: "none", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            style={{ marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PostItCard ────────────────────────────────────────────────────────────────
+
 interface PostItCardProps {
   item: PostIt & { layout: PostItLayout };
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -197,6 +392,8 @@ function PostItCard({ item, containerRef, onLayoutChange, onCardClick }: PostItC
   );
 }
 
+// ── PostItComposer ────────────────────────────────────────────────────────────
+
 function PostItComposer({ onCreated }: { onCreated: (item: PostIt) => void }) {
   const [text, setText] = useState("");
   const [color, setColor] = useState("yellow");
@@ -276,11 +473,181 @@ function PostItComposer({ onCreated }: { onCreated: (item: PostIt) => void }) {
   );
 }
 
+// ── ArchivedView ──────────────────────────────────────────────────────────────
+
+interface ArchivedViewProps {
+  items: PostIt[];
+  onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function ArchivedView({ items, onRestore, onDelete }: ArchivedViewProps) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      return;
+    }
+    await api.postItDelete(id);
+    onDelete(id);
+    setConfirmDeleteId(null);
+  };
+
+  const handleRestore = async (id: string) => {
+    await api.postItRestore(id);
+    onRestore(id);
+  };
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-12 panel border-dashed">
+        <span className="material-icons text-ink-4 text-4xl">inventory_2</span>
+        <p className="text-ink-3 mt-2">No archived Post-its.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "16px 0" }}>
+      {items.map(item => {
+        const bgColor = getColor(item.color);
+        return (
+          <div
+            key={item.id}
+            style={{
+              width: 180,
+              opacity: 0.7,
+              borderRadius: 4,
+              boxShadow: "2px 3px 8px rgba(0,0,0,0.12)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ height: 8, background: bgColor, filter: "brightness(0.8)" }} />
+            <div
+              style={{
+                background: bgColor,
+                padding: "8px 10px 10px",
+                minHeight: 70,
+                position: "relative",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: "#1c1917",
+                  margin: "0 0 24px",
+                  wordBreak: "break-word",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {item.text}
+              </p>
+              {item.label && (
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: 4,
+                    right: 6,
+                    fontSize: 9,
+                    color: "#57534e",
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.label}
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                background: "rgba(0,0,0,0.05)",
+                display: "flex",
+                gap: 4,
+                padding: "4px 6px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={() => handleRestore(item.id)}
+                style={{
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "none",
+                  background: "#e0f2fe",
+                  color: "#0369a1",
+                  cursor: "pointer",
+                }}
+              >
+                Restore
+              </button>
+              {/* R-5.8: in-app confirmation, NOT window.confirm */}
+              {confirmDeleteId !== item.id ? (
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  style={{
+                    fontSize: 11,
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                    border: "none",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    cursor: "pointer",
+                  }}
+                >
+                  Delete
+                </button>
+              ) : (
+                <span style={{ display: "flex", gap: 2, alignItems: "center" }}>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "none",
+                      background: "#dc2626",
+                      color: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "none",
+                      background: "#f3f4f6",
+                      cursor: "pointer",
+                    }}
+                  >
+                    No
+                  </button>
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── PostItsPage ───────────────────────────────────────────────────────────────
+
 export default function PostItsPage() {
   const { data, loading, error, setData } = usePostIts();
   const containerRef = useRef<HTMLDivElement>(null);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
-  const active = data.filter((it) => it.state !== "archived");
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedItems, setArchivedItems] = useState<PostIt[]>([]);
+  const [archivedLoading, setArchivedLoading] = useState(false);
+
+  const active = data.filter(it => it.state !== "archived");
 
   const handleCreated = (item: PostIt) => {
     setData(prev => {
@@ -297,6 +664,59 @@ export default function PostItsPage() {
     setOpenCardId(id);
   };
 
+  // Popover callbacks
+  const handleUpdate = (id: string, fields: Partial<PostIt>) => {
+    setData(prev => prev.map(item => item.id === id ? { ...item, ...fields } : item));
+  };
+
+  const handleArchive = (id: string) => {
+    // Remove from active wall (filter to state !== "archived" already handles display,
+    // but we update state so archived panel picks it up if open)
+    setData(prev => prev.map(item => item.id === id ? { ...item, state: "archived" } : item));
+    if (showArchived) {
+      const archived = data.find(it => it.id === id);
+      if (archived) {
+        setArchivedItems(prev => [{ ...archived, state: "archived" }, ...prev]);
+      }
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    setData(prev => prev.filter(item => item.id !== id));
+    setArchivedItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Archived panel
+  const toggleArchived = async () => {
+    const next = !showArchived;
+    setShowArchived(next);
+    if (next && archivedItems.length === 0) {
+      setArchivedLoading(true);
+      try {
+        const all = await api.postItsList(true);
+        setArchivedItems(all.filter(it => it.state === "archived"));
+      } catch (err) {
+        console.error("Failed to load archived Post-its", err);
+      } finally {
+        setArchivedLoading(false);
+      }
+    }
+  };
+
+  const handleRestore = (id: string) => {
+    const restored = archivedItems.find(it => it.id === id);
+    setArchivedItems(prev => prev.filter(it => it.id !== id));
+    if (restored) {
+      // Add back to active wall with layout
+      const withLayout = restored.layout ?? defaultLayout(restored.id, data.length);
+      setData(prev => [...prev, { ...restored, state: "active", layout: withLayout }]);
+    }
+  };
+
+  const handleArchivedDelete = (id: string) => {
+    setArchivedItems(prev => prev.filter(it => it.id !== id));
+  };
+
   if (loading) {
     return <div className="h-64 animate-pulse rounded-lg bg-surface-2" />;
   }
@@ -310,9 +730,48 @@ export default function PostItsPage() {
     );
   }
 
+  const openItem = openCardId
+    ? data.find(it => it.id === openCardId)
+    : null;
+  const openItemWithLayout = openItem
+    ? { ...openItem, layout: openItem.layout ?? defaultLayout(openItem.id, 0) }
+    : null;
+
   return (
     <div style={{ minHeight: "calc(100vh - 4rem)" }}>
-      <h1 className="title mb-4">Post-its</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <h1 className="title">Post-its</h1>
+        <button
+          onClick={toggleArchived}
+          style={{
+            padding: "6px 14px",
+            borderRadius: 6,
+            border: "1px solid #d1d5db",
+            background: showArchived ? "#374151" : "#fff",
+            color: showArchived ? "#fff" : "#374151",
+            cursor: "pointer",
+            fontSize: 13,
+          }}
+        >
+          {showArchived ? "Hide archived" : "Show archived"}
+        </button>
+      </div>
+
+      {/* Archived panel — R-5.7 */}
+      {showArchived && (
+        <div style={{ marginBottom: 24, background: "#f9fafb", borderRadius: 8, padding: "12px 16px", border: "1px solid #e5e7eb" }}>
+          <p style={{ fontWeight: 600, fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Archived</p>
+          {archivedLoading ? (
+            <div className="animate-pulse" style={{ height: 60 }} />
+          ) : (
+            <ArchivedView
+              items={archivedItems}
+              onRestore={handleRestore}
+              onDelete={handleArchivedDelete}
+            />
+          )}
+        </div>
+      )}
 
       <PostItComposer onCreated={handleCreated} />
 
@@ -332,7 +791,7 @@ export default function PostItsPage() {
             overflow: "hidden",
           }}
         >
-          {active.map((item) => (
+          {active.map(item => (
             <PostItCard
               key={item.id}
               item={{ ...item, layout: item.layout ?? defaultLayout(item.id, active.indexOf(item)) }}
@@ -342,6 +801,17 @@ export default function PostItsPage() {
             />
           ))}
         </div>
+      )}
+
+      {/* Popover — R-5.5 */}
+      {openCardId && openItemWithLayout && (
+        <PostItPopover
+          item={openItemWithLayout}
+          onClose={() => setOpenCardId(null)}
+          onUpdate={handleUpdate}
+          onArchive={handleArchive}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   );

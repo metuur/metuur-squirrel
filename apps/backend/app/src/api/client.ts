@@ -478,6 +478,17 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(layout),
     }),
+  postItUpdate: (id: string, fields: Partial<{ text: string; color: string; label: string; pinned: boolean }>) =>
+    call<{ success: boolean }>(`/post-it/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(fields),
+    }),
+  postItArchive: (id: string) =>
+    call<{ success: boolean }>(`/post-it/${id}/archive`, { method: "PATCH" }),
+  postItRestore: (id: string) =>
+    call<{ success: boolean }>(`/post-it/${id}/restore`, { method: "PATCH" }),
+  postItDelete: (id: string) =>
+    call<{ success: boolean }>(`/post-it/${id}`, { method: "DELETE" }),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>
