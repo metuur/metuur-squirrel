@@ -20,7 +20,7 @@ export function Sidebar() {
   const recent = (history ?? []).slice(0, 3);
 
   return (
-    <aside className="w-64 h-full bg-paper-2 border-r border-hairline flex-shrink-0 hidden md:flex flex-col py-6 px-4">
+    <aside className="w-64 h-full bg-paper-2 border-r border-hairline flex-shrink-0 hidden md:flex flex-col py-6 px-4 overflow-y-auto">
       <div className="flex items-center justify-between mb-4 px-2">
         <h3 className="eyebrow">Dashboard</h3>
         <div className="flex items-center gap-1">

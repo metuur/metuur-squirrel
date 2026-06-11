@@ -1013,20 +1013,57 @@ export default function GuidePage() {
     webuiFeatures.length +
     faqEntries.length;
 
-  const jumpTo = (id: string) =>
-    document.getElementById(`guide-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Docs-style navigation: the sub-sidebar shows one section at a time; an
+  // active search overrides the selection and sweeps every section.
+  const [active, setActive] = useState<string>(NAV[0][0]);
+  const show = (id: string, hasMatch: boolean) => (searching ? hasMatch : active === id);
+
+  const selectSection = (id: string) => {
+    setActive(id);
+    setQuery('');
+    document.querySelector('main')?.scrollTo({ top: 0 });
+  };
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <h1 className="title mb-2">Guide</h1>
-      <p className="text-ink-3 mb-6">
+      <p className="text-ink-3 mb-6 max-w-3xl">
         Squirrel keeps your projects, tasks, and working context in a plain-Markdown
         vault, and meets you on four surfaces: your coding agent (slash commands),
         the native desktop app with its menu-bar icon, this Web UI, and the{' '}
         <Cmd>squirrel</Cmd> CLI.
       </p>
 
-      {/* ── Search + quick-jump (sticky) ── */}
+      <div className="flex flex-col md:flex-row md:items-start gap-6">
+        {/* ── Sub-sidebar (horizontal chips on small screens) ── */}
+        <aside className="md:w-44 md:shrink-0 md:sticky md:top-0">
+          <h2 className="eyebrow text-ink-2 mb-2 px-2 hidden md:block">Sections</h2>
+          <nav aria-label="Guide sections" className="flex flex-row flex-wrap md:flex-col gap-1">
+            {NAV.map(([id, label]) => {
+              const isActive = !searching && active === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => selectSection(id)}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={`text-left px-2 py-1.5 md:py-2 text-sm rounded-md transition-colors ${
+                    isActive
+                      ? 'text-accent bg-focus-tint font-medium'
+                      : 'text-ink-2 hover:bg-surface-2'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* ── Content column ── */}
+        <div className="flex-1 min-w-0 max-w-3xl">
+
+      {/* ── Search (sticky) ── */}
       <div className="sticky top-0 z-10 -mx-2 px-2 pt-1 pb-3 mb-7 bg-paper border-b border-hairline">
         <div className="relative">
           <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-4 pointer-events-none">
@@ -1054,26 +1091,13 @@ export default function GuidePage() {
             </button>
           )}
         </div>
-        {searching ? (
+        {searching && (
           <p className="mt-2 text-xs text-ink-4">
             {matchCount === 0
               ? 'No matches'
               : `${matchCount} ${matchCount === 1 ? 'match' : 'matches'}`}{' '}
-            for “{query.trim()}”
+            for “{query.trim()}” — across every section
           </p>
-        ) : (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {NAV.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => jumpTo(id)}
-                className="px-2 py-0.5 text-xs rounded border border-hairline bg-surface text-ink-3 hover:text-ink hover:border-ink-4 transition-colors"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         )}
       </div>
 
@@ -1091,7 +1115,7 @@ export default function GuidePage() {
       )}
 
       {/* ── Core concepts ── */}
-      {(concepts.length > 0 || showConceptMap || showLifecycles) && (
+      {show('concepts', concepts.length > 0 || showConceptMap || showLifecycles) && (
         <section id="guide-concepts" className="mb-10 scroll-mt-24">
           {concepts.length > 0 && (
             <>
@@ -1136,7 +1160,7 @@ export default function GuidePage() {
       )}
 
       {/* ── Configuration ── */}
-      {showConfig && (
+      {show('configuration', showConfig) && (
         <section id="guide-configuration" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-3">Where the configuration lives</h2>
           <div className="panel p-4 text-sm leading-relaxed text-ink-2 space-y-2">
@@ -1159,7 +1183,7 @@ export default function GuidePage() {
       )}
 
       {/* ── A typical day ── */}
-      {daySteps.length > 0 && (
+      {show('typical-day', daySteps.length > 0) && (
         <section id="guide-typical-day" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-3">A typical day</h2>
           <ol className="space-y-3">
@@ -1179,7 +1203,7 @@ export default function GuidePage() {
       )}
 
       {/* ── Agent slash commands ── */}
-      {agentGroups.length > 0 && (
+      {show('agent', agentGroups.length > 0) && (
         <section id="guide-agent" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-1">In your coding agent</h2>
           <p className="text-sm text-ink-3 mb-4">
@@ -1203,7 +1227,7 @@ export default function GuidePage() {
       )}
 
       {/* ── Native desktop app ── */}
-      {popupFeatures.length > 0 && (
+      {show('popup', popupFeatures.length > 0) && (
         <section id="guide-popup" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the popup</h2>
           <p className="text-sm text-ink-3 mb-4">
@@ -1215,7 +1239,7 @@ export default function GuidePage() {
       )}
 
       {/* ── Menu-bar icon ── */}
-      {trayFeatures.length > 0 && (
+      {show('menu-bar', trayFeatures.length > 0) && (
         <section id="guide-menu-bar" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the menu-bar icon</h2>
           <p className="text-sm text-ink-3 mb-4">
@@ -1227,7 +1251,7 @@ export default function GuidePage() {
       )}
 
       {/* ── CLI ── */}
-      {cliCommands.length > 0 && (
+      {show('cli', cliCommands.length > 0) && (
         <section id="guide-cli" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-1">In the terminal</h2>
           <p className="text-sm text-ink-3 mb-4">
@@ -1242,7 +1266,7 @@ export default function GuidePage() {
       )}
 
       {/* ── This Web UI ── */}
-      {webuiFeatures.length > 0 && (
+      {show('web-ui', webuiFeatures.length > 0) && (
         <section id="guide-web-ui" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-1">In this Web UI</h2>
           <p className="text-sm text-ink-3 mb-4">
@@ -1253,7 +1277,7 @@ export default function GuidePage() {
       )}
 
       {/* ── Dashboard: Board & List ── */}
-      {showDashboard && (
+      {show('dashboard', showDashboard) && (
         <section id="guide-dashboard" className="mb-10 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-1">The dashboard — Board & List</h2>
           <p className="text-sm text-ink-3 mb-4">
@@ -1303,7 +1327,7 @@ export default function GuidePage() {
       )}
 
       {/* ── FAQ ── */}
-      {faqEntries.length > 0 && (
+      {show('faq', faqEntries.length > 0) && (
         <section id="guide-faq" className="mb-4 scroll-mt-24">
           <h2 className="eyebrow text-ink-2 mb-3">FAQ</h2>
           <div className="space-y-2">
@@ -1323,6 +1347,8 @@ export default function GuidePage() {
           </div>
         </section>
       )}
+        </div>
+      </div>
     </div>
   );
 }
