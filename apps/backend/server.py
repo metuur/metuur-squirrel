@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import hmac
+import html
 import http.server
 import json
 import logging
@@ -62,6 +64,7 @@ else:
 import config_loader  # noqa: E402
 import db  # noqa: E402
 import vocabulary  # noqa: E402
+from fs_atomic import atomic_write_text  # noqa: E402
 
 
 # ─── Paths / constants ───────────────────────────────────────────────────────
@@ -83,6 +86,10 @@ _TOKEN_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 # must work before the per-launch token is reliably propagated to the webview
 # (see _dispatch).
 _AUTH_EXEMPT_PATHS = frozenset({"/api/_handshake", "/api/env/obsidian"})
+
+# Serializes the mtime conflict-check + replace in _save_with_mtime so two
+# concurrent saves can't both pass the check and silently drop one edit.
+_NOTE_SAVE_LOCK = threading.Lock()
 
 
 def _auth_required() -> bool:
@@ -264,6 +271,71 @@ def resolve_vault(cookie_name: Optional[str]) -> Optional[VaultContext]:
     return VaultContext(active=active, all_vaults=vaults, cookie_was_stale=cookie_was_stale)
 
 
+# ─── Vault structure classification ──────────────────────────────────────────
+
+# The canonical top-level folders the CLI and backend actually read. Presence of
+# any one of them marks a directory as a real Squirrel vault (mirrors
+# new_project_writer._VAULT_SKELETON and status_aggregator's read locations).
+_VAULT_STRUCTURE_MARKERS = (
+    "01-Active-Projects",
+    "02-Parking-Lot",
+    "03-Areas",
+    "06-Archive",
+    "99-Resources",
+)
+
+
+def classify_vault(path: pathlib.Path) -> str:
+    """Classify a configured vault directory so the UIs can guide recovery.
+
+    Returns one of:
+      - "ok"           — exists and has the Squirrel PARA structure.
+      - "missing"      — the path does not exist (or isn't a directory).
+      - "empty"        — the directory exists but holds no real content
+                         (only dotfiles like .DS_Store / .obsidian).
+      - "unstructured" — has files/folders but none of the Squirrel markers
+                         (e.g. a raw Obsidian vault → needs /sq-migrate-vault).
+    """
+    p = pathlib.Path(path)
+    if not p.is_dir():
+        return "missing"
+    if any((p / marker).is_dir() for marker in _VAULT_STRUCTURE_MARKERS):
+        return "ok"
+    try:
+        for child in p.iterdir():
+            if child.name == ".DS_Store" or child.name.startswith("."):
+                continue
+            return "unstructured"
+    except OSError:
+        return "missing"
+    return "empty"
+
+
+def _vault_setup_error(vault, status: str) -> "_UserError":
+    """Build a structured _UserError for a configured-but-unusable vault.
+
+    Carries a machine-readable `code` plus the vault name/path (and, for the
+    unstructured case, the exact migrate command) so the web UI and desktop
+    popup can render the right recovery step instead of a blank/broken page.
+    """
+    path = str(vault.path)
+    details = {"vault": {"name": vault.name, "path": path}, "vault_status": status}
+    if status == "missing":
+        code = "VAULT_MISSING"
+        msg = (f"Your workspace folder is missing: {path}. "
+               "Set it up again to keep going.")
+    elif status == "empty":
+        code = "VAULT_EMPTY"
+        msg = (f"Your workspace folder is empty: {path}. "
+               "Generate the Squirrel structure to get started.")
+    else:  # "unstructured"
+        code = "VAULT_UNSTRUCTURED"
+        details["migrate_command"] = f"/sq-migrate-vault {path}"
+        msg = (f"{path} has files but isn't a Squirrel vault yet. "
+               f"Run `/sq-migrate-vault {path}` to reorganize it.")
+    return _UserError(409, msg, code=code, details=details)
+
+
 # ─── Path security ───────────────────────────────────────────────────────────
 
 
@@ -296,8 +368,11 @@ def _ensure_scratch_pad_once(vault_path: pathlib.Path) -> None:
         return
     _scratch_pad_ensured.add(key)
     try:
-        from new_project_writer import ensure_scratch_pad
-        ensure_scratch_pad(vault_path)
+        # ensure_vault_skeleton creates the canonical PARA folders + SCRATCH-PAD;
+        # running it here backfills the structure on app start for vaults created
+        # before eager scaffolding existed. Idempotent.
+        from new_project_writer import ensure_vault_skeleton
+        ensure_vault_skeleton(vault_path)
     except Exception:
         pass  # Non-fatal
 
@@ -420,6 +495,14 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
+    ("GET",  re.compile(r"^/api/post-its$"),                          "api_post_its_list"),
+    ("POST", re.compile(r"^/api/post-its$"),                          "api_post_it_create"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),           "api_post_it_update"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/layout$"),    "api_post_it_layout"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/archive$"),   "api_post_it_archive"),
+    ("PATCH",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/restore$"),   "api_post_it_restore"),
+    ("DELETE", re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),           "api_post_it_delete"),
+    ("POST",  re.compile(r"^/api/post-it/(?P<pi_id>[A-Za-z0-9][A-Za-z0-9_-]*)/convert$"),   "api_post_it_convert"),
     ("GET",  re.compile(r"^/api/quick-tasks$"),                       "api_quick_tasks_list"),
     ("POST", re.compile(r"^/api/quick-tasks$"),                       "api_quick_task_create"),
     ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/complete$"), "api_quick_task_complete"),
@@ -427,6 +510,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("DELETE", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)$"),         "api_quick_task_delete"),
     ("POST", re.compile(r"^/api/reveal$"),                            "api_reveal"),
     ("GET",  re.compile(r"^/api/deadlines$"),                         "api_deadlines"),
+    ("PATCH", re.compile(r"^/api/item/(?P<item_id>[A-Za-z0-9][A-Za-z0-9_-]*)/defer$"), "api_item_defer"),
     ("GET",  re.compile(r"^/api/history$"),                           "api_history"),
     ("GET",  re.compile(r"^/api/search$"),                            "api_search"),
     ("GET",  re.compile(r"^/api/parakeet$"),                          "api_parakeet"),
@@ -500,8 +584,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     _ALLOWED_CORS_ORIGINS = frozenset({
         "tauri://localhost",
         "http://localhost:1420",
+        "http://localhost:1422",
         "http://localhost:5173",
         "http://127.0.0.1:1420",
+        "http://127.0.0.1:1422",
         "http://127.0.0.1:5173",
         "http://localhost:3939",
         "http://127.0.0.1:3939",
@@ -564,7 +650,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 handler_fn(**match.groupdict())
             except _UserError as ue:
-                self._send_plain_error(ue.status, ue.message)
+                if bare.startswith("/api/") and (ue.code or ue.details):
+                    extra = dict(ue.details or {})
+                    if ue.code:
+                        extra["code"] = ue.code
+                    self._send_json_error(ue.status, ue.message, extra)
+                else:
+                    self._send_plain_error(ue.status, ue.message)
             except Exception as exc:
                 _log_exception(exc)
                 if bare.startswith("/api/"):
@@ -594,8 +686,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_json_error(self, status: int, message: str) -> None:
-        body = json.dumps({"error": message}).encode("utf-8")
+    def _send_json_error(self, status: int, message: str,
+                         extra: Optional[dict] = None) -> None:
+        payload = {"error": message}
+        if extra:
+            payload.update(extra)
+        body = json.dumps(payload).encode("utf-8")
         _log_request(self.command, self.path, status)
         self.send_response(status)
         self._send_common_headers(no_store=True)
@@ -609,7 +705,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "<!doctype html><html><head><meta charset='utf-8'>"
             "<title>Squirrel</title></head><body style='font-family:system-ui;"
             "padding:2rem;text-align:center'><h1>Oh no</h1><p>"
-            + message.replace("<", "&lt;") + "</p><p><a href='/'>Back to home</a></p>"
+            + html.escape(message) + "</p><p><a href='/'>Back to home</a></p>"
             "</body></html>"
         )
         body = page.encode("utf-8")
@@ -644,7 +740,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(
                 503,
                 "No workspace is set up yet. Run `squirrel vaults add <name> <path>`.",
+                code="NO_VAULT",
             )
+        # A vault is configured but its directory may have been moved, emptied,
+        # or never structured. Surface a recoverable, machine-readable error so
+        # the UIs can guide re-setup instead of silently returning empty data.
+        status = classify_vault(ctx.active.path)
+        if status != "ok":
+            raise _vault_setup_error(ctx.active, status)
         return ctx, cookies
 
     # Drop all cached vault-scan entries for the active vault. Called from
@@ -758,6 +861,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(400, "Vault path is not a directory.")
 
         vault = config_loader.upsert_default_vault(name, str(resolved))
+
+        # Scaffold the structure now (not lazily on first /api/me) so a freshly
+        # created vault isn't empty. BUT only for an empty/new or already-Squirrel
+        # folder: an existing folder with non-Squirrel content (e.g. a raw
+        # Obsidian vault) is left untouched so the user can *convert* it with
+        # /sq-migrate-vault — scaffolding it here would make it look like a
+        # Squirrel vault and block migration (source==target / already-Squirrel).
+        # ensure_* are idempotent; non-fatal so they never block vault creation.
+        if classify_vault(resolved) != "unstructured":
+            try:
+                from new_project_writer import ensure_vault_skeleton
+                from mind_journal import ensure_mind_journal
+                ensure_vault_skeleton(resolved)
+                ensure_mind_journal(resolved, name)
+            except Exception:
+                pass
         self._send_json(
             {"name": vault.name, "path": str(vault.path), "default": True}
         )
@@ -1053,7 +1172,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             " FROM work_sessions WHERE vault = ? AND project_slug = ? AND intent_slug = ? AND checkout_at IS NOT NULL",
             (vault_path.name, project_slug, intent_slug),
         ).fetchone()[0]
-        intent_path = vault_path / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+        intent_path = vault_path / "01-Active-Projects" / project_slug / f"{intent_slug}.md"
         if intent_path.is_file():
             from intent_parser import write_frontmatter
             write_frontmatter(intent_path, {"time_invested_minutes": int(total)})
@@ -1170,7 +1289,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_projects_list(self) -> None:
         ctx, _ = self._context()
-        proj_root = ctx.active.path / "01-Proyectos-Activos"
+        proj_root = ctx.active.path / "01-Active-Projects"
         out = []
         if proj_root.is_dir():
             for sub in sorted(proj_root.iterdir()):
@@ -1184,7 +1303,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_project_detail(self, slug: str) -> None:
         ctx, _ = self._context()
-        proj_dir = ctx.active.path / "01-Proyectos-Activos" / slug
+        proj_dir = ctx.active.path / "01-Active-Projects" / slug
         if not is_path_inside(proj_dir, ctx.active.path) or not proj_dir.is_dir():
             raise _UserError(404, "We could not find that project.")
         proj_md = proj_dir / f"{slug}.md"
@@ -1270,7 +1389,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_project_save(self, slug: str) -> None:
         ctx, _ = self._context()
-        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        proj_md = ctx.active.path / "01-Active-Projects" / slug / f"{slug}.md"
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         self._save_with_mtime(proj_md, ctx.active.path, self._read_json_body())
@@ -1280,7 +1399,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def api_project_delete(self, slug: str) -> None:
         ctx, _ = self._context()
-        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        proj_md = ctx.active.path / "01-Active-Projects" / slug / f"{slug}.md"
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         text = proj_md.read_text(encoding="utf-8", errors="replace")
@@ -1288,7 +1407,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if str(fm.get("protected", "")).lower() in ("true", "1", "yes"):
             raise _UserError(403, "PROJECT_PROTECTED")
         import shutil
-        project_dir = ctx.active.path / "01-Proyectos-Activos" / slug
+        project_dir = ctx.active.path / "01-Active-Projects" / slug
         if not is_path_inside(project_dir, ctx.active.path):
             raise _UserError(403, "That path is outside your workspace.")
         shutil.rmtree(project_dir)
@@ -1304,7 +1423,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         the rest of the project page is preserved verbatim.
         """
         ctx, _ = self._context()
-        proj_md = ctx.active.path / "01-Proyectos-Activos" / slug / f"{slug}.md"
+        proj_md = ctx.active.path / "01-Active-Projects" / slug / f"{slug}.md"
         if not is_path_inside(proj_md, ctx.active.path) or not proj_md.is_file():
             raise _UserError(404, "We could not find that project.")
         payload = self._read_json_body()
@@ -1324,9 +1443,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raise _UserError(400, "Nothing to update — send a deadline and/or delivered.")
         text = proj_md.read_text(encoding="utf-8", errors="replace")
         new_text = _update_frontmatter_fields(text, updates)
-        tmp = proj_md.with_suffix(proj_md.suffix + ".tmp")
-        tmp.write_text(new_text, encoding="utf-8")
-        os.replace(tmp, proj_md)
+        atomic_write_text(proj_md, new_text)
         self._invalidate_vault_cache(ctx)
         fm = _parse_frontmatter_simple(new_text)
         self._send_json({
@@ -1354,7 +1471,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not _INTENT_TAG_RE.match(filename):
             raise _UserError(422, f"{filename!r} is not a valid filename (UPPERCASE, dash-separated, e.g. TRABAJO-PROYECTO-A).")
         vault_root = ctx.active.path
-        project_dir = vault_root / "01-Proyectos-Activos" / project_slug
+        project_dir = vault_root / "01-Active-Projects" / project_slug
         if not is_path_inside(project_dir, vault_root) or not project_dir.is_dir():
             raise _UserError(404, "Project not found.")
         intent_path = project_dir / f"{filename}.md"
@@ -1379,8 +1496,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             .replace("<TAG>", tag)
             .replace("<PROJECT>", project_slug)
             .replace("<YYYY-MM-DD>", today)
+            # English placeholder (current template) and Spanish one (older
+            # vault-local copies of agent-pack/templates/intent.md).
+            .replace("<short title>", title or tag)
             .replace("<Título corto>", title or tag)
         )
+        description = (payload.get("description") or "").strip()
+        if description:
+            rendered = rendered.replace(
+                "> What you want to achieve and why it matters",
+                "\n".join(f"> {ln}" if ln else ">" for ln in description.splitlines()),
+            )
         if not deadline:
             rendered = "\n".join(
                 line for line in rendered.splitlines()
@@ -1391,9 +1517,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "deadline: <YYYY-MM-DD>   # ISO date; omit if no hard deadline",
                 f"deadline: {deadline}",
             )
-        tmp = intent_path.with_suffix(".md.tmp")
-        tmp.write_text(rendered, encoding="utf-8")
-        os.replace(tmp, intent_path)
+        atomic_write_text(intent_path, rendered)
         if reminder_date:
             try:
                 from reminder_writer import write_reminder_date
@@ -1474,26 +1598,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
         client_mtime = payload.get("mtime")
         if client_mtime is None:
             raise _UserError(400, "Missing the file timestamp. Reload and try again.")
-        try:
-            current_mtime = target.stat().st_mtime
-        except OSError:
-            raise _UserError(404, "We could not find that file.")
-        try:
-            if abs(float(client_mtime) - current_mtime) > 0.001:
-                conflict_body = target.read_text(encoding="utf-8", errors="replace")
-                self._send_json({
-                    "current_body": conflict_body,
-                    "current_mtime": current_mtime,
-                    "message": "Someone else just edited this. Pick which version to keep.",
-                }, status=409)
-                # _send_json returned; caller knows we replied.
-                # Raise to short-circuit downstream save attempt.
-                raise _ResponseSent()
-        except (TypeError, ValueError):
-            raise _UserError(400, "The file timestamp looks wrong. Reload and try again.")
-        tmp = target.with_suffix(target.suffix + ".tmp")
-        tmp.write_text(str(body), encoding="utf-8")
-        os.replace(tmp, target)
+        # The mtime conflict-check and the replace must be one critical section:
+        # without the lock, two in-flight saves can both pass the check and the
+        # slower one silently overwrites the faster one (server is threaded).
+        with _NOTE_SAVE_LOCK:
+            try:
+                current_mtime = target.stat().st_mtime
+            except OSError:
+                raise _UserError(404, "We could not find that file.")
+            try:
+                if abs(float(client_mtime) - current_mtime) > 0.001:
+                    conflict_body = target.read_text(encoding="utf-8", errors="replace")
+                    self._send_json({
+                        "current_body": conflict_body,
+                        "current_mtime": current_mtime,
+                        "message": "Someone else just edited this. Pick which version to keep.",
+                    }, status=409)
+                    # _send_json returned; caller knows we replied.
+                    # Raise to short-circuit downstream save attempt.
+                    raise _ResponseSent()
+            except (TypeError, ValueError):
+                raise _UserError(400, "The file timestamp looks wrong. Reload and try again.")
+            atomic_write_text(target, str(body))
 
     # ── mind journal ────────────────────────────────────────────────────────
 
@@ -1613,6 +1739,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._invalidate_vault_cache(ctx)
         self._send_json({"success": True, "id": note_id, "snoozed_until": until})
 
+    def api_item_defer(self, item_id: str) -> None:
+        """Push an item's deadline out (defer / snooze) by rewriting only the
+        `deadline` frontmatter of its own .md file. Works for any kind (note,
+        task, or project) because the deadline lives in the same place for all
+        of them. The board uses this to move a card out of the computed PRESSING
+        lane — the item resurfaces in a calmer lane once its deadline is later.
+        """
+        ctx, _ = self._context()
+        md_path = _find_note(ctx.active.path, item_id)
+        if md_path is None:
+            raise _UserError(404, "We could not find that item.")
+        until = (self._read_json_body().get("until") or "").strip()
+        if not until:
+            raise _UserError(400, "until date is required.")
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", until):
+            raise _UserError(400, "until must be a YYYY-MM-DD date.")
+        try:
+            text = md_path.read_text(encoding="utf-8", errors="replace")
+            new_text = _update_frontmatter_fields(text, {"deadline": until})
+            atomic_write_text(md_path, new_text)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not defer the item.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": item_id, "deadline": until})
+
     # ── /api/quick-tasks — Quick Task Stack ─────────────────────────────────
 
     def api_quick_tasks_list(self) -> None:
@@ -1626,6 +1778,239 @@ class Handler(http.server.BaseHTTPRequestHandler):
             data = {"active": [], "snoozed": [], "active_count": 0,
                     "snoozed_count": 0, "limit": 5, "return_blocked": False}
         self._send_json(data)
+
+    def api_post_its_list(self) -> None:
+        """GET /api/post-its — scan + layout join (R-2.1, R-2.2, R-1.5)."""
+        ctx, _ = self._context()
+        include_archived = "include=archived" in (self.path.split("?", 1)[1] if "?" in self.path else "")
+        from post_it_scanner import scan_post_its
+        import db as _db
+        try:
+            scanned = scan_post_its(ctx.active.path)
+        except Exception as exc:
+            _log_exception(exc)
+            scanned = {"active": [], "archived": []}
+
+        conn = _db.get_conn()
+        _db.init_schema(conn)
+        vault_key = str(ctx.active.path)
+
+        def _get_layout(items, start_index=0):
+            result = []
+            for idx, item in enumerate(items):
+                row = conn.execute(
+                    "SELECT x,y,rotation,z FROM post_it_layout WHERE vault=? AND post_it_id=?",
+                    (vault_key, item["id"])
+                ).fetchone()
+                if row:
+                    layout = {"x": row[0], "y": row[1], "rotation": row[2], "z": row[3]}
+                else:
+                    layout = _default_layout(item["id"], start_index + idx)
+                result.append({**item, "layout": layout, "path": None})
+            return result
+
+        items = _get_layout(scanned["active"])
+        if include_archived:
+            items += _get_layout(scanned["archived"], start_index=len(scanned["active"]))
+        conn.close()
+        self._send_json(items)
+
+    def api_post_it_create(self) -> None:
+        """POST /api/post-its — create a Post-it (R-2.3, R-2.9)."""
+        ctx, _ = self._context()
+        payload = self._read_json_body()
+        text = (payload.get("text") or "").strip()
+        if not text:
+            raise _UserError(400, "Please write something before saving.")
+        color = (payload.get("color") or "yellow").strip()
+        label = (payload.get("label") or "").strip()
+        from post_it_writer import create as pi_create
+        try:
+            pi_id = pi_create(ctx.active.path, text, color=color, label=label)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not save your Post-it. Please try again.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({
+            "id": pi_id, "text": text, "color": color, "label": label,
+            "pinned": False, "state": "active", "created": None, "converted_to": "",
+            "layout": None,
+        }, status=201)
+
+    def api_post_it_update(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id} — update fields (R-2.4, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import update as pi_update, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        payload = self._read_json_body()
+        fields = {k: payload[k] for k in ("text", "color", "label", "pinned") if k in payload}
+        if not fields:
+            raise _UserError(400, "No fields to update.")
+        try:
+            pi_update(ctx.active.path, pi_id, fields)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not update the Post-it.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_layout(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id}/layout — upsert layout row (R-2.5, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        payload = self._read_json_body()
+        try:
+            x = float(payload["x"])
+            y = float(payload["y"])
+            rotation = float(payload["rotation"])
+        except (KeyError, TypeError, ValueError):
+            raise _UserError(400, "x, y, rotation are required numbers.")
+        z = int(payload.get("z") or 0)
+        import db as _db
+        conn = _db.get_conn()
+        _db.init_schema(conn)
+        now = datetime.datetime.now().astimezone().isoformat()
+        conn.execute(
+            "INSERT OR REPLACE INTO post_it_layout (vault, post_it_id, x, y, rotation, z, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (str(ctx.active.path), pi_id, x, y, rotation, z, now)
+        )
+        conn.commit()
+        conn.close()
+        # Layout update intentionally does NOT invalidate vault cache (R-2.5: no Markdown change)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_archive(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id}/archive (R-2.6, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import archive as pi_archive, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        try:
+            pi_archive(ctx.active.path, pi_id)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not archive the Post-it.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_restore(self, pi_id: str) -> None:
+        """PATCH /api/post-it/{id}/restore (R-2.6, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import restore as pi_restore, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        try:
+            pi_restore(ctx.active.path, pi_id)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not restore the Post-it.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_delete(self, pi_id: str) -> None:
+        """DELETE /api/post-it/{id} — remove file + layout row (R-2.7, R-1.6, R-2.9)."""
+        ctx, _ = self._context()
+        from post_it_writer import delete as pi_delete, resolve_post_it_path
+        if resolve_post_it_path(ctx.active.path, pi_id) is None:
+            raise _UserError(404, "Post-it not found.")
+        try:
+            pi_delete(ctx.active.path, pi_id)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not delete the Post-it.")
+        # Remove layout row (R-1.6)
+        import db as _db
+        conn = _db.get_conn()
+        _db.init_schema(conn)
+        conn.execute("DELETE FROM post_it_layout WHERE vault=? AND post_it_id=?",
+                     (str(ctx.active.path), pi_id))
+        conn.commit()
+        conn.close()
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"success": True, "id": pi_id})
+
+    def api_post_it_convert(self, pi_id: str) -> None:
+        """POST /api/post-it/{id}/convert (R-3.1–R-3.6, R-6.6)."""
+        ctx, _ = self._context()
+        from post_it_writer import resolve_post_it_path, record_conversion
+        from intent_parser import parse_frontmatter
+
+        path = resolve_post_it_path(ctx.active.path, pi_id)
+        if path is None:
+            raise _UserError(404, "Post-it not found.")
+
+        payload = self._read_json_body()
+        target = (payload.get("target") or "").strip()
+        project_slug = (payload.get("project_slug") or "").strip() or None
+
+        # Read Post-it body text (the content after the frontmatter block)
+        try:
+            raw = path.read_text(encoding="utf-8")
+            _, body = parse_frontmatter(raw)
+            text = body.strip()
+            if not text:
+                text = pi_id  # last resort
+        except Exception:
+            text = pi_id  # last resort
+
+        if target == "quick_task":
+            from quick_task_writer import create_quick_task, QuickTaskError
+            try:
+                qt_id = create_quick_task(ctx.active.path, text)
+            except QuickTaskError as e:
+                if e.code == "QUICK_TASK_LIMIT_REACHED":
+                    return self._send_json(
+                        {"error": "CAP_FULL",
+                         "message": "Quick Task stack is full — complete one first"},
+                        status=409,
+                    )
+                raise _UserError(400, "Could not create the Quick Task.")
+            except Exception as exc:
+                _log_exception(exc)
+                raise _UserError(500, "Could not convert the Post-it.")
+            # R-3.4: mark source AFTER target created (crash safety)
+            ref = f"quick_task:{qt_id}"
+            try:
+                record_conversion(ctx.active.path, pi_id, ref)
+            except Exception as exc:
+                _log_exception(exc)
+                # Non-fatal: Quick Task exists; Post-it may still show as active
+            self._invalidate_vault_cache(ctx)
+            return self._send_json({"success": True, "ref": ref})
+
+        elif target in ("project_task", "project_note"):
+            if not project_slug:
+                raise _UserError(400, "project_slug is required for project_task and project_note.")
+
+            # Validate that the project folder exists
+            project_folder = ctx.active.path / "01-Active-Projects" / project_slug
+            if not project_folder.exists():
+                raise _UserError(400, f"Unknown project: {project_slug!r}")
+
+            from capture_writer import write_capture
+            try:
+                new_path = write_capture(ctx.active.path, project_slug, text)
+            except Exception as exc:
+                _log_exception(exc)
+                kind = "project task" if target == "project_task" else "project note"
+                raise _UserError(500, f"Could not create the {kind}.")
+
+            ref = f"{target}:{project_slug}/{new_path.name}"
+
+            # R-3.4: mark source AFTER target created (crash safety)
+            try:
+                record_conversion(ctx.active.path, pi_id, ref)
+            except Exception as exc:
+                _log_exception(exc)
+            self._invalidate_vault_cache(ctx)
+            return self._send_json({"success": True, "ref": ref})
+
+        else:
+            raise _UserError(400, f"Unknown target: {target!r}")
 
     def api_quick_task_create(self) -> None:
         """POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)."""
@@ -1757,9 +2142,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctx, _ = self._context()
         out = []
         candidates = []
+        post_its_dir = ctx.active.path / "05-Post-its"
         for md in ctx.active.path.rglob("*.md"):
             rel = md.relative_to(ctx.active.path)
             if any(part.startswith(".") for part in rel.parts):
+                continue
+            if is_path_inside(md, post_its_dir):
                 continue
             candidates.append(md)
         candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
@@ -1907,8 +2295,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 q = f"SELECT {cols} FROM notifications ORDER BY fired_at DESC"
             if limit is not None:
-                q += f" LIMIT {limit}"
-            rows = conn.execute(q).fetchall()
+                q += " LIMIT ?"
+            rows = conn.execute(q, (limit,) if limit is not None else ()).fetchall()
         finally:
             conn.close()
 
@@ -2082,11 +2470,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
+def _default_layout(pi_id: str, creation_order_index: int) -> dict:
+    """Deterministic non-overlapping default layout (R-1.5).
+
+    Uses MD5 of the id string for a stable (process-independent) hash.
+    Grid: 4 columns, rows expand downward; jitter and rotation derived from id.
+    """
+    h = int(hashlib.md5(pi_id.encode()).hexdigest(), 16)
+    col = creation_order_index % 4
+    row = creation_order_index // 4
+    x = 5.0 + col * 23.0 + (h % 7)
+    y = 5.0 + row * 20.0 + (h % 5)
+    rotation = float((h % 7) - 3)
+    return {"x": x, "y": y, "rotation": rotation, "z": 0}
+
+
 class _UserError(Exception):
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, *,
+                 code: Optional[str] = None, details: Optional[dict] = None):
         super().__init__(message)
         self.status = status
         self.message = message
+        # Optional machine-readable code + extra fields merged into the JSON
+        # error body (e.g. vault-recovery codes consumed by the UIs).
+        self.code = code
+        self.details = details
 
 
 class _ResponseSent(Exception):
@@ -2172,14 +2580,19 @@ def _find_note(vault_path: pathlib.Path, note_id: str) -> Optional[pathlib.Path]
     # what matters for path-traversal safety.
     if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_-]*$", note_id):
         return None
+    post_its_dir = vault_path / "05-Post-its"
     for md in vault_path.rglob(f"{note_id}.md"):
-        if is_path_inside(md, vault_path):
-            return md
+        if not is_path_inside(md, vault_path):
+            continue
+        # R-6.5: Post-it files are never resolvable as notes
+        if is_path_inside(md, post_its_dir):
+            continue
+        return md
     return None
 
 
 _PROJECT_PARENT_DIRS = frozenset({
-    "01-Proyectos-Activos",
+    "01-Active-Projects",
     "02-Parking-Lot",
     "06-Archive",
 })

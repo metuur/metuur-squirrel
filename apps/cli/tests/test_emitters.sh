@@ -62,17 +62,16 @@ done
 
 # ─── Test 1: show_notification_terminal_notifier ─────────────────────────────
 # Stub terminal-notifier: records all argv into a tmp file, then exits 0.
+# notification-icon-branding R-6.1/R-6.2: exercise BOTH the sounded and Silent
+# branches and assert each carries -sender com.metuur.squirrel (R-2.1) with the
+# -open URL — including its ?action= query — unchanged (R-2.3), and that sound
+# stays orthogonal to -sender (R-2.2: sounded keeps -sound, Silent omits it).
 
 TMP_DIR="$(mktemp -d)"
 RECORDER="${TMP_DIR}/terminal-notifier"
 RECORD_FILE="${TMP_DIR}/recorded_args.txt"
 
-cat > "$RECORDER" <<'STUB'
-#!/bin/bash
-echo "$@" > "$RECORD_FILE"
-STUB
-
-# The stub itself needs the RECORD_FILE path baked in (env var approach):
+# The stub records argv into RECORD_FILE (path baked in) and exits 0.
 cat > "$RECORDER" <<STUB
 #!/bin/bash
 echo "\$@" >> "${RECORD_FILE}"
@@ -84,24 +83,38 @@ OLD_PATH="$PATH"
 export PATH="${TMP_DIR}:${PATH}"
 export RECORD_FILE
 
+# Deep-link with an ?action= query — R-2.1/R-2.3 require it survives -open verbatim.
+URL="squirrel://projects/PROJ?action=focus"
+
+# ── 1a: sounded branch (SOUND set to a real cue) ─────────────────────────────
+SOUND="Glass"
+: > "$RECORD_FILE"
 show_notification_terminal_notifier \
-    "⏰ squirrel: PROJ" \
-    "due in 2h" \
-    "Title of the note" \
-    "squirrel://projects/PROJ/TASK"
+    "⏰ squirrel: PROJ" "due in 2h" "Title of the note" "$URL"
+SOUNDED="$(cat "${RECORD_FILE}" 2>/dev/null || echo '')"
+
+assert_contains "tn(sound): has -title"                       "-title"                        "$SOUNDED"
+assert_contains "tn(sound): has -subtitle"                    "-subtitle"                     "$SOUNDED"
+assert_contains "tn(sound): has -message"                     "-message"                      "$SOUNDED"
+assert_contains "tn(sound): has -open"                        "-open"                         "$SOUNDED"
+assert_contains "tn(sound): -open carries URL incl. ?action=" "$URL"                          "$SOUNDED"
+assert_contains "tn(sound): has -group org.squirrel.reminders" "-group org.squirrel.reminders" "$SOUNDED"
+assert_contains "tn(sound): keeps -sound (R-2.2)"             "-sound Glass"                  "$SOUNDED"
+assert_contains "tn(sound): has -sender (R-2.1)"             "-sender com.metuur.squirrel"   "$SOUNDED"
+
+# ── 1b: Silent branch (SOUND=Silent → omits -sound, retains -sender) ─────────
+SOUND="Silent"
+: > "$RECORD_FILE"
+show_notification_terminal_notifier \
+    "⏰ squirrel: PROJ" "due in 2h" "Title of the note" "$URL"
+SILENT="$(cat "${RECORD_FILE}" 2>/dev/null || echo '')"
+
+assert_contains "tn(silent): -open carries URL incl. ?action=" "$URL"                         "$SILENT"
+assert_contains "tn(silent): has -group org.squirrel.reminders" "-group org.squirrel.reminders" "$SILENT"
+assert_contains "tn(silent): has -sender (R-2.1)"            "-sender com.metuur.squirrel"   "$SILENT"
+assert_not_contains "tn(silent): omits -sound (R-2.2)"       "-sound"                        "$SILENT"
 
 export PATH="$OLD_PATH"
-
-RECORDED="$(cat "${RECORD_FILE}" 2>/dev/null || echo '')"
-
-assert_contains "tn: has -title"                     "-title"                        "$RECORDED"
-assert_contains "tn: has -subtitle"                  "-subtitle"                     "$RECORDED"
-assert_contains "tn: has -message"                   "-message"                      "$RECORDED"
-assert_contains "tn: has -open"                      "-open"                         "$RECORDED"
-assert_contains "tn: -open carries the URL"          "squirrel://projects/PROJ/TASK" "$RECORDED"
-assert_contains "tn: has -group org.squirrel.reminders" "-group org.squirrel.reminders" "$RECORDED"
-assert_contains "tn: has -sound Submarine"           "-sound Submarine"              "$RECORDED"
-assert_not_contains "tn: NO -sender (R-1.10)"        "-sender"                       "$RECORDED"
 
 # ─── Test 2: show_dialog_fallback ─────────────────────────────────────────────
 # Stub osascript: records the script passed via -e into a tmp file.

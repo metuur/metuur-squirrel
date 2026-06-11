@@ -2,23 +2,23 @@ import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api/client";
 
-// R-4.1/R-4.3/R-4.4: open the *configured* vault in Obsidian. The vault name
+// R-4.1/R-4.3/R-4.4: open the *configured* vault in Obsidian. The vault info
 // comes from /api/me, not a hardcoded value. When no vault is configured yet
 // (e.g. /api/me 503s during first-run onboarding) the button is disabled
 // rather than opening a non-existent vault.
 export function OpenVaultButton() {
-  const [vaultName, setVaultName] = useState<string | null>(null);
+  const [vault, setVault] = useState<{ name: string; path: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     api
       .me()
       .then((me) => {
-        if (!cancelled) setVaultName(me.active_workspace?.name ?? null);
+        if (!cancelled) setVault(me.active_workspace ?? null);
       })
       .catch(() => {
         // 503 (no vault yet) or backend offline → leave disabled. Never throw.
-        if (!cancelled) setVaultName(null);
+        if (!cancelled) setVault(null);
       });
     return () => {
       cancelled = true;
@@ -26,8 +26,10 @@ export function OpenVaultButton() {
   }, []);
 
   const handleClick = () => {
-    if (!vaultName) return;
-    void openUrl(`obsidian://open?vault=${encodeURIComponent(vaultName)}`);
+    if (!vault) return;
+    // Open by *path*, not vault name: Obsidian registers vaults under their
+    // folder name, which can differ from squirrel's configured vault name.
+    void openUrl(`obsidian://open?path=${encodeURIComponent(vault.path)}`);
   };
 
   return (
@@ -35,8 +37,8 @@ export function OpenVaultButton() {
       type="button"
       onClick={handleClick}
       className="btn"
-      disabled={!vaultName}
-      title={vaultName ? `Open ${vaultName} in Obsidian` : "No vault configured yet"}
+      disabled={!vault}
+      title={vault ? `Open ${vault.name} in Obsidian` : "No vault configured yet"}
     >
       Open Vault
       <svg

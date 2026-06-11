@@ -4,7 +4,7 @@ test_quick_task_scanner.py — Tests for quick_task_scanner.scan_quick_tasks (A.
 Covers EARS R-2.1, R-2.2, R-2.6, R-2.7, R-4.1, R-4.5.
 
 Fixtures are real QT-*.md files in a tmp vault's SCRATCH-PAD folder:
-  01-Proyectos-Activos/SCRATCH-PAD/
+  01-Active-Projects/SCRATCH-PAD/
     QT-001.md  — active, qt_created_at oldest
     QT-002.md  — active, qt_created_at middle
     QT-003.md  — active, qt_created_at newest
@@ -52,7 +52,7 @@ def _write(path: Path, content: str) -> None:
 @pytest.fixture()
 def vault(tmp_path: Path) -> Path:
     now = datetime.datetime.now()
-    sp = tmp_path / "01-Proyectos-Activos" / "SCRATCH-PAD"
+    sp = tmp_path / "01-Active-Projects" / "SCRATCH-PAD"
 
     t_old = (now - datetime.timedelta(minutes=30)).isoformat()
     t_mid = (now - datetime.timedelta(minutes=20)).isoformat()
@@ -123,3 +123,37 @@ def test_empty_vault_is_safe(tmp_path):
     assert result["active"] == []
     assert result["snoozed"] == []
     assert result["active_count"] == 0
+
+
+def test_aware_snoozed_until_does_not_crash(tmp_path):
+    """M6/M7 audit fix: offset-bearing qt_snoozed_until (written by the
+    aware-everywhere writer) classifies without a naive/aware TypeError."""
+    now = datetime.datetime.now().astimezone()
+    sp = tmp_path / "01-Active-Projects" / "SCRATCH-PAD"
+    future = (now + datetime.timedelta(hours=1)).isoformat()
+    past = (now - datetime.timedelta(hours=1)).isoformat()
+    assert "+" in future or "-" in future[-6:]  # really carries an offset
+    _write(sp / "QT-101.md", _qt("QT-101", text="Aware future",
+                                 qt_state="snoozed", qt_snoozed_until=future))
+    _write(sp / "QT-102.md", _qt("QT-102", text="Aware past",
+                                 qt_state="snoozed", qt_snoozed_until=past))
+    result = scan_quick_tasks(tmp_path)
+    by_id = {t["id"]: t for t in result["snoozed"]}
+    assert by_id["QT-101"]["wake_due"] is False
+    assert by_id["QT-102"]["wake_due"] is True
+
+
+def test_naive_and_aware_snoozed_until_coexist(tmp_path):
+    """Old naive frontmatter and new aware frontmatter classify side by side."""
+    now = datetime.datetime.now()
+    sp = tmp_path / "01-Active-Projects" / "SCRATCH-PAD"
+    naive_past = (now - datetime.timedelta(hours=1)).isoformat()
+    aware_future = (now.astimezone() + datetime.timedelta(hours=1)).isoformat()
+    _write(sp / "QT-201.md", _qt("QT-201", text="Naive past",
+                                 qt_state="snoozed", qt_snoozed_until=naive_past))
+    _write(sp / "QT-202.md", _qt("QT-202", text="Aware future",
+                                 qt_state="snoozed", qt_snoozed_until=aware_future))
+    result = scan_quick_tasks(tmp_path)
+    by_id = {t["id"]: t for t in result["snoozed"]}
+    assert by_id["QT-201"]["wake_due"] is True
+    assert by_id["QT-202"]["wake_due"] is False

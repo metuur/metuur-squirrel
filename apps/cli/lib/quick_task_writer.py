@@ -4,7 +4,7 @@ quick_task_writer.py — Create and mutate Quick Task files in SCRATCH-PAD.
 
 Quick Tasks are small (2–5 min) interruptions parked in a FIFO stack of at most
 MAX_ACTIVE active items. Each is a markdown file in
-01-Proyectos-Activos/SCRATCH-PAD/ named QT-NNN.md with:
+01-Active-Projects/SCRATCH-PAD/ named QT-NNN.md with:
 
     type: quick_task
     quick_task: true
@@ -34,11 +34,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from quick_task_scanner import scan_quick_tasks  # noqa: E402
 from intent_parser import write_frontmatter, _DELETE, parse_intent  # noqa: E402
+from fs_atomic import atomic_write_text  # noqa: E402
 
 MAX_ACTIVE = 5
 MAX_SNOOZES = 2
 
-SCRATCH_PAD_DIR = Path("01-Proyectos-Activos") / "SCRATCH-PAD"
+SCRATCH_PAD_DIR = Path("01-Active-Projects") / "SCRATCH-PAD"
 _ID_PREFIX = "QT"
 
 
@@ -74,10 +75,8 @@ def _next_number(folder: Path, prefix: str) -> int:
 
 
 def _atomic_write(target: Path, body: str) -> None:
-    """Write atomically within the target folder (temp + os.replace)."""
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(body, encoding="utf-8")
-    os.replace(tmp, target)
+    """Write atomically within the target folder (temp + fsync + os.replace)."""
+    atomic_write_text(target, body)
 
 
 def _format_quick_task(*, qt_id: str, text: str, created_iso: str) -> str:
@@ -123,7 +122,7 @@ def create_quick_task(vault_path: Path, text: str) -> str:
 
     # Microsecond precision keeps qt_created_at a strict FIFO key even when tasks
     # are captured within the same second (the callout shows only the date).
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
     body = _format_quick_task(qt_id=qt_id, text=text.strip(), created_iso=now.isoformat())
 
     _atomic_write(target, body)
@@ -169,7 +168,7 @@ def resolve_snooze_until(value: str | None) -> str:
                         next midnight)
       a bare ISO date/datetime string -> passed through (normalized)
     """
-    now = datetime.datetime.now().replace(microsecond=0)
+    now = datetime.datetime.now().astimezone().replace(microsecond=0)
     v = (value or "1h").strip()
 
     if v == "15m":
@@ -187,15 +186,19 @@ def resolve_snooze_until(value: str | None) -> str:
             target = midnight
         return target.isoformat()
 
-    # Bare ISO passthrough (date or datetime).
+    # Bare ISO passthrough (date or datetime), normalized to an aware local
+    # timestamp so scanner comparisons never mix naive and aware datetimes.
     try:
-        return datetime.datetime.fromisoformat(v.replace("Z", "")).isoformat()
+        dt = datetime.datetime.fromisoformat(v.replace("Z", ""))
     except ValueError:
         try:
             d = datetime.date.fromisoformat(v)
-            return datetime.datetime(d.year, d.month, d.day).isoformat()
+            dt = datetime.datetime(d.year, d.month, d.day)
         except ValueError:
             raise QuickTaskError("BAD_SNOOZE_UNTIL", f"unrecognized snooze value: {v!r}")
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
+    return dt.isoformat()
 
 
 def _snooze_count(path: Path) -> int:
@@ -292,7 +295,7 @@ def collect_quick_tasks(vault_path: Path) -> dict:
 def activate_quick_task(path: Path) -> None:
     """Reactivate a snoozed Quick Task, re-stamping qt_created_at so it re-enters
     at the bottom of the FIFO stack (R-4.2)."""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
     write_frontmatter(Path(path), {
         "qt_state": "active",
         "qt_snoozed_until": _DELETE,

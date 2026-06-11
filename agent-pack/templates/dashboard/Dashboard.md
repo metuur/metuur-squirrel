@@ -18,7 +18,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   status AS Status,
   project AS Project
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE deadline < date(today)
   AND status != "done" AND status != "done" AND status != "archived"
 SORT deadline ASC
@@ -32,7 +32,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   priority AS Priority,
   project AS Project
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE deadline >= date(today) AND deadline <= date(today) + dur(1 day)
   AND status != "done" AND status != "done"
 SORT deadline ASC
@@ -46,7 +46,7 @@ TABLE WITHOUT ID
   project AS Project,
   deadline AS Deadline,
   file.mtime AS "Last Touch"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "in-progress"
 SORT file.mtime DESC
 LIMIT 5
@@ -60,7 +60,7 @@ TABLE WITHOUT ID
   deadline AS Deadline,
   status AS Status,
   project AS Project
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE deadline > date(today) + dur(1 day)
   AND deadline <= date(today) + dur(7 days)
   AND status != "done" AND status != "done"
@@ -74,7 +74,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   project AS Project,
   file.mtime AS "Since"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "blocked"
 SORT file.mtime ASC
 ```
@@ -87,7 +87,7 @@ TABLE WITHOUT ID
   project AS Project,
   file.mtime AS "Last Modified",
   deadline AS Deadline
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE (status = "in-progress")
   AND file.mtime < date(today) - dur(7 days)
 SORT file.mtime ASC
@@ -100,7 +100,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   project AS Project,
   file.mtime AS "Completed"
-FROM "01-Proyectos-Activos" OR "04-Archivo"
+FROM "01-Active-Projects" OR "04-Archive"
 WHERE (status = "done")
   AND file.mtime >= date(today) - dur(7 days)
 SORT file.mtime DESC

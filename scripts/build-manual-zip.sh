@@ -293,6 +293,16 @@ run "cp '$INSTALLER_SRC' '$ZIP_ROOT/install-manual.sh'"
 if (( ! DRY_RUN )); then chmod +x "$ZIP_ROOT/install-manual.sh"; fi
 ok "install-manual.sh → /"
 
+# Entitlements.plist — needed by install-manual.sh to re-sign binaries with
+# disable-library-validation so PyInstaller's extracted libpython can be dlopen'd.
+ENTITLEMENTS_SRC="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
+if [[ -f "$ENTITLEMENTS_SRC" ]]; then
+  run "cp '$ENTITLEMENTS_SRC' '$ZIP_ROOT/Entitlements.plist'"
+  ok "Entitlements.plist → /"
+else
+  warn "Entitlements.plist not found — re-sign step in install-manual.sh will be skipped"
+fi
+
 # VERSION
 run "printf '%s\n' '$VERSION' > '$ZIP_ROOT/VERSION'"
 ok "VERSION → $VERSION"

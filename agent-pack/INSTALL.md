@@ -379,7 +379,7 @@ The other side decrypts with `/sq-sync-in` if it has the private key.
   - Option 2: `--force-include` (NOT recommended for repeated use)
 
 ### "The vault does not have the expected structure"
-- The skills assume `01-Proyectos-Activos/`, `02-Parking-Lot/`, etc.
+- The skills assume `01-Active-Projects/`, `02-Parking-Lot/`, etc.
 - If your vault uses a different structure, edit the relevant skills (for example `session-start/SKILL.md` line X)
 - Or migrate your vault to the Squirrel system (unzip `vault-squirrel-obsidian.zip` as a reference)
 

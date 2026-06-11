@@ -77,7 +77,7 @@ class _Case(unittest.TestCase):
             default = true
             """)
         (self.home / ".squirrel" / "config.toml").write_text(cfg)
-        self.proj = self.vault / "01-Proyectos-Activos" / "TEST-PROJECT"
+        self.proj = self.vault / "01-Active-Projects" / "TEST-PROJECT"
         self.srv, self.port = _spawn(self.home)
 
     def tearDown(self):

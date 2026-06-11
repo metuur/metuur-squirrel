@@ -75,6 +75,8 @@ describe("OnboardingWizard", () => {
       expect(mockSetVault).toHaveBeenCalledWith({ path: "~/squirrel-vault", create: true }),
     );
     const launch = await screen.findByRole("button", { name: /Launch Squirrel/ });
+    // Done step surfaces the migration prompt example for existing Obsidian users.
+    expect(screen.getByText(/\/sq-migrate-vault ~\/path\/to\/your-obsidian-vault/)).toBeTruthy();
     await userEvent.click(launch);
     expect(mockMarkDone).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();

@@ -130,7 +130,7 @@ class TestFocusPickerBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.vault = pathlib.Path(self.tmp.name)
-        self.wip = self.vault / "01-Proyectos-Activos"
+        self.wip = self.vault / "01-Active-Projects"
         self.wip.mkdir()
 
     def tearDown(self):

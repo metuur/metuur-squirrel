@@ -28,10 +28,14 @@ import { SizeToggle } from "./components/SizeToggle";
 import { AppCredit } from "./components/AppCredit";
 import { HowToModal } from "./components/HowToModal";
 import { OnboardingGate } from "./components/OnboardingGate";
+import { VaultRecoveryGate } from "./components/VaultRecoveryGate";
+import { SetupNudge } from "./components/SetupNudge";
 import { QuickTaskCaptureModal } from "./components/QuickTaskCaptureModal";
 import { QuickTaskWidget } from "./components/QuickTaskWidget";
 import { QuickTaskPopover } from "./components/QuickTaskPopover";
 import { useQuickTaskCapture } from "./hooks/useQuickTaskCapture";
+import { PostItCaptureModal } from "./components/PostItCaptureModal";
+import { usePostItCapture } from "./hooks/usePostItCapture";
 import { useDevFlag } from "./hooks/useDevFlag";
 import { api, type ManualPick } from "./api/client";
 
@@ -148,6 +152,10 @@ export default function App() {
   // Quick Task capture: Ctrl+Cmd+Q / tray "Add Quick Task" emit
   // `quick-task-capture-open`; refetch home after a successful add.
   const quickTaskCapture = useQuickTaskCapture(() => setHomeBump((n) => n + 1));
+
+  // Post-it capture: tray "Add Post-it" emits `post-it-capture-open`; also
+  // openable via the in-popup button (R-4.3, R-4.4).
+  const postItCapture = usePostItCapture();
 
   const openCapture = (initialSlug: string | null) => {
     setCaptureInitialSlug(initialSlug);
@@ -275,6 +283,11 @@ export default function App() {
     <main className="h-screen flex flex-col overflow-hidden">
       {/* First-run onboarding overlay (yields to HandshakeBanner, R-1.3). */}
       <OnboardingGate />
+      {/* Configured-but-unusable vault (moved / emptied / unstructured): guide
+          re-setup in-app. Yields to transport/handshake errors. */}
+      <VaultRecoveryGate />
+      {/* Post-update setup check — re-shows recommended setup once per version. */}
+      <SetupNudge />
       {/* R-6.2: window-blocking overlay above all content on refused adoption. */}
       <HandshakeBanner />
       <BackendStatusBanner status={status} />
@@ -350,6 +363,29 @@ export default function App() {
                 {home.data?.quick_tasks?.active_count}
               </span>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => postItCapture.openCapture()}
+            aria-label="Add Post-it"
+            title="Add Post-it"
+            className="icon-btn"
+          >
+            {/* sticky note icon — lucide "sticky-note" */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z" />
+              <path d="M15 3v6h6" />
+            </svg>
           </button>
           <button
             type="button"
@@ -518,6 +554,14 @@ export default function App() {
         busy={quickTaskCapture.busy}
         onSubmit={quickTaskCapture.submit}
         onClose={quickTaskCapture.close}
+      />
+
+      <PostItCaptureModal
+        open={postItCapture.open}
+        error={postItCapture.error}
+        busy={postItCapture.busy}
+        onSubmit={postItCapture.submit}
+        onClose={postItCapture.close}
       />
 
       <NotificationCenter

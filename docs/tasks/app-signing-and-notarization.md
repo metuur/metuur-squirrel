@@ -12,24 +12,24 @@ Source of truth: `docs/ears/app-signing-and-notarization.md`. Each story names t
 
 ## Unit 0: Prerequisites (user-owned, off-repo)
 
-- [ ] 0.1 Enroll in Apple Developer Program ($99/year) (est: ~30m setup + ~24h Apple approval)
+- [x] 0.1 Enroll in Apple Developer Program ($99/year) (est: ~30m setup + ~24h Apple approval)
   - acceptance: developer.apple.com membership active; able to access "Certificates, Identifiers & Profiles".
   - verify: log in to https://developer.apple.com/account — membership status shows "Active".
   - note: not in scope to automate; spec stories below assume this is complete (per R-2.6, R-8.4).
 
-- [ ] 0.2 Create Developer ID Application certificate, install in login.keychain (deps: 0.1, est: ~10m)
+- [x] 0.2 Create Developer ID Application certificate, install in login.keychain (deps: 0.1, est: ~10m)
   - acceptance: `security find-identity -v -p codesigning` lists a line like `1) ABCD1234... "Developer ID Application: <Name> (<TEAMID>)"`.
   - verify: copy the 10-char `TEAMID` to a password manager; satisfies R-2.6.
 
-- [ ] 0.3 Generate `notarytool` app-specific password (deps: 0.1, est: ~5m)
+- [x] 0.3 Generate `notarytool` app-specific password (deps: 0.1, est: ~5m)
   - acceptance: app-specific password generated at appleid.apple.com → Sign-In and Security → App-Specific Passwords, labelled `tauri-notarize`.
   - verify: stored in password manager; format `xxxx-xxxx-xxxx-xxxx`; satisfies R-2.7's `APPLE_PASSWORD` env source.
 
-- [ ] 0.4 Export envs in shell profile / `.envrc` (deps: 0.2, 0.3, est: ~5m)
+- [x] 0.4 Export envs in shell profile / `.envrc` (deps: 0.2, 0.3, est: ~5m)
   - acceptance: `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_SIGNING_IDENTITY` set in a gitignored shell file (per R-5.2, R-5.3).
   - verify: `echo "$APPLE_TEAM_ID" | wc -c` returns 11 (10 chars + newline); `security find-identity -v -p codesigning | grep -q "$APPLE_TEAM_ID"`.
 
-- [ ] 0.5 Install Rust `x86_64-apple-darwin` target + confirm Rosetta on Apple Silicon (est: ~10m)
+- [x] 0.5 Install Rust `x86_64-apple-darwin` target + confirm Rosetta on Apple Silicon (est: ~10m)
   - acceptance: `rustup target list --installed | grep -q x86_64-apple-darwin`; on Apple Silicon, `arch -x86_64 /usr/bin/true` exits 0 (Rosetta available).
   - verify: satisfies R-1.6 and R-1.7 prerequisite for universal builds.
 
@@ -152,7 +152,7 @@ Per LLD D4 and R-7.8, Phase 2 lands as a separate change after Phase 1 verifies 
 - [ ] 7.3 Workflow secret-leak controls (deferred)
   - acceptance: R-7.6, R-7.7 — no `echo` of `APPLE_*` secrets; rely on GitHub's automatic masking; operational requirement to rotate on leak.
 
-- [ ] 7.4 Phase-2 documentation in `docs/release.md` (deferred)
+- [x] 7.4 Phase-2 documentation in `docs/release.md`
   - acceptance: R-8.3 — document the workflow, the required secrets (`APPLE_CERT_BASE64`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_SIGNING_IDENTITY`), and rotation procedure.
 
 ---

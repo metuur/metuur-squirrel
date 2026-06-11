@@ -30,8 +30,34 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
-pub(crate) const BACKEND_PORT: u16 = 3939;
-const HEALTH_URL: &str = "http://127.0.0.1:3939/api/me";
+/// Parse a decimal `u16` at compile time (no std const str→int). Used only on
+/// the `SQUIRREL_BACKEND_PORT` build-time override below.
+const fn parse_port(s: &str) -> u16 {
+    let bytes = s.as_bytes();
+    let mut n: u16 = 0;
+    let mut i = 0;
+    while i < bytes.len() {
+        n = n * 10 + (bytes[i] - b'0') as u16;
+        i += 1;
+    }
+    n
+}
+
+/// Backend port. Defaults to 3939; the dev build overrides it to 3940 by setting
+/// `SQUIRREL_BACKEND_PORT=3940` at compile time (see package.json dev scripts) so
+/// `tauri dev` / "Squirrel Dev.app" never collides with an installed prod app on
+/// the same port. `option_env!` bakes the value in; build.rs reruns on change.
+pub(crate) const BACKEND_PORT: u16 = match option_env!("SQUIRREL_BACKEND_PORT") {
+    Some(s) => parse_port(s),
+    None => 3939,
+};
+
+/// Dev builds set `SQUIRREL_ALLOW_DEV_BACKEND=1` at compile time (package.json
+/// tauri:dev / tauri:build:dev) so the handshake ADOPTS an unauthenticated
+/// dev-mode backend (`make dev-local`'s live server.py on :3940) instead of
+/// refusing it. Never set for production builds — there `mode: dev` keeps the
+/// R-4.3 refusal.
+const ALLOW_DEV_BACKEND: bool = option_env!("SQUIRREL_ALLOW_DEV_BACKEND").is_some();
 const PORT_PROBE_TIMEOUT: Duration = Duration::from_millis(200);
 const HEALTH_REQ_TIMEOUT: Duration = Duration::from_secs(3);
 const STARTUP_BUDGET_ATTEMPTS: u32 = 10;
@@ -105,6 +131,26 @@ fn handshake_refusal_cause(o: HandshakeOutcome) -> Option<&'static str> {
 #[derive(Serialize, Clone)]
 pub(crate) struct HandshakeRefusalPayload {
     pub cause: &'static str,
+}
+
+/// Current handshake-refusal cause, or `None` when adoption was not refused.
+///
+/// The `handshake-refused` event is a one-shot emitted during early startup,
+/// before the webview registers its listener — and Tauri does not replay events,
+/// so a banner mounting late would miss it and the user falls through to a
+/// confusing "Load failed" during onboarding instead of the recovery banner.
+/// Exposing the state as a queryable command lets the frontend recover the
+/// banner on mount regardless of emit timing.
+pub(crate) fn current_refusal_cause<R: Runtime>(app: &AppHandle<R>) -> Option<&'static str> {
+    let state = app.try_state::<Mutex<SupervisorState>>()?;
+    let mode = {
+        let s = state.lock().unwrap_or_else(|p| p.into_inner());
+        s.mode
+    };
+    match mode {
+        SupervisionMode::RefusedAdoption(o) => handshake_refusal_cause(o),
+        _ => None,
+    }
 }
 
 /// R-4.3..R-4.6: when the supervisor refused adoption, set the tray to Error
@@ -260,12 +306,13 @@ fn probe_handshake_inner(token: &str) -> std::io::Result<HandshakeOutcome> {
     stream.flush()?;
     let mut raw = Vec::new();
     stream.read_to_end(&mut raw)?;
-    Ok(classify_handshake_response(&raw, token))
+    Ok(classify_handshake_response(&raw, token, ALLOW_DEV_BACKEND))
 }
 
 /// Map a raw HTTP/1.x response to a `HandshakeOutcome`. Split out as a pure
 /// function so every branch (R-4.2..R-4.5) is unit-testable without a socket.
-fn classify_handshake_response(raw: &[u8], token: &str) -> HandshakeOutcome {
+/// `allow_dev` is `ALLOW_DEV_BACKEND` in production code; tests pass both.
+fn classify_handshake_response(raw: &[u8], token: &str, allow_dev: bool) -> HandshakeOutcome {
     let text = String::from_utf8_lossy(raw);
     let Some((head, body)) = text.split_once("\r\n\r\n") else {
         return HandshakeOutcome::RefusedUnknown;
@@ -279,7 +326,11 @@ fn classify_handshake_response(raw: &[u8], token: &str) -> HandshakeOutcome {
         Some(401) => HandshakeOutcome::Refused401,
         Some(200) => {
             if body.contains("\"mode\"") && body.contains("\"dev\"") {
-                HandshakeOutcome::RefusedDev
+                if allow_dev {
+                    HandshakeOutcome::Adopted
+                } else {
+                    HandshakeOutcome::RefusedDev
+                }
             } else if let Some(echo) = extract_token_echo(body) {
                 if ct_eq(echo.as_bytes(), token.as_bytes()) {
                     HandshakeOutcome::Adopted
@@ -817,7 +868,8 @@ fn build_client(token: &str) -> Option<reqwest::Client> {
 }
 
 async fn probe_health(client: &reqwest::Client) -> bool {
-    match client.get(HEALTH_URL).send().await {
+    let health_url = format!("http://127.0.0.1:{BACKEND_PORT}/api/me");
+    match client.get(&health_url).send().await {
         Ok(r) => r.status().is_success(),
         Err(_) => false,
     }
@@ -871,37 +923,45 @@ mod tests {
     #[test]
     fn classify_200_matching_echo_is_adopted() {
         let raw = resp("HTTP/1.0 200 OK", &format!("{{\"token_echo\": \"{TKN}\"}}"));
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::Adopted);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::Adopted);
     }
 
     #[test]
     fn classify_200_mismatched_echo_is_refused_unknown() {
         let raw = resp("HTTP/1.0 200 OK", "{\"token_echo\": \"deadbeef\"}");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedUnknown);
     }
 
     #[test]
     fn classify_200_dev_mode_is_refused_dev() {
         let raw = resp("HTTP/1.0 200 OK", "{\"mode\": \"dev\"}");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedDev);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedDev);
+    }
+
+    #[test]
+    fn classify_200_dev_mode_is_adopted_when_dev_backend_allowed() {
+        // Dev builds (SQUIRREL_ALLOW_DEV_BACKEND) adopt make dev-local's
+        // unauthenticated live backend instead of refusing it.
+        let raw = resp("HTTP/1.0 200 OK", "{\"mode\": \"dev\"}");
+        assert_eq!(classify_handshake_response(&raw, TKN, true), HandshakeOutcome::Adopted);
     }
 
     #[test]
     fn classify_401_is_refused_401() {
         let raw = resp("HTTP/1.0 401 Unauthorized", "");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::Refused401);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::Refused401);
     }
 
     #[test]
     fn classify_200_unrecognized_body_is_refused_unknown() {
         let raw = resp("HTTP/1.0 200 OK", "{\"hello\": \"world\"}");
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedUnknown);
     }
 
     #[test]
     fn classify_garbage_without_header_split_is_refused_unknown() {
         let raw = b"not even http".to_vec();
-        assert_eq!(classify_handshake_response(&raw, TKN), HandshakeOutcome::RefusedUnknown);
+        assert_eq!(classify_handshake_response(&raw, TKN, false), HandshakeOutcome::RefusedUnknown);
     }
 
     #[test]

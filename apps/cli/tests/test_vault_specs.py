@@ -183,6 +183,7 @@ SIBLING_MODULES = {
     "intent_parser", "status_aggregator", "tag_parser", "switch_tracker",
     "deadline_scanner", "package_protocol", "chunk_helper", "estimate_buffer",
     "session_scanner", "dashboard_generator", "manifest_writer",
+    "vault_migrator",
 }
 
 LIB_DIR = Path(__file__).parent.parent / "lib"

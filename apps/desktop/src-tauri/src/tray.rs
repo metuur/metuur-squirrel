@@ -29,23 +29,38 @@ use crate::tray_alerts::{Alert, QuickTaskItem, ReminderAlert};
 pub const TRAY_ID: &str = "main";
 
 /// Phase 2 (LLD D6, EARS R-1.1, R-4.3): the popup, the tray menu, and the
-/// vite proxy all agree on this single backend origin.
-pub const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
+/// vite proxy all agree on this single backend origin. Defaults to :3939; the
+/// dev build overrides it to :3940 via `SQUIRREL_BACKEND_ORIGIN` at compile time
+/// (kept in lockstep with `backend_supervisor::BACKEND_PORT`) so the dev app
+/// never collides with an installed prod app on the same port.
+pub const BACKEND_ORIGIN: &str = match option_env!("SQUIRREL_BACKEND_ORIGIN") {
+    Some(o) => o,
+    None => "http://127.0.0.1:3939",
+};
 
-/// Name of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
+/// Dev Vite server origin — set via `SQUIRREL_DEV_UI_ORIGIN` at compile time.
+/// `None` in production builds; `Some("http://localhost:5173")` in `tauri:dev`.
+const DEV_UI_ORIGIN: Option<&str> = option_env!("SQUIRREL_DEV_UI_ORIGIN");
+
+/// Path of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
 /// Returns `None` when no config / no default vault exists yet, so the tray can
 /// disable "Open Obsidian Vault" during first-run onboarding (R-4.4).
-fn default_vault_name() -> Option<String> {
+fn default_vault_path() -> Option<String> {
     let path = dirs::home_dir()?.join(".squirrel/config.toml");
     let text = std::fs::read_to_string(path).ok()?;
-    parse_default_vault_name(&text)
+    let raw = parse_default_vault_path(&text)?;
+    // expand a leading `~/` the way the CLI/backend config loaders do
+    if let Some(rest) = raw.strip_prefix("~/") {
+        return Some(dirs::home_dir()?.join(rest).to_string_lossy().into_owned());
+    }
+    Some(raw)
 }
 
-/// Pure parse of the default vault `name` from config.toml text. Scans
-/// `[[vaults]]` blocks and returns the `name` of the first block with
-/// `default = true`. Only reads `name`/`default` (charset-safe fields), so a
-/// naive `#`-comment strip is sufficient.
-fn parse_default_vault_name(text: &str) -> Option<String> {
+/// Pure parse of the default vault `path` from config.toml text. Scans
+/// `[[vaults]]` blocks and returns the `path` of the first block with
+/// `default = true`. Quoted values are scanned to their closing quote, so a
+/// `#` inside a path is not mistaken for a comment.
+fn parse_default_vault_path(text: &str) -> Option<String> {
     fn strip_comment(s: &str) -> &str {
         match s.find('#') {
             Some(i) => &s[..i],
@@ -53,12 +68,14 @@ fn parse_default_vault_name(text: &str) -> Option<String> {
         }
     }
     fn unquote(v: &str) -> Option<String> {
-        let t = v.trim();
-        let b = t.as_bytes();
-        if t.len() >= 2 && (b[0] == b'"' || b[0] == b'\'') && b[t.len() - 1] == b[0] {
-            return Some(t[1..t.len() - 1].to_string());
+        let t = v.trim_start();
+        let q = *t.as_bytes().first()?;
+        if q != b'"' && q != b'\'' {
+            return None;
         }
-        None
+        let rest = &t[1..];
+        let end = rest.find(q as char)?;
+        Some(rest[..end].to_string())
     }
 
     let mut blocks: Vec<(Option<String>, bool)> = Vec::new();
@@ -76,10 +93,11 @@ fn parse_default_vault_name(text: &str) -> Option<String> {
                 blocks.push(b);
             }
         } else if let Some(b) = cur.as_mut() {
-            if let Some((key, val)) = line.split_once('=') {
+            // split the raw line so quoted values keep any `#` they contain
+            if let Some((key, val)) = raw.split_once('=') {
                 match key.trim() {
-                    "name" => b.0 = unquote(val),
-                    "default" => b.1 = val.trim() == "true",
+                    "path" => b.0 = unquote(val),
+                    "default" => b.1 = strip_comment(val).trim() == "true",
                     _ => {}
                 }
             }
@@ -88,16 +106,37 @@ fn parse_default_vault_name(text: &str) -> Option<String> {
     if let Some(b) = cur.take() {
         blocks.push(b);
     }
-    blocks.into_iter().find(|(_, d)| *d).and_then(|(n, _)| n)
+    blocks.into_iter().find(|(_, d)| *d).and_then(|(p, _)| p)
+}
+
+/// Percent-encode a string for use as a URL query value (RFC 3986 unreserved
+/// characters pass through; everything else, including `/`, is escaped).
+fn percent_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
 
 /// Menu item IDs. The alert items use the `ALERT_PREFIX` so the menu-event
 /// handler can detect them and extract the task id.
 pub mod ids {
     pub const OPEN: &str = "open";
+    /// Opens the Vite dev server in the browser — only compiled in when
+    /// `SQUIRREL_DEV_UI_ORIGIN` is set (i.e. `tauri:dev` builds).
+    pub const OPEN_DEV: &str = "open_dev";
     /// Captures a Quick Task in-app — shows the window and emits
     /// `quick-task-capture-open` so the React capture modal opens (R-1.1, R-1.5).
     pub const ADD_QUICK_TASK: &str = "add_quick_task";
+    /// Captures a Post-it in-app — shows the window and emits
+    /// `post-it-capture-open` so the React capture modal opens (R-4.1, R-4.2).
+    pub const ADD_POST_IT: &str = "add_post_it";
     pub const OPEN_WEB_UI: &str = "open_web_ui";
     /// Always-visible help item. Opens the dashboard and emits `show-how-to`
     /// so the React How-to overlay renders the quick-start guide.
@@ -169,8 +208,16 @@ fn build_menu<R: Runtime>(
     journal_due: bool,
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
+    let open_dev_item: Option<MenuItem<R>> = if let Some(origin) = DEV_UI_ORIGIN {
+        let _ = origin; // used in click handler; label is static
+        Some(MenuItem::with_id(app, ids::OPEN_DEV, "Open Squirrel (dev)", true, None::<&str>)?)
+    } else {
+        None
+    };
     let add_quick_task_item =
         MenuItem::with_id(app, ids::ADD_QUICK_TASK, "Add Quick Task", true, None::<&str>)?;
+    let add_post_it_item =
+        MenuItem::with_id(app, ids::ADD_POST_IT, "Add Post-it", true, None::<&str>)?;
     let open_web_ui_item =
         MenuItem::with_id(app, ids::OPEN_WEB_UI, "Open Web UI", true, None::<&str>)?;
     // R-4.4: disabled until a vault is configured (first-run onboarding).
@@ -178,7 +225,7 @@ fn build_menu<R: Runtime>(
         app,
         ids::OPEN_OBSIDIAN,
         "Open Obsidian Vault",
-        default_vault_name().is_some(),
+        default_vault_path().is_some(),
         None::<&str>,
     )?;
     let how_to_item =
@@ -214,9 +261,14 @@ fn build_menu<R: Runtime>(
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![
         &open_item,
         &add_quick_task_item,
+        &add_post_it_item,
         &sep_top,
         &pressing_header,
     ];
+    // Insert "Open Squirrel (dev)" right after "Open Squirrel" in dev builds.
+    if let Some(ref di) = open_dev_item {
+        items.insert(1, di);
+    }
 
     let alert_items: Vec<MenuItem<R>> = alerts
         .iter()
@@ -375,6 +427,11 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             let id = event.id().as_ref();
             match id {
                 ids::OPEN => show_main_window(app),
+                ids::OPEN_DEV => {
+                    if let Some(origin) = DEV_UI_ORIGIN {
+                        open_url(app, origin);
+                    }
+                }
                 ids::ADD_QUICK_TASK => {
                     // R-1.1 / R-1.5: capture IN-APP — show the window and emit so
                     // the React capture modal opens (same path as Ctrl+Cmd+Q).
@@ -383,12 +440,23 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                         tracing::warn!(error = %e, "tray: failed to emit quick-task-capture-open");
                     }
                 }
+                ids::ADD_POST_IT => {
+                    // R-4.1 / R-4.2: capture IN-APP — show the window and emit so
+                    // the React Post-it capture modal opens. No new global shortcut
+                    // (R-4.5); tray item is the only trigger from outside the popup.
+                    show_main_window(app);
+                    if let Err(e) = app.emit("post-it-capture-open", ()) {
+                        tracing::warn!(error = %e, "tray: failed to emit post-it-capture-open");
+                    }
+                }
                 ids::OPEN_WEB_UI => open_web_url(app, ""),
                 ids::OPEN_OBSIDIAN => {
-                    // R-4.2: use the configured vault name. R-4.3: do nothing if
+                    // R-4.2: open the configured vault by *path* — Obsidian
+                    // registers vaults under their folder name, which can differ
+                    // from squirrel's configured vault name. R-4.3: do nothing if
                     // none is configured (the item is also disabled in that state).
-                    if let Some(name) = default_vault_name() {
-                        let url = format!("obsidian://open?vault={}", name);
+                    if let Some(path) = default_vault_path() {
+                        let url = format!("obsidian://open?path={}", percent_encode(&path));
                         open_url(app, &url);
                     }
                 }
@@ -479,10 +547,25 @@ pub fn update_alerts<R: Runtime>(
 
 fn open_url<R: Runtime>(app: &AppHandle<R>, url: &str) {
     if let Err(e) = app.opener().open_url(url, None::<&str>) {
-        tracing::warn!(error = %e, url, "tray: failed to open url");
+        tracing::warn!(error = %e, url = %redact_token(url), "tray: failed to open url");
     } else {
-        tracing::info!(url, "tray: opened url");
+        tracing::info!(url = %redact_token(url), "tray: opened url");
     }
+}
+
+/// Replace the value of any `token=` query param with `***` so the per-launch
+/// runtime token never lands in the log file (runtime-trust-handshake keeps
+/// the token in process memory only).
+fn redact_token(url: &str) -> String {
+    let Some(start) = url.find("token=") else {
+        return url.to_string();
+    };
+    let value_start = start + "token=".len();
+    let value_end = url[value_start..]
+        .find('&')
+        .map(|i| value_start + i)
+        .unwrap_or(url.len());
+    format!("{}***{}", &url[..value_start], &url[value_end..])
 }
 
 /// Open a Squirrel web-UI URL in the external browser, carrying the per-launch
@@ -549,32 +632,80 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 mod tests {
     use super::*;
 
-    // ── R-4.2 / R-4.4: default vault name parsing ────────────────────────────
+    // ── H1: token redaction in url logging ──────────────────────────────────
 
     #[test]
-    fn parses_single_default_vault_name() {
+    fn redacts_token_at_end_of_query() {
+        assert_eq!(
+            redact_token("http://127.0.0.1:3939/?token=abc123"),
+            "http://127.0.0.1:3939/?token=***"
+        );
+    }
+
+    #[test]
+    fn redacts_token_mid_query() {
+        assert_eq!(
+            redact_token("http://127.0.0.1:3939/notes/X?token=abc&x=1"),
+            "http://127.0.0.1:3939/notes/X?token=***&x=1"
+        );
+    }
+
+    #[test]
+    fn leaves_obsidian_urls_untouched() {
+        let url = "obsidian://open?vault=v&file=note";
+        assert_eq!(redact_token(url), url);
+    }
+
+    #[test]
+    fn leaves_urls_without_query_untouched() {
+        let url = "http://127.0.0.1:3939/notes/VISA-001";
+        assert_eq!(redact_token(url), url);
+    }
+
+    // ── R-4.2 / R-4.4: default vault path parsing ────────────────────────────
+
+    #[test]
+    fn parses_single_default_vault_path() {
         let cfg = "default_email = \"u@x.z\"\n\n[[vaults]]\nname = \"personal\"\npath = \"~/v\"\ndefault = true\n";
-        assert_eq!(parse_default_vault_name(cfg), Some("personal".to_string()));
+        assert_eq!(parse_default_vault_path(cfg), Some("~/v".to_string()));
     }
 
     #[test]
     fn picks_the_block_marked_default_among_several() {
         let cfg = "[[vaults]]\nname = \"personal\"\npath = \"~/a\"\ndefault = false\n\n[[vaults]]\nname = \"work\"\npath = \"/abs/b\"\ndefault = true\n\n[projects]\nactive = [\"A\"]\n";
-        assert_eq!(parse_default_vault_name(cfg), Some("work".to_string()));
+        assert_eq!(parse_default_vault_path(cfg), Some("/abs/b".to_string()));
     }
 
     #[test]
     fn returns_none_when_no_default_or_no_vaults() {
-        assert_eq!(parse_default_vault_name(""), None);
+        assert_eq!(parse_default_vault_path(""), None);
         assert_eq!(
-            parse_default_vault_name("default_email = \"u@x.z\"\nmachine_environment = \"p\"\n"),
+            parse_default_vault_path("default_email = \"u@x.z\"\nmachine_environment = \"p\"\n"),
             None
         );
         // vault present but none marked default
         assert_eq!(
-            parse_default_vault_name("[[vaults]]\nname = \"only\"\npath = \"~/v\"\ndefault = false\n"),
+            parse_default_vault_path("[[vaults]]\nname = \"only\"\npath = \"~/v\"\ndefault = false\n"),
             None
         );
+    }
+
+    #[test]
+    fn keeps_hash_inside_quoted_path_and_ignores_trailing_comment() {
+        let cfg = "[[vaults]]\nname = \"p\"\npath = \"/v/with #tag\" # the vault\ndefault = true # yes\n";
+        assert_eq!(
+            parse_default_vault_path(cfg),
+            Some("/v/with #tag".to_string())
+        );
+    }
+
+    #[test]
+    fn percent_encodes_for_query_value() {
+        assert_eq!(
+            percent_encode("/Users/me/my vault"),
+            "%2FUsers%2Fme%2Fmy%20vault"
+        );
+        assert_eq!(percent_encode("plain-name_0.~"), "plain-name_0.~");
     }
 
     #[test]

@@ -24,12 +24,16 @@ REPO_ROOT="$(cd "$DESKTOP_ROOT/../.." && pwd)"
 # e.g. TAURI_TARGET=aarch64-apple-darwin for an Apple-Silicon-only build.
 TARGET="${TAURI_TARGET:-universal-apple-darwin}"
 
-# For an Apple-Silicon-only build, tell the sidecar builder to skip the x86_64
-# slice + universal lipo and emit a host-triple-named arm64 binary (which is
-# what Tauri's externalBin resolution looks for at this target). Propagates to
-# the beforeBundleCommand (`pnpm tauri:prebuild-backend`) as a child process.
+# For a single-arch build, tell the sidecar builder to skip the universal lipo
+# step and emit a thin target-triple-named binary (which is what Tauri's
+# externalBin resolution looks for at that target). Propagates to the
+# beforeBundleCommand (`pnpm tauri:prebuild-backend`) as a child process.
+#   aarch64-apple-darwin → Apple Silicon (build on Apple Silicon)
+#   x86_64-apple-darwin  → Intel        (build on an Intel host / x86_64 CI)
 if [[ "$TARGET" == "aarch64-apple-darwin" ]]; then
   export SQUIRREL_ARM64_ONLY=1
+elif [[ "$TARGET" == "x86_64-apple-darwin" ]]; then
+  export SQUIRREL_X86_ONLY=1
 fi
 
 if [[ -t 1 ]]; then

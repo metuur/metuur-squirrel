@@ -65,7 +65,7 @@ class _Case(unittest.TestCase):
         shutil.copytree(FIXTURE_VAULT, self.vault)
         if self.multi_vault:
             second_vault = self.home / "other"
-            (second_vault / "01-Proyectos-Activos").mkdir(parents=True)
+            (second_vault / "01-Active-Projects").mkdir(parents=True)
             cfg = textwrap.dedent(f"""\
                 machine_environment = "test"
 
@@ -314,7 +314,7 @@ class TestProjectsEndpoints(_Case):
         self.assertEqual(status, 200)
         self.assertTrue(data["success"])
         on_disk = (
-            self.vault / "01-Proyectos-Activos" / "TEST-PROJECT" / "TEST-PROJECT.md"
+            self.vault / "01-Active-Projects" / "TEST-PROJECT" / "TEST-PROJECT.md"
         ).read_text(encoding="utf-8")
         self.assertEqual(on_disk, new_body)
 
@@ -467,6 +467,118 @@ class TestSPAShell(_Case):
         except urllib.error.HTTPError as he:
             # Reject only when the path itself is invalid (`..` segments).
             self.fail(f"valid SPA route returned {he.code}")
+
+
+# ── PATCH /api/item/{id}/defer ───────────────────────────────────────────────
+
+
+class TestItemDefer(_Case):
+    """Deferring any item rewrites only its `deadline` frontmatter so it leaves
+    the computed PRESSING lane. Used by the board's drag-from-PRESSING flow."""
+
+    def _patch_json(self, path, payload):
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self._url(path), data=data,
+            headers={"Content-Type": "application/json"}, method="PATCH",
+        )
+        try:
+            r = urllib.request.urlopen(req, timeout=3)
+        except urllib.error.HTTPError as he:
+            return he.code, json.loads(he.read().decode("utf-8"))
+        return r.status, json.loads(r.read().decode("utf-8"))
+
+    def _seed_note(self, note_id="DEFER-TEST-001", deadline="2020-01-01"):
+        note = (self.vault / "01-Active-Projects" / "TEST-PROJECT" / f"{note_id}.md")
+        note.write_text(textwrap.dedent(f"""\
+            ---
+            id: {note_id}
+            type: A
+            status: wip
+            deadline: {deadline}
+            ---
+
+            # {note_id}
+
+            body
+            """))
+        return note
+
+    def test_defer_rewrites_deadline(self):
+        note = self._seed_note()
+        status, data = self._patch_json(
+            f"/api/item/{note.stem}/defer", {"until": "2099-12-31"})
+        self.assertEqual(status, 200)
+        self.assertEqual(data["deadline"], "2099-12-31")
+        self.assertIn("deadline: 2099-12-31", note.read_text())
+        self.assertNotIn("2020-01-01", note.read_text())
+
+    def test_defer_missing_item_404(self):
+        status, _ = self._patch_json("/api/item/NOPE-999/defer", {"until": "2099-12-31"})
+        self.assertEqual(status, 404)
+
+    def test_defer_bad_date_400(self):
+        note = self._seed_note(note_id="DEFER-TEST-002")
+        status, _ = self._patch_json(
+            f"/api/item/{note.stem}/defer", {"until": "next week"})
+        self.assertEqual(status, 400)
+
+    def test_defer_missing_until_400(self):
+        note = self._seed_note(note_id="DEFER-TEST-003")
+        status, _ = self._patch_json(f"/api/item/{note.stem}/defer", {})
+        self.assertEqual(status, 400)
+
+
+class TestNotificationsListLimit(_Case):
+    """M2 audit fix — LIMIT is a bound parameter, not an f-string."""
+
+    def _insert_notifications(self, n: int) -> None:
+        import db
+        conn = db.get_conn()
+        try:
+            db.init_schema(conn)
+            for i in range(n):
+                conn.execute(
+                    "INSERT INTO notifications (type, item_id, title, body, fired_at) "
+                    "VALUES ('pressing', ?, ?, 'b', ?)",
+                    (f"N-{i}", f"title {i}", f"2026-06-0{i + 1}T00:00:00"),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_limit_caps_returned_rows(self):
+        self._insert_notifications(3)
+        status, data = self._get_json("/api/notifications?limit=2")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(data["items"]), 2)
+
+    def test_non_integer_limit_is_rejected(self):
+        status, _ = self._get_json("/api/notifications?limit=1;DROP")
+        self.assertEqual(status, 400)
+
+
+class TestHtmlErrorEscaping(unittest.TestCase):
+    """L1 audit fix — _send_html_error escapes <, >, & and quotes."""
+
+    def test_message_is_html_escaped(self):
+        import io
+        import server
+
+        h = server.Handler.__new__(server.Handler)
+        h.command = "GET"
+        h.path = "/x"
+        h.wfile = io.BytesIO()
+        h.send_response = lambda *a, **k: None
+        h.send_header = lambda *a, **k: None
+        h.end_headers = lambda *a, **k: None
+        h._send_common_headers = lambda *a, **k: None
+
+        h._send_html_error(500, "<script>alert('x')</script> & more")
+        page = h.wfile.getvalue().decode("utf-8")
+        self.assertNotIn("<script>", page)
+        self.assertIn("&lt;script&gt;", page)
+        self.assertIn("&amp; more", page)
 
 
 if __name__ == "__main__":

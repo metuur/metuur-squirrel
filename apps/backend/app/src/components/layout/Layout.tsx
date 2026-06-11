@@ -3,9 +3,11 @@ import { Outlet } from 'react-router-dom';
 import { Header, type ViewMode } from './Header';
 import { Sidebar } from './Sidebar';
 import { useMe } from '@/hooks/useMe';
+import { asVaultRecovery } from '@/api/client';
+import { VaultRecovery } from '@/components/VaultRecovery';
 
 export function Layout() {
-  const { data: me } = useMe();
+  const { data: me, error, mutate } = useMe();
   const [viewMode, setViewMode] = useState<ViewMode>('Board');
   const [isDarkMode, setDarkMode] = useState(false);
 
@@ -27,6 +29,18 @@ export function Layout() {
     setDarkMode(next);
     if (next) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
+  }
+
+  // Vault configured but unusable (moved / emptied / not a Squirrel vault):
+  // take over the whole surface with a guided recovery flow instead of
+  // rendering an app shell full of failing widgets.
+  const recovery = asVaultRecovery(error);
+  if (recovery) {
+    return (
+      <div className="h-full overflow-auto bg-surface-2">
+        <VaultRecovery info={recovery} onRecovered={mutate} />
+      </div>
+    );
   }
 
   return (

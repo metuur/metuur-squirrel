@@ -69,6 +69,34 @@ export default function SettingsPage() {
     window.location.reload();
   }
 
+  // ── Change the vault path (updates the entry in config.toml in place) ──────
+  const [showChangeVault, setShowChangeVault] = useState(false);
+  const [vaultPath, setVaultPath] = useState('');
+  const [createVault, setCreateVault] = useState(false);
+  const [changeBusy, setChangeBusy] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+
+  function openChangeVault() {
+    setVaultPath(me?.active_workspace?.path ?? '');
+    setCreateVault(false);
+    setChangeError(null);
+    setShowChangeVault(true);
+  }
+
+  async function handleChangeVault() {
+    const path = vaultPath.trim();
+    if (!path || !me?.active_workspace) return;
+    setChangeBusy(true);
+    setChangeError(null);
+    try {
+      await api.setVaultConfig({ name: me.active_workspace.name, path, create: createVault });
+      window.location.reload();
+    } catch (e) {
+      setChangeError(e instanceof Error ? e.message : 'Could not change the vault.');
+      setChangeBusy(false);
+    }
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="title">Settings</h1>
@@ -122,6 +150,66 @@ export default function SettingsPage() {
             {me.multi_vault && (
               <p className="text-xs text-ink-3">Switching reloads the page so every view shows the new vault.</p>
             )}
+
+            <div className="pt-3 border-t border-hairline">
+              {!showChangeVault ? (
+                <button type="button" onClick={openChangeVault} className="btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface">
+                  <span className="material-icons text-base">drive_file_move</span>
+                  Change vault
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-ink-2">Change vault</p>
+                  <div className="text-sm">
+                    <span className="eyebrow">New path</span>
+                    <input
+                      type="text"
+                      value={vaultPath}
+                      onChange={(e) => setVaultPath(e.target.value)}
+                      placeholder="~/my-vault"
+                      className="mt-0.5 w-full block px-3 py-2 border border-hairline rounded-lg bg-surface font-mono text-xs focus:border-accent focus:ring-0 outline-none placeholder-ink-4"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-ink-2">
+                    <input
+                      type="checkbox"
+                      checked={createVault}
+                      onChange={(e) => setCreateVault(e.target.checked)}
+                      className="accent-[var(--color-accent)]"
+                    />
+                    Create the folder (with the Squirrel structure) if it doesn’t exist
+                  </label>
+                  {changeError && <p className="text-sm text-critical">{changeError}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleChangeVault}
+                      disabled={
+                        changeBusy ||
+                        !vaultPath.trim() ||
+                        vaultPath.trim() === me.active_workspace.path
+                      }
+                      className="btn btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface disabled:opacity-50"
+                    >
+                      {changeBusy ? 'Changing…' : 'Change vault'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowChangeVault(false); setChangeError(null); }}
+                      disabled={changeBusy}
+                      className="btn inline-flex items-center px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs text-ink-3">
+                    Squirrel switches to reading and writing the new folder, and the page reloads.
+                    Nothing in the current folder is moved or deleted — to bring its content along,
+                    copy the folder yourself first, or run /sq-migrate-vault in your agent.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </SettingsSection>
       )}

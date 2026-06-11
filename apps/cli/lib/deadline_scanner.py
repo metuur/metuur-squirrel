@@ -23,12 +23,14 @@ Uso CLI:
 import argparse
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent
 
+_log = logging.getLogger("deadline_scanner")
 
 URGENCY_LEVELS = ["critical", "urgent", "soon", "upcoming", "eventual", "distant"]
 
@@ -51,7 +53,12 @@ def classify_urgency(deadline: datetime.date, now: datetime.datetime) -> tuple[s
         }
 
     if days_left == 0:
-        deadline_dt = datetime.datetime.combine(deadline, datetime.time(23, 59, 59))
+        # Inherit now's tzinfo so the subtraction works with both naive and
+        # aware callers (aware everywhere is the repo-wide discipline; naive
+        # stays supported for older callers/tests).
+        deadline_dt = datetime.datetime.combine(
+            deadline, datetime.time(23, 59, 59), tzinfo=now.tzinfo
+        )
         hours_left = (deadline_dt - now).total_seconds() / 3600
         if hours_left < 4:
             return "critical", {"hours_left": round(hours_left, 1), "days_left": 0}
@@ -74,14 +81,14 @@ def classify_urgency(deadline: datetime.date, now: datetime.datetime) -> tuple[s
 
 def scan_vault_deadlines(vault_path: Path) -> dict:
     """Scan all .md files in the vault, classify by urgency."""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
 
     result = {level: [] for level in URGENCY_LEVELS}
     total_with_deadline = 0
     parse_errors = 0
 
     # Scan project folders for intents
-    locations = ["01-Proyectos-Activos", "03-Areas"]
+    locations = ["01-Active-Projects", "03-Areas"]
     for loc_name in locations:
         loc = vault_path / loc_name
         if not loc.exists():
@@ -94,7 +101,8 @@ def scan_vault_deadlines(vault_path: Path) -> dict:
 
             try:
                 data = parse_intent(md_file)
-            except Exception:
+            except Exception as exc:
+                _log.warning("skipping unparseable file %s: %s", md_file, exc)
                 parse_errors += 1
                 continue
 

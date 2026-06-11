@@ -36,13 +36,17 @@ PRE_CHANGE_TEST_COUNT = 204
 # intentional fixture edit (and explain why in the commit message):
 #   find tests/fixtures -type f | sort | xargs shasum -a 256
 FIXTURE_HASHES = {
-    "vault-minimal/01-Proyectos-Activos/SIDEPROJECT-STALE/SIDEPROJECT-STALE.md":
+    "vault-minimal/01-Active-Projects/SCRATCH-PAD/MIND-JOURNAL.md":
+        "8bdcee6aa3223b8bde1f2e06f3227c1aeaf5c72ca2e54bc70beb452766d5ded4",
+    "vault-minimal/01-Active-Projects/SCRATCH-PAD/SCRATCH-PAD.md":
+        "93bac5998cd54a824d226b37656fce9cb5fbd93691ba94d0ccc17b3099147f16",
+    "vault-minimal/01-Active-Projects/SIDEPROJECT-STALE/SIDEPROJECT-STALE.md":
         "a212962324cac2826d431c9ea10adebf7d274e8e64fb55f9919abff5f8763a99",
-    "vault-minimal/01-Proyectos-Activos/TEST-PROJECT/TEST-PROJECT-AUTH-001.md":
+    "vault-minimal/01-Active-Projects/TEST-PROJECT/TEST-PROJECT-AUTH-001.md":
         "cd35ec09444b0e97c9101beca85deec6e08ecb3487242ec1e56860445968a0a3",
-    "vault-minimal/01-Proyectos-Activos/TEST-PROJECT/TEST-PROJECT-AUTH-002.md":
+    "vault-minimal/01-Active-Projects/TEST-PROJECT/TEST-PROJECT-AUTH-002.md":
         "9b80d10f5e67e0398f9152a786ee29ccc1a83fe4c0f034947ad12b5a5547c157",
-    "vault-minimal/01-Proyectos-Activos/TEST-PROJECT/TEST-PROJECT.md":
+    "vault-minimal/01-Active-Projects/TEST-PROJECT/TEST-PROJECT.md":
         "2c755e7d21df55a8b01ef39d3e888564261aef2292c06db89cb7ca8c9f8a64cc",
 }
 

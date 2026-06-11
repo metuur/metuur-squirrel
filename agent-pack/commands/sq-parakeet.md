@@ -48,7 +48,7 @@ DEADLINES_JSON=$(python3 "$SCRIPT" --vault "$VAULT_PATH" --pretty 2>&1)
 
 ## Step 3: Invoke the parakeet skill
 
-Pass the JSON to the `squirrel-parakeet` skill (see `skills/parakeet/SKILL.md`).
+Pass the JSON to the `squirrel-parakeet` skill (see `skills/squirrel-parakeet/SKILL.md`).
 
 The skill:
 1. Evaluates the urgency levels

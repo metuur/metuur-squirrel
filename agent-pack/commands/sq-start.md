@@ -10,7 +10,7 @@ Starts a session on the `$ARGUMENTS` project (or asks if none is specified).
 Optional arguments:
 - `--vault NAME` — operate on a specific vault (default if omitted)
 
-Invokes the `squirrel:session-start` skill to:
+Invokes the `squirrel-session-start` skill to:
 1. Identify the active project
 2. Read the Project Page and the intents
 3. Generate a loading note of at most 200 words with: what I'm doing, the last thing I did, next physical action, blockers, critical context, a concrete opening suggestion

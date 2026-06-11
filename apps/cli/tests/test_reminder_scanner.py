@@ -2,7 +2,7 @@
 test_reminder_scanner.py — Tests for reminder_scanner.scan_vault_reminders (R-2.1–R-2.7).
 
 Fixtures are real .md files in a tmp vault directory:
-  01-Proyectos-Activos/PROJ-A/
+  01-Active-Projects/PROJ-A/
     no_reminder.md          — no reminder_date field
     active_today.md         — reminder_date: <today>
     active_past.md          — reminder_date: <yesterday>
@@ -69,7 +69,7 @@ def vault(tmp_path: Path) -> Path:
     in_30d = (today + datetime.timedelta(days=30)).isoformat()
     today_str = today.isoformat()
 
-    proj_dir = tmp_path / "01-Proyectos-Activos" / "PROJ-A"
+    proj_dir = tmp_path / "01-Active-Projects" / "PROJ-A"
 
     # no reminder_date field
     _write(proj_dir / "no_reminder.md", _md("no_reminder"))
@@ -169,7 +169,7 @@ def test_approaching_and_active_are_disjoint(vault: Path) -> None:
 
 
 def test_areas_are_scanned(vault: Path) -> None:
-    """R-2.1: 03-Areas is scanned, not just 01-Proyectos-Activos."""
+    """R-2.1: 03-Areas is scanned, not just 01-Active-Projects."""
     result = scan_vault_reminders(vault)
     active_ids = {e["id"] for e in result["active"]}
     assert "area_active" in active_ids, f"03-Areas item missing; active_ids={active_ids}"
@@ -226,7 +226,7 @@ def test_vault_path_in_result(vault: Path) -> None:
 
 
 def test_nonexistent_locations_dont_crash(tmp_path: Path) -> None:
-    """An empty vault (no 01-Proyectos-Activos or 03-Areas) returns empty buckets without error."""
+    """An empty vault (no 01-Active-Projects or 03-Areas) returns empty buckets without error."""
     result = scan_vault_reminders(tmp_path)
     assert result["active"] == []
     assert result["approaching"] == []

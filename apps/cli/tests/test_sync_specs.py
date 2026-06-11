@@ -22,7 +22,7 @@ from package_protocol import (
 
 def _make_vault(tmp: Path) -> Path:
     vault = tmp / "vault"
-    (vault / "01-Proyectos-Activos" / "PROJ-A").mkdir(parents=True)
+    (vault / "01-Active-Projects" / "PROJ-A").mkdir(parents=True)
     (vault / ".squirrel" / "applied").mkdir(parents=True)
     return vault
 
@@ -93,8 +93,8 @@ class TestSync002ExplicitScope(unittest.TestCase):
     def test_single_tag_scope(self):
         with tempfile.TemporaryDirectory() as tmp:
             vault = Path(tmp)
-            (vault / "01-Proyectos-Activos" / "PROJ-A").mkdir(parents=True)
-            note = vault / "01-Proyectos-Activos" / "PROJ-A" / "TAG-001.md"
+            (vault / "01-Active-Projects" / "PROJ-A").mkdir(parents=True)
+            note = vault / "01-Active-Projects" / "PROJ-A" / "TAG-001.md"
             note.write_text("# TAG-001")
             files = collect_files_by_scope(vault, "TAG-001")
             self.assertEqual(len(files), 1)
@@ -104,7 +104,7 @@ class TestSync002ExplicitScope(unittest.TestCase):
     def test_project_wildcard_scope(self):
         with tempfile.TemporaryDirectory() as tmp:
             vault = Path(tmp)
-            proj_dir = vault / "01-Proyectos-Activos" / "PROJ-A"
+            proj_dir = vault / "01-Active-Projects" / "PROJ-A"
             proj_dir.mkdir(parents=True)
             (proj_dir / "note1.md").write_text("# Note 1")
             (proj_dir / "note2.md").write_text("# Note 2")
@@ -179,7 +179,7 @@ class TestSync005AuditRecord(unittest.TestCase):
     def test_audit_record_created(self):
         with tempfile.TemporaryDirectory() as tmp:
             vault = _make_vault(Path(tmp))
-            files = [_fe("01-Proyectos-Activos/PROJ-A/note.md", "# Test")]
+            files = [_fe("01-Active-Projects/PROJ-A/note.md", "# Test")]
             text = generate_package(files, from_env="personal", to_env="work", scope="PROJ-A:*")
             pkg = parse_package(text)
             result = apply_package(pkg, vault, dry_run=False, interactive=False)
@@ -195,7 +195,7 @@ class TestSync005AuditRecord(unittest.TestCase):
     def test_dry_run_no_audit_record(self):
         with tempfile.TemporaryDirectory() as tmp:
             vault = _make_vault(Path(tmp))
-            files = [_fe("01-Proyectos-Activos/PROJ-A/note.md", "# Test")]
+            files = [_fe("01-Active-Projects/PROJ-A/note.md", "# Test")]
             text = generate_package(files, from_env="personal", to_env="work", scope="PROJ-A:*")
             pkg = parse_package(text)
             result = apply_package(pkg, vault, dry_run=True, interactive=False)
@@ -209,7 +209,7 @@ class TestSync006Idempotency(unittest.TestCase):
     def test_second_apply_is_noop(self):
         with tempfile.TemporaryDirectory() as tmp:
             vault = _make_vault(Path(tmp))
-            files = [_fe("01-Proyectos-Activos/PROJ-A/idem.md", "# Idem")]
+            files = [_fe("01-Active-Projects/PROJ-A/idem.md", "# Idem")]
             text = generate_package(files, from_env="personal", to_env="work", scope="PROJ-A:*")
             pkg = parse_package(text)
 
@@ -225,8 +225,8 @@ class TestSync006Idempotency(unittest.TestCase):
     def test_different_package_is_not_noop(self):
         with tempfile.TemporaryDirectory() as tmp:
             vault = _make_vault(Path(tmp))
-            files_a = [_fe("01-Proyectos-Activos/PROJ-A/a.md", "# A")]
-            files_b = [_fe("01-Proyectos-Activos/PROJ-A/b.md", "# B")]
+            files_a = [_fe("01-Active-Projects/PROJ-A/a.md", "# A")]
+            files_b = [_fe("01-Active-Projects/PROJ-A/b.md", "# B")]
             pkg_a = parse_package(generate_package(files_a, "personal", "work", "PROJ-A:*"))
             pkg_b = parse_package(generate_package(files_b, "personal", "work", "PROJ-A:*"))
 
@@ -269,13 +269,13 @@ class TestSync008AtomicPerNote(unittest.TestCase):
                 },
                 "files": [
                     {"target_path": "../evil.md", "operation": "create", "tag": "BAD", "conflict_policy": "skip", "content": "evil"},
-                    {"target_path": "01-Proyectos-Activos/PROJ-A/ok.md", "operation": "create", "tag": "OK", "conflict_policy": "skip", "content": "# OK"},
+                    {"target_path": "01-Active-Projects/PROJ-A/ok.md", "operation": "create", "tag": "OK", "conflict_policy": "skip", "content": "# OK"},
                 ],
             }
             result = apply_package(pkg, vault, dry_run=False, interactive=False)
             self.assertEqual(result["failed"], 1)
             # The good note was still applied
-            ok_file = vault / "01-Proyectos-Activos" / "PROJ-A" / "ok.md"
+            ok_file = vault / "01-Active-Projects" / "PROJ-A" / "ok.md"
             self.assertTrue(ok_file.exists())
 
 

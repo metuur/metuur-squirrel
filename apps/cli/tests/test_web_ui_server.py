@@ -141,7 +141,8 @@ class TestServerScaffold(unittest.TestCase):
             "config_loader", "vocabulary", "capture_writer",
             "status_aggregator", "deadline_scanner", "new_project_writer",
             "focus_picker", "db", "intent_parser", "reminder_scanner",
-            "reminder_writer", "cache",
+            "reminder_writer", "cache", "estimate_buffer", "fs_atomic",
+            "mind_journal", "quick_task_writer",
         }
         stdlib = {
             "__future__", "argparse", "datetime", "hmac", "html", "http", "io",
@@ -306,12 +307,18 @@ class TestIntentCreate(_ServerCase):
             "project_slug": "TEST-PROJECT",
             "tag": "NEW-TASK",
             "title": "A new task",
+            "description": "Some context\nsecond line",
         })
         self.assertEqual(r.status, 201)
         data = json.loads(r.read())
         self.assertIn("path", data)
-        intent_file = FIXTURE_VAULT / "01-Proyectos-Activos" / "TEST-PROJECT" / "NEW-TASK.md"
+        intent_file = FIXTURE_VAULT / "01-Active-Projects" / "TEST-PROJECT" / "NEW-TASK.md"
         self.assertTrue(intent_file.is_file(), "intent file should have been written")
+        text = intent_file.read_text(encoding="utf-8")
+        self.assertIn("# NEW-TASK — A new task", text)
+        self.assertNotIn("<short title>", text)
+        self.assertNotIn("<Título corto>", text)
+        self.assertIn("> Some context\n> second line", text)
         intent_file.unlink()
 
     def test_404_for_unknown_project(self):

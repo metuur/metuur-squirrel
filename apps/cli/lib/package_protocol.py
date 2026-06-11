@@ -80,6 +80,13 @@ def compute_payload_hash(files: list[dict]) -> str:
 # Generation
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Scope parts (TAG or the PROJECT half of PROJECT:kind) feed rglob patterns
+# and path joins — same defended shape as reminder_writer's note_id check.
+_SCOPE_PART_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+_VALID_KINDS = {"*", "research", "decisions"}
+
+
 # @spec SYNC-002
 def collect_files_by_scope(vault_path: Path, scope: str) -> list[dict]:
     """
@@ -87,19 +94,24 @@ def collect_files_by_scope(vault_path: Path, scope: str) -> list[dict]:
 
     Scopes:
         TAG                       — single file matching <TAG>.md
-        PROJECT:*                 — all files in 01-Proyectos-Activos/<PROJECT>/
+        PROJECT:*                 — all files in 01-Active-Projects/<PROJECT>/
         PROJECT:research          — files with `tipo: research` in project folder
         PROJECT:decisions         — files with `tipo: decision` in project folder
     """
     files = []
+    vault_resolved = vault_path.resolve()
 
     if ":" in scope:
         project, kind = scope.split(":", 1)
+        if not _SCOPE_PART_RE.match(project) or kind not in _VALID_KINDS:
+            return []
     else:
         # Treat as a single TAG
         # Find the file by name
+        if not _SCOPE_PART_RE.match(scope):
+            return []
         for p in vault_path.rglob(f"{scope}.md"):
-            if vault_path in p.parents or p.parent == vault_path:
+            if p.resolve().is_relative_to(vault_resolved):
                 files.append({
                     "target_path": str(p.relative_to(vault_path)),
                     "operation": "create",
@@ -110,7 +122,7 @@ def collect_files_by_scope(vault_path: Path, scope: str) -> list[dict]:
                 })
         return files
 
-    project_dir = vault_path / "01-Proyectos-Activos" / project
+    project_dir = vault_path / "01-Active-Projects" / project
     if not project_dir.exists():
         # Try in areas
         project_dir = vault_path / "03-Areas"

@@ -75,6 +75,17 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_notifications_item_day
           ON notifications(item_id, date(fired_at));
+
+        CREATE TABLE IF NOT EXISTS post_it_layout (
+          vault       TEXT NOT NULL,
+          post_it_id  TEXT NOT NULL,
+          x           REAL NOT NULL,
+          y           REAL NOT NULL,
+          rotation    REAL NOT NULL,
+          z           INTEGER NOT NULL DEFAULT 0,
+          updated_at  TEXT NOT NULL,
+          PRIMARY KEY (vault, post_it_id)
+        );
     """)
     # Additive migration: focus_picks.note (idempotent — ignore "duplicate column").
     try:

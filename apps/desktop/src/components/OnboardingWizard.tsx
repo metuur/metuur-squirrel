@@ -2,13 +2,17 @@
 // Steps: welcome → obsidian → vault → done. Config only: checks Obsidian,
 // picks/creates a vault folder, and writes it to ~/.squirrel/config.toml via
 // the backend. Binaries/launchd/agent-pack remain the installer's job.
+// The final "done" step also surfaces recommended OS setup: notification
+// permission and launch-at-login.
 
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { api, type ObsidianStatus } from "../api/client";
+import { api, openWebUrl, type ObsidianStatus } from "../api/client";
 import { markOnboardingDone } from "../lib/onboarding";
+import { ackSetupNudge } from "../lib/setupNudge";
+import { RecommendedSetup } from "./RecommendedSetup";
 
 const OBSIDIAN_DOWNLOAD = "https://obsidian.md/download";
 const DEFAULT_VAULT = "~/squirrel-vault";
@@ -97,6 +101,9 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
 
   const finish = async () => {
     await markOnboardingDone();
+    // Stamp the current version as setup-acknowledged so the post-update nudge
+    // doesn't immediately re-show the same card right after onboarding.
+    await ackSetupNudge();
     onComplete();
   };
 
@@ -139,6 +146,9 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                 <div className="flex gap-2">
                   <button type="button" className="btn" onClick={checkObsidian}>
                     Re-check
+                  </button>
+                  <button type="button" className="btn" onClick={() => void openWebUrl("/guide")}>
+                    Open guide
                   </button>
                 </div>
               </div>
@@ -224,7 +234,18 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               </span>
             </label>
 
-            {error && <p className="text-[13px]" style={{ color: "var(--danger, #c0392b)" }}>{error}</p>}
+            {error && (
+              <div className="flex flex-col gap-1">
+                <p className="text-[13px]" style={{ color: "var(--danger, #c0392b)" }}>{error}</p>
+                <button
+                  type="button"
+                  className="self-start text-[12px] underline text-ink-3 hover:text-ink-1"
+                  onClick={() => void openWebUrl("/guide")}
+                >
+                  Open the guide for help
+                </button>
+              </div>
+            )}
 
             <div className="flex justify-between">
               <button type="button" className="btn" onClick={() => setStep("obsidian")}>
@@ -249,6 +270,31 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               <div>Vault: <span className="tabular">{savedPath}</span></div>
               <div className="text-ink-4">{savedName}</div>
             </div>
+
+            <div className="flex flex-col gap-1 text-[13px]">
+              <span>Already have notes in Obsidian? Ask your coding agent to migrate them:</span>
+              <code className="w-fit rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[12px] text-ink-1 select-all">
+                /sq-migrate-vault ~/path/to/your-obsidian-vault
+              </code>
+              <span className="text-ink-4 text-[11px]">
+                Shows a dry-run plan first — your original vault is never modified.
+              </span>
+            </div>
+
+            <RecommendedSetup />
+
+            <p className="text-[13px] text-ink-3">
+              New to Squirrel?{" "}
+              <button
+                type="button"
+                className="underline hover:text-ink-1"
+                onClick={() => void openWebUrl("/guide")}
+              >
+                Open the guide
+              </button>{" "}
+              to learn how it works.
+            </p>
+
             <div className="flex justify-end">
               <button type="button" className="btn" onClick={() => void finish()}>
                 Launch Squirrel

@@ -13,7 +13,7 @@ TABLE WITHOUT ID
   project AS Project,
   file.mtime AS "Last Touched",
   deadline AS Deadline
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "in-progress"
 SORT file.mtime DESC
 ```
@@ -26,7 +26,7 @@ TABLE WITHOUT ID
   project AS Project,
   status AS Status,
   file.mtime AS Modified
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE file.mtime >= date(today) - dur(7 days)
 SORT file.mtime DESC
 LIMIT 15
@@ -39,7 +39,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   project AS Project,
   file.mtime AS "Last Modified"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "blocked"
 SORT file.mtime DESC
 ```
@@ -52,7 +52,7 @@ TABLE WITHOUT ID
   project AS Project,
   file.mtime AS "Last Modified",
   deadline AS Deadline
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE (status = "in-progress")
   AND file.mtime < date(today) - dur(7 days)
 SORT file.mtime ASC
@@ -66,7 +66,7 @@ TABLE WITHOUT ID
   length(filter(rows, (r) => r.status = "done")) AS Done,
   length(filter(rows, (r) => r.status = "in-progress")) AS Active,
   length(filter(rows, (r) => r.status = "pending")) AS Pending
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE project != null
 GROUP BY project
 SORT length(filter(rows, (r) => r.status = "in-progress")) DESC

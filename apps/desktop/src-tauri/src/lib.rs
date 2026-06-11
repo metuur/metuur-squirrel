@@ -1,6 +1,7 @@
 mod backend_supervisor;
 mod deep_link;
 mod logging;
+mod notif_identity;
 mod tray;
 mod tray_alerts;
 
@@ -37,6 +38,22 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 fn runtime_token(state: tauri::State<RuntimeToken>) -> String {
     state.0.clone()
+}
+
+/// Query the current backend-trust state so the webview can show the handshake
+/// recovery banner on mount even if it missed the one-shot `handshake-refused`
+/// event (which fires during early startup, before React registers listeners).
+/// Returns the typed cause string when adoption was refused, else `None`.
+#[cfg(desktop)]
+#[tauri::command]
+fn handshake_state(app: tauri::AppHandle) -> Option<String> {
+    backend_supervisor::current_refusal_cause(&app).map(str::to_string)
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+fn handshake_state() -> Option<String> {
+    None
 }
 
 /// Apply the squirrel dock icon via NSApplication.
@@ -115,6 +132,13 @@ pub fn run() {
             #[cfg(desktop)]
             tray::setup(app.handle())?;
 
+            // notification-icon-branding R-1.1–R-1.5: one-shot that warms the
+            // macOS notification identity so the daemon's `-sender` is honored.
+            // Best-effort and idempotent (sentinel-gated); must never block
+            // startup, so it runs alongside tray::setup before the supervisor.
+            #[cfg(desktop)]
+            notif_identity::bootstrap_once(app.handle());
+
             // R-9.1/R-9.2/R-9.6: decide backend lifecycle BEFORE the tray
             // poller starts. spawn_or_adopt picks Managed (we spawned the
             // sidecar) or Adopted (something else owns port 3939) or
@@ -128,7 +152,7 @@ pub fn run() {
                 {
                     use std::sync::Mutex as StdMutex;
                     let state = handle.state::<StdMutex<backend_supervisor::SupervisorState>>();
-                    let mut s = state.lock().unwrap();
+                    let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
                     s.mode = mode;
                     s.child = child;
                 }
@@ -244,7 +268,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             drain_pending_deep_link,
-            runtime_token
+            runtime_token,
+            handshake_state
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

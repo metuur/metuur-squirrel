@@ -14,9 +14,9 @@ import { api } from "../api/client";
 const mockOpenUrl = vi.mocked(openUrl);
 const mockMe = vi.mocked(api.me);
 
-function meWith(name: string) {
+function meWith(name: string, path = "/x") {
   return {
-    active_workspace: { name, path: "/x", default: true },
+    active_workspace: { name, path, default: true },
     workspaces: [],
     multi_vault: false,
     theme: "auto",
@@ -30,13 +30,17 @@ describe("OpenVaultButton", () => {
     mockMe.mockReset();
   });
 
-  it("opens the configured vault name from /api/me, not a hardcoded one (R-4.1)", async () => {
-    mockMe.mockResolvedValue(meWith("mine"));
+  it("opens the configured vault by path from /api/me, not a hardcoded one (R-4.1)", async () => {
+    mockMe.mockResolvedValue(meWith("mine", "/Users/me/my vault"));
     render(<OpenVaultButton />);
     const btn = await screen.findByRole("button", { name: /Open Vault/ });
     await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(false));
     await userEvent.click(btn);
-    expect(mockOpenUrl).toHaveBeenCalledWith("obsidian://open?vault=mine");
+    // path, not vault name: Obsidian registers vaults under their folder name,
+    // which can differ from squirrel's configured name.
+    expect(mockOpenUrl).toHaveBeenCalledWith(
+      "obsidian://open?path=%2FUsers%2Fme%2Fmy%20vault",
+    );
   });
 
   it("disables the button when /api/me 503s with no vault (R-4.3/R-4.4)", async () => {

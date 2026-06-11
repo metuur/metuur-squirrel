@@ -78,7 +78,7 @@ Manual Focus Pick — touched components only
 4. User clicks an intent → modal `PUT /api/focus/today` with `{project_slug, intent_slug}`.
 5. Server calls `focus_picker.set_manual_focus(vault, "today", slug, intent)`:
    1. Computes `token = "2026-05-28"`.
-   2. Walks `vault/01-Proyectos-Activos/*/`, reads each intent file's frontmatter, strips any `focus_today` key whose value matches today's token (lazy cleanup). Stale tokens (different date) are left alone in this pass — they'll get pruned the next time *that* file is written to.
+   2. Walks `vault/01-Active-Projects/*/`, reads each intent file's frontmatter, strips any `focus_today` key whose value matches today's token (lazy cleanup). Stale tokens (different date) are left alone in this pass — they'll get pruned the next time *that* file is written to.
    3. Writes `focus_today: 2026-05-28` into the target intent file's frontmatter.
 6. Server returns the new `{ today: {...}, week: {...} }` object.
 7. `useHome()` refetches `/api/home`; widget re-renders with the pill populated.

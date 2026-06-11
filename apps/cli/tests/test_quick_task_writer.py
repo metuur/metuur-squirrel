@@ -21,7 +21,7 @@ from quick_task_scanner import scan_quick_tasks
 
 
 def _sp(vault: Path) -> Path:
-    return vault / "01-Proyectos-Activos" / "SCRATCH-PAD"
+    return vault / "01-Active-Projects" / "SCRATCH-PAD"
 
 
 def test_create_writes_file_with_expected_frontmatter(tmp_path):

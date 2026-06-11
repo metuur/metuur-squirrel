@@ -76,6 +76,41 @@ export interface Me {
   /** True when the backend runs without token auth (local/dev). */
   dev?: boolean;
 }
+
+// ── Vault recovery ─────────────────────────────────────────────────────────
+// When a vault is configured but its directory is missing / empty / not yet a
+// Squirrel vault, the backend answers /api/me with 409 (or 503 for NO_VAULT)
+// whose JSON body carries a machine-readable `code` so the UI can guide setup.
+export type VaultRecoveryCode =
+  | 'NO_VAULT'
+  | 'VAULT_MISSING'
+  | 'VAULT_EMPTY'
+  | 'VAULT_UNSTRUCTURED';
+
+export interface VaultRecoveryPayload {
+  error: string;
+  code: VaultRecoveryCode;
+  vault?: { name: string; path: string };
+  vault_status?: 'missing' | 'empty' | 'unstructured';
+  migrate_command?: string;
+}
+
+/** Narrow an unknown error to a vault-recovery payload, or null. */
+export function asVaultRecovery(err: unknown): VaultRecoveryPayload | null {
+  if (!(err instanceof ApiError)) return null;
+  const p = err.payload as Partial<VaultRecoveryPayload> | undefined;
+  const code = p?.code;
+  if (
+    code === 'NO_VAULT' ||
+    code === 'VAULT_MISSING' ||
+    code === 'VAULT_EMPTY' ||
+    code === 'VAULT_UNSTRUCTURED'
+  ) {
+    return p as VaultRecoveryPayload;
+  }
+  return null;
+}
+
 export interface FocusItem {
   slug: string;
   title: string;
@@ -299,6 +334,25 @@ export interface NotificationsPayload {
   total_count: number;
 }
 
+export interface PostItLayout {
+  x: number;
+  y: number;
+  rotation: number;
+  z: number;
+}
+
+export interface PostIt {
+  id: string;
+  text: string;
+  color: string;
+  label: string;
+  pinned: boolean;
+  state: string;
+  created: string | null;
+  converted_to: string;
+  layout: PostItLayout | null;
+}
+
 export interface QuickTask {
   id: string;
   text: string;
@@ -326,6 +380,13 @@ export const api = {
     call<{ success: true; slug: string; deadline: string | null; delivered: boolean }>(
       `/projects/${slug}/status`,
       { method: 'PATCH', body: JSON.stringify(body) },
+    ),
+  // Push any item's deadline out (defer / snooze) so it leaves the computed
+  // PRESSING lane. Works for notes, tasks, and projects alike.
+  itemDefer: (id: string, until: string) =>
+    call<{ success: true; id: string; deadline: string }>(
+      `/item/${encodeURIComponent(id)}/defer`,
+      { method: 'PATCH', body: JSON.stringify({ until }) },
     ),
   projectSave: (slug: string, body: string, mtime: number) =>
     call<SaveResult>(`/projects/${slug}`, {
@@ -405,6 +466,35 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ until }),
     }),
+  postItsList: (includeArchived = false) =>
+    call<PostIt[]>(`/post-its${includeArchived ? "?include=archived" : ""}`),
+  postItCreate: (payload: { text: string; color?: string; label?: string }) =>
+    call<PostIt>("/post-its", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  postItUpdateLayout: (id: string, layout: { x: number; y: number; rotation: number; z?: number }) =>
+    call<{ success: boolean }>(`/post-it/${id}/layout`, {
+      method: "PATCH",
+      body: JSON.stringify(layout),
+    }),
+  postItUpdate: (id: string, fields: Partial<{ text: string; color: string; label: string; pinned: boolean }>) =>
+    call<{ success: boolean }>(`/post-it/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(fields),
+    }),
+  postItArchive: (id: string) =>
+    call<{ success: boolean }>(`/post-it/${id}/archive`, { method: "PATCH" }),
+  postItRestore: (id: string) =>
+    call<{ success: boolean }>(`/post-it/${id}/restore`, { method: "PATCH" }),
+  postItDelete: (id: string) =>
+    call<{ success: boolean }>(`/post-it/${id}`, { method: "DELETE" }),
+  postItConvert: (id: string, target: string, projectSlug?: string) =>
+    call<{ success: boolean; ref: string }>(`/post-it/${id}/convert`, {
+      method: "POST",
+      body: JSON.stringify({ target, project_slug: projectSlug }),
+    }),
+  projectsList: () => call<{ slug: string; name: string }[]>("/projects"),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>
@@ -414,6 +504,13 @@ export const api = {
     call<{ success: true; name: string }>('/vault', {
       method: 'POST',
       body: JSON.stringify({ name }),
+    }),
+  // Set/repair the default vault in config.toml. `create: true` makes the folder
+  // (and scaffolds the Squirrel structure) when it's missing or empty.
+  setVaultConfig: (body: { name?: string; path: string; create?: boolean }) =>
+    call<{ name: string; path: string; default: boolean }>('/config/vault', {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
   setTheme: (theme: 'auto' | 'light' | 'dark') =>
     call<{ success: true; theme: string }>('/theme', {

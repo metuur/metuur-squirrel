@@ -7,7 +7,7 @@ allowed-tools: [Read, Glob, Grep]
 
 Generates a brief for the `$ARGUMENTS` project (or the active project).
 
-Invokes the `squirrel:brief` skill, which produces the 6 sections:
+Invokes the `squirrel-brief` skill, which produces the 6 sections:
 1. 🎯 What I'm doing (NOW)
 2. ✅ What I've already done (DONE)
 3. 🎬 What's left (NEXT)

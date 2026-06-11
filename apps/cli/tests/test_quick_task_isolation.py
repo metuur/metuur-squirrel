@@ -19,7 +19,7 @@ from reminder_scanner import scan_vault_reminders
 
 
 def _scratch_page(vault: Path) -> Path:
-    return vault / "01-Proyectos-Activos" / "SCRATCH-PAD" / "SCRATCH-PAD.md"
+    return vault / "01-Active-Projects" / "SCRATCH-PAD" / "SCRATCH-PAD.md"
 
 
 def _make_vault(tmp_path: Path) -> Path:

@@ -6,7 +6,7 @@ Stores the user's manual focus as a single frontmatter key on the chosen intent
 file (`focus_today` or `focus_week`). Expiry is read-time only: a YAML value
 that does not match the current token is treated as unset. The single-pick
 invariant (R-2.1 / R-2.2) is enforced by a strip-before-write pass that scans
-intent files under `01-Proyectos-Activos/*/` and removes any entry whose value
+intent files under `01-Active-Projects/*/` and removes any entry whose value
 equals the CURRENT token (stale entries are left alone — R-2.5).
 
 Public API:
@@ -26,6 +26,7 @@ from using local-wall-clock by default.
 from __future__ import annotations
 
 import datetime
+import logging
 import re
 import sys
 from pathlib import Path
@@ -43,6 +44,8 @@ try:
     _HAS_DB = True
 except ImportError:
     _HAS_DB = False
+
+_log = logging.getLogger("focus_picker")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,7 +126,7 @@ def _sanitize_note(note: Optional[str]) -> Optional[str]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _iter_intent_paths(vault: Path):
-    """Yield every intent .md path under 01-Proyectos-Activos/*/."""
+    """Yield every intent .md path under 01-Active-Projects/*/."""
     projects = find_projects(vault).get("wip", [])
     for project_md in projects:
         for intent_md in find_intents_for_project(project_md):
@@ -145,7 +148,8 @@ def get_manual_focus(vault: Path, now: Optional[datetime.datetime] = None) -> di
     for project_md, intent_path in _iter_intent_paths(vault):
         try:
             intent = parse_intent(intent_path)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", intent_path, exc)
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get("focus_today") == today_token:
@@ -244,7 +248,7 @@ def set_manual_focus(
     R-2.3: the OTHER slot's key is never touched.
     R-1.8: all I/O stays inside `vault`.
     """
-    target = vault / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+    target = vault / "01-Active-Projects" / project_slug / f"{intent_slug}.md"
     if not target.is_file():
         raise IntentNotFound(project_slug, intent_slug)
 
@@ -257,7 +261,8 @@ def set_manual_focus(
     for _project_md, intent_path in _iter_intent_paths(vault):
         try:
             intent = parse_intent(intent_path)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", intent_path, exc)
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:
@@ -303,7 +308,8 @@ def clear_manual_focus(
     for _project_md, intent_path in _iter_intent_paths(vault):
         try:
             intent = parse_intent(intent_path)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", intent_path, exc)
             continue
         fm = intent.get("frontmatter", {}) or {}
         if fm.get(key) == token:

@@ -112,7 +112,7 @@ class TestSqInitFirstTimeFlowPreserved(unittest.TestCase):
         text = _read()
         # The original flow ensures vault PARA folders exist
         self.assertIn(
-            "01-Proyectos-Activos",
+            "01-Active-Projects",
             text,
             "sq-init.md must still create vault PARA structure on first-time init",
         )

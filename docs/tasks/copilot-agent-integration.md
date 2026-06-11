@@ -101,7 +101,7 @@ Mutex tags:
     - Wire `_copy_skill_for_copilot` from 3.1 to call this helper after reading the source body, before writing the destination.
   - verify:
     - Open `~/.copilot/agents/squirrel-session-start.agent.md` and confirm it starts with a `---` block containing the Copilot fields, followed by the original SKILL.md body.
-    - `diff agent-pack/skills/session-start/SKILL.md ~/.claude/plugins/squirrel/skills/session-start/SKILL.md` → empty (canonical untouched).
+    - `diff agent-pack/skills/squirrel-session-start/SKILL.md ~/.claude/plugins/squirrel/skills/squirrel-session-start/SKILL.md` → empty (canonical untouched).
     - Manual sanity: open VS Code in the install-copilot-flow workspace, run `@<skill-name>` from Copilot Chat — the agent is recognised (loading error means the schema/frontmatter is off; rewrite template and re-run).
   - skip TDD; verify block is the test (config/template story).
 

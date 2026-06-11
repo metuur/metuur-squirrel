@@ -19,8 +19,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-const BACKEND_ORIGIN: &str = "http://127.0.0.1:3939";
-const BACKEND_HOME: &str = "http://127.0.0.1:3939/api/home";
+// Single source of truth for the backend origin (build-time overridable to :3940
+// for the dev build — see tray::BACKEND_ORIGIN). BACKEND_HOME is derived from it
+// at its one call site rather than duplicating the literal.
+use crate::tray::BACKEND_ORIGIN;
 const POLL_INTERVAL: Duration = Duration::from_secs(30);
 // Cap the exponential backoff applied while the backend is unreachable.
 // 30s → 60s → 120s → 240s → 300s; resets to POLL_INTERVAL on first success.
@@ -34,6 +36,12 @@ const ITEM_COOLDOWN: Duration = Duration::from_secs(3600);
 const MAX_DIALOGS_PER_DAY: u32 = 8;
 const BREAK_REMINDER_INTERVAL: Duration = Duration::from_secs(30 * 60);
 const BREAK_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
+/// Rows older than this are pruned from the `notifications` table at startup;
+/// without it the table grows unbounded (per-day dedup only ever adds rows).
+const NOTIF_RETENTION_DAYS: u32 = 90;
+/// Upper bound on any backend JSON body before deserialization. The backend
+/// is trusted but local bugs shouldn't hand the tray a multi-MB allocation.
+const MAX_JSON_BYTES: usize = 2 * 1024 * 1024;
 
 pub(crate) struct TauriNotificationState {
     last_notified: HashMap<String, Instant>,
@@ -131,7 +139,22 @@ fn open_cached_notif_conn(db_path: &Path) -> rusqlite::Result<rusqlite::Connecti
          PRAGMA synchronous=NORMAL;",
     )?;
     init_notif_schema(&conn)?;
+    prune_old_notifications(&conn)?;
     Ok(conn)
+}
+
+/// Delete notification rows older than NOTIF_RETENTION_DAYS. `date()` is used
+/// on both sides because `fired_at` is ISO with a `T` separator, which does
+/// not compare lexicographically against SQLite's space-separated `now`.
+fn prune_old_notifications(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    let deleted = conn.execute(
+        "DELETE FROM notifications WHERE date(fired_at) < date('now', ?)",
+        [format!("-{NOTIF_RETENTION_DAYS} days")],
+    )?;
+    if deleted > 0 {
+        tracing::info!(deleted, "tray-alerts: pruned old notifications");
+    }
+    Ok(())
 }
 
 // ── Story 2.1: notification settings ─────────────────────────────────────────
@@ -187,6 +210,49 @@ struct MeResponse {
     notifications: Option<MeNotifSection>,
 }
 
+/// Error type for the capped fetch helpers. `reqwest::Error` cannot be
+/// fabricated, so size-bound violations need their own variant.
+#[derive(Debug)]
+enum FetchError {
+    Http(reqwest::Error),
+    TooLarge(u64),
+    Decode(serde_json::Error),
+}
+
+impl std::fmt::Display for FetchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FetchError::Http(e) => write!(f, "{e}"),
+            FetchError::TooLarge(n) => write!(f, "response body too large: {n} bytes"),
+            FetchError::Decode(e) => write!(f, "invalid JSON: {e}"),
+        }
+    }
+}
+
+impl From<reqwest::Error> for FetchError {
+    fn from(e: reqwest::Error) -> Self {
+        FetchError::Http(e)
+    }
+}
+
+/// Deserialize a response body, refusing anything over MAX_JSON_BYTES.
+/// Content-Length is checked first (the backend always sets it) and the read
+/// bytes are re-checked because the header is advisory.
+async fn json_capped<T: serde::de::DeserializeOwned>(
+    resp: reqwest::Response,
+) -> Result<T, FetchError> {
+    if let Some(len) = resp.content_length() {
+        if len > MAX_JSON_BYTES as u64 {
+            return Err(FetchError::TooLarge(len));
+        }
+    }
+    let bytes = resp.bytes().await?;
+    if bytes.len() > MAX_JSON_BYTES {
+        return Err(FetchError::TooLarge(bytes.len() as u64));
+    }
+    serde_json::from_slice(&bytes).map_err(FetchError::Decode)
+}
+
 async fn fetch_notif_settings(client: &reqwest::Client) -> NotifSettings {
     let resp = client
         .get(format!("{}/api/me", BACKEND_ORIGIN))
@@ -195,8 +261,7 @@ async fn fetch_notif_settings(client: &reqwest::Client) -> NotifSettings {
         .await;
     match resp {
         Ok(r) => match r.error_for_status() {
-            Ok(r) => r
-                .json::<MeResponse>()
+            Ok(r) => json_capped::<MeResponse>(r)
                 .await
                 .ok()
                 .and_then(|me| me.notifications)
@@ -433,16 +498,20 @@ pub struct QuickTaskItem {
     pub text: String,
 }
 
+/// Truncate to at most `max` chars, appending `…` when shortened. Tray menu
+/// labels come from user-authored vault titles with no inherent size bound.
+fn truncate_chars(s: &str, max: usize) -> String {
+    if s.chars().count() > max {
+        format!("{}…", s.chars().take(max - 1).collect::<String>())
+    } else {
+        s.to_string()
+    }
+}
+
 impl QuickTaskItem {
     /// Compact single-line tray/notification label, e.g. "⚡ Reply to Ana".
     pub fn menu_label(&self) -> String {
-        let t = self.text.trim();
-        let short: String = if t.chars().count() > 48 {
-            format!("{}…", t.chars().take(47).collect::<String>())
-        } else {
-            t.to_string()
-        };
-        format!("⚡ {}", short)
+        format!("⚡ {}", truncate_chars(self.text.trim(), 48))
     }
 }
 
@@ -502,12 +571,12 @@ fn focus_plan_label(body: &serde_json::Value) -> Option<String> {
         if slot.is_null() {
             return None;
         }
-        let project = slot["project_title"].as_str().unwrap_or("").trim();
-        let intent = slot["intent_title"].as_str().unwrap_or("").trim();
+        let project = truncate_chars(slot["project_title"].as_str().unwrap_or("").trim(), 48);
+        let intent = truncate_chars(slot["intent_title"].as_str().unwrap_or("").trim(), 48);
         match (project.is_empty(), intent.is_empty()) {
             (false, false) => Some(format!("{project} · {intent}")),
-            (false, true) => Some(project.to_string()),
-            (true, false) => Some(intent.to_string()),
+            (false, true) => Some(project),
+            (true, false) => Some(intent),
             (true, true) => None,
         }
     }
@@ -520,15 +589,14 @@ fn focus_plan_label(body: &serde_json::Value) -> Option<String> {
     }
 }
 
-async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, reqwest::Error> {
-    let mut resp = client
+async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, FetchError> {
+    let resp = client
         .get("http://127.0.0.1:3939/api/reminders")
         .timeout(REQUEST_TIMEOUT)
         .send()
         .await?
-        .error_for_status()?
-        .json::<RemindersResponse>()
-        .await?;
+        .error_for_status()?;
+    let mut resp = json_capped::<RemindersResponse>(resp).await?;
     for r in resp.approaching.iter_mut().chain(resp.active.iter_mut()) {
         r.item_url = format!("{}/notes/{}", BACKEND_ORIGIN, r.id);
     }
@@ -537,24 +605,59 @@ async fn fetch_reminders(client: &reqwest::Client) -> Result<RemindersResponse, 
 
 async fn fetch_pressing(
     client: &reqwest::Client,
-) -> Result<(Vec<Alert>, bool, QuickTasksSummary), reqwest::Error> {
+) -> Result<(Vec<Alert>, bool, QuickTasksSummary), FetchError> {
     let resp = client
-        .get(BACKEND_HOME)
+        .get(format!("{BACKEND_ORIGIN}/api/home"))
         .timeout(REQUEST_TIMEOUT)
         .send()
         .await?
-        .error_for_status()?
-        .json::<HomeResponse>()
-        .await?;
+        .error_for_status()?;
+    let resp = json_capped::<HomeResponse>(resp).await?;
     let journal_due = resp.journal.due;
     let quick_tasks = resp.quick_tasks;
     let alerts = resp.pressing.into_iter().take(MAX_ALERTS).collect();
     Ok((alerts, journal_due, quick_tasks))
 }
 
-// R-3.1–R-3.6: Apply all guards and return at most 3 qualifying candidates.
-// Mutates `state` for date rollover only; does NOT update last_check_at.
-fn select_candidates<'a>(state: &mut TauriNotificationState, alerts: &'a [Alert]) -> Vec<&'a Alert> {
+/// A notification fully reserved against the daily cap and ready to show.
+/// All state mutations (id assignment, pending_clicks, last_notified,
+/// dialogs_today) happened at reservation time, so `.show()` can run outside
+/// the state lock.
+#[derive(Debug)]
+struct PlannedNotification {
+    id: i32,
+    /// The alert/reminder/journal item id — used only for logging.
+    item_key: String,
+    kind: PlannedKind,
+    title: String,
+    body: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlannedKind {
+    Pressing,
+    Reminder,
+    Journal,
+}
+
+/// Fixed item id for the recurring journal check-in. Reuses the per-item
+/// cooldown machinery (ITEM_COOLDOWN) so a single "due" window doesn't spam.
+const JOURNAL_ITEM_ID: &str = "MIND-JOURNAL-CHECKIN";
+
+// R-3.1–R-3.6 + R-4.2/R-4.3: apply all guards and RESERVE every accepted
+// notification under one `&mut` borrow — id assigned, pending click stored,
+// cooldown stamped, and dialogs_today incremented before anything is shown.
+// This closes the R-3.3 race where the lock was released between candidate
+// selection and send, letting concurrent phases exceed the daily cap.
+// Reserve-at-selection means a failed `.show()` wastes one cap slot and one
+// cooldown window — acceptable for a single user, and it prevents a failing
+// notifier from retrying every cycle.
+fn reserve_notifications(
+    state: &mut TauriNotificationState,
+    alerts: &[Alert],
+    reminders: &[ReminderAlert],
+    journal_due: bool,
+) -> Vec<PlannedNotification> {
     // R-1.2: interval guard
     if state.last_check_at.elapsed() < NOTIF_INTERVAL {
         return vec![];
@@ -567,203 +670,136 @@ fn select_candidates<'a>(state: &mut TauriNotificationState, alerts: &'a [Alert]
         state.dialogs_date = today;
     }
 
-    // R-3.3: daily cap
-    if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
-        return vec![];
+    let mut planned: Vec<PlannedNotification> = Vec::new();
+
+    let cooldown_ok = |state: &TauriNotificationState, key: &str| {
+        state
+            .last_notified
+            .get(key)
+            .is_none_or(|t| t.elapsed() >= ITEM_COOLDOWN)
+    };
+
+    // R-3.5, R-3.6: pressing — per-item cooldown, at most 3
+    let pressing: Vec<&Alert> = alerts
+        .iter()
+        .filter(|a| cooldown_ok(state, &a.id))
+        .take(3)
+        .collect();
+    for alert in pressing {
+        if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
+            return planned;
+        }
+        let id = state.next_id;
+        state.next_id += 1;
+        let url = format!("{}/notes/{}", BACKEND_ORIGIN, alert.id);
+        state.pending_clicks.insert(id, url);
+        state.last_notified.insert(alert.id.clone(), Instant::now());
+        state.dialogs_today += 1;
+        planned.push(PlannedNotification {
+            id,
+            item_key: alert.id.clone(),
+            kind: PlannedKind::Pressing,
+            title: format!("⏰ squirrel: {}", alert.id),
+            body: alert.menu_label(),
+        });
     }
 
-    // R-3.5, R-3.6: per-item cooldown + cap at 3
-    alerts
+    // R-4.3: active reminders — same guards
+    let reminder_cands: Vec<&ReminderAlert> = reminders
         .iter()
-        .filter(|a| {
-            state
-                .last_notified
-                .get(&a.id)
-                .map_or(true, |t| t.elapsed() >= ITEM_COOLDOWN)
-        })
+        .filter(|r| cooldown_ok(state, &r.id))
         .take(3)
-        .collect()
-}
+        .collect();
+    for reminder in reminder_cands {
+        if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
+            return planned;
+        }
+        let id = state.next_id;
+        state.next_id += 1;
+        let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder.id);
+        state.pending_clicks.insert(id, url);
+        state.last_notified.insert(reminder.id.clone(), Instant::now());
+        state.dialogs_today += 1;
+        planned.push(PlannedNotification {
+            id,
+            item_key: reminder.id.clone(),
+            kind: PlannedKind::Reminder,
+            title: format!("📅 squirrel: {}", reminder.id),
+            body: reminder.menu_label(),
+        });
+    }
 
-// Selects reminder_active candidates that pass per-item cooldown.
-// Called after select_candidates (which owns the interval guard and date rollover).
-fn select_reminder_candidates<'a>(
-    state: &TauriNotificationState,
-    reminders: &'a [ReminderAlert],
-) -> Vec<&'a ReminderAlert> {
-    if state.last_check_at.elapsed() < NOTIF_INTERVAL {
-        return vec![];
+    // R-4.2: Mind Journal check-in. `journal_due` is already false outside the
+    // waking window (computed server-side), satisfying R-4.3. No pending click
+    // — journaling is done in-app via the brain button / tray item.
+    if journal_due
+        && state.dialogs_today < MAX_DIALOGS_PER_DAY
+        && cooldown_ok(state, JOURNAL_ITEM_ID)
+    {
+        let id = state.next_id;
+        state.next_id += 1;
+        state
+            .last_notified
+            .insert(JOURNAL_ITEM_ID.to_string(), Instant::now());
+        state.dialogs_today += 1;
+        planned.push(PlannedNotification {
+            id,
+            item_key: JOURNAL_ITEM_ID.to_string(),
+            kind: PlannedKind::Journal,
+            title: "🧠 squirrel: Mind Journal".to_string(),
+            body: "What is your mind thinking right now? What are you doing right now?"
+                .to_string(),
+        });
     }
-    if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
-        return vec![];
-    }
-    reminders
-        .iter()
-        .filter(|r| {
-            state
-                .last_notified
-                .get(&r.id)
-                .map_or(true, |t| t.elapsed() >= ITEM_COOLDOWN)
-        })
-        .take(3)
-        .collect()
+
+    planned
 }
 
 // R-1.1 + R-4.3: called every tick from `start_polling`. Sends at most 3 native banners
-// (pressing + reminder_active combined) when guards pass, then updates `last_check_at`.
+// per class (pressing + reminder_active + journal, bounded by the daily cap) when
+// guards pass, then updates `last_check_at`.
 // R-4.4: reminder_approaching items are NOT passed here — tray only.
 fn check_notifications<R: Runtime>(app: &AppHandle<R>, alerts: &[Alert], reminder_active: &[ReminderAlert], journal_due: bool) {
     use tauri_plugin_notification::NotificationExt;
 
-    // Fixed item id for the recurring journal check-in. Reuses the per-item
-    // cooldown machinery (ITEM_COOLDOWN) so a single "due" window doesn't spam.
-    const JOURNAL_ITEM_ID: &str = "MIND-JOURNAL-CHECKIN";
-
     let state_ref = app.state::<Mutex<TauriNotificationState>>();
 
-    // Phase 1: pressing candidates (owns interval guard + date rollover)
-    let candidates: Vec<Alert> = {
+    // Select AND reserve under one lock (R-3.3 cap is enforced atomically),
+    // then show outside the lock so a slow notification daemon can't block
+    // other state users.
+    let planned = {
         let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-        select_candidates(&mut state, alerts)
-            .into_iter()
-            .cloned()
-            .collect()
+        let planned = reserve_notifications(&mut state, alerts, reminder_active, journal_due);
+        // Always update last_check_at after the guards ran (even if 0 reserved).
+        state.last_check_at = Instant::now();
+        planned
     };
 
-    // Phase 1b: reminder_active candidates (same NOTIF_INTERVAL / ITEM_COOLDOWN / daily cap)
-    let reminder_cands: Vec<ReminderAlert> = {
-        let state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-        select_reminder_candidates(&state, reminder_active)
-            .into_iter()
-            .cloned()
-            .collect()
-    };
-
-    // Phase 2: send pressing notifications
-    for alert in &candidates {
-        let (id, task_url) = {
-            let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-            let id = state.next_id;
-            state.next_id += 1;
-            let url = format!("{}/notes/{}", BACKEND_ORIGIN, alert.id);
-            state.pending_clicks.insert(id, url.clone());
-            (id, url)
-        };
-
-        let title = format!("⏰ squirrel: {}", alert.id);
-        let body = alert.menu_label();
-
-        // extra data carries taskUrl so the React onAction handler can open it.
-        let mut extra = std::collections::HashMap::new();
-        extra.insert("taskUrl".to_string(), serde_json::json!(task_url));
-
+    for n in &planned {
         match app
             .notification()
             .builder()
-            .id(id)
-            .title(&title)
-            .body(&body)
+            .id(n.id)
+            .title(&n.title)
+            .body(&n.body)
             .show()
         {
-            Ok(_) => {
-                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-                state.last_notified.insert(alert.id.clone(), Instant::now());
-                state.dialogs_today += 1;
-                tracing::info!(project_id = %alert.id, notification_id = id, "notif-sent");
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "notif-send-failed");
-            }
-        }
-    }
-
-    // Phase 3: send reminder_active notifications (R-4.3)
-    for reminder in &reminder_cands {
-        let result = {
-            let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-            if state.dialogs_today >= MAX_DIALOGS_PER_DAY {
-                None
-            } else {
-                let id = state.next_id;
-                state.next_id += 1;
-                let url = format!("{}/notes/{}", BACKEND_ORIGIN, reminder.id);
-                state.pending_clicks.insert(id, url.clone());
-                Some((id, url))
-            }
-        };
-        let (id, _task_url) = match result {
-            Some(t) => t,
-            None => continue,
-        };
-
-        let title = format!("📅 squirrel: {}", reminder.id);
-        let body = reminder.menu_label();
-
-        match app
-            .notification()
-            .builder()
-            .id(id)
-            .title(&title)
-            .body(&body)
-            .show()
-        {
-            Ok(_) => {
-                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-                state.last_notified.insert(reminder.id.clone(), Instant::now());
-                state.dialogs_today += 1;
-                tracing::info!(reminder_id = %reminder.id, notification_id = id, "reminder-notif-sent");
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "reminder-notif-send-failed");
-            }
-        }
-    }
-
-    // Phase 3c: Mind Journal check-in (R-4.2). `journal_due` is already
-    // false outside the waking window (computed server-side), satisfying R-4.3.
-    // Same NOTIF_INTERVAL / ITEM_COOLDOWN / MAX_DIALOGS_PER_DAY guards.
-    if journal_due {
-        let fire = {
-            let state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-            state.last_check_at.elapsed() >= NOTIF_INTERVAL
-                && state.dialogs_today < MAX_DIALOGS_PER_DAY
-                && state
-                    .last_notified
-                    .get(JOURNAL_ITEM_ID)
-                    .map_or(true, |t| t.elapsed() >= ITEM_COOLDOWN)
-        };
-        if fire {
-            let id = {
-                let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-                let id = state.next_id;
-                state.next_id += 1;
-                id
-            };
-            // Note: no web URL stored — journaling is done in-app via the
-            // brain button / tray "check in" item, never the browser.
-            match app
-                .notification()
-                .builder()
-                .id(id)
-                .title("🧠 squirrel: Mind Journal")
-                .body("What is your mind thinking right now? What are you doing right now?")
-                .show()
-            {
-                Ok(_) => {
-                    let mut state = state_ref.lock().unwrap_or_else(|p| p.into_inner());
-                    state
-                        .last_notified
-                        .insert(JOURNAL_ITEM_ID.to_string(), Instant::now());
-                    state.dialogs_today += 1;
-                    tracing::info!(notification_id = id, "journal-checkin-notif-sent");
+            Ok(_) => match n.kind {
+                PlannedKind::Pressing => {
+                    tracing::info!(project_id = %n.item_key, notification_id = n.id, "notif-sent")
                 }
-                Err(e) => tracing::warn!(error = %e, "journal-checkin-notif-send-failed"),
+                PlannedKind::Reminder => {
+                    tracing::info!(reminder_id = %n.item_key, notification_id = n.id, "reminder-notif-sent")
+                }
+                PlannedKind::Journal => {
+                    tracing::info!(notification_id = n.id, "journal-checkin-notif-sent")
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, item_id = %n.item_key, "notif-send-failed");
             }
         }
     }
-
-    // Phase 4: always update last_check_at after passing all guards (even if 0 candidates)
-    state_ref.lock().unwrap_or_else(|p| p.into_inner()).last_check_at = Instant::now();
 }
 
 /// Poll `GET /api/focus/session`. If a session is active and 30 minutes have
@@ -1202,6 +1238,47 @@ mod tests {
         init_notif_db(&db_path).unwrap(); // second call must not error
     }
 
+    // M10 audit fix: rows older than NOTIF_RETENTION_DAYS are pruned; fresh
+    // rows survive.
+    #[test]
+    fn test_prune_deletes_only_old_notifications() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("squirrel.db");
+        init_notif_db(&db_path).unwrap();
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        conn.execute(
+            "INSERT INTO notifications (type, item_id, title, body, fired_at) \
+             VALUES ('pressing', 'OLD', 't', 'b', strftime('%Y-%m-%dT%H:%M:%S', 'now', '-120 days'))",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO notifications (type, item_id, title, body, fired_at) \
+             VALUES ('pressing', 'NEW', 't', 'b', strftime('%Y-%m-%dT%H:%M:%S', 'now'))",
+            [],
+        )
+        .unwrap();
+        prune_old_notifications(&conn).unwrap();
+        let remaining: Vec<String> = conn
+            .prepare("SELECT item_id FROM notifications")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(remaining, vec!["NEW".to_string()]);
+    }
+
+    // L17 audit fix: tray labels are truncated; short strings untouched.
+    #[test]
+    fn test_truncate_chars() {
+        assert_eq!(truncate_chars("short", 48), "short");
+        let long = "x".repeat(60);
+        let cut = truncate_chars(&long, 48);
+        assert_eq!(cut.chars().count(), 48);
+        assert!(cut.ends_with('…'));
+    }
+
     fn make_alert(id: &str) -> Alert {
         Alert {
             id: id.to_string(),
@@ -1213,50 +1290,93 @@ mod tests {
         }
     }
 
+    // Make the interval guard pass for reservation tests.
+    fn ready_state() -> TauriNotificationState {
+        let mut state = TauriNotificationState::new();
+        state.last_check_at = Instant::now() - NOTIF_INTERVAL - Duration::from_secs(1);
+        state.dialogs_date = today_date_string();
+        state
+    }
+
     // (a) early-return when NOTIF_INTERVAL has not elapsed
     #[test]
     fn test_no_candidates_interval_not_elapsed() {
         let mut state = TauriNotificationState::new();
         // last_check_at defaults to Instant::now(), so elapsed < NOTIF_INTERVAL
         let alerts = vec![make_alert("A")];
-        let result = select_candidates(&mut state, &alerts);
+        let result = reserve_notifications(&mut state, &alerts, &[], false);
         assert!(result.is_empty());
     }
 
     // (b) daily cap of 8 blocks all candidates
     #[test]
     fn test_no_candidates_daily_cap_reached() {
-        let mut state = TauriNotificationState::new();
+        let mut state = ready_state();
         state.dialogs_today = MAX_DIALOGS_PER_DAY;
-        state.dialogs_date = today_date_string();
-        state.last_check_at = Instant::now() - NOTIF_INTERVAL - Duration::from_secs(1);
         let alerts = vec![make_alert("A")];
-        let result = select_candidates(&mut state, &alerts);
+        let result = reserve_notifications(&mut state, &alerts, &[], false);
         assert!(result.is_empty());
+        assert_eq!(state.dialogs_today, MAX_DIALOGS_PER_DAY);
     }
 
     // (c) item notified within ITEM_COOLDOWN is excluded; others pass
     #[test]
     fn test_item_on_cooldown_excluded() {
-        let mut state = TauriNotificationState::new();
-        state.last_check_at = Instant::now() - NOTIF_INTERVAL - Duration::from_secs(1);
-        state.dialogs_date = today_date_string();
+        let mut state = ready_state();
         state.last_notified.insert("A".to_string(), Instant::now());
         let alerts = vec![make_alert("A"), make_alert("B")];
-        let result = select_candidates(&mut state, &alerts);
+        let result = reserve_notifications(&mut state, &alerts, &[], false);
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].id, "B");
+        assert_eq!(result[0].item_key, "B");
     }
 
     // (d) at most 3 candidates returned even when more are available
     #[test]
     fn test_at_most_3_candidates() {
-        let mut state = TauriNotificationState::new();
-        state.last_check_at = Instant::now() - NOTIF_INTERVAL - Duration::from_secs(1);
-        state.dialogs_date = today_date_string();
+        let mut state = ready_state();
         let alerts: Vec<Alert> = (0..5).map(|i| make_alert(&format!("item-{i}"))).collect();
-        let result = select_candidates(&mut state, &alerts);
+        let result = reserve_notifications(&mut state, &alerts, &[], false);
         assert_eq!(result.len(), 3);
+        assert_eq!(state.dialogs_today, 3);
+    }
+
+    // M11 audit fix: the daily cap is enforced atomically across the pressing,
+    // reminder, and journal phases — one slot left means exactly one reserved.
+    #[test]
+    fn test_cap_enforced_atomically_across_phases() {
+        let mut state = ready_state();
+        state.dialogs_today = MAX_DIALOGS_PER_DAY - 1;
+        let alerts: Vec<Alert> = (0..3).map(|i| make_alert(&format!("P-{i}"))).collect();
+        let reminders = vec![make_reminder("REM-A"), make_reminder("REM-B")];
+        let result = reserve_notifications(&mut state, &alerts, &reminders, true);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].kind, PlannedKind::Pressing);
+        assert_eq!(state.dialogs_today, MAX_DIALOGS_PER_DAY);
+    }
+
+    // Reservation assigns unique ids and stores pending clicks for pressing
+    // and reminder notifications, but not for the journal check-in.
+    #[test]
+    fn test_reservation_assigns_ids_and_pending_clicks() {
+        let mut state = ready_state();
+        let alerts = vec![make_alert("P-1")];
+        let reminders = vec![make_reminder("REM-1")];
+        let result = reserve_notifications(&mut state, &alerts, &reminders, true);
+        assert_eq!(result.len(), 3);
+        let mut ids: Vec<i32> = result.iter().map(|n| n.id).collect();
+        ids.dedup();
+        assert_eq!(ids.len(), 3, "notification ids must be unique");
+        let journal = result.iter().find(|n| n.kind == PlannedKind::Journal).unwrap();
+        for n in &result {
+            assert_eq!(
+                state.pending_clicks.contains_key(&n.id),
+                n.kind != PlannedKind::Journal,
+                "pending click stored iff not journal (id {})",
+                n.id
+            );
+        }
+        assert_eq!(journal.item_key, JOURNAL_ITEM_ID);
+        assert_eq!(state.dialogs_today, 3);
     }
 
     fn make_reminder(id: &str) -> ReminderAlert {
@@ -1281,23 +1401,21 @@ mod tests {
     // (e) reminder on cooldown is excluded; others pass
     #[test]
     fn test_reminder_on_cooldown_excluded() {
-        let mut state = TauriNotificationState::new();
-        state.last_check_at = Instant::now() - NOTIF_INTERVAL - Duration::from_secs(1);
-        state.dialogs_date = today_date_string();
+        let mut state = ready_state();
         state.last_notified.insert("REM-A".to_string(), Instant::now());
         let reminders = vec![make_reminder("REM-A"), make_reminder("REM-B")];
-        let result = select_reminder_candidates(&state, &reminders);
+        let result = reserve_notifications(&mut state, &[], &reminders, false);
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].id, "REM-B");
+        assert_eq!(result[0].item_key, "REM-B");
     }
 
     // (f) interval guard blocks reminder candidates
     #[test]
     fn test_reminder_blocked_by_interval_guard() {
-        let state = TauriNotificationState::new();
+        let mut state = TauriNotificationState::new();
         // last_check_at defaults to Instant::now() → elapsed < NOTIF_INTERVAL
         let reminders = vec![make_reminder("REM-A")];
-        let result = select_reminder_candidates(&state, &reminders);
+        let result = reserve_notifications(&mut state, &[], &reminders, false);
         assert!(result.is_empty());
     }
 

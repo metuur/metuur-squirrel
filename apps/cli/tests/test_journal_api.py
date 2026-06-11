@@ -88,7 +88,7 @@ class JournalApiTest(unittest.TestCase):
         return r.status, json.loads(r.read().decode("utf-8"))
 
     def _journal_file(self):
-        return self.vault / "01-Proyectos-Activos" / "SCRATCH-PAD" / "MIND-JOURNAL.md"
+        return self.vault / "01-Active-Projects" / "SCRATCH-PAD" / "MIND-JOURNAL.md"
 
     # ── R-3.1 / R-1.1 ──────────────────────────────────────────────────────
     def test_get_journal_seeded(self):

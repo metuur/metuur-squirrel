@@ -41,7 +41,7 @@ export default function ProjectPage() {
           </h1>
           <p className="mt-2 text-sm text-ink-3 max-w-md mx-auto">
             <code className="font-mono text-xs bg-surface-2 px-1.5 py-0.5 rounded">{slug}</code>{' '}
-            isn't a registered project. Notes outside <code className="font-mono text-xs">01-Proyectos-Activos/</code>{' '}
+            isn't a registered project. Notes outside <code className="font-mono text-xs">01-Active-Projects/</code>{' '}
             don't have a project page. Open one of your real projects from{' '}
             <Link to="/" className="text-accent hover:underline">My projects</Link> instead.
           </p>

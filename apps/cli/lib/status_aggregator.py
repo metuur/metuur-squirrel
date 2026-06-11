@@ -16,6 +16,7 @@ Uso CLI:
 import argparse
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -23,6 +24,8 @@ from typing import Optional
 # Import sibling
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent, parse_frontmatter
+
+_log = logging.getLogger("status_aggregator")
 
 
 def _is_quick_task_file(md: Path) -> bool:
@@ -57,7 +60,7 @@ def find_projects(vault_path: Path) -> dict[str, list[Path]]:
     }
 
     locations = {
-        "01-Proyectos-Activos": "wip",
+        "01-Active-Projects": "wip",
         "02-Parking-Lot": "parking",
         "03-Areas": "areas",
         "06-Archive": "archive",
@@ -80,8 +83,13 @@ def find_projects(vault_path: Path) -> dict[str, list[Path]]:
                     md_files = sorted(item.glob("*.md"))
                     if md_files:
                         projects[category].append(md_files[0])
-            elif item.suffix == ".md" and not item.name.startswith("."):
-                # Top-level .md (mostly for Areas)
+            elif (
+                item.suffix == ".md"
+                and not item.name.startswith(".")
+                and item.stem.lower() != "readme"
+            ):
+                # Top-level .md (mostly for Areas). READMEs are scaffold
+                # documentation seeded by the installer, never projects.
                 projects[category].append(item)
 
     return projects
@@ -122,7 +130,7 @@ def active_intent_for(vault: Path, project_slug: str) -> Optional[str]:
     - Returns: the intent's file stem (e.g. "MY-PROJECT-i01") or None if no intents
       have any shutdown notes / activity.
     """
-    project_folder = vault / "01-Proyectos-Activos" / project_slug
+    project_folder = vault / "01-Active-Projects" / project_slug
     if not project_folder.exists():
         return None
 
@@ -133,7 +141,8 @@ def active_intent_for(vault: Path, project_slug: str) -> Optional[str]:
     for ip in intent_paths:
         try:
             intent = parse_intent(ip)
-        except Exception:
+        except Exception as exc:
+            _log.warning("skipping unparseable file %s: %s", ip, exc)
             continue
         notes = intent.get("shutdown_notes") or []
         if notes and notes[0].get("timestamp"):

@@ -23,12 +23,12 @@ A   (foundation: apply_estimate_to_intent + estimate_variance in estimate_buffer
 
 ## Unit 1: Estimate persistence & variance engine (`apps/cli/lib/estimate_buffer.py`)
 
-- [x] **A.1** Add `apply_estimate_to_intent(vault_path, intent_id_or_slugs, minutes) -> dict` — resolve intent **within `01-Proyectos-Activos` only**, call `adjust_estimate`, write `estimate_user_minutes`/`estimate_multiplier`/`estimate_minutes` via `intent_parser.write_frontmatter` (one atomic call). (est: ~60m)
+- [x] **A.1** Add `apply_estimate_to_intent(vault_path, intent_id_or_slugs, minutes) -> dict` — resolve intent **within `01-Active-Projects` only**, call `adjust_estimate`, write `estimate_user_minutes`/`estimate_multiplier`/`estimate_minutes` via `intent_parser.write_frontmatter` (one atomic call). (est: ~60m)
   - acceptance:
     - R-1.1 — writes the three keys in a single atomic frontmatter update.
     - R-1.2 — values survive vault re-scan / backend restart.
     - R-1.3 — re-setting overwrites all three keys (no history).
-    - R-1.4 — resolution scoped to `01-Proyectos-Activos` (API: `<project>/<intent>.md`; CLI id: WIP-scoped like `_iter_intent_paths`); no vault-wide scan.
+    - R-1.4 — resolution scoped to `01-Active-Projects` (API: `<project>/<intent>.md`; CLI id: WIP-scoped like `_iter_intent_paths`); no vault-wide scan.
     - R-1.5 — non-existent **or out-of-scope** (`03-Areas`/`02-Parking-Lot`/`06-Archive`) intent → error, no file created, no partial write.
     - R-1.6 — `time_invested_minutes` and all non-estimate frontmatter untouched (per-key upsert).
     - R-5.4 — write is atomic per `write_frontmatter` call (temp + replace).
@@ -125,7 +125,7 @@ A   (foundation: apply_estimate_to_intent + estimate_variance in estimate_buffer
 - [x] **H.1** Backward-compat + Quick-Task exclusion verification (e2e/integration). (deps: F.1, G.1, est: ~30m)
   - acceptance:
     - R-5.1 — legacy intent (no estimate keys) renders actual (if any), no variance, no error.
-    - R-5.3 — Quick Tasks (`QT-NNN`, `quick_task: true`) excluded from estimate-setting & variance — exclusion is structural (never resolve within `01-Proyectos-Activos` intent scanning), not a special-case check.
+    - R-5.3 — Quick Tasks (`QT-NNN`, `quick_task: true`) excluded from estimate-setting & variance — exclusion is structural (never resolve within `01-Active-Projects` intent scanning), not a special-case check.
   - verify:
     - pytest: pre-feature fixture intent → `get_manual_focus` returns actual, `has_variance=False`, no exception.
     - test: attempt to resolve a `QT-NNN` id via `apply_estimate_to_intent` → not found / rejected; QTs never appear in `_build_pick` output.

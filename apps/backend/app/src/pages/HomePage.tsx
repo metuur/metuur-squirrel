@@ -1,5 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import { useEffect, useState, type MouseEvent, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type DragEvent } from 'react';
 import { useFetch } from '@/hooks/useFetch';
 import { api, slashCommands, type ProjectListItem, type PressingItem, type ManualPick, type EntityKind } from '@/api/client';
 import { fromNow } from '@/lib/utils';
@@ -404,13 +404,19 @@ function changeForColumn(col: DropCol): { deadline?: string | null; delivered?: 
   }
 }
 
-type PendingMove = { slug: string; title: string; from: string; to: DropCol };
+type PendingMove = { id: string; title: string; from: string; to: DropCol; isPressing: boolean };
+
+// Lanes whose membership is purely deadline-driven — the only valid targets for
+// deferring a PRESSING card (dropping it here just pushes its deadline out).
+function isDeadlineLane(colKey: string): boolean {
+  return colKey === 'thisWeek' || colKey === 'active' || colKey === 'later';
+}
 
 // Legend + ordering rationale shown by the board's "?" help button. The rows
 // mirror the lane rules in BoardView (deadline buckets) and the chosen order
 // (PRESSING leads as focus, then projects flow by stage toward DELIVERED).
 const BOARD_HELP_ROWS: { dot: string; label: string; rule: string }[] = [
-  { dot: 'bg-critical', label: 'PRESSING', rule: 'Needs attention now — a computed feed of your most urgent items (top 3). Always first so it stays the focus; you can’t drop cards here.' },
+  { dot: 'bg-critical', label: 'PRESSING', rule: 'Needs attention now — a computed feed of your most urgent items (top 3). Always first so it stays the focus; you can’t drop cards here, but you can drag one into a lane to defer it.' },
   { dot: 'bg-hairline', label: 'LATER', rule: 'Deadline more than 30 days away — early stage.' },
   { dot: 'bg-accent', label: 'ACTIVE', rule: 'Deadline within 8–30 days, or no deadline set — your default working lane.' },
   { dot: 'bg-warning', label: 'THIS WEEK', rule: 'Deadline within 7 days — about to close.' },
@@ -451,8 +457,8 @@ function BoardHelp({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
         <p className="text-[11px] text-ink-4 leading-snug pt-1 border-t border-hairline-2">
-          Drag a project card between lanes to change its deadline; PRESSING is computed and not a
-          drop target.
+          Drag a project card between lanes to change its deadline, or drag a PRESSING card into a
+          lane to defer it. PRESSING is computed and not a drop target.
         </p>
       </div>
     </>
@@ -464,17 +470,19 @@ function BoardView({ projects, pressing, onChanged }: {
   pressing: PressingItem[];
   onChanged: () => void;
 }) {
-  const [drag, setDrag] = useState<{ slug: string; title: string; from: string } | null>(null);
+  const [drag, setDrag] = useState<{ id: string; title: string; from: string; isPressing: boolean } | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingMove | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPressingInfo, setShowPressingInfo] = useState(false);
+  const pressingInfoButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Auto-dismiss the "can't move here" toast.
   useEffect(() => {
     if (!notice) return;
-    const t = setTimeout(() => setNotice(null), 3500);
+    const t = setTimeout(() => setNotice(null), 7000);
     return () => clearTimeout(t);
   }, [notice]);
 
@@ -516,26 +524,46 @@ function BoardView({ projects, pressing, onChanged }: {
   function startDrag(e: DragEvent<HTMLAnchorElement>, p: ProjectListItem, from: string) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', p.slug);
-    setDrag({ slug: p.slug, title: p.title, from });
+    setDrag({ id: p.slug, title: p.title, from, isPressing: false });
   }
 
-  // A valid persisting move: a real status lane, not the source column.
+  // PRESSING cards aren't a real lane — dragging one out defers its deadline so
+  // it leaves the computed feed. Works for any kind (note / task / project).
+  function startPressingDrag(e: DragEvent<HTMLAnchorElement>, item: PressingItem) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.id);
+    setDrag({ id: item.id, title: item.title, from: 'pressing', isPressing: true });
+  }
+
+  // A valid persisting move. PRESSING cards may only land in a deadline lane (to
+  // defer); project cards move into any droppable lane other than their source.
   function canDropHere(colKey: string): boolean {
-    return !!drag && !!DROPPABLE[colKey] && drag.from !== colKey;
+    if (!drag) return false;
+    if (drag.isPressing) return isDeadlineLane(colKey);
+    return !!DROPPABLE[colKey] && drag.from !== colKey;
   }
 
-  // Whether a drop event should even fire over this column. PRESSING accepts
-  // the event only so we can reject it with an explanatory message.
+  // Whether a drop event should even fire over this column — wider than
+  // canDropHere so we can accept-and-reject with an explanatory message
+  // (dropping into PRESSING, or a PRESSING card into DELIVERED).
   function acceptsDrop(colKey: string): boolean {
-    return !!drag && drag.from !== colKey && (!!DROPPABLE[colKey] || colKey === 'pressing');
+    if (!drag) return false;
+    if (drag.isPressing) return isDeadlineLane(colKey) || colKey === 'done';
+    return drag.from !== colKey && (!!DROPPABLE[colKey] || colKey === 'pressing');
   }
 
   function onDrop(colKey: string) {
     if (drag) {
-      if (colKey === 'pressing') {
-        setNotice('PRESSING is automatic — items surface here by deadline and it holds at most 3. You can’t move cards into it.');
+      if (drag.isPressing) {
+        if (isDeadlineLane(colKey)) {
+          setPending({ id: drag.id, title: drag.title, from: 'pressing', to: colKey as DropCol, isPressing: true });
+        } else if (colKey === 'done') {
+          setNotice('To finish an item, open it and mark it done — dragging out of PRESSING only defers its deadline.');
+        }
+      } else if (colKey === 'pressing') {
+        setNotice("PRESSING is your top 3 most urgent items, always first to keep it in focus. Items land here automatically by deadline — you can’t drop cards in, but drag one into a lane to defer it.");
       } else if (canDropHere(colKey)) {
-        setPending({ slug: drag.slug, title: drag.title, from: drag.from, to: colKey as DropCol });
+        setPending({ id: drag.id, title: drag.title, from: drag.from, to: colKey as DropCol, isPressing: false });
       }
     }
     setDrag(null);
@@ -546,12 +574,18 @@ function BoardView({ projects, pressing, onChanged }: {
     if (!pending) return;
     setSaving(true);
     try {
-      await api.projectSetStatus(pending.slug, changeForColumn(pending.to));
+      const change = changeForColumn(pending.to);
+      if (pending.isPressing) {
+        // Deadline lanes always carry a deadline; defer pushes it out.
+        await api.itemDefer(pending.id, change.deadline as string);
+      } else {
+        await api.projectSetStatus(pending.id, change);
+      }
       setPending(null);
       onChanged();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      window.alert('Could not move the project: ' + msg);
+      window.alert('Could not move the item: ' + msg);
     } finally {
       setSaving(false);
     }
@@ -562,11 +596,13 @@ function BoardView({ projects, pressing, onChanged }: {
       key={p.slug}
       p={p}
       draggable
-      isDragging={drag?.slug === p.slug}
+      isDragging={!drag?.isPressing && drag?.id === p.slug}
       onDragStart={(e) => startDrag(e, p, colKey)}
       onDragEnd={() => { setDrag(null); setOverCol(null); }}
     />
   );
+
+  const pressingInfoRect = pressingInfoButtonRef.current?.getBoundingClientRect();
 
   return (
     <>
@@ -576,7 +612,15 @@ function BoardView({ projects, pressing, onChanged }: {
           className="fixed top-24 left-1/2 -translate-x-1/2 z-50 panel px-4 py-2.5 shadow-lg flex items-center gap-2 border-l-4 border-critical max-w-md"
         >
           <span className="material-icons text-sm text-critical">block</span>
-          <span className="text-sm text-ink-2">{notice}</span>
+          <span className="text-sm text-ink-2 flex-1">{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            className="ml-1 text-ink-3 hover:text-ink-1 leading-none"
+          >
+            <span className="material-icons text-base">close</span>
+          </button>
         </div>
       )}
       <div className="relative flex items-center justify-end mb-2 px-1">
@@ -598,7 +642,61 @@ function BoardView({ projects, pressing, onChanged }: {
           return (
             <div key={col.key} className="flex-shrink-0 w-72 flex flex-col">
               <div className={`flex items-center justify-between mb-4 border-b-2 ${col.accent} pb-2 px-1`}>
-                <h3 className="eyebrow text-ink-2">{col.label}</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="eyebrow text-ink-2">{col.label}</h3>
+                  {col.key === 'pressing' && (
+                    <>
+                      <button
+                        ref={pressingInfoButtonRef}
+                        type="button"
+                        onClick={() => setShowPressingInfo((v) => !v)}
+                        aria-label="What appears in PRESSING"
+                        aria-expanded={showPressingInfo}
+                        className="relative z-10 flex items-center text-ink-4 hover:text-ink-2"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-info-icon lucide-info"
+                          aria-hidden="true"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 16v-4" />
+                          <path d="M12 8h.01" />
+                        </svg>
+                      </button>
+                      {showPressingInfo && pressingInfoRect && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Close PRESSING help"
+                            className="fixed inset-0 z-[240] cursor-default"
+                            onClick={() => setShowPressingInfo(false)}
+                          />
+                          <div
+                            role="tooltip"
+                            className="fixed z-[250] w-80 panel px-3 py-2 text-xs text-ink-2 normal-case font-normal tracking-normal shadow-lg"
+                            style={{
+                              left: pressingInfoRect.right + 8,
+                              top: pressingInfoRect.top + (pressingInfoRect.height / 2),
+                              transform: 'translateY(-50%)',
+                            }}
+                          >
+                            Filled automatically: your 3 most urgent items by deadline — overdue or due soon.
+                            Give a task a deadline to surface it here.
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
                 <span className="chip chip-count">{col.count}</span>
               </div>
               <div
@@ -610,7 +708,13 @@ function BoardView({ projects, pressing, onChanged }: {
                 onDrop={(e) => { e.preventDefault(); onDrop(col.key); }}
               >
                 {col.key === 'pressing' && cols.pressing.map(({ item }) => (
-                  <PressingCard key={item.id} item={item} />
+                  <PressingCard
+                    key={item.id}
+                    item={item}
+                    isDragging={drag?.isPressing && drag?.id === item.id}
+                    onDragStart={(e) => startPressingDrag(e, item)}
+                    onDragEnd={() => { setDrag(null); setOverCol(null); }}
+                  />
                 ))}
                 {col.key === 'thisWeek' && cols.thisWeek.map((p) => card(p, 'thisWeek'))}
                 {col.key === 'active' && cols.active.map((p) => card(p, 'active'))}
@@ -630,8 +734,8 @@ function BoardView({ projects, pressing, onChanged }: {
       <Modal
         open={!!pending}
         onClose={() => { if (!saving) setPending(null); }}
-        title="Confirm status change"
-        icon="swap_horiz"
+        title={pending?.isPressing ? 'Defer this item' : 'Confirm status change'}
+        icon={pending?.isPressing ? 'schedule' : 'swap_horiz'}
         size="sm"
         footer={
           <>
@@ -656,16 +760,31 @@ function BoardView({ projects, pressing, onChanged }: {
       >
         {pending && (
           <div className="space-y-3">
-            <p className="text-sm text-ink-2">
-              Move <span className="font-bold text-ink">{pending.title}</span> from{' '}
-              <span className="font-semibold">{COL_LABELS[pending.from] ?? pending.from}</span> to{' '}
-              <span className="font-semibold">{COL_LABELS[pending.to]}</span>?
-            </p>
-            <p className="text-xs text-ink-3">
-              {pending.to === 'done'
-                ? 'This marks the project as delivered.'
-                : `This sets the project deadline to ${changeForColumn(pending.to).deadline}.`}
-            </p>
+            {pending.isPressing ? (
+              <>
+                <p className="text-sm text-ink-2">
+                  Defer <span className="font-bold text-ink">{pending.title}</span> to{' '}
+                  <span className="font-semibold">{COL_LABELS[pending.to]}</span>?
+                </p>
+                <p className="text-xs text-ink-3">
+                  This pushes its deadline to {changeForColumn(pending.to).deadline}, so it
+                  leaves PRESSING and resurfaces in {COL_LABELS[pending.to]}.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink-2">
+                  Move <span className="font-bold text-ink">{pending.title}</span> from{' '}
+                  <span className="font-semibold">{COL_LABELS[pending.from] ?? pending.from}</span> to{' '}
+                  <span className="font-semibold">{COL_LABELS[pending.to]}</span>?
+                </p>
+                <p className="text-xs text-ink-3">
+                  {pending.to === 'done'
+                    ? 'This marks the project as delivered.'
+                    : `This sets the project deadline to ${changeForColumn(pending.to).deadline}.`}
+                </p>
+              </>
+            )}
           </div>
         )}
       </Modal>
@@ -673,7 +792,12 @@ function BoardView({ projects, pressing, onChanged }: {
   );
 }
 
-function PressingCard({ item }: { item: PressingItem }) {
+function PressingCard({ item, isDragging, onDragStart, onDragEnd }: {
+  item: PressingItem;
+  isDragging?: boolean;
+  onDragStart?: (e: DragEvent<HTMLAnchorElement>) => void;
+  onDragEnd?: () => void;
+}) {
   const linkTarget = item.kind === 'project' && item.slug
     ? `/projects/${item.slug}`
     : `/notes/${item.id}`;
@@ -681,7 +805,13 @@ function PressingCard({ item }: { item: PressingItem }) {
   return (
     <Link
       to={linkTarget}
-      className="block panel p-4 hover:shadow-md transition-all group"
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      title="Drag to a lane to defer this item"
+      className={`block panel p-4 hover:shadow-md transition-all group cursor-grab active:cursor-grabbing ${
+        isDragging ? 'opacity-40' : ''
+      }`}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="text-[10px] font-mono text-ink-4 truncate">{item.id}</div>

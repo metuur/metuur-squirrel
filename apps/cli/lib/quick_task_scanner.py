@@ -2,7 +2,7 @@
 """
 quick_task_scanner.py — Scans the Quick Task Stack in SCRATCH-PAD, classifies by state.
 
-Quick Tasks are markdown files in 01-Proyectos-Activos/SCRATCH-PAD/ carrying
+Quick Tasks are markdown files in 01-Active-Projects/SCRATCH-PAD/ carrying
 `quick_task: true` in their frontmatter. This scanner is pure classification — it
 never mutates files (the wake-commit that reactivates due snoozed tasks lives in the
 writer, driven by the API handler).
@@ -30,35 +30,53 @@ Usage CLI:
 import argparse
 import datetime
 import json
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import parse_intent
 
-SCRATCH_PAD_DIR = Path("01-Proyectos-Activos") / "SCRATCH-PAD"
+_log = logging.getLogger("quick_task_scanner")
+
+SCRATCH_PAD_DIR = Path("01-Active-Projects") / "SCRATCH-PAD"
+
+
+def _as_aware(dt: datetime.datetime) -> datetime.datetime:
+    """Attach the local timezone to a naive datetime; leave aware ones alone.
+
+    Old frontmatter carries naive local-time stamps (written before the
+    aware-everywhere switch), new frontmatter carries offsets — normalizing
+    here keeps `snoozed_until <= now` from raising TypeError on the mix.
+    """
+    if dt.tzinfo is None:
+        return dt.astimezone()
+    return dt
 
 
 def _parse_dt(value) -> datetime.datetime | None:
-    """Parse an ISO-8601 timestamp (date or datetime). Tolerates native date/datetime
-    objects returned by the frontmatter parser. Returns None on failure."""
+    """Parse an ISO-8601 timestamp (date or datetime) to an aware datetime.
+    Tolerates native date/datetime objects returned by the frontmatter parser.
+    Returns None on failure."""
     if value is None or value == "":
         return None
     if isinstance(value, datetime.datetime):
-        return value
+        return _as_aware(value)
     if isinstance(value, datetime.date):
-        return datetime.datetime(value.year, value.month, value.day)
+        return _as_aware(datetime.datetime(value.year, value.month, value.day))
     s = str(value).strip()
     if not s:
         return None
     # Normalize a trailing Z and accept both "T" and " " separators.
     s = s.replace("Z", "")
     try:
-        return datetime.datetime.fromisoformat(s)
+        return _as_aware(datetime.datetime.fromisoformat(s))
     except ValueError:
         # Fall back to date-only.
         try:
-            return datetime.datetime.strptime(s.split("T")[0].split(" ")[0], "%Y-%m-%d")
+            return _as_aware(
+                datetime.datetime.strptime(s.split("T")[0].split(" ")[0], "%Y-%m-%d")
+            )
         except ValueError:
             return None
 
@@ -73,7 +91,7 @@ def _is_quick_task(fm: dict) -> bool:
 
 def scan_quick_tasks(vault_path: Path) -> dict:
     """Scan SCRATCH-PAD for quick_task files and classify them."""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
 
     active: list[dict] = []
     snoozed: list[dict] = []
@@ -86,7 +104,8 @@ def scan_quick_tasks(vault_path: Path) -> dict:
 
             try:
                 data = parse_intent(md_file)
-            except Exception:
+            except Exception as exc:
+                _log.warning("skipping unparseable file %s: %s", md_file, exc)
                 continue
 
             fm = data["frontmatter"]

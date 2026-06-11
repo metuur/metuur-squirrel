@@ -44,7 +44,7 @@ class _VaultTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.vault = pathlib.Path(self._tmp.name) / "vault"
-        (self.vault / "01-Proyectos-Activos" / "SCRATCH-PAD").mkdir(parents=True)
+        (self.vault / "01-Active-Projects" / "SCRATCH-PAD").mkdir(parents=True)
         # Isolate per-vault state JSON into the temp dir.
         self.state_dir = pathlib.Path(self._tmp.name) / "state"
         self._orig_state_dir = config_loader.DEFAULT_STATE_DIR
@@ -56,7 +56,7 @@ class _VaultTest(unittest.TestCase):
         self._tmp.cleanup()
 
     def _journal_path(self):
-        return self.vault / "01-Proyectos-Activos" / "SCRATCH-PAD" / f"{JOURNAL_ID}.md"
+        return self.vault / "01-Active-Projects" / "SCRATCH-PAD" / f"{JOURNAL_ID}.md"
 
 
 # ── Unit 1: Seeding ────────────────────────────────────────────────────────────

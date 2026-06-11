@@ -19,8 +19,8 @@ Raises NewProjectError(code, message). The `code` matches the CLI exit-code
 sentinels so the skill and the web server can share one error vocabulary.
 
 Creates:
-  <vault>/01-Proyectos-Activos/<TAG>/<TAG>.md           (project page)
-  <vault>/01-Proyectos-Activos/<TAG>/<FIRST-INTENT>.md  (optional)
+  <vault>/01-Active-Projects/<TAG>/<TAG>.md           (project page)
+  <vault>/01-Active-Projects/<TAG>/<FIRST-INTENT>.md  (optional)
 
 Refuses to overwrite. Refuses to exceed the WIP cap unless `force=True`.
 
@@ -280,7 +280,7 @@ def create_project(
 
     vault_path = _resolve_vault(vault_name)
 
-    project_dir = vault_path / "01-Proyectos-Activos" / tag
+    project_dir = vault_path / "01-Active-Projects" / tag
     project_page = project_dir / f"{tag}.md"
     if project_dir.exists() or project_page.exists():
         raise NewProjectError(
@@ -333,9 +333,39 @@ def create_project(
     }
 
 
+# Canonical top-level vault folders the CLI and backend actually read (active
+# projects, parked projects, areas, archive, resources/inbox). A fresh vault is
+# seeded with these so it isn't an empty directory; each gets a one-line README
+# so its purpose is visible in Obsidian / Finder. The `02-Areas` / `03-Resources`
+# / `04-Archive` names that appear in older docs are legacy drift and are NOT
+# created here — these are the folders the live code reads.
+_VAULT_SKELETON: dict[str, str] = {
+    "01-Active-Projects": "Active projects. Each project is a folder with a project page and its intent notes.",
+    "02-Parking-Lot": "Paused / someday projects — kept out of the active list until you pick them back up.",
+    "03-Areas": "Ongoing areas of responsibility — recurring work with no finish line.",
+    "06-Archive": "Completed or abandoned projects, moved here to keep the active list clean.",
+    "99-Resources": "Reference material and the capture inbox (loose captures land in 99-Resources/Inbox/).",
+}
+
+
+def ensure_vault_skeleton(vault_path: pathlib.Path) -> None:
+    """Create the canonical top-level vault folders (each with a stub README)
+    plus the SCRATCH-PAD project, so a freshly created vault has a visible
+    structure instead of an empty directory. Idempotent: existing folders and
+    READMEs are left untouched; safe to call on an already-populated vault."""
+    vault_path = pathlib.Path(vault_path)
+    for name, desc in _VAULT_SKELETON.items():
+        folder = vault_path / name
+        folder.mkdir(parents=True, exist_ok=True)
+        readme = folder / "README.md"
+        if not readme.exists():
+            readme.write_text(f"# {name}\n\n{desc}\n", encoding="utf-8")
+    ensure_scratch_pad(vault_path)
+
+
 def ensure_scratch_pad(vault_path: pathlib.Path) -> None:
     """Create SCRATCH-PAD project if absent. Called at every server start."""
-    project_dir = vault_path / "01-Proyectos-Activos" / "SCRATCH-PAD"
+    project_dir = vault_path / "01-Active-Projects" / "SCRATCH-PAD"
     if project_dir.exists():
         return
     try:

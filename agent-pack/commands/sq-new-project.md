@@ -7,13 +7,13 @@ allowed-tools: [Bash, Read, Write]
 
 Creates a new project in the vault with arguments `$ARGUMENTS`.
 
-Invokes the `squirrel:new-project` skill, which:
+Invokes the `squirrel-new-project` skill, which:
 
 1. Validates the project tag (UPPERCASE, no intent scheme).
 2. Validates `type` (A/B/C), `deadline` (ISO date), and the optional first-intent tag.
 3. Checks the vault's WIP capacity (rejects if at the cap unless `--force`).
-4. Writes `01-Proyectos-Activos/<TAG>/<TAG>.md` (project page) and, if requested,
-   `01-Proyectos-Activos/<TAG>/<FIRST-INTENT>.md` from `templates/intent.md`.
+4. Writes `01-Active-Projects/<TAG>/<TAG>.md` (project page) and, if requested,
+   `01-Active-Projects/<TAG>/<FIRST-INTENT>.md` from `templates/intent.md`.
    The intent's filename is taken from `--first-intent-filename` if provided;
    if omitted, it uses the value of `--first-intent-tag` as the filename.
 5. Doesn't overwrite — if the project exists, it exits with an error.

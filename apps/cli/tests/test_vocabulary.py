@@ -29,15 +29,15 @@ from vocabulary import (  # noqa: E402
 
 class TestPARAFolderTranslation(unittest.TestCase):
     def test_active_projects_maps_to_my_projects(self):
-        self.assertEqual(translate("01-Proyectos-Activos"), "My projects")
+        self.assertEqual(translate("01-Active-Projects"), "My projects")
 
     def test_parking_lot_maps_to_on_hold(self):
         self.assertEqual(translate("02-Parking-Lot"), "On hold")
 
     def test_areas_resources_archive_are_admin_only(self):
         self.assertEqual(translate("02-Areas"), "Areas")
-        self.assertEqual(translate("03-Recursos"), "Reference")
-        self.assertEqual(translate("04-Archivo"), "Archive")
+        self.assertEqual(translate("03-Resources"), "Reference")
+        self.assertEqual(translate("04-Archive"), "Archive")
 
     def test_resources_root_never_user_visible(self):
         self.assertIsNone(translate("99-Resources"))
@@ -92,9 +92,12 @@ class TestForbiddenTerms(unittest.TestCase):
             "project",
             "type",
             "status",
+            "01-Active-Projects",
             "01-Proyectos-Activos",
             "02-Areas",
+            "03-Resources",
             "03-Recursos",
+            "04-Archive",
             "04-Archivo",
             "02-Parking-Lot",
             "99-Resources",
@@ -133,7 +136,7 @@ class TestProjectTitle(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.vault = pathlib.Path(self.tmp.name)
-        proj_dir = self.vault / "01-Proyectos-Activos" / "MY-BLOG"
+        proj_dir = self.vault / "01-Active-Projects" / "MY-BLOG"
         proj_dir.mkdir(parents=True)
         (proj_dir / "MY-BLOG.md").write_text(
             "---\n"

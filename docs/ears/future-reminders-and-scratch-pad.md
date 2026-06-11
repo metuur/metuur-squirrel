@@ -17,7 +17,7 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-2.1 | THE SYSTEM SHALL scan `reminder_date` fields across all `.md` files in `01-Proyectos-Activos` and `03-Areas` at request time, via a new `reminder_scanner.py` module. |
+| R-2.1 | THE SYSTEM SHALL scan `reminder_date` fields across all `.md` files in `01-Active-Projects` and `03-Areas` at request time, via a new `reminder_scanner.py` module. |
 | R-2.2 | IF a file has `status: done`, `status: completed`, or `status: archived`, THE SYSTEM SHALL exclude it from all reminder scans. |
 | R-2.3 | IF a file has `reminder_dismissed` set to any non-empty value, THE SYSTEM SHALL exclude it from all reminder output permanently. |
 | R-2.4 | IF a file has `reminder_snoozed_until` set to a future date, THE SYSTEM SHALL suppress its reminder until that date passes. |
@@ -58,7 +58,7 @@
 
 | ID    | EARS statement |
 |-------|----------------|
-| R-5.1 | WHEN the backend server starts, THE SYSTEM SHALL check whether a project with tag `SCRATCH-PAD` exists in `01-Proyectos-Activos`. |
+| R-5.1 | WHEN the backend server starts, THE SYSTEM SHALL check whether a project with tag `SCRATCH-PAD` exists in `01-Active-Projects`. |
 | R-5.2 | IF no `SCRATCH-PAD` project exists at server start, THE SYSTEM SHALL create it automatically with `type: C`, `protected: true`, and a default description, bypassing the WIP cap. |
 | R-5.3 | THE SYSTEM SHALL write `protected: true` in the `SCRATCH-PAD` project page's YAML frontmatter. |
 | R-5.4 | IF a delete request targets any project whose frontmatter contains `protected: true`, THE SYSTEM SHALL reject the request with HTTP 403 and body `{"error": "PROJECT_PROTECTED"}`. |

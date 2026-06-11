@@ -12,16 +12,24 @@
     "opener:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "obsidian://**" }]
+      "allow": [
+        { "url": "obsidian://**" },
+        { "url": "x-apple.systempreferences:*" }
+      ]
     },
     {
       "identifier": "opener:allow-open-path",
       "allow": [{ "path": "$RESOURCE/**" }]
     },
     "notification:default",
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
     "store:default",
     "dialog:allow-open",
     "autostart:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
     "deep-link:default",
     "process:default",
     "process:allow-restart",
@@ -36,7 +44,7 @@
         {
           "name": "squirrel-backend",
           "sidecar": true,
-          "args": ["--port", "3939", "--token", { "validator": "[0-9a-f]{64}" }]
+          "args": ["--port", { "validator": "^(3939|3940)$" }, "--token", { "validator": "[0-9a-f]{64}" }]
         }
       ]
     }

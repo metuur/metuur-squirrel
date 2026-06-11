@@ -6,8 +6,8 @@
 agent-pack/commands/sq-focus.md          ─── python3 lib/focus_cli.py get|set|clear|history
 agent-pack/commands/sq-reminders.md      ─── python3 lib/reminder_scanner.py --vault ...
                                           ─── python3 lib/reminder_writer.py snooze ...
-agent-pack/skills/session-start/SKILL.md ─── python3 lib/focus_cli.py checkin
-agent-pack/skills/session-end/SKILL.md   ─── python3 lib/focus_cli.py checkout
+agent-pack/skills/squirrel-session-start/SKILL.md ─── python3 lib/focus_cli.py checkin
+agent-pack/skills/squirrel-session-end/SKILL.md   ─── python3 lib/focus_cli.py checkout
 
 apps/cli/lib/focus_cli.py  (NEW)
   └── imports: focus_picker, db, config_loader

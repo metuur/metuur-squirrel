@@ -18,9 +18,9 @@
 |-------|----------------|
 | R-2.1 | THE SYSTEM SHALL expose a `POST /api/intents` endpoint that accepts `project_slug`, `tag`, `title`, and optionally `description` and `deadline`. |
 | R-2.2 | WHEN `POST /api/intents` is called, THE SYSTEM SHALL resolve the vault path via the `squirrel_vault` cookie and validate it with `is_path_inside()` before writing any file. |
-| R-2.3 | IF the project directory `<vault>/01-Proyectos-Activos/<project_slug>/` does not exist, THE SYSTEM SHALL return HTTP 404. |
+| R-2.3 | IF the project directory `<vault>/01-Active-Projects/<project_slug>/` does not exist, THE SYSTEM SHALL return HTTP 404. |
 | R-2.4 | IF a file `<project_dir>/<tag>.md` already exists, THE SYSTEM SHALL return HTTP 409 without overwriting the existing file. |
-| R-2.5 | WHEN all validations pass, THE SYSTEM SHALL render `agent-pack/templates/intent.md` with the supplied fields and write the result to `<vault>/01-Proyectos-Activos/<project_slug>/<tag>.md`, then return HTTP 201 with the new file's relative vault path. |
+| R-2.5 | WHEN all validations pass, THE SYSTEM SHALL render `agent-pack/templates/intent.md` with the supplied fields and write the result to `<vault>/01-Active-Projects/<project_slug>/<tag>.md`, then return HTTP 201 with the new file's relative vault path. |
 | R-2.6 | IF `tag` does not match `^[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$`, THE SYSTEM SHALL return HTTP 422. |
 
 ## Unit 3: Task Creation Form (Project Page)

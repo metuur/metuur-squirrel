@@ -21,6 +21,8 @@
 #
 # Usage:
 #   ./scripts/build-pkg.sh                 # build inputs as needed, then package
+#   ./scripts/build-pkg.sh --arm64-only    # Apple Silicon → squirrel-macos-arm64.dmg
+#   ./scripts/build-pkg.sh --x86-only      # Intel (on Intel host) → squirrel-macos-x86_64.dmg
 #   ./scripts/build-pkg.sh --skip-build    # reuse existing app + dist/ binaries
 #   ./scripts/build-pkg.sh --dry-run       # print steps without executing
 #   ./scripts/build-pkg.sh --allow-unnotarized  # local/dev build; skip the gate
@@ -38,7 +40,8 @@ BUILD="$ROOT/build/pkg"              # intermediate component pkg + distribution
 # DMG below, which wraps this .pkg. See `make build-pkg`.
 PKG_OUT="$BUILD/squirrel-installer-macos.pkg"
 DMG_STAGING="$ROOT/pkg-dmg-staging"  # holds the .pkg for hdiutil to wrap
-DMG_OUT="$ROOT/squirrel-macos.dmg"   # final DMG that CONTAINS the .pkg (public)
+# DMG_OUT (the public .pkg-in-DMG) is resolved after arg parsing — single-arch
+# builds get an arch suffix so the two installers don't overwrite each other.
 # Hardened-runtime entitlements — lets the bundled squirrel-backend sidecar
 # dlopen its PyInstaller-extracted libpython (else "different Team IDs" crash).
 ENTITLEMENTS="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
@@ -46,18 +49,38 @@ APP_ID="com.metuur.squirrel"
 SKIP_BUILD=0
 DRY_RUN=0
 ARM64_ONLY=0
+X86_ONLY=0
 ALLOW_UNNOTARIZED=0   # --allow-unnotarized: opt into a local-only dev build that
                       # won't install on other Macs (skips the distribution gate).
 
 for arg in "$@"; do
   case "$arg" in
-    --skip-build)        SKIP_BUILD=1 ;;
-    --dry-run)           DRY_RUN=1 ;;
-    --arm64-only)        ARM64_ONLY=1 ;;
-    --allow-unnotarized) ALLOW_UNNOTARIZED=1 ;;
+    --skip-build)         SKIP_BUILD=1 ;;
+    --dry-run)            DRY_RUN=1 ;;
+    --arm64-only)         ARM64_ONLY=1 ;;
+    --x86-only|--intel)   X86_ONLY=1 ;;
+    --allow-unnotarized)  ALLOW_UNNOTARIZED=1 ;;
     *) printf 'Unknown arg: %s\n' "$arg" >&2; exit 1 ;;
   esac
 done
+
+if (( ARM64_ONLY && X86_ONLY )); then
+  printf 'error: --arm64-only and --x86-only are mutually exclusive\n' >&2
+  exit 1
+fi
+
+# ─── Version ─────────────────────────────────────────────────────────────────
+VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
+
+# Arch-suffixed output for single-arch installers; canonical name for universal.
+if (( ARM64_ONLY )); then
+  DMG_OUT="$ROOT/squirrel-macos-v${VERSION}-arm64.dmg"
+elif (( X86_ONLY )); then
+  DMG_OUT="$ROOT/squirrel-macos-v${VERSION}-x86_64.dmg"
+else
+  DMG_OUT="$ROOT/squirrel-macos-v${VERSION}.dmg"
+fi
+DMG_NAME="$(basename "$DMG_OUT")"
 
 # ─── Colors ──────────────────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -149,10 +172,8 @@ if (( ! DRY_RUN && ! ALLOW_UNNOTARIZED )); then
   fi
 fi
 
-# ─── Version ─────────────────────────────────────────────────────────────────
-VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
 printf '\n%s🐿  Building Squirrel v%s .pkg installer%s%s\n' "$C_BOLD" "$VERSION" \
-  "$( (( ARM64_ONLY )) && printf ' (arm64-only)' )" "$C_RESET"
+  "$( (( ARM64_ONLY )) && printf ' (arm64-only)'; (( X86_ONLY )) && printf ' (x86_64-only)' )" "$C_RESET"
 (( DRY_RUN )) && printf '%s    (dry-run — no files written)%s\n' "$C_BOLD" "$C_RESET"
 
 # ─── Preflight ───────────────────────────────────────────────────────────────
@@ -164,9 +185,9 @@ ok "pkgbuild, productbuild available"
 # ─── Locate / build inputs ───────────────────────────────────────────────────
 hdr "Locate inputs (app + CLI binaries)"
 
-# Where Tauri drops the bundled app depends on the build target. An arm64-only
-# build (TAURI_TARGET=aarch64-apple-darwin) lands under the target triple;
-# the default/universal build lands at target/release.
+# Where Tauri drops the bundled app depends on the build target. A single-arch
+# build (TAURI_TARGET=<triple>) lands under the target-triple subdir; the
+# default/universal build lands at target/release.
 if (( ARM64_ONLY )); then
   # With an explicit --target (TAURI_TARGET=aarch64-apple-darwin) cargo writes
   # the bundle under the target-triple subdir; a plain build lands in
@@ -179,6 +200,15 @@ if (( ARM64_ONLY )); then
     "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app"
   )
   APP_BUILD_CMD="( cd '$ROOT/apps/desktop' && TAURI_TARGET=aarch64-apple-darwin pnpm tauri:build )"
+elif (( X86_ONLY )); then
+  # Intel: TAURI_TARGET=x86_64-apple-darwin → bundle under the x86_64 triple subdir.
+  APP_CANDIDATES=(
+    "$ROOT/target/x86_64-apple-darwin/release/bundle/macos/Squirrel.app"
+    "$ROOT/target/release/bundle/macos/Squirrel.app"
+    "$ROOT/apps/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Squirrel.app"
+    "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/Squirrel.app"
+  )
+  APP_BUILD_CMD="( cd '$ROOT/apps/desktop' && TAURI_TARGET=x86_64-apple-darwin pnpm tauri:build )"
 else
   APP_CANDIDATES=(
     "$ROOT/target/release/bundle/macos/Squirrel.app"
@@ -214,6 +244,23 @@ if [[ ! -f "$DIST/squirrel" || ! -f "$DIST/squirrel-backend" ]]; then
   die "dist/squirrel{,-backend} missing — run 'make build-installers-arm64' first (builds the CLI binaries)"
 fi
 ok "binaries → dist/squirrel, dist/squirrel-backend"
+
+# ─── Sign dist/ CLI binaries with entitlements ───────────────────────────────
+# Sign the source dist/ binaries here so every downstream consumer (pkg staging,
+# build-manual-zip.sh --skip-build, manual cp) gets binaries that already carry
+# disable-library-validation. Without this, PyInstaller's extracted libpython
+# triggers a "different Team IDs" dlopen crash under the hardened runtime.
+hdr "Sign dist/ CLI binaries"
+if (( SIGN_APP )); then
+  for cli in squirrel squirrel-backend; do
+    run "codesign --force --options runtime --timestamp --entitlements '$ENTITLEMENTS' --sign '$APPLE_SIGNING_IDENTITY' '$DIST/$cli'"
+  done
+  (( DRY_RUN )) || codesign --verify --strict "$DIST/squirrel" || die "dist/squirrel signature verification failed"
+  (( DRY_RUN )) || codesign --verify --strict "$DIST/squirrel-backend" || die "dist/squirrel-backend signature verification failed"
+  ok "dist/ CLI binaries signed with library-validation entitlement"
+else
+  warn "skipping dist/ CLI binary signing (APPLE_SIGNING_IDENTITY unset) — binaries will crash on launch without re-signing"
+fi
 
 # ─── Sign the app (Developer ID Application) ─────────────────────────────────
 hdr "Sign Squirrel.app"
@@ -360,7 +407,7 @@ else
   info "skipping DMG signing/notarization (unsigned or dry-run)"
 fi
 
-printf '\n%sDone.%s  Distribute: squirrel-macos.dmg  (mount → run the .pkg inside)\n' "$C_BOLD" "$C_RESET"
+printf '\n%sDone.%s  Distribute: %s  (mount → run the .pkg inside)\n' "$C_BOLD" "$C_RESET" "$DMG_NAME"
 printf '             internal: %s (standalone .pkg, not for public release)\n' "${PKG_OUT#$ROOT/}"
 printf '       Size: pkg %s · dmg %s\n\n' \
   "$(du -sh "$PKG_OUT" 2>/dev/null | cut -f1 || echo 'n/a')" \

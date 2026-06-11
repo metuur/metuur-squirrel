@@ -20,6 +20,7 @@ from pathlib import Path
 # Import from intent_parser (same lib/ directory)
 sys.path.insert(0, str(Path(__file__).parent))
 from intent_parser import write_frontmatter, _DELETE, parse_frontmatter  # noqa: E402
+from fs_atomic import atomic_write_text  # noqa: E402
 
 try:
     from dateutil.relativedelta import relativedelta as _rdelta  # type: ignore
@@ -158,9 +159,7 @@ def _rewrite_body(path: Path, new_body: str) -> None:
     # Locate the closing `---` of the frontmatter
     if not lines or lines[0].rstrip("\r\n") != "---":
         # No frontmatter — just rewrite the whole file as the body
-        tmp = path.with_suffix(".md.tmp")
-        tmp.write_text(new_body, encoding="utf-8")
-        os.replace(tmp, path)
+        atomic_write_text(path, new_body)
         return
 
     end_idx = None
@@ -175,9 +174,7 @@ def _rewrite_body(path: Path, new_body: str) -> None:
 
     frontmatter_part = "".join(lines[: end_idx + 1])
     new_content = frontmatter_part + new_body
-    tmp = path.with_suffix(".md.tmp")
-    tmp.write_text(new_content, encoding="utf-8")
-    os.replace(tmp, path)
+    atomic_write_text(path, new_content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

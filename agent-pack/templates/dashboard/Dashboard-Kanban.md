@@ -18,7 +18,7 @@ TABLE WITHOUT ID
   project AS Project,
   deadline AS Deadline,
   priority AS Priority
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "pending"
 SORT deadline ASC NULLS LAST
 ```
@@ -31,7 +31,7 @@ TABLE WITHOUT ID
   project AS Project,
   deadline AS Deadline,
   file.mtime AS "Last Touch"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "in-progress"
 SORT file.mtime DESC
 ```
@@ -43,7 +43,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   project AS Project,
   file.mtime AS "Blocked Since"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE status = "blocked"
 SORT file.mtime ASC
 ```
@@ -55,7 +55,7 @@ TABLE WITHOUT ID
   file.link AS Intent,
   project AS Project,
   file.mtime AS "Completed"
-FROM "01-Proyectos-Activos" OR "04-Archivo"
+FROM "01-Active-Projects" OR "04-Archive"
 WHERE (status = "done")
   AND file.mtime >= date(today) - dur(30 days)
 SORT file.mtime DESC
@@ -72,7 +72,7 @@ TABLE WITHOUT ID
   length(filter(rows, (r) => r.status = "in-progress")) AS "🔄 Active",
   length(filter(rows, (r) => r.status = "blocked")) AS "🚧 Blocked",
   length(filter(rows, (r) => r.status = "pending")) AS "⏳ Pending"
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE project != null AND type = "intent"
 GROUP BY project
 SORT length(filter(rows, (r) => r.status = "in-progress")) DESC
@@ -85,7 +85,7 @@ TABLE WITHOUT ID
   file.link AS Project,
   objective AS Objective,
   deadline AS Deadline
-FROM "01-Proyectos-Activos"
+FROM "01-Active-Projects"
 WHERE type = "project"
   AND (status = "wip" OR status = "active" OR status = "in-progress")
 SORT deadline ASC NULLS LAST

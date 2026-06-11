@@ -26,12 +26,12 @@ project:
 tool:
   # Tools detected and configured during setup.
   # Valid values: claude-code | codex | opencode
-  active: [claude-code, codex, opencode]
+  active: [claude-code,codex,opencode]
 
   # Absolute path to the cloned uncle-dev agent-skills repository.
   # Used to re-run install scripts and to locate hooks.
   # Leave blank if installed exclusively via marketplace.
-  agent_skills_root: "/Users/javierbenavides/.claude/plugins/cache/uncle-dev-agent-skills/uncle-dev-agent-skills/1.0.0"
+  agent_skills_root: "/Users/javierbenavides/.claude/plugins/cache/uncle-dev-agent-skills/uncle-dev-agent-skills/1.4.0"
 
 # ── Skill configuration ───────────────────────────────────────────────────────
 # All uncle-dev skills are always available — there is no opt-in/opt-out list.

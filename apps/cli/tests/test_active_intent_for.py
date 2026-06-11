@@ -68,7 +68,7 @@ class TestActiveIntentFor(unittest.TestCase):
         self.tmp.cleanup()
 
     def _project_dir(self, slug: str) -> pathlib.Path:
-        return self.vault / "01-Proyectos-Activos" / slug
+        return self.vault / "01-Active-Projects" / slug
 
     def test_returns_more_recently_updated_intent(self):
         proj = self._project_dir("PROJECT-A")
@@ -99,7 +99,7 @@ class TestActiveIntentFor(unittest.TestCase):
         self.assertIsNone(active_intent_for(self.vault, "PROJECT-A"))
 
     def test_returns_none_when_project_folder_missing(self):
-        (self.vault / "01-Proyectos-Activos").mkdir()
+        (self.vault / "01-Active-Projects").mkdir()
         # No PROJECT-A subfolder created.
         self.assertIsNone(active_intent_for(self.vault, "PROJECT-A"))
 

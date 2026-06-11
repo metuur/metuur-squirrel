@@ -20,9 +20,10 @@ import json
 import os
 import re
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Optional
+
+from fs_atomic import atomic_write_bytes
 
 # @spec VAULT-008
 
@@ -264,21 +265,8 @@ def _detect_newline(header_line: str, fm_lines: list, closing_line: str) -> str:
 
 
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Write `data` to `path` atomically (temp file in same dir + os.replace)."""
-    directory = path.parent
-    fd, tmp_path = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=str(directory)
-    )
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        os.replace(tmp_path, path)
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    """Write `data` to `path` atomically (temp file in same dir + fsync + os.replace)."""
+    atomic_write_bytes(path, data)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

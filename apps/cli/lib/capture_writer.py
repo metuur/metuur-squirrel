@@ -25,6 +25,8 @@ import pathlib
 import re
 from typing import Optional
 
+from fs_atomic import atomic_write_text
+
 
 def write_capture(
     vault_path: pathlib.Path,
@@ -33,7 +35,7 @@ def write_capture(
 ) -> pathlib.Path:
     """Write a capture note and return its path.
 
-    With `project_slug`: file lives in `<vault>/01-Proyectos-Activos/<slug>/`
+    With `project_slug`: file lives in `<vault>/01-Active-Projects/<slug>/`
     with the name `<slug>-CAPTURE-<NNN>.md` (R-5.5).
 
     Without `project_slug`: file lives in `<vault>/99-Resources/Inbox/` with
@@ -49,7 +51,7 @@ def write_capture(
     vault_path = pathlib.Path(vault_path).expanduser().resolve()
 
     if project_slug:
-        folder = vault_path / "01-Proyectos-Activos" / project_slug
+        folder = vault_path / "01-Active-Projects" / project_slug
         prefix = f"{project_slug}-CAPTURE"
         tipo = "capture"
         meta_proj = project_slug
@@ -117,6 +119,4 @@ def _format_note(
 
 
 def _atomic_write(target: pathlib.Path, body: str) -> None:
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(body, encoding="utf-8")
-    os.replace(tmp, target)
+    atomic_write_text(target, body)

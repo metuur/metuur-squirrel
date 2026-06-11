@@ -176,6 +176,27 @@ security find-identity -v -p codesigning | grep "$APPLE_TEAM_ID"
 - **CI (Phase 2)** — headless signing via GitHub Actions is a separate change.
   See `docs/tasks/app-signing-and-notarization.md` Unit 7 for scope.
 
+## Notification branding (post-install user actions)
+
+Branded reminder banners — the Squirrel logo on the notification and a click
+that opens the app at the project — require two one-time actions on each
+machine. Spec: [`docs/ears/notification-icon-branding.md`](ears/notification-icon-branding.md).
+
+1. **Grant notification permission.** Open **System Settings → Notifications →
+   Squirrel** and allow notifications. macOS only honours the reminders
+   daemon's `-sender com.metuur.squirrel` branding after Squirrel has emitted
+   at least one notification through the notification center with permission
+   granted; the app's first-launch bootstrap does this automatically once
+   permission is allowed. Until then banners may render a generic icon — the
+   expected *cold-identity window*, not a regression.
+
+2. **Reinstall the daemon (existing installs only).** The reminders daemon is
+   referenced by an absolute path baked into its launchd plist, so an
+   already-installed copy stays unbranded until it is replaced. Re-run
+   `installer/install.sh` (or reinstall the app payload) to pick up the
+   `-sender` daemon. Fresh installs from a release built after this change
+   already carry it.
+
 ## Auto-updates
 
 Once signing is in place, Tauri's updater plugin can be enabled. It

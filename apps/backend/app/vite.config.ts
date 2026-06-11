@@ -14,7 +14,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://127.0.0.1:3939',
+      // Overridable so dev can target a non-prod backend port (e.g. :3942)
+      // and avoid colliding with the installed app on :3939. Defaults to :3939.
+      '/api': process.env.VITE_SQUIRREL_BACKEND_ORIGIN ?? 'http://127.0.0.1:3939',
     },
   },
   build: {

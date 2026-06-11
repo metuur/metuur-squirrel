@@ -7,7 +7,7 @@ allowed-tools: [Read, Write, Edit, Bash, Glob]
 
 Closes the current session.
 
-Invokes the `squirrel:session-end` skill to:
+Invokes the `squirrel-session-end` skill to:
 1. Read state.json and identify the active intent
 2. Reconstruct what happened in the session (from the conversation + git)
 3. Generate a shutdown note with: status, next physical action, active hypothesis, blockers, decisions made

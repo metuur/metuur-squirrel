@@ -9,7 +9,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-export const BACKEND_ORIGIN = "http://127.0.0.1:3939";
+// Backend origin. Defaults to :3939; the dev build overrides it to :3940 via the
+// Vite env var `VITE_SQUIRREL_BACKEND_ORIGIN` (set in package.json dev scripts),
+// kept in lockstep with the Rust side (backend_supervisor::BACKEND_PORT) so the
+// dev app never collides with an installed prod app on the same port.
+export const BACKEND_ORIGIN =
+  import.meta.env.VITE_SQUIRREL_BACKEND_ORIGIN ?? "http://127.0.0.1:3939";
 
 const REQUEST_TIMEOUT_MS = 3000;
 
@@ -83,6 +88,21 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       throw new ApiError(resp.status, msg, data);
     }
     return data as T;
+  } catch (e) {
+    // An ApiError is a real HTTP response we already classified — rethrow as-is.
+    if (e instanceof ApiError) throw e;
+    // Otherwise `fetch` itself rejected: the backend sidecar isn't reachable
+    // (connection refused → WebKit's opaque "Load failed") or it didn't answer
+    // before REQUEST_TIMEOUT_MS (AbortError). Map both to a clear, actionable
+    // message so callers never surface the raw transport error to the user.
+    const aborted = e instanceof DOMException && e.name === "AbortError";
+    throw new ApiError(
+      0,
+      aborted
+        ? "Squirrel’s backend didn’t respond in time — it may still be starting up. Please try again in a moment."
+        : "Couldn’t reach Squirrel’s backend — it may still be starting up. Please try again in a moment.",
+      e,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -297,6 +317,40 @@ export interface VaultConfigResult {
   default: boolean;
 }
 
+// ── Vault recovery ─────────────────────────────────────────────────────────
+// /api/me answers 409 (or 503 for NO_VAULT) with a machine-readable `code` when
+// the configured vault is missing / empty / not yet a Squirrel vault, so the
+// popup can guide re-setup instead of showing a backend-offline banner.
+export type VaultRecoveryCode =
+  | "NO_VAULT"
+  | "VAULT_MISSING"
+  | "VAULT_EMPTY"
+  | "VAULT_UNSTRUCTURED";
+
+export interface VaultRecoveryPayload {
+  error: string;
+  code: VaultRecoveryCode;
+  vault?: { name: string; path: string };
+  vault_status?: "missing" | "empty" | "unstructured";
+  migrate_command?: string;
+}
+
+/** Narrow an unknown error to a vault-recovery payload, or null. */
+export function asVaultRecovery(err: unknown): VaultRecoveryPayload | null {
+  if (!(err instanceof ApiError)) return null;
+  const p = err.payload as Partial<VaultRecoveryPayload> | undefined;
+  const code = p?.code;
+  if (
+    code === "NO_VAULT" ||
+    code === "VAULT_MISSING" ||
+    code === "VAULT_EMPTY" ||
+    code === "VAULT_UNSTRUCTURED"
+  ) {
+    return p as VaultRecoveryPayload;
+  }
+  return null;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -398,6 +452,12 @@ export const api = {
   notificationDismiss: (id: number) =>
     call<{ success: true }>(`/api/notification/${id}/dismiss`, {
       method: "PATCH",
+    }),
+  // ── Post-its ───────────────────────────────────────────────────────────────
+  postItCreate: (text: string, color: string) =>
+    call<{ id: string }>("/api/post-its", {
+      method: "POST",
+      body: JSON.stringify({ text, color }),
     }),
   // ── Quick Tasks ────────────────────────────────────────────────────────────
   quickTasks: () => call<QuickTasksPayload>("/api/quick-tasks"),

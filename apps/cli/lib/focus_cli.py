@@ -117,7 +117,7 @@ def main():
             finally:
                 conn.close()
             vault_path = Path(args.vault)
-            intent_file = vault_path / "01-Proyectos-Activos" / project_slug / f"{intent_slug}.md"
+            intent_file = vault_path / "01-Active-Projects" / project_slug / f"{intent_slug}.md"
             if intent_file.is_file():
                 from intent_parser import write_frontmatter  # noqa: E402
                 write_frontmatter(intent_file, {"time_invested_minutes": time_invested})

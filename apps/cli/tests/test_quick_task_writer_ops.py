@@ -29,7 +29,7 @@ from intent_parser import write_frontmatter, parse_intent
 
 
 def _path(vault: Path, qt_id: str) -> Path:
-    return vault / "01-Proyectos-Activos" / "SCRATCH-PAD" / f"{qt_id}.md"
+    return vault / "01-Active-Projects" / "SCRATCH-PAD" / f"{qt_id}.md"
 
 
 # ── A.3: complete / delete ───────────────────────────────────────────────────
@@ -89,7 +89,7 @@ def test_snooze_limit_blocks_past_max(tmp_path):
 
 def test_resolve_snooze_until_durations():
     """R-3.4: durations resolve to absolute timestamps."""
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
     in_1h = datetime.datetime.fromisoformat(resolve_snooze_until("1h"))
     assert abs((in_1h - now).total_seconds() - 3600) < 5
 
@@ -101,11 +101,19 @@ def test_resolve_snooze_until_durations():
     assert abs((default - now).total_seconds() - 3600) < 5
 
 
+def test_resolve_snooze_until_is_timezone_aware():
+    """M6/M7 audit fix: every resolved wake timestamp carries a UTC offset so
+    scanner comparisons never mix naive and aware datetimes."""
+    for value in ("15m", "1h", "next_block", "2026-08-01", None):
+        parsed = datetime.datetime.fromisoformat(resolve_snooze_until(value))
+        assert parsed.tzinfo is not None, f"{value!r} resolved to a naive timestamp"
+
+
 def test_resolve_snooze_until_next_block():
     """R-3.4: next_block resolves to the next noon or next midnight boundary."""
     blk = datetime.datetime.fromisoformat(resolve_snooze_until("next_block"))
     assert (blk.hour, blk.minute, blk.second) in {(12, 0, 0), (0, 0, 0)}
-    assert blk > datetime.datetime.now()
+    assert blk > datetime.datetime.now().astimezone()
 
 
 def test_resolve_snooze_until_iso_passthrough():

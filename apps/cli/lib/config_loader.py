@@ -516,12 +516,10 @@ def migrate_legacy(
 
 
 def _atomic_write(path: pathlib.Path, text: str) -> None:
-    """Write `text` to `path` atomically (temp file + os.replace)."""
-    import os
+    """Write `text` to `path` atomically (temp file + fsync + os.replace)."""
+    from fs_atomic import atomic_write_text
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    atomic_write_text(path, text)
 
 
 def _vault_block_ranges(lines: list[str]) -> list[tuple[str, int, int]]:

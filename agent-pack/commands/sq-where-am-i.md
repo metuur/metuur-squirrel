@@ -10,7 +10,7 @@ Quick diagnostic: where were you?
 Optional arguments:
 - `--vault NAME` — operate on a specific vault (default if omitted)
 
-Invokes the `squirrel:brief` skill with `--all` to:
+Invokes the `squirrel-brief` skill with `--all` to:
 1. List all WIP projects
 2. For each one: estimated progress, last intent, next action
 3. Detect warning signals:

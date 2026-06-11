@@ -29,6 +29,11 @@ html, body, #root { height: 100%; }
 .sq-pop      { animation: sq-pop 160ms cubic-bezier(0.22, 1, 0.36, 1); }
 .sq-slide-in { animation: sq-slide-in-right 200ms cubic-bezier(0.22, 1, 0.36, 1); }
 
+/* Handwriting font for Post-it cards — TODO: bundle woff2 locally for offline use (R-5.9) */
+.post-it-text {
+  font-family: "Caveat", "Comic Sans MS", cursive;
+}
+
 /* Tactile button recipe for the web SPA — matches the focus-row Check-in/
    Check-out feel (1px ink border + 2px offset shadow + press-collapse) so
    every standard button reads as a deliberate physical action. Mirrors the
