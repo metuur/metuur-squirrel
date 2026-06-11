@@ -63,13 +63,16 @@ if (( ARM64_ONLY && X86_ONLY )); then
   exit 1
 fi
 
+# ─── Version ─────────────────────────────────────────────────────────────────
+VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
+
 # Arch-suffixed output for single-arch installers; canonical name for universal.
 if (( ARM64_ONLY )); then
-  DMG_OUT="$ROOT/squirrel-installer-macos-arm64.dmg"
+  DMG_OUT="$ROOT/squirrel-installer-macos-v${VERSION}-arm64.dmg"
 elif (( X86_ONLY )); then
-  DMG_OUT="$ROOT/squirrel-installer-macos-x86_64.dmg"
+  DMG_OUT="$ROOT/squirrel-installer-macos-v${VERSION}-x86_64.dmg"
 else
-  DMG_OUT="$ROOT/squirrel-installer-macos.dmg"
+  DMG_OUT="$ROOT/squirrel-installer-macos-v${VERSION}.dmg"
 fi
 DMG_NAME="$(basename "$DMG_OUT")"
 
@@ -95,8 +98,6 @@ if [[ -z "${APPLE_SIGNING_IDENTITY:-}" ]]; then
   warn "APPLE_SIGNING_IDENTITY unset — producing unsigned installer (dev iteration mode)"
 fi
 
-# ─── Version ─────────────────────────────────────────────────────────────────
-VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
 say ""
 printf '%s🐿  Building Squirrel v%s installer%s\n' "$C_BOLD" "$VERSION" "$C_RESET"
 (( DRY_RUN ))    && printf '%s    (dry-run — no files written)%s\n'  "$C_BOLD" "$C_RESET"

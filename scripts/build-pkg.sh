@@ -69,13 +69,16 @@ if (( ARM64_ONLY && X86_ONLY )); then
   exit 1
 fi
 
+# ─── Version ─────────────────────────────────────────────────────────────────
+VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
+
 # Arch-suffixed output for single-arch installers; canonical name for universal.
 if (( ARM64_ONLY )); then
-  DMG_OUT="$ROOT/squirrel-macos-arm64.dmg"
+  DMG_OUT="$ROOT/squirrel-macos-v${VERSION}-arm64.dmg"
 elif (( X86_ONLY )); then
-  DMG_OUT="$ROOT/squirrel-macos-x86_64.dmg"
+  DMG_OUT="$ROOT/squirrel-macos-v${VERSION}-x86_64.dmg"
 else
-  DMG_OUT="$ROOT/squirrel-macos.dmg"
+  DMG_OUT="$ROOT/squirrel-macos-v${VERSION}.dmg"
 fi
 DMG_NAME="$(basename "$DMG_OUT")"
 
@@ -169,8 +172,6 @@ if (( ! DRY_RUN && ! ALLOW_UNNOTARIZED )); then
   fi
 fi
 
-# ─── Version ─────────────────────────────────────────────────────────────────
-VERSION="$(grep '^version' "$ROOT/apps/cli/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')"
 printf '\n%s🐿  Building Squirrel v%s .pkg installer%s%s\n' "$C_BOLD" "$VERSION" \
   "$( (( ARM64_ONLY )) && printf ' (arm64-only)'; (( X86_ONLY )) && printf ' (x86_64-only)' )" "$C_RESET"
 (( DRY_RUN )) && printf '%s    (dry-run — no files written)%s\n' "$C_BOLD" "$C_RESET"
@@ -243,6 +244,23 @@ if [[ ! -f "$DIST/squirrel" || ! -f "$DIST/squirrel-backend" ]]; then
   die "dist/squirrel{,-backend} missing — run 'make build-installers-arm64' first (builds the CLI binaries)"
 fi
 ok "binaries → dist/squirrel, dist/squirrel-backend"
+
+# ─── Sign dist/ CLI binaries with entitlements ───────────────────────────────
+# Sign the source dist/ binaries here so every downstream consumer (pkg staging,
+# build-manual-zip.sh --skip-build, manual cp) gets binaries that already carry
+# disable-library-validation. Without this, PyInstaller's extracted libpython
+# triggers a "different Team IDs" dlopen crash under the hardened runtime.
+hdr "Sign dist/ CLI binaries"
+if (( SIGN_APP )); then
+  for cli in squirrel squirrel-backend; do
+    run "codesign --force --options runtime --timestamp --entitlements '$ENTITLEMENTS' --sign '$APPLE_SIGNING_IDENTITY' '$DIST/$cli'"
+  done
+  (( DRY_RUN )) || codesign --verify --strict "$DIST/squirrel" || die "dist/squirrel signature verification failed"
+  (( DRY_RUN )) || codesign --verify --strict "$DIST/squirrel-backend" || die "dist/squirrel-backend signature verification failed"
+  ok "dist/ CLI binaries signed with library-validation entitlement"
+else
+  warn "skipping dist/ CLI binary signing (APPLE_SIGNING_IDENTITY unset) — binaries will crash on launch without re-signing"
+fi
 
 # ─── Sign the app (Developer ID Application) ─────────────────────────────────
 hdr "Sign Squirrel.app"

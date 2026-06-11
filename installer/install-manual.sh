@@ -114,7 +114,19 @@ info "squirrel → $CLI_BIN"
 cp "$SCRIPT_DIR/bin/squirrel" "$CLI_BIN"
 chmod +x "$CLI_BIN"
 xattr -d com.apple.quarantine "$CLI_BIN" 2>/dev/null || true
-codesign -v "$CLI_BIN" 2>/dev/null || warn "squirrel binary is not codesigned — expected for dev bundles, but verify the download source"
+# Re-sign with disable-library-validation so PyInstaller's extracted libpython
+# can be dlopen'd even under the hardened runtime (Team ID mismatch otherwise).
+if _sign_id="$(security find-identity -v 2>/dev/null | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"')"; then
+  if [[ -n "$_sign_id" ]]; then
+    codesign --force --options runtime \
+      --entitlements "$SCRIPT_DIR/Entitlements.plist" \
+      --sign "$_sign_id" "$CLI_BIN" 2>/dev/null \
+      && info "squirrel re-signed with library-validation entitlement" \
+      || warn "re-sign failed — squirrel may crash on launch (Team ID mismatch)"
+  else
+    warn "no Developer ID Application cert found — squirrel may crash on launch (Team ID mismatch)"
+  fi
+fi
 ok "squirrel installed"
 
 # ─── Step 3: Copy backend binary ──────────────────────────────────────────────
@@ -123,7 +135,13 @@ info "squirrel-backend → $BACKEND_BIN"
 cp "$SCRIPT_DIR/bin/squirrel-backend" "$BACKEND_BIN"
 chmod +x "$BACKEND_BIN"
 xattr -d com.apple.quarantine "$BACKEND_BIN" 2>/dev/null || true
-codesign -v "$BACKEND_BIN" 2>/dev/null || warn "squirrel-backend binary is not codesigned — expected for dev bundles, but verify the download source"
+if [[ -n "${_sign_id:-}" ]]; then
+  codesign --force --options runtime \
+    --entitlements "$SCRIPT_DIR/Entitlements.plist" \
+    --sign "$_sign_id" "$BACKEND_BIN" 2>/dev/null \
+    && info "squirrel-backend re-signed with library-validation entitlement" \
+    || warn "re-sign failed — squirrel-backend may crash on launch"
+fi
 ok "squirrel-backend installed"
 
 # ─── Step 3b: Install Squirrel.app → /Applications ───────────────────────────
