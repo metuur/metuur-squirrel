@@ -468,6 +468,11 @@ export const api = {
     }),
   postItsList: (includeArchived = false) =>
     call<PostIt[]>(`/post-its${includeArchived ? "?include=archived" : ""}`),
+  postItCreate: (payload: { text: string; color?: string; label?: string }) =>
+    call<PostIt>("/post-its", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>
