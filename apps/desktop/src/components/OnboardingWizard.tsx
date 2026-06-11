@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { api, type ObsidianStatus } from "../api/client";
+import { api, openWebUrl, type ObsidianStatus } from "../api/client";
 import { markOnboardingDone } from "../lib/onboarding";
 import { ackSetupNudge } from "../lib/setupNudge";
 import { RecommendedSetup } from "./RecommendedSetup";
@@ -147,6 +147,9 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                   <button type="button" className="btn" onClick={checkObsidian}>
                     Re-check
                   </button>
+                  <button type="button" className="btn" onClick={() => void openWebUrl("/guide")}>
+                    Open guide
+                  </button>
                 </div>
               </div>
             )}
@@ -231,7 +234,18 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               </span>
             </label>
 
-            {error && <p className="text-[13px]" style={{ color: "var(--danger, #c0392b)" }}>{error}</p>}
+            {error && (
+              <div className="flex flex-col gap-1">
+                <p className="text-[13px]" style={{ color: "var(--danger, #c0392b)" }}>{error}</p>
+                <button
+                  type="button"
+                  className="self-start text-[12px] underline text-ink-3 hover:text-ink-1"
+                  onClick={() => void openWebUrl("/guide")}
+                >
+                  Open the guide for help
+                </button>
+              </div>
+            )}
 
             <div className="flex justify-between">
               <button type="button" className="btn" onClick={() => setStep("obsidian")}>
@@ -268,6 +282,18 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
             </div>
 
             <RecommendedSetup />
+
+            <p className="text-[13px] text-ink-3">
+              New to Squirrel?{" "}
+              <button
+                type="button"
+                className="underline hover:text-ink-1"
+                onClick={() => void openWebUrl("/guide")}
+              >
+                Open the guide
+              </button>{" "}
+              to learn how it works.
+            </p>
 
             <div className="flex justify-end">
               <button type="button" className="btn" onClick={() => void finish()}>
