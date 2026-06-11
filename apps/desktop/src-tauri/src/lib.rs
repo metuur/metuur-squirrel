@@ -152,7 +152,7 @@ pub fn run() {
                 {
                     use std::sync::Mutex as StdMutex;
                     let state = handle.state::<StdMutex<backend_supervisor::SupervisorState>>();
-                    let mut s = state.lock().unwrap();
+                    let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
                     s.mode = mode;
                     s.child = child;
                 }
