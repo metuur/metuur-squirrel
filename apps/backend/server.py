@@ -494,6 +494,8 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/dismiss$"), "api_reminder_dismiss"),
     ("PATCH", re.compile(r"^/api/reminder/(?P<note_id>[A-Za-z0-9][A-Za-z0-9_-]*)/snooze$"),  "api_reminder_snooze"),
+    ("GET",  re.compile(r"^/api/post-its$"),                          "api_post_its_list"),
+    ("POST", re.compile(r"^/api/post-its$"),                          "api_post_it_create"),
     ("GET",  re.compile(r"^/api/quick-tasks$"),                       "api_quick_tasks_list"),
     ("POST", re.compile(r"^/api/quick-tasks$"),                       "api_quick_task_create"),
     ("PATCH", re.compile(r"^/api/quick-task/(?P<qt_id>[A-Za-z0-9][A-Za-z0-9_-]*)/complete$"), "api_quick_task_complete"),
@@ -1769,6 +1771,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
             data = {"active": [], "snoozed": [], "active_count": 0,
                     "snoozed_count": 0, "limit": 5, "return_blocked": False}
         self._send_json(data)
+
+    def api_post_its_list(self) -> None:
+        """GET /api/post-its — placeholder; implemented in task 2.1."""
+        self._send_json([])
+
+    def api_post_it_create(self) -> None:
+        """POST /api/post-its — create a Post-it (R-2.3, R-2.9)."""
+        ctx, _ = self._context()
+        payload = self._read_json_body()
+        text = (payload.get("text") or "").strip()
+        if not text:
+            raise _UserError(400, "Please write something before saving.")
+        color = (payload.get("color") or "yellow").strip()
+        label = (payload.get("label") or "").strip()
+        from post_it_writer import create as pi_create
+        try:
+            pi_id = pi_create(ctx.active.path, text, color=color, label=label)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not save your Post-it. Please try again.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({
+            "id": pi_id, "text": text, "color": color, "label": label,
+            "pinned": False, "state": "active", "created": None, "converted_to": "",
+            "layout": None,
+        }, status=201)
 
     def api_quick_task_create(self) -> None:
         """POST — create a Quick Task (R-1.2, R-1.3, R-1.5, R-2.3, R-2.4)."""
