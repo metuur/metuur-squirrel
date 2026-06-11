@@ -1,16 +1,26 @@
 import { useState } from 'react';
 import { useFetch } from '@/hooks/useFetch';
+import { useToast } from '@/components/Toast';
 import { api, type ReminderItem, type RemindersPayload } from '@/api/client';
 
 export function RemindersWidget() {
-  const { data, isLoading } = useFetch('reminders', () => api.reminders());
+  const { data, isLoading, mutate } = useFetch('reminders', () => api.reminders());
   const [local, setLocal] = useState<RemindersPayload | null>(null);
+  const { show: toast } = useToast();
 
   const lists = local ?? data ?? null;
 
   if (isLoading && !data) return null;
   if (!lists) return null;
   if (lists.approaching.length === 0 && lists.active.length === 0) return null;
+
+  // On failure: drop the optimistic state, refetch (earlier optimistic ops
+  // may have landed), and tell the user instead of silently diverging.
+  function revertWithError(message: string) {
+    setLocal(null);
+    mutate();
+    toast(message, 'error');
+  }
 
   function dismissItem(id: string) {
     if (!lists) return;
@@ -19,7 +29,9 @@ export function RemindersWidget() {
       active: lists.active.filter((r) => r.id !== id),
     };
     setLocal(next);
-    api.reminderDismiss(id).catch(() => {});
+    api.reminderDismiss(id).catch(() => {
+      revertWithError("Couldn't dismiss the reminder — try again.");
+    });
   }
 
   function snoozeItem(id: string, until: string) {
@@ -29,7 +41,9 @@ export function RemindersWidget() {
       active: lists.active.filter((r) => r.id !== id),
     };
     setLocal(next);
-    api.reminderSnooze(id, until).catch(() => {});
+    api.reminderSnooze(id, until).catch(() => {
+      revertWithError("Couldn't snooze the reminder — try again.");
+    });
   }
 
   return (
