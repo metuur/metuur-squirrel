@@ -462,7 +462,7 @@ export default function GuidePage() {
       </section>
 
       {/* ── This Web UI ── */}
-      <section className="mb-4">
+      <section className="mb-10">
         <h2 className="eyebrow text-ink-2 mb-1">In this Web UI</h2>
         <p className="text-sm text-ink-3 mb-4">
           Everything here reads and writes the same Markdown files your agent uses.
@@ -486,6 +486,36 @@ export default function GuidePage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="mb-4">
+        <h2 className="eyebrow text-ink-2 mb-3">FAQ</h2>
+        <details className="group panel">
+          <summary className="flex items-center gap-2.5 px-3 py-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <span className="material-icons text-base text-ink-4 transition-transform duration-150 group-open:rotate-90">
+              chevron_right
+            </span>
+            <span className="text-sm text-ink-2">
+              “Open Vault” shows an Obsidian error: <em>Vault not found</em>
+            </span>
+          </summary>
+          <div className="px-3 pb-3 pl-10 space-y-2 text-sm leading-relaxed text-ink-2">
+            <p>
+              Obsidian can only open vaults it already knows about. If your vault
+              folder was created by Squirrel (or has simply never been opened in
+              Obsidian), it exists on disk but isn’t in Obsidian’s registry yet —
+              so Obsidian replies “Vault not found”.
+            </p>
+            <p>
+              To fix it once: open Obsidian → vault switcher →{' '}
+              <strong>“Open folder as vault”</strong> → pick your vault folder
+              (the <Cmd>path</Cmd> registered in{' '}
+              <Cmd>~/.squirrel/config.toml</Cmd>). After that one-time
+              registration, the “Open Vault” buttons open it directly.
+            </p>
+          </div>
+        </details>
       </section>
     </div>
   );
