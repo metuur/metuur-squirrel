@@ -38,6 +38,10 @@ pub const BACKEND_ORIGIN: &str = match option_env!("SQUIRREL_BACKEND_ORIGIN") {
     None => "http://127.0.0.1:3939",
 };
 
+/// Dev Vite server origin — set via `SQUIRREL_DEV_UI_ORIGIN` at compile time.
+/// `None` in production builds; `Some("http://localhost:5173")` in `tauri:dev`.
+const DEV_UI_ORIGIN: Option<&str> = option_env!("SQUIRREL_DEV_UI_ORIGIN");
+
 /// Path of the default vault, read from `~/.squirrel/config.toml` (R-4.2).
 /// Returns `None` when no config / no default vault exists yet, so the tray can
 /// disable "Open Obsidian Vault" during first-run onboarding (R-4.4).
@@ -124,6 +128,9 @@ fn percent_encode(s: &str) -> String {
 /// handler can detect them and extract the task id.
 pub mod ids {
     pub const OPEN: &str = "open";
+    /// Opens the Vite dev server in the browser — only compiled in when
+    /// `SQUIRREL_DEV_UI_ORIGIN` is set (i.e. `tauri:dev` builds).
+    pub const OPEN_DEV: &str = "open_dev";
     /// Captures a Quick Task in-app — shows the window and emits
     /// `quick-task-capture-open` so the React capture modal opens (R-1.1, R-1.5).
     pub const ADD_QUICK_TASK: &str = "add_quick_task";
@@ -198,6 +205,12 @@ fn build_menu<R: Runtime>(
     journal_due: bool,
 ) -> tauri::Result<Menu<R>> {
     let open_item = MenuItem::with_id(app, ids::OPEN, "Open Squirrel", true, None::<&str>)?;
+    let open_dev_item: Option<MenuItem<R>> = if let Some(origin) = DEV_UI_ORIGIN {
+        let _ = origin; // used in click handler; label is static
+        Some(MenuItem::with_id(app, ids::OPEN_DEV, "Open Squirrel (dev)", true, None::<&str>)?)
+    } else {
+        None
+    };
     let add_quick_task_item =
         MenuItem::with_id(app, ids::ADD_QUICK_TASK, "Add Quick Task", true, None::<&str>)?;
     let open_web_ui_item =
@@ -246,6 +259,10 @@ fn build_menu<R: Runtime>(
         &sep_top,
         &pressing_header,
     ];
+    // Insert "Open Squirrel (dev)" right after "Open Squirrel" in dev builds.
+    if let Some(ref di) = open_dev_item {
+        items.insert(1, di);
+    }
 
     let alert_items: Vec<MenuItem<R>> = alerts
         .iter()
@@ -404,6 +421,11 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             let id = event.id().as_ref();
             match id {
                 ids::OPEN => show_main_window(app),
+                ids::OPEN_DEV => {
+                    if let Some(origin) = DEV_UI_ORIGIN {
+                        open_url(app, origin);
+                    }
+                }
                 ids::ADD_QUICK_TASK => {
                     // R-1.1 / R-1.5: capture IN-APP — show the window and emit so
                     // the React capture modal opens (same path as Ctrl+Cmd+Q).

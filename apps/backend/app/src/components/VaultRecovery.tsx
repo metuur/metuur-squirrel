@@ -71,6 +71,10 @@ export function VaultRecovery({
   return (
     <div className="min-h-full flex items-center justify-center p-6">
       <div className="w-full max-w-lg flex flex-col gap-5 rounded-xl border border-hairline bg-surface p-7 shadow-sm">
+        <div className="flex items-center gap-2 text-ink">
+          <img src="/squirrel.svg" alt="" aria-hidden className="w-9 h-9" />
+          <span className="font-bold tracking-tight text-lg">Squirrel</span>
+        </div>
         <div className="flex items-center gap-3">
           <span className="material-icons text-3xl text-amber-500">folder_off</span>
           <h1 className="text-xl font-bold text-ink">

@@ -51,6 +51,13 @@ pub(crate) const BACKEND_PORT: u16 = match option_env!("SQUIRREL_BACKEND_PORT") 
     Some(s) => parse_port(s),
     None => 3939,
 };
+
+/// Dev builds set `SQUIRREL_ALLOW_DEV_BACKEND=1` at compile time (package.json
+/// tauri:dev / tauri:build:dev) so the handshake ADOPTS an unauthenticated
+/// dev-mode backend (`make dev-local`'s live server.py on :3940) instead of
+/// refusing it. Never set for production builds — there `mode: dev` keeps the
+/// R-4.3 refusal.
+const ALLOW_DEV_BACKEND: bool = option_env!("SQUIRREL_ALLOW_DEV_BACKEND").is_some();
 const PORT_PROBE_TIMEOUT: Duration = Duration::from_millis(200);
 const HEALTH_REQ_TIMEOUT: Duration = Duration::from_secs(3);
 const STARTUP_BUDGET_ATTEMPTS: u32 = 10;
@@ -299,12 +306,13 @@ fn probe_handshake_inner(token: &str) -> std::io::Result<HandshakeOutcome> {
     stream.flush()?;
     let mut raw = Vec::new();
     stream.read_to_end(&mut raw)?;
-    Ok(classify_handshake_response(&raw, token))
+    Ok(classify_handshake_response(&raw, token, ALLOW_DEV_BACKEND))
 }
 
 /// Map a raw HTTP/1.x response to a `HandshakeOutcome`. Split out as a pure
 /// function so every branch (R-4.2..R-4.5) is unit-testable without a socket.
-fn classify_handshake_response(raw: &[u8], token: &str) -> HandshakeOutcome {
+/// `allow_dev` is `ALLOW_DEV_BACKEND` in production code; tests pass both.
+fn classify_handshake_response(raw: &[u8], token: &str, allow_dev: bool) -> HandshakeOutcome {
     let text = String::from_utf8_lossy(raw);
     let Some((head, body)) = text.split_once("\r\n\r\n") else {
         return HandshakeOutcome::RefusedUnknown;
@@ -318,7 +326,11 @@ fn classify_handshake_response(raw: &[u8], token: &str) -> HandshakeOutcome {
         Some(401) => HandshakeOutcome::Refused401,
         Some(200) => {
             if body.contains("\"mode\"") && body.contains("\"dev\"") {
-                HandshakeOutcome::RefusedDev
+                if allow_dev {
+                    HandshakeOutcome::Adopted
+                } else {
+                    HandshakeOutcome::RefusedDev
+                }
             } else if let Some(echo) = extract_token_echo(body) {
                 if ct_eq(echo.as_bytes(), token.as_bytes()) {
                     HandshakeOutcome::Adopted

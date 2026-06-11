@@ -32,7 +32,7 @@ ROOT := $(CURDIR)
 DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
-.PHONY: help dev dev-all dev-local build test-cli sq backend-start backend-build backend-dev-ui \
+.PHONY: help dev dev-all dev-local kill-dev-ports build test-cli sq backend-start backend-build backend-dev-ui \
 	deploy-pages \
         build-installers build-installers-arm64 build-installers-intel \
         build-pkg build-pkg-intel build-pkg-fast build-pkg-dry \
@@ -68,7 +68,16 @@ build:
 # dev server (:5173) proxies /api → :3940 too, so web UI + desktop share one
 # hot backend. Both show the [DEV] label. The live backend must start BEFORE
 # tauri dev so adoption wins over spawning. Ctrl-C stops the whole stack.
-dev-local:
+kill-dev-ports:
+	@for port in 3940 5173 5174 1420; do \
+		pids=$$(lsof -ti :$$port 2>/dev/null); \
+		if [ -n "$$pids" ]; then \
+			echo "  killing port :$$port (pid $$pids)"; \
+			kill $$pids 2>/dev/null || true; \
+		fi; \
+	done
+
+dev-local: kill-dev-ports
 	@echo "▶ Squirrel dev stack — live backend :3940 · web UI :5173 · desktop :3940+:1420 (prod :3939 untouched)"
 	@trap 'echo; echo "⏹ stopping dev stack…"; [ -n "$$BACKEND_PID" ] && kill $$BACKEND_PID 2>/dev/null; [ -n "$$WEBUI_PID" ] && kill $$WEBUI_PID 2>/dev/null; exit 0' INT TERM EXIT; \
 	if curl -s -o /dev/null --max-time 1 http://127.0.0.1:3940/api/_handshake; then \

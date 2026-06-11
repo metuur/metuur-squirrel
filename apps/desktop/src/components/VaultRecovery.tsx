@@ -6,7 +6,7 @@
 // Actions complete in-app (no web UI), consistent with the rest of the popup.
 import { useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { api, type VaultRecoveryPayload } from "../api/client";
+import { api, openWebUrl, type VaultRecoveryPayload } from "../api/client";
 
 export function VaultRecovery({
   info,
@@ -222,6 +222,17 @@ export function VaultRecovery({
             </div>
           </section>
         )}
+
+        {/* Escape hatch: set up the vault in the full web UI (bigger window). */}
+        <div className="pt-1 border-t border-hairline">
+          <button
+            type="button"
+            className="text-ink-4 text-[12px] hover:text-ink-2 underline underline-offset-2"
+            onClick={() => void openWebUrl("")}
+          >
+            Prefer a bigger window? Set up in the web UI →
+          </button>
+        </div>
       </div>
     </div>
   );
