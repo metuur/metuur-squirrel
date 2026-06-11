@@ -153,7 +153,7 @@ export function DeadlinesWidget({ home, online, projects, onAddNote, scrollTarge
         <div className="flex items-center gap-2">
           <span className="eyebrow">Pressing</span>
           <span className="relative group flex items-center cursor-help">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info-icon lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-info text-ink-4" aria-label="What appears in Pressing"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
 
             <span
               role="tooltip"

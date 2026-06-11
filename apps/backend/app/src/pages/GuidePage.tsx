@@ -310,6 +310,40 @@ const CONCEPTS: { icon: string; term: string; def: string }[] = [
 const CONFIG_HAYSTACK =
   'where the configuration lives ~/.squirrel/config.toml vaults name path default flag capture notification preferences move vault folder squirrel vaults open vault buttons logs reminder state';
 
+// Board lane reference — mirrors BOARD_HELP_ROWS in HomePage's BoardView.
+const BOARD_COLUMNS: { dot: string; label: string; rule: string }[] = [
+  {
+    dot: 'bg-critical',
+    label: 'PRESSING',
+    rule: 'Needs attention now — a computed feed of your most urgent items (top 3): overdue, due today, or due tomorrow. It can hold tasks and notes, not just projects. Always first so it stays the focus; you can’t drop cards here, but you can drag one into a lane to defer it.',
+  },
+  {
+    dot: 'bg-hairline',
+    label: 'LATER',
+    rule: 'Deadline more than 30 days away — early stage. Drop a card here to push its deadline out to roughly two months from today.',
+  },
+  {
+    dot: 'bg-accent',
+    label: 'ACTIVE',
+    rule: 'Deadline within 8–30 days, or no deadline set — your default working lane. Drop a card here to set its deadline about three weeks out.',
+  },
+  {
+    dot: 'bg-warning',
+    label: 'THIS WEEK',
+    rule: 'Deadline within 7 days — about to close. Drop a card here to commit to finishing it within the next few days.',
+  },
+  {
+    dot: 'bg-ok',
+    label: 'DELIVERED',
+    rule: '100% complete or marked delivered — done. Drop a project card here to mark it delivered without opening it.',
+  },
+];
+
+// Searchable text for the dashboard section (board + list views).
+const DASHBOARD_HAYSTACK =
+  'dashboard board list view toggle columns lanes kanban how the columns work pressing later active this week delivered drag drop card deadline defer move project urgency left right done ' +
+  BOARD_COLUMNS.map((c) => `${c.label} ${c.rule}`).join(' ').toLowerCase();
+
 interface FaqEntry {
   q: string;
   haystack: string; // q + answer text, for search
@@ -527,6 +561,89 @@ const FAQ_ENTRIES: FaqEntry[] = [
     ),
   },
   {
+    q: 'What’s the difference between the Board and List views?',
+    haystack:
+      'board list view difference toggle switch header dashboard kanban columns lanes which view projects pressing',
+    body: (
+      <>
+        <p>
+          They’re two readings of the same data. <strong>Board</strong> lays your
+          projects out as a pipeline — five columns flowing left → right toward
+          done — so you see at a glance what’s early, what’s closing, and what’s
+          finished. <strong>List</strong> is a calmer vertical read: pressing
+          items on top, then every project with its deadline, progress, and last
+          activity.
+        </p>
+        <p>
+          Switch between them with the <strong>List / Board</strong> toggle in
+          the header. Use Board when you’re planning the week and want to move
+          things; use List when you just want to scan.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'What actually happens when I drag a card between board columns?',
+    haystack:
+      'drag drop card board column lane move deadline rewrite change confirm dialog this week active later delivered defer',
+    body: (
+      <>
+        <p>
+          The columns are computed from each project’s <Cmd>deadline</Cmd>, so
+          moving a card <em>rewrites its deadline</em> (after a confirmation
+          dialog — nothing changes silently). Dropping into{' '}
+          <strong>THIS WEEK</strong> sets the deadline a few days out,{' '}
+          <strong>ACTIVE</strong> about three weeks out, <strong>LATER</strong>{' '}
+          about two months out, and <strong>DELIVERED</strong> marks the project
+          delivered.
+        </p>
+        <p>
+          The change is written to the project’s Markdown frontmatter in your
+          vault — so the new deadline is immediately visible to{' '}
+          <Cmd>/sq-deadlines</Cmd>, the desktop popup, and every other surface.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Why can’t I drop a card into PRESSING — and how do I get one out?',
+    haystack:
+      'pressing column drop not allowed cant move computed automatic top 3 defer drag out remove mark done finish',
+    body: (
+      <>
+        <p>
+          PRESSING isn’t a real lane — it’s a computed feed of your three most
+          urgent items (overdue, due today, or due tomorrow). Items enter it
+          automatically when their deadline gets close, so you can’t place cards
+          there by hand.
+        </p>
+        <p>
+          To get something <em>out</em>, you have two options: drag it into a
+          deadline lane (THIS WEEK / ACTIVE / LATER) to <strong>defer</strong> it
+          — its deadline is pushed out and it leaves the feed — or open the item
+          and mark it done. Dragging a pressing card straight to DELIVERED is
+          intentionally blocked, so “done” stays a deliberate act, not a slip of
+          the mouse.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Why did my project move to a different column by itself?',
+    haystack:
+      'project moved column by itself automatically changed lane jumped this week active later no deadline time passing',
+    body: (
+      <p>
+        Because the lanes are time-based, cards migrate on their own as
+        deadlines approach: a project in LATER drifts into ACTIVE once its
+        deadline is within 30 days, then into THIS WEEK inside 7 days — no
+        action needed. A project with <em>no</em> deadline always sits in
+        ACTIVE, the default working lane. The board is recomputed every time
+        you look at it, so it always reflects today.
+      </p>
+    ),
+  },
+  {
     q: 'Why can I only have 3 active projects?',
     haystack:
       'why only 3 active projects wip cap limit work in progress parking lot increase more projects',
@@ -574,6 +691,7 @@ const NAV: [string, string][] = [
   ['menu-bar', 'Menu bar'],
   ['cli', 'CLI'],
   ['web-ui', 'Web UI'],
+  ['dashboard', 'Dashboard'],
   ['faq', 'FAQ'],
 ];
 
@@ -647,11 +765,13 @@ export default function GuidePage() {
   const popupFeatures = POPUP_FEATURES.filter(([, term, def]) => hit(term, def));
   const trayFeatures = TRAY_FEATURES.filter(([, term, def]) => hit(term, def));
   const webuiFeatures = WEBUI_FEATURES.filter(([, term, def]) => hit(term, def));
+  const showDashboard = hit(DASHBOARD_HAYSTACK);
   const faqEntries = FAQ_ENTRIES.filter((f) => hit(f.haystack));
 
   const matchCount =
     concepts.length +
     (showConfig ? 1 : 0) +
+    (showDashboard ? 1 : 0) +
     daySteps.length +
     agentGroups.reduce((n, g) => n + g.entries.length, 0) +
     cliCommands.length +
@@ -869,6 +989,56 @@ export default function GuidePage() {
             Everything here reads and writes the same Markdown files your agent uses.
           </p>
           <FeatureList features={webuiFeatures} />
+        </section>
+      )}
+
+      {/* ── Dashboard: Board & List ── */}
+      {showDashboard && (
+        <section id="guide-dashboard" className="mb-10 scroll-mt-24">
+          <h2 className="eyebrow text-ink-2 mb-1">The dashboard — Board & List</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            My projects has two views, switched with the <strong>List / Board</strong>{' '}
+            toggle in the header. <strong>Board</strong> is a pipeline you can act on;{' '}
+            <strong>List</strong> is a calm vertical scan of the same data.
+          </p>
+
+          <div className="panel p-4 mb-3">
+            <h3 className="font-medium text-ink mb-1">How the columns work</h3>
+            <p className="text-sm leading-relaxed text-ink-2 mb-3">
+              Columns read left → right toward <strong>done</strong>: PRESSING leads as
+              your focus, then projects flow by stage so the closest-to-finish sits next
+              to DELIVERED. The lanes are computed from each project’s deadline, so cards
+              migrate forward on their own as dates approach — and a project with no
+              deadline sits in ACTIVE.
+            </p>
+            <ul className="space-y-2.5">
+              {BOARD_COLUMNS.map((c) => (
+                <li key={c.label} className="flex items-start gap-2.5">
+                  <span className={`mt-1.5 shrink-0 h-2 w-2 rounded-full ${c.dot}`} aria-hidden />
+                  <div className="min-w-0 text-sm leading-relaxed">
+                    <span className="font-bold tracking-wide text-ink text-xs">{c.label}</span>
+                    <p className="text-ink-3">{c.rule}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm leading-relaxed text-ink-3 mt-3 pt-3 border-t border-hairline">
+              Drag a card between lanes to change its deadline — a confirmation dialog
+              shows exactly what will change before anything is written. Dragging a
+              PRESSING card into a lane defers it; PRESSING itself is computed and never
+              a drop target. The same legend lives behind the board’s “?” button.
+            </p>
+          </div>
+
+          <div className="panel p-4 text-sm leading-relaxed text-ink-2">
+            <h3 className="font-medium text-ink mb-1">The List view</h3>
+            <p>
+              The same projects as a single column: pressing items on top (with their
+              urgency chips), then every project with its deadline, progress, and last
+              activity. Nothing is draggable here — it’s for reading, not rearranging.
+              Click any row to open the project.
+            </p>
+          </div>
         </section>
       )}
 

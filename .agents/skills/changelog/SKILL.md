@@ -1,6 +1,6 @@
 ---
 name: squirrel-changelog
-description: Generate a user-facing changelog for Squirrel from git history — translating technical commits into clear feature/improvement/fix entries grouped by surface (CLI, Desktop app, Web UI). Use when the user says "update the changelog", "write release notes", "what changed in this release", "changelog for v0.x", "generate the changelog", "draft release notes", or before tagging/shipping a version. Drafts assisted (you review before it writes), seeds from the git-cliff draft when available, and writes to the root CHANGELOG.md in Keep a Changelog format. Focus is on what changed for the user, not code-level churn.
+description: Generate a user-facing changelog for Squirrel from git history — translating technical commits into clear feature/improvement/fix entries grouped by surface (CLI, Desktop app, Web UI). Use when the user says "update the changelog", "write release notes", "what changed in this release", "changelog for v0.x", "generate the changelog", "draft release notes", or before tagging/shipping a version. Drafts assisted (you review before it writes) and writes to the root CHANGELOG.md in Keep a Changelog format. Focus is on what changed for the user, not code-level churn.
 ---
 
 # squirrel:changelog
@@ -12,9 +12,8 @@ running the menu-bar app, the CLI, or the Web UI — not an engineer reading
 diffs. Every entry answers "what changed for me?" Code-level churn (refactors,
 test fixes, graphify refreshes, version bumps, audit-ID cleanups) is dropped.
 
-This is **assisted**: scan → draft → you review/trim → write. The git-cliff
-config (`cliff.toml`) produces a mechanical first draft; this skill reframes it
-into user voice. Never write the file without a review pause unless told to.
+This is **assisted**: scan → draft → you review/trim → write. Never write the
+file without a review pause unless told to.
 
 ## Core principle
 
@@ -39,11 +38,9 @@ If you can't state why a user would care, the line doesn't belong.
   version). Confirm with the user if ambiguous.
 - Collect commits: `git log <last-tag>..HEAD --pretty="%s%n%b%n---"`.
 
-### 2. Draft (prefer git-cliff)
-- If `git-cliff` is installed, run `git-cliff --unreleased --tag v<version>`
-  to get a surface-grouped mechanical draft (see `cliff.toml`). Use it as raw
-  material, **not** the final text — its lines still read like commits.
-- If not installed, categorize the commits yourself using the rules below.
+### 2. Draft
+- Read each commit subject + body. Categorize using the rules below — group by
+  surface, then by impact. Translate every line from mechanism to outcome.
 
 ### 3. Filter noise (drop these entirely)
 See `references/voice.md` for the full list. Always drop:
@@ -100,4 +97,3 @@ Within each surface, bucket by Keep a Changelog impact:
 ## References
 - `references/voice.md` — noise-filter list, scope→surface map, tone rules
 - `references/highlights_examples.md` — few-shot examples of good highlights
-- `cliff.toml` (repo root) — git-cliff config that pre-drafts the grouping
