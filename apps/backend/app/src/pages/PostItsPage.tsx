@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { PostIt, PostItLayout, api } from "@/api/client";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, PostIt, PostItLayout, api } from "@/api/client";
 import { usePostIts } from "@/hooks/usePostIts";
 
 const COLOR_MAP: Record<string, string> = {
@@ -47,6 +47,40 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
   const [label, setLabel] = useState(item.label);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const [showConvert, setShowConvert] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<"quick_task" | "project_task" | "project_note">("quick_task");
+  const [convertProjectSlug, setConvertProjectSlug] = useState("");
+  const [projects, setProjects] = useState<{ slug: string; name: string }[]>([]);
+  const [convertError, setConvertError] = useState<string | null>(null);
+  const [convertBusy, setConvertBusy] = useState(false);
+
+  // Load projects when showing convert UI for project targets
+  useEffect(() => {
+    if (showConvert && convertTarget !== "quick_task") {
+      api.projectsList().then(setProjects).catch(() => {});
+    }
+  }, [showConvert, convertTarget]);
+
+  const handleConvert = async () => {
+    setConvertBusy(true);
+    setConvertError(null);
+    try {
+      const slug = convertTarget !== "quick_task" ? convertProjectSlug : undefined;
+      await api.postItConvert(item.id, convertTarget, slug);
+      onDelete(item.id); // remove from active wall
+      onClose();
+    } catch (err: unknown) {
+      // R-6.6: cap-full guidance
+      if (err instanceof ApiError && err.status === 409) {
+        setConvertError("Quick Task stack is full — complete one first.");
+      } else {
+        setConvertError(err instanceof Error ? err.message : "Conversion failed.");
+      }
+    } finally {
+      setConvertBusy(false);
+    }
+  };
 
   const save = async () => {
     setBusy(true);
@@ -218,6 +252,46 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
           >
             ✕
           </button>
+        </div>
+        {/* R-5.6: Convert section */}
+        <div style={{ marginTop: 12 }}>
+          {!showConvert ? (
+            <button onClick={() => setShowConvert(true)} style={{ background: "#eff6ff", color: "#1d4ed8", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}>
+              Convert →
+            </button>
+          ) : (
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                {(["quick_task", "project_task", "project_note"] as const).map(t => (
+                  <button key={t} onClick={() => { setConvertTarget(t); setConvertError(null); }}
+                    style={{ padding: "4px 8px", borderRadius: 4, border: "none", cursor: "pointer",
+                      background: convertTarget === t ? "#1d4ed8" : "#f3f4f6",
+                      color: convertTarget === t ? "#fff" : "#374151",
+                      fontSize: 12 }}>
+                    {t === "quick_task" ? "Quick Task" : t === "project_task" ? "Project Task" : "Project Note"}
+                  </button>
+                ))}
+              </div>
+              {convertTarget !== "quick_task" && (
+                <select value={convertProjectSlug} onChange={e => setConvertProjectSlug(e.target.value)}
+                  style={{ width: "100%", padding: "4px 8px", border: "1px solid #d1d5db", borderRadius: 6, marginBottom: 8 }}>
+                  <option value="">Select project…</option>
+                  {projects.map(p => <option key={p.slug} value={p.slug}>{p.name ?? p.slug}</option>)}
+                </select>
+              )}
+              {convertError && <p style={{ color: "#dc2626", fontSize: 13, margin: "4px 0" }}>{convertError}</p>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={handleConvert} disabled={convertBusy || (convertTarget !== "quick_task" && !convertProjectSlug)}
+                  style={{ background: "#1d4ed8", color: "#fff", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}>
+                  {convertBusy ? "…" : "Convert"}
+                </button>
+                <button onClick={() => { setShowConvert(false); setConvertError(null); }}
+                  style={{ background: "#f3f4f6", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -489,6 +489,12 @@ export const api = {
     call<{ success: boolean }>(`/post-it/${id}/restore`, { method: "PATCH" }),
   postItDelete: (id: string) =>
     call<{ success: boolean }>(`/post-it/${id}`, { method: "DELETE" }),
+  postItConvert: (id: string, target: string, projectSlug?: string) =>
+    call<{ success: boolean; ref: string }>(`/post-it/${id}/convert`, {
+      method: "POST",
+      body: JSON.stringify({ target, project_slug: projectSlug }),
+    }),
+  projectsList: () => call<{ slug: string; name: string }[]>("/projects"),
   deadlines: () => call<DeadlineGroup[]>('/deadlines'),
   history: () => call<HistoryItem[]>('/history'),
   search: (q: string) =>
