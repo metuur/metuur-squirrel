@@ -2396,9 +2396,14 @@ def _find_note(vault_path: pathlib.Path, note_id: str) -> Optional[pathlib.Path]
     # what matters for path-traversal safety.
     if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_-]*$", note_id):
         return None
+    post_its_dir = vault_path / "05-Post-its"
     for md in vault_path.rglob(f"{note_id}.md"):
-        if is_path_inside(md, vault_path):
-            return md
+        if not is_path_inside(md, vault_path):
+            continue
+        # R-6.5: Post-it files are never resolvable as notes
+        if is_path_inside(md, post_its_dir):
+            continue
+        return md
     return None
 
 
