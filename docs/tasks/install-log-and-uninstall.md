@@ -39,7 +39,7 @@
   - acceptance: R-5.1, R-5.2, R-5.3, R-5.4, R-3.1, R-3.2 — macOS-only, refuses root; parses `--dry-run`/`--yes`; reads every uncommented `[[vaults]] path` (tilde-expanded, `[[vaults]]` tables only) into the preserve list before anything else; prints removal plan (existing paths only) + preserve list; `--dry-run` exits 0 with no filesystem change; otherwise requires typed confirmation unless `--yes`; missing/unparsable config → warn, empty preserve list
   - verify: `--dry-run` on this machine prints plan + vaults, exits 0, `find`-verified no mtime changes; config with a commented `# path =` line and a `path` key in another table → neither preserved; `sudo uninstall.sh` refuses
 
-- [ ] 3.2 Implement the canonicalized vault safety gate (deps: 3.1, est: ~40m)
+- [x] 3.2 Implement the canonicalized vault safety gate (deps: 3.1, est: ~40m)
   - acceptance: R-3.3, R-3.4, R-3.4a — both preserve list and every removal target canonicalized (symlinks resolved, trailing slashes stripped) before prefix-containment comparison; any overlap aborts before deleting anything; deletions use literal enumerated paths, never dereferencing symlinks
   - verify: Configure a vault via symlink and a vault path inside `~/.squirrel` in a sandbox `$HOME` → both abort with error and nothing deleted
 

@@ -159,10 +159,55 @@ confirm() {
   [[ "$reply" =~ ^[Yy]$ ]] || { say "Cancelled — nothing was changed."; exit 0; }
 }
 
-# ─── Removal (vault safety gate: task 3.2; removals: Unit 4) ──────────────────
+# ─── Vault safety gate ───────────────────────────────────────────────────────
+# Canonicalize a path for COMPARISON only: strip trailing slashes and resolve
+# symlinks (including a symlinked leaf directory, via cd+pwd -P) so a vault that
+# points into app data is compared at its real location. Always succeeds — an
+# unresolvable path falls back to its lexical form. NOTE: deletion (Unit 4) uses
+# the literal PLAN paths, never these resolved forms (R-3.4a).
+canonicalize() {
+  local p="$1" d b
+  while [[ "$p" == */ && "$p" != "/" ]]; do p="${p%/}"; done
+  if [[ -d "$p" ]]; then
+    ( cd "$p" 2>/dev/null && pwd -P ) || printf '%s\n' "$p"
+  else
+    d="$(cd "$(dirname "$p")" 2>/dev/null && pwd -P)" || { printf '%s\n' "$p"; return 0; }
+    b="$(basename "$p")"
+    if [[ "$d" == "/" ]]; then printf '/%s\n' "$b"; else printf '%s/%s\n' "$d" "$b"; fi
+  fi
+  return 0
+}
+
+# True if two canonical paths overlap: equal, or either contained in the other.
+overlaps() {
+  local t="$1" v="$2"
+  [[ "$t" == "$v" ]]   && return 0
+  [[ "$t" == "$v"/* ]] && return 0   # removal target sits inside a vault
+  [[ "$v" == "$t"/* ]] && return 0   # a vault sits inside a removal target
+  return 1
+}
+
+# Abort BEFORE any deletion if any removal target overlaps a preserved vault.
+vault_safety_gate() {
+  local t v ct cv
+  for t in "${PLAN[@]:-}"; do
+    [[ -z "$t" ]] && continue
+    ct="$(canonicalize "$t")"
+    for v in "${PRESERVE[@]:-}"; do
+      [[ -z "$v" ]] && continue
+      cv="$(canonicalize "$v")"
+      if overlaps "$ct" "$cv"; then
+        die "ABORT: removal target '$t' overlaps preserved vault '$v'
+   (resolved: '$ct' vs '$cv'). Nothing was deleted — fix the vault location first."
+      fi
+    done
+  done
+}
+
+# ─── Removal (deletions: Unit 4) ─────────────────────────────────────────────
 perform_removal() {
-  warn "Removal is not yet wired in this build (vault gate + deletions land in"
-  warn "subsequent tasks). No files were changed."
+  warn "Removal is not yet wired in this build (deletions land in Unit 4)."
+  warn "The vault safety gate passed; no files were changed."
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -170,6 +215,7 @@ main() {
   load_preserve
   build_plan
   print_plan
+  vault_safety_gate          # abort before any deletion if a target overlaps a vault
 
   if [[ $DRY_RUN -eq 1 ]]; then
     info "Dry run — nothing was changed."
