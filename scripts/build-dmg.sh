@@ -400,6 +400,12 @@ run "cp '$ROOT/agent-pack/config/squirrel.toml.example' '$STAGING/resources/squi
 run "cp '$ROOT/installer/install.sh' '$STAGING/Install Squirrel'"
 run "chmod +x '$STAGING/Install Squirrel'"
 
+# Ship the install-log snapshot tool (install.sh calls it) and the uninstaller
+# at the DMG root, next to the installer.
+run "cp '$ROOT/installer/install-snapshot.sh' '$STAGING/install-snapshot.sh'"
+run "cp '$ROOT/installer/uninstall.sh' '$STAGING/uninstall.sh'"
+run "chmod +x '$STAGING/install-snapshot.sh' '$STAGING/uninstall.sh'"
+
 ok "Staging assembled → dmg-staging/"
 
 # ─── Step 5: Sign staged binaries (R-3.1, R-3.2) ─────────────────────────────

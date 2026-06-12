@@ -310,7 +310,14 @@ fi
 
 run "cp -R '$ROOT/agent-pack' '$STAGING/usr/local/share/squirrel/agent-pack'"
 run "cp '$ROOT/agent-pack/config/squirrel.toml.example' '$STAGING/usr/local/share/squirrel/resources/squirrel.toml.example'"
+run "cp '$ROOT/installer/uninstall.sh' '$STAGING/usr/local/share/squirrel/uninstall.sh'"
+run "chmod +x '$STAGING/usr/local/share/squirrel/uninstall.sh'"
 ok "payload → pkg-staging/"
+
+# Bundle the install-log snapshot tool next to pre/postinstall so the .pkg
+# scripts can call it (pkgbuild --scripts includes every file in that dir).
+run "cp '$ROOT/installer/install-snapshot.sh' '$PKG_SRC/scripts/install-snapshot.sh'"
+run "chmod +x '$PKG_SRC/scripts/install-snapshot.sh'"
 
 # ─── pkgbuild: component package ──────────────────────────────────────────────
 hdr "pkgbuild — component package"

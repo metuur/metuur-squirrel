@@ -126,3 +126,6 @@ Thumbs.db
 .agents/skills/ui-ux-pro-max/scripts/core.py
 .agents/skills/ui-ux-pro-max/scripts/design_system.py
 .agents/skills/ui-ux-pro-max/scripts/search.py
+
+# build-time copy (see scripts/build-pkg.sh)
+installer/pkg/scripts/install-snapshot.sh

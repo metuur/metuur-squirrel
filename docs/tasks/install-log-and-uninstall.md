@@ -29,7 +29,7 @@
   - verify: Build the pkg and run `sudo installer -pkg ... -target /` from an SSH/non-GUI session (no console user) → install succeeds with no log; run from GUI → one log in the user's `install-logs/` with both sections
   - note: pre/post logic verified via passthrough sandbox harness (shared marker file, version pending→real, no-console-user skip). Live `sudo installer -pkg` smoke test deferred to 2.4 (needs a built pkg that bundles install-snapshot.sh).
 
-- [ ] 2.4 Ship the new scripts in all three artifacts (deps: 2.1, 2.2, 2.3, 3.4, est: ~30m)
+- [x] 2.4 Ship the new scripts in all three artifacts (deps: 2.1, 2.2, 2.3, 3.4, est: ~30m)
   - acceptance: R-2.5 — `build-pkg.sh` copies `install-snapshot.sh` into the pkg scripts dir and `uninstall.sh` into the payload at `/usr/local/share/squirrel/uninstall.sh`; `build-dmg.sh` and `build-manual-zip.sh` include both scripts alongside the install scripts
   - verify: Build all three artifacts; `pkgutil --expand` / mount DMG / unzip and confirm both scripts present at the specced locations
 

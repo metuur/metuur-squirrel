@@ -293,6 +293,12 @@ run "cp '$INSTALLER_SRC' '$ZIP_ROOT/install-manual.sh'"
 if (( ! DRY_RUN )); then chmod +x "$ZIP_ROOT/install-manual.sh"; fi
 ok "install-manual.sh → /"
 
+# Install-log snapshot tool (install-manual.sh calls it) + the uninstaller.
+run "cp '$ROOT/installer/install-snapshot.sh' '$ZIP_ROOT/install-snapshot.sh'"
+run "cp '$ROOT/installer/uninstall.sh' '$ZIP_ROOT/uninstall.sh'"
+if (( ! DRY_RUN )); then chmod +x "$ZIP_ROOT/install-snapshot.sh" "$ZIP_ROOT/uninstall.sh"; fi
+ok "install-snapshot.sh + uninstall.sh → /"
+
 # Entitlements.plist — needed by install-manual.sh to re-sign binaries with
 # disable-library-validation so PyInstaller's extracted libpython can be dlopen'd.
 ENTITLEMENTS_SRC="$ROOT/apps/desktop/src-tauri/Entitlements.plist"
