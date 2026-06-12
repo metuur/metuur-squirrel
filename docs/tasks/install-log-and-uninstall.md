@@ -24,9 +24,10 @@
   - acceptance: R-2.3, R-2.4, R-2.1a
   - verify: Same as 2.1 against `install-manual.sh`
 
-- [ ] 2.3 Add `installer/pkg/scripts/preinstall` and extend `postinstall` for the `.pkg` (deps: 1.3, est: ~45m)
+- [x] 2.3 Add `installer/pkg/scripts/preinstall` and extend `postinstall` for the `.pkg` (deps: 1.3, est: ~45m)
   - acceptance: R-2.1, R-2.1a — preinstall writes BEFORE as console user (CONSOLE_USER + dscl HOME pattern), passes the logfile path via `~/.squirrel/install-logs/.current`; postinstall appends AFTER at its end and removes the marker; unresolvable console user or any snapshot failure → skip silently, exit 0
   - verify: Build the pkg and run `sudo installer -pkg ... -target /` from an SSH/non-GUI session (no console user) → install succeeds with no log; run from GUI → one log in the user's `install-logs/` with both sections
+  - note: pre/post logic verified via passthrough sandbox harness (shared marker file, version pending→real, no-console-user skip). Live `sudo installer -pkg` smoke test deferred to 2.4 (needs a built pkg that bundles install-snapshot.sh).
 
 - [ ] 2.4 Ship the new scripts in all three artifacts (deps: 2.1, 2.2, 2.3, 3.4, est: ~30m)
   - acceptance: R-2.5 — `build-pkg.sh` copies `install-snapshot.sh` into the pkg scripts dir and `uninstall.sh` into the payload at `/usr/local/share/squirrel/uninstall.sh`; `build-dmg.sh` and `build-manual-zip.sh` include both scripts alongside the install scripts

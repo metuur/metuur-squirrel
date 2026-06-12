@@ -1,0 +1,39 @@
+#!/bin/bash
+# preinstall — capture pre-install system state for the install log.
+#
+# Runs as root BEFORE the .pkg payload is laid down, so it is the only place
+# that can record what was on the system before this install. It writes a BEFORE
+# snapshot as the console user (so the log lands in that user's ~/.squirrel and
+# is correctly owned) and stashes the chosen log path in a `.current` marker that
+# postinstall reads to append the matching AFTER snapshot.
+#
+# This must NEVER fail the install: no console user, a missing snapshot script,
+# or any snapshot error all simply skip logging. The script always exits 0.
+set -u
+
+scriptDir="$(/usr/bin/dirname "$0")"
+SNAPSHOT="$scriptDir/install-snapshot.sh"
+
+# ── Resolve the console (logged-in) user — skip logging if none ──────────────
+consoleUser="$(/usr/bin/stat -f%Su /dev/console 2>/dev/null || true)"
+if [ -z "$consoleUser" ] || [ "$consoleUser" = "root" ]; then
+  exit 0
+fi
+userHome="$(/usr/bin/dscl . -read "/Users/$consoleUser" NFSHomeDirectory 2>/dev/null | /usr/bin/awk '{print $2}')"
+[ -n "$userHome" ] || userHome="/Users/$consoleUser"
+
+as_user() { /usr/bin/sudo -u "$consoleUser" "$@"; }
+
+[ -f "$SNAPSHOT" ] || exit 0
+
+logDir="$userHome/.squirrel/install-logs"
+logFile="$logDir/$(/bin/date -u +%Y%m%dT%H%M%SZ)-pkg.log"
+
+as_user /bin/mkdir -p "$logDir" 2>/dev/null || exit 0
+# Hand the log path to postinstall (it appends the AFTER snapshot here).
+as_user /bin/sh -c "printf '%s\n' '$logFile' > '$logDir/.current'" 2>/dev/null || true
+# version=pending: the new app is not on disk yet; postinstall records the real
+# installed version in the AFTER snapshot.
+as_user /bin/bash "$SNAPSHOT" before "$logFile" pkg pending 2>/dev/null || true
+
+exit 0

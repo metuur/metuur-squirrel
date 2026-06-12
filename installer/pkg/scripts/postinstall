@@ -112,4 +112,19 @@ LSREG="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/L
 # resolves by bundle id and can pick a stale registered copy.
 as_user /usr/bin/open /Applications/Squirrel.app 2>/dev/null || true
 
+# ── Install-log: append the AFTER snapshot ───────────────────────────────────
+# Reuse the log path preinstall stashed in `.current` so BEFORE and AFTER land in
+# the same file; fall back to a fresh path if preinstall didn't run. Best-effort
+# only — never affects the install outcome.
+scriptDir="$(/usr/bin/dirname "$0")"
+SNAPSHOT="$scriptDir/install-snapshot.sh"
+logDir="$sqdir/install-logs"
+if [ -f "$SNAPSHOT" ]; then
+  logFile="$(as_user /bin/cat "$logDir/.current" 2>/dev/null || true)"
+  [ -n "$logFile" ] || logFile="$logDir/$(/bin/date -u +%Y%m%dT%H%M%SZ)-pkg.log"
+  as_user /bin/mkdir -p "$logDir" 2>/dev/null || true
+  as_user /bin/bash "$SNAPSHOT" after "$logFile" pkg "$newver" 2>/dev/null || true
+  as_user /bin/rm -f "$logDir/.current" 2>/dev/null || true
+fi
+
 exit 0
