@@ -222,9 +222,21 @@ write_env_section() {
 }
 
 # ─── Retention ───────────────────────────────────────────────────────────────
-# Implemented in task 1.3.
 ensure_log_dir() {
   /bin/mkdir -p "$(/usr/bin/dirname "$LOGFILE")" 2>/dev/null || true
+}
+
+# Keep only the 10 newest *.log files in the install-logs dir. /bin/ls (BSD,
+# absolute) lists newest-first; everything past the 10th is removed. The current
+# run's log is explicitly skipped so a clock skew can never delete it.
+prune_logs() {
+  local dir f
+  dir="$(/usr/bin/dirname "$LOGFILE")"
+  [ -d "$dir" ] || return
+  /bin/ls -t "$dir"/*.log 2>/dev/null | /usr/bin/tail -n +11 | while IFS= read -r f; do
+    [ "$f" = "$LOGFILE" ] && continue
+    /bin/rm -f "$f" 2>/dev/null || true
+  done
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -258,6 +270,10 @@ main() {
 
     write_env_section
   } >>"$LOGFILE" 2>/dev/null
+
+  # Retention runs after the AFTER snapshot is fully written, so the current
+  # run's log already exists and counts toward (and survives) the keep-10 set.
+  [ "$PHASE" = "after" ] && prune_logs
 
   exit 0
 }

@@ -10,7 +10,7 @@
   - acceptance: R-1.5, R-1.6, R-1.7 — launchd state of `org.squirrel.web-ui`, port 3939 listener (cmd/pid/exe), codesign identity + quarantine xattr for app and four binary paths, `command -v squirrel`, `PATH`, running `Squirrel`/`squirrel-backend` processes; any failing probe records `unavailable`; script always exits 0
   - verify: Run with backend up and down — listener section differs; temporarily `PATH=/usr/bin` to break a probe → `unavailable` recorded and exit code is 0
 
-- [ ] 1.3 Log directory creation and retention (deps: 1.1, est: ~20m)
+- [x] 1.3 Log directory creation and retention (deps: 1.1, est: ~20m)
   - acceptance: R-1.8 — `before` creates `~/.squirrel/install-logs/` if missing; `after` keeps only the 10 newest logs and never deletes the current run's log
   - verify: Seed 12 dummy logs, run a `before`+`after` pair → 10 remain including the new one; oldest gone
 
