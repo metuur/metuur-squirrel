@@ -132,11 +132,13 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
     >
       <div
         style={{
+          position: "relative",
           background: "#fff",
           borderRadius: 12,
-          padding: 20,
-          minWidth: 300,
-          maxWidth: 400,
+          padding: 24,
+          minWidth: 420,
+          maxWidth: 540,
+          width: "90vw",
           boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
         }}
         onClick={e => e.stopPropagation()}
@@ -144,7 +146,7 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
-          rows={4}
+          rows={6}
           style={{
             width: "100%",
             padding: 8,
@@ -231,21 +233,20 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
               </button>
             </span>
           )}
-          <button
-            onClick={onClose}
-            style={{ marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}
-          >
-            ✕
-          </button>
         </div>
         {/* R-5.6: Convert section */}
         <div style={{ marginTop: 12 }}>
           {!showConvert ? (
             <button
               onClick={() => setShowConvert(true)}
-              className="btn btn-primary inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
+              className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
+              style={{
+                background: "var(--color-accent)",
+                color: "#fff",
+                borderColor: "var(--color-accent)",
+              }}
             >
-              Convert
+              Convert →
             </button>
           ) : (
             <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
@@ -281,6 +282,25 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
             </div>
           )}
         </div>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          title="Close"
+          style={{
+            position: "absolute",
+            right: 14,
+            bottom: 14,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "#6b7280",
+            fontSize: 18,
+            lineHeight: 1,
+            padding: 4,
+          }}
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
