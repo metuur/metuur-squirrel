@@ -67,7 +67,7 @@
 
 ## Unit 5: Footprint sync & docs
 
-- [ ] 5.1 Footprint sync sentinel + automated check (deps: 1.1, 3.1, est: ~30m)
+- [x] 5.1 Footprint sync sentinel + automated check (deps: 1.1, 3.1, est: ~30m)
   - acceptance: R-5.6, R-5.7 — both scripts mark their footprint list with an identical sentinel comment block; a check script extracts and diffs the two lists; only enumerated paths are ever removed (wildcards limited to `com.metuur.squirrel{,.dev}` Library entries)
   - verify: `tests/installer/test_footprint_sync.sh` passes; add a path to one list only → check fails; wired into `make test-installer`
 
