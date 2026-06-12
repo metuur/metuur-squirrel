@@ -32,7 +32,7 @@ ROOT := $(CURDIR)
 DMG_STAGING := $(ROOT)/dmg-staging
 DMG_OUT     := $(ROOT)/squirrel-installer-macos.dmg
 
-.PHONY: help dev dev-all dev-local kill-dev-ports build test-cli sq backend-start backend-build backend-dev-ui \
+.PHONY: help dev dev-all dev-local kill-dev-ports build test-cli test-installer sq backend-start backend-build backend-dev-ui \
 	deploy-pages \
         build-installers build-installers-arm64 build-installers-intel \
         build-pkg build-pkg-intel build-pkg-fast build-pkg-dry \
@@ -100,6 +100,12 @@ dev-local: kill-dev-ports
 
 test-cli:
 	cd $(ROOT)/apps/cli && python3 -m unittest discover -s tests -v
+
+test-installer:
+	@for t in $(ROOT)/tests/installer/*.sh; do \
+		printf '→ %s\n' "$$t"; \
+		bash "$$t" || exit 1; \
+	done
 
 sq:
 	@python3 $(ROOT)/apps/cli/squirrel $(ARGS)

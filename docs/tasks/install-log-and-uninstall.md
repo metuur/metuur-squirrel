@@ -43,7 +43,7 @@
   - acceptance: R-3.3, R-3.4, R-3.4a — both preserve list and every removal target canonicalized (symlinks resolved, trailing slashes stripped) before prefix-containment comparison; any overlap aborts before deleting anything; deletions use literal enumerated paths, never dereferencing symlinks
   - verify: Configure a vault via symlink and a vault path inside `~/.squirrel` in a sandbox `$HOME` → both abort with error and nothing deleted
 
-- [ ] 3.3 Automated vault-gate test (deps: 3.2, est: ~40m)
+- [x] 3.3 Automated vault-gate test (deps: 3.2, est: ~40m)
   - acceptance: R-3.4a — repeatable test exercising the gate with (a) a symlinked vault, (b) a vault inside `~/.squirrel`, (c) a normal vault that survives a full run
   - verify: New `tests/installer/test_uninstall_vault_gate.sh` (fake `$HOME` sandbox, never touches the real one) passes; wired as `make test-installer`
 
