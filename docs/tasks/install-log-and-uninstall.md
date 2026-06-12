@@ -16,7 +16,7 @@
 
 ## Unit 2: Installer integration
 
-- [ ] 2.1 Wire `install.sh` (drag-DMG) to snapshot before/after (deps: 1.3, est: ~25m)
+- [x] 2.1 Wire `install.sh` (drag-DMG) to snapshot before/after (deps: 1.3, est: ~25m)
   - acceptance: R-2.2, R-2.4, R-2.1a — BEFORE after upgrade detection and before any filesystem change, AFTER as final step, same `<UTC-ts>-dmg.log` file; snapshot failure (script missing/unreadable) cannot fail the install
   - verify: Run `install.sh` end-to-end (or with a stubbed payload) → one log with both sections; delete `install-snapshot.sh` and re-run → install completes, no log
 

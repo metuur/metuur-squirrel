@@ -49,6 +49,17 @@ ask()  { printf '%s%s%s ' "$C_BOLD" "$*" "$C_RESET"; read -r REPLY; }
 # replacement that writes it into config.toml.
 escape_sed_repl() { printf '%s' "$1" | sed -e 's/[&\\|]/\\&/g'; }
 
+# ─── Install-log snapshot (troubleshooting) ──────────────────────────────────
+# One before/after snapshot of the system's Squirrel footprint, written to
+# ~/.squirrel/install-logs/. snapshot() is best-effort: a missing or failing
+# snapshot script must NEVER fail the install (it runs under set -e + an ERR
+# trap), so every failure is swallowed with `|| true`.
+SNAPSHOT_SH="$DMG_DIR/install-snapshot.sh"
+INSTALL_LOG_FILE="$SQUIRREL_HOME/install-logs/$(date -u +%Y%m%dT%H%M%SZ)-dmg.log"
+snapshot() {
+  [[ -x "$SNAPSHOT_SH" ]] && "$SNAPSHOT_SH" "$1" "$INSTALL_LOG_FILE" dmg "$VERSION_IN_DMG" >/dev/null 2>&1 || true
+}
+
 # ─── Banner ──────────────────────────────────────────────────────────────────
 printf '%s' "$C_BOLD"
 cat <<'BANNER'
@@ -143,6 +154,10 @@ if (( ! IS_UPGRADE )); then
 fi
 
 say ""
+
+# Capture pre-install state before any filesystem change (and before the ERR
+# trap below, so a snapshot hiccup can never trigger a rollback).
+snapshot before
 
 # ─── Rollback helpers ─────────────────────────────────────────────────────────
 OLD_CLI_BAK=""
@@ -288,3 +303,6 @@ printf '%s' "$C_RESET"
 say ""
 say "  Open your agent and type:  /sq-status"
 say ""
+
+# Capture post-install state (final step; never affects install outcome).
+snapshot after
