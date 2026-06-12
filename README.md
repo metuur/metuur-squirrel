@@ -44,13 +44,23 @@ Run the same installer from a newer DMG. It detects the existing version, stops 
 
 ### Uninstalling
 
+Run the bundled uninstaller — it removes every Squirrel file across all install
+types (app, CLI, launchd service, agent packs, app data) while **never touching
+your vaults**:
+
 ```bash
-launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.plist
-rm ~/Library/LaunchAgents/org.squirrel.web-ui.plist
-rm ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
-rm -rf ~/.claude/plugins/squirrel   # or your agent's equivalent
-# optionally: rm -rf ~/.squirrel
+# .pkg install:
+/usr/local/share/squirrel/uninstall.sh
+
+# DMG / manual-zip install: run uninstall.sh from the mounted DMG or unzipped folder
+./uninstall.sh
+
+# preview without deleting anything:
+./uninstall.sh --dry-run
 ```
+
+It reads your vault paths from `~/.squirrel/config.toml` first and preserves
+them; only system paths (under `/usr/local`) prompt for your admin password.
 
 ### Background service
 

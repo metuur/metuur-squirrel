@@ -719,15 +719,18 @@ const FAQ_ENTRIES: FaqEntry[] = [
     body: (
       <>
         <p>
-          Quit Squirrel from the menu bar, drag{' '}
-          <Cmd>/Applications/Squirrel.app</Cmd> to the Trash, and remove the CLI
-          with <Cmd>sudo rm /usr/local/bin/squirrel</Cmd>. Optionally delete{' '}
-          <Cmd>~/.squirrel/</Cmd> (config and logs) and the agent commands (e.g.{' '}
-          <Cmd>~/.claude/plugins/squirrel/</Cmd>).
+          Run the bundled uninstaller — it removes the app, CLI, background
+          service, agent commands, and app data in one step. For a{' '}
+          <Cmd>.pkg</Cmd> install run{' '}
+          <Cmd>/usr/local/share/squirrel/uninstall.sh</Cmd>; for a DMG or
+          manual-zip install run <Cmd>./uninstall.sh</Cmd> from the mounted DMG
+          or unzipped folder. Add <Cmd>--dry-run</Cmd> to preview without
+          deleting anything.
         </p>
         <p>
-          Your vault is never deleted — it’s your folder of Markdown files and
-          stays exactly where it is.
+          Your vault is never deleted — the uninstaller reads your vault paths
+          first and leaves those folders of Markdown files exactly where they
+          are.
         </p>
       </>
     ),

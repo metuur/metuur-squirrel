@@ -71,6 +71,6 @@
   - acceptance: R-5.6, R-5.7 — both scripts mark their footprint list with an identical sentinel comment block; a check script extracts and diffs the two lists; only enumerated paths are ever removed (wildcards limited to `com.metuur.squirrel{,.dev}` Library entries)
   - verify: `tests/installer/test_footprint_sync.sh` passes; add a path to one list only → check fails; wired into `make test-installer`
 
-- [ ] 5.2 Replace manual uninstall recipes with a pointer to `uninstall.sh` (deps: 4.4, est: ~20m)
+- [x] 5.2 Replace manual uninstall recipes with a pointer to `uninstall.sh` (deps: 4.4, est: ~20m)
   - acceptance: HLD secondary consumers — `README.md` and `GuidePage.tsx` uninstall sections point at the script (DMG/zip location and `/usr/local/share/squirrel/uninstall.sh`), keeping the vault-is-preserved note
   - verify: README renders correctly; GuidePage builds (`tsc --noEmit`) and shows the new instructions
