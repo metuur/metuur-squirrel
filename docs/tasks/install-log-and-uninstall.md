@@ -6,7 +6,7 @@
   - acceptance: R-1.1, R-1.2, R-1.3, R-1.4 — `<before|after> <logfile> <installer-id> <version>` appends a section with header (phase, ISO-8601 UTC ts, installer id/version, macOS version) and per-path metadata (`MISSING` or type/size/perms/owner/mtime/sha256 for files, `entries=N bytes=total` for dirs); never file contents; no hashing of >10 MB files or `state/squirrel.db*`/`*.log`
   - verify: Run `before` then `after` on this machine; inspect the log — every footprint path present, no file contents, `launchd-token` shows metadata only; create a 11 MB dummy at a footprint path → size recorded, no hash
 
-- [ ] 1.2 Add the environment-diagnostics section and per-probe fault tolerance (deps: 1.1, est: ~40m)
+- [x] 1.2 Add the environment-diagnostics section and per-probe fault tolerance (deps: 1.1, est: ~40m)
   - acceptance: R-1.5, R-1.6, R-1.7 — launchd state of `org.squirrel.web-ui`, port 3939 listener (cmd/pid/exe), codesign identity + quarantine xattr for app and four binary paths, `command -v squirrel`, `PATH`, running `Squirrel`/`squirrel-backend` processes; any failing probe records `unavailable`; script always exits 0
   - verify: Run with backend up and down — listener section differs; temporarily `PATH=/usr/bin` to break a probe → `unavailable` recorded and exit code is 0
 

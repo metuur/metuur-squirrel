@@ -134,9 +134,91 @@ inspect_path() {
 }
 
 # ─── Environment diagnostics ─────────────────────────────────────────────────
-# Implemented in task 1.2.
+LAUNCHCTL=/bin/launchctl
+LSOF=/usr/sbin/lsof
+CODESIGN=/usr/bin/codesign
+XATTR=/usr/bin/xattr
+PGREP=/usr/bin/pgrep
+PS=/bin/ps
+ID=/usr/bin/id
+
+# Binaries whose signing/quarantine state we report.
+codesign_targets() {
+  cat <<EOF
+/Applications/Squirrel.app
+/usr/local/bin/squirrel
+/usr/local/bin/squirrel-backend
+$HOME/.local/bin/squirrel
+$HOME/.local/bin/squirrel-backend
+EOF
+}
+
+# launchd state of org.squirrel.web-ui (the legacy/DMG/manual backend service).
+probe_launchd() {
+  local uid out state
+  [ -x "$LAUNCHCTL" ] || { printf '  launchd org.squirrel.web-ui: unavailable\n'; return; }
+  uid="$("$ID" -u 2>/dev/null)" || { printf '  launchd: unavailable\n'; return; }
+  out="$("$LAUNCHCTL" print "gui/${uid}/org.squirrel.web-ui" 2>/dev/null)" || {
+    printf '  launchd org.squirrel.web-ui: not loaded\n'; return; }
+  state="$(printf '%s\n' "$out" | /usr/bin/grep -iE '^[[:space:]]*state[[:space:]]*=' | head -1 | /usr/bin/sed 's/^[[:space:]]*//')"
+  printf '  launchd org.squirrel.web-ui: %s\n' "${state:-loaded (state unknown)}"
+}
+
+# Who, if anyone, is listening on the backend port.
+probe_port() {
+  local out pid exe
+  out="$("$LSOF" -nP -iTCP:3939 -sTCP:LISTEN 2>/dev/null)" || { printf '  port 3939: unavailable\n'; return; }
+  if [ -z "$out" ]; then printf '  port 3939: free\n'; return; fi
+  pid="$(printf '%s\n' "$out" | /usr/bin/awk 'NR==2{print $2}')"
+  exe="$("$PS" -p "${pid:-0}" -o comm= 2>/dev/null || echo '?')"
+  printf '  port 3939: LISTEN pid=%s exe=%s\n' "${pid:-?}" "${exe:-?}"
+}
+
+# codesign identity + quarantine xattr for one path.
+probe_codesign() {
+  local path="$1" auth quar
+  if [ ! -e "$path" ]; then printf '  codesign %s: MISSING\n' "$path"; return; fi
+  auth="$("$CODESIGN" -dvv "$path" 2>&1 | /usr/bin/grep -E '^(Authority|Identifier)=' | head -2 | /usr/bin/tr '\n' ' ')"
+  [ -n "$auth" ] || auth="unsigned-or-unavailable"
+  if quar="$("$XATTR" -p com.apple.quarantine "$path" 2>/dev/null)"; then
+    quar="quarantined($quar)"
+  else
+    quar="no-quarantine"
+  fi
+  printf '  codesign %s: %s| %s\n' "$path" "$auth" "$quar"
+}
+
+# Strip any auth token that appears in process argv. The app-managed backend
+# receives its per-launch token via `--token <64-hex>` on the command line, so
+# `pgrep -fl` would otherwise expose it in the log — defeating the whole
+# metadata-only / no-secrets design. Redact before anything reaches the file.
+redact_secrets() {
+  /usr/bin/sed -E 's/(--token[=[:space:]]+)[0-9A-Fa-f]{16,}/\1REDACTED/g'
+}
+
+# Running Squirrel processes (token-redacted).
+probe_processes() {
+  local app bk
+  app="$("$PGREP" -xl Squirrel 2>/dev/null | /usr/bin/tr '\n' ';')"
+  bk="$("$PGREP" -fl squirrel-backend 2>/dev/null | /usr/bin/grep -v install-snapshot | /usr/bin/tr '\n' ';')"
+  printf '  proc Squirrel: %s\n' "${app:-none}"
+  printf '  proc squirrel-backend: %s\n' "${bk:-none}"
+}
+
 write_env_section() {
-  : # placeholder
+  # Whole section is piped through redact_secrets as a defense-in-depth net so
+  # no probe can ever emit a raw token, regardless of which one surfaces it.
+  {
+    printf '\n[environment]\n'
+    probe_launchd
+    probe_port
+    codesign_targets | while IFS= read -r p; do
+      [ -n "$p" ] && probe_codesign "$p"
+    done
+    printf '  command -v squirrel: %s\n' "$(command -v squirrel 2>/dev/null || echo not-found)"
+    printf '  PATH: %s\n' "${PATH:-unavailable}"
+    probe_processes
+  } | redact_secrets
 }
 
 # ─── Retention ───────────────────────────────────────────────────────────────
