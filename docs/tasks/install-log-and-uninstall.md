@@ -20,7 +20,7 @@
   - acceptance: R-2.2, R-2.4, R-2.1a — BEFORE after upgrade detection and before any filesystem change, AFTER as final step, same `<UTC-ts>-dmg.log` file; snapshot failure (script missing/unreadable) cannot fail the install
   - verify: Run `install.sh` end-to-end (or with a stubbed payload) → one log with both sections; delete `install-snapshot.sh` and re-run → install completes, no log
 
-- [ ] 2.2 Wire `install-manual.sh` the same way with id `manual` (deps: 1.3, est: ~20m)
+- [x] 2.2 Wire `install-manual.sh` the same way with id `manual` (deps: 1.3, est: ~20m)
   - acceptance: R-2.3, R-2.4, R-2.1a
   - verify: Same as 2.1 against `install-manual.sh`
 
