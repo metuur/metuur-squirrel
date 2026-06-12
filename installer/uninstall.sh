@@ -62,6 +62,8 @@ footprint_paths() {
 /usr/local/share/squirrel
 $HOME/.local/bin/squirrel
 $HOME/.local/bin/squirrel-backend
+$HOME/.local/bin/squirrel.bak
+$HOME/.local/bin/squirrel-backend.bak
 $HOME/Library/LaunchAgents/org.squirrel.web-ui.plist
 $HOME/.squirrel
 $HOME/.claude/plugins/squirrel
@@ -241,11 +243,85 @@ stop_squirrel() {
   fi
 }
 
-# ─── Removal (file deletions: task 4.2+) ─────────────────────────────────────
+# ─── Removal ─────────────────────────────────────────────────────────────────
+FAILURES=()
+
+# Remove one path literally. rm -rf on a symlink unlinks the link itself, never
+# the target (R-3.4a) — and the PLAN paths carry no trailing slash, so a
+# symlinked directory is never traversed. Failures are recorded, not fatal.
+rm_path() {
+  local p="$1"
+  [[ -e "$p" || -L "$p" ]] || return 0
+  if /bin/rm -rf "$p" 2>/dev/null; then
+    ok "removed $p"
+  else
+    warn "failed to remove $p"
+    FAILURES+=("$p")
+  fi
+}
+
+# Drop the squirrel@* entry from Claude's plugin registry, written atomically
+# (temp file + os.replace). Unparsable JSON is left untouched so other plugins'
+# registration can never be corrupted (R-4.3).
+deregister_plugin() {
+  local f="$HOME/.claude/plugins/installed_plugins.json"
+  [[ -f "$f" ]] || return 0
+  local rc=0
+  /usr/bin/python3 - "$f" <<'PY' || rc=$?
+import json, os, sys, tempfile
+f = sys.argv[1]
+try:
+    with open(f) as fh:
+        data = json.load(fh)
+except Exception:
+    sys.exit(3)                       # unparsable -> leave untouched
+plugins = data.get("plugins")
+if not isinstance(plugins, dict):
+    sys.exit(2)                       # nothing to do
+removed = [k for k in list(plugins) if k.split("@", 1)[0] == "squirrel"]
+for k in removed:
+    del plugins[k]
+if not removed:
+    sys.exit(2)
+d = os.path.dirname(f) or "."
+fd, tmp = tempfile.mkstemp(dir=d, prefix=".ip.", suffix=".json")
+try:
+    with os.fdopen(fd, "w") as fh:
+        json.dump(data, fh, indent=2)
+    os.replace(tmp, f)                # atomic
+except Exception:
+    try: os.unlink(tmp)
+    except OSError: pass
+    sys.exit(4)
+sys.exit(0)
+PY
+  case "$rc" in
+    0) ok "deregistered Claude plugin (squirrel@squirrel)" ;;
+    2) : ;;                           # no squirrel entry — nothing to do
+    3) warn "installed_plugins.json is not valid JSON — left unchanged" ;;
+    *) warn "could not update installed_plugins.json (rc=$rc) — left unchanged"
+       FAILURES+=("installed_plugins.json") ;;
+  esac
+}
+
+# Remove every user-scope ($HOME/...) footprint path in the plan, EXCEPT
+# ~/.squirrel which is deleted last (it holds the config that named the vaults).
+remove_user_scope() {
+  hdr "Removing user files"
+  local p
+  for p in "${PLAN[@]:-}"; do
+    case "$p" in
+      "$SQUIRREL_HOME") continue ;;   # handled last
+      "$HOME"/*) rm_path "$p" ;;
+    esac
+  done
+}
+
 perform_removal() {
   stop_squirrel
-  warn "File removal is not yet wired in this build (deletions land in task 4.2)."
-  warn "The vault safety gate passed and Squirrel was stopped; no files were changed."
+  deregister_plugin
+  remove_user_scope
+  rm_path "$SQUIRREL_HOME"            # R-4.5: ~/.squirrel removed last
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -263,6 +339,14 @@ main() {
 
   confirm
   perform_removal
+
+  # R-4.6: report failures and exit non-zero if any removal failed.
+  if [[ ${#FAILURES[@]} -gt 0 ]]; then
+    warn "${#FAILURES[@]} item(s) could not be removed:"
+    for p in "${FAILURES[@]}"; do printf '    %s\n' "$p"; done
+    exit 1
+  fi
+  ok "Squirrel removed."
 }
 
 # Run main only when executed directly; sourcing (e.g. from tests) exposes the

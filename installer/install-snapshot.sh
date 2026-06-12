@@ -52,6 +52,8 @@ footprint_paths() {
 /usr/local/share/squirrel
 $HOME/.local/bin/squirrel
 $HOME/.local/bin/squirrel-backend
+$HOME/.local/bin/squirrel.bak
+$HOME/.local/bin/squirrel-backend.bak
 $HOME/Library/LaunchAgents/org.squirrel.web-ui.plist
 $HOME/.squirrel
 $HOME/.claude/plugins/squirrel

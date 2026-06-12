@@ -53,7 +53,7 @@
   - acceptance: R-4.1 — ordered: quit/kill `Squirrel` app → `launchctl bootout gui/$(id -u)/org.squirrel.web-ui` → kill remaining `squirrel-backend` → verify no listener on port 3939
   - verify: With the launchd backend running, run the stop phase → service unloaded, no respawn (KeepAlive defeated), `lsof -iTCP:3939` empty
 
-- [ ] 4.2 User-scope removals (deps: 3.2, 4.1, est: ~45m)
+- [x] 4.2 User-scope removals (deps: 3.2, 4.1, est: ~45m)
   - acceptance: R-4.2, R-4.3, R-4.5, R-4.6 — removes plist, `~/.local/bin/squirrel{,-backend}{,.bak}`, four agent packs, all `com.metuur.squirrel{,.dev}` Library paths; `installed_plugins.json` entry removed atomically (temp+rename), unparsable JSON → warn and leave untouched; `~/.squirrel/` deleted last; individual failures reported, run continues, exit non-zero with failures in summary
   - verify: Sandbox `$HOME` populated with the full per-user footprint + a decoy plugin entry → everything removed, decoy entry intact, `~/.squirrel` gone last (instrument with `set -x`); corrupt the JSON → file untouched, warning printed
 
