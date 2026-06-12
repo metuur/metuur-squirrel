@@ -195,7 +195,12 @@ probe_codesign() {
 # `pgrep -fl` would otherwise expose it in the log — defeating the whole
 # metadata-only / no-secrets design. Redact before anything reaches the file.
 redact_secrets() {
-  /usr/bin/sed -E 's/(--token[=[:space:]]+)[0-9A-Fa-f]{16,}/\1REDACTED/g'
+  # Redact the value after --token regardless of charset/length (a future token
+  # format must not slip through), and any bare 64-hex blob as a backstop for a
+  # token surfacing via an unanticipated flag. Footprint hashes are 8 chars, so
+  # the 64-hex rule can only ever match a real token.
+  /usr/bin/sed -E -e 's/(--token[=[:space:]]+)[^[:space:]]+/\1REDACTED/g' \
+                  -e 's/[0-9A-Fa-f]{64}/REDACTED/g'
 }
 
 # Running Squirrel processes (token-redacted).

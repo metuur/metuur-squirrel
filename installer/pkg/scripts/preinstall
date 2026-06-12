@@ -30,8 +30,9 @@ logDir="$userHome/.squirrel/install-logs"
 logFile="$logDir/$(/bin/date -u +%Y%m%dT%H%M%SZ)-pkg.log"
 
 as_user /bin/mkdir -p "$logDir" 2>/dev/null || exit 0
-# Hand the log path to postinstall (it appends the AFTER snapshot here).
-as_user /bin/sh -c "printf '%s\n' '$logFile' > '$logDir/.current'" 2>/dev/null || true
+# Hand the log path to postinstall (it appends the AFTER snapshot here). Write
+# via tee fed from stdin so $logFile is never interpolated into a shell command.
+printf '%s\n' "$logFile" | as_user /usr/bin/tee "$logDir/.current" >/dev/null 2>&1 || true
 # version=pending: the new app is not on disk yet; postinstall records the real
 # installed version in the AFTER snapshot.
 as_user /bin/bash "$SNAPSHOT" before "$logFile" pkg pending 2>/dev/null || true
