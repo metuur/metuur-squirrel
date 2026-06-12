@@ -245,6 +245,8 @@ stop_squirrel() {
 
 # ─── Removal ─────────────────────────────────────────────────────────────────
 FAILURES=()
+REMOVED=()
+UNINSTALL_LOG=""
 
 # Remove one path literally. rm -rf on a symlink unlinks the link itself, never
 # the target (R-3.4a) — and the PLAN paths carry no trailing slash, so a
@@ -253,7 +255,7 @@ rm_path() {
   local p="$1"
   [[ -e "$p" || -L "$p" ]] || return 0
   if /bin/rm -rf "$p" 2>/dev/null; then
-    ok "removed $p"
+    ok "removed $p"; REMOVED+=("$p")
   else
     warn "failed to remove $p"
     FAILURES+=("$p")
@@ -352,7 +354,7 @@ remove_root_scope() {
   local t
   for t in "${sudo_targets[@]}"; do printf '  %s- %s%s\n' "$C_RED" "$t" "$C_RESET"; done
   if sudo_rm_batch "${sudo_targets[@]}" 2>/dev/null; then
-    for t in "${sudo_targets[@]}"; do ok "removed $t"; done
+    for t in "${sudo_targets[@]}"; do ok "removed $t"; REMOVED+=("$t"); done
   else
     for t in "${sudo_targets[@]}"; do
       if [[ -e "$t" || -L "$t" ]]; then warn "failed to remove $t"; FAILURES+=("$t"); else ok "removed $t"; fi
@@ -368,8 +370,46 @@ perform_removal() {
   rm_path "$SQUIRREL_HOME"            # R-4.5: ~/.squirrel removed last
 }
 
+# ─── Logging, summary, shell-rc note ─────────────────────────────────────────
+# Tee everything to /tmp (NOT $HOME — the whole point is to leave nothing behind;
+# /tmp is OS-cleaned and survives the ~/.squirrel deletion). Dry runs skip this
+# so they remain side-effect-free (R-5.3).
+setup_tee() {
+  [[ $DRY_RUN -eq 1 ]] && return 0
+  UNINSTALL_LOG="/tmp/squirrel-uninstall-$(date -u +%Y%m%dT%H%M%SZ).log"
+  exec > >(/usr/bin/tee "$UNINSTALL_LOG") 2>&1
+}
+
+# Note (never edit) a leftover PATH line from install-manual.sh (R-4.7).
+check_rc_path_note() {
+  local rc shown=0
+  for rc in "$HOME/.zshrc" "$HOME/.bash_profile"; do
+    [[ -f "$rc" ]] || continue
+    if /usr/bin/grep -qE 'export PATH=.*\.local/bin' "$rc" 2>/dev/null; then
+      [[ $shown -eq 0 ]] && { warn "A PATH line referencing ~/.local/bin remains in your shell config (left unchanged):"; shown=1; }
+      info "  $rc — remove the 'export PATH=\"...\$HOME/.local/bin...\"' line manually if you wish"
+    fi
+  done
+}
+
+print_summary() {
+  hdr "Summary"
+  say "Removed ${#REMOVED[@]} item(s)."
+  if [[ ${#PRESERVE[@]} -gt 0 ]]; then
+    say "Preserved vault(s) — never touched:"
+    local p; for p in "${PRESERVE[@]}"; do printf '  %s✓ %s%s\n' "$C_GREEN" "$p" "$C_RESET"; done
+  fi
+  if [[ ${#FAILURES[@]} -gt 0 ]]; then
+    warn "${#FAILURES[@]} item(s) could not be removed:"
+    local f; for f in "${FAILURES[@]}"; do printf '    %s\n' "$f"; done
+  fi
+  check_rc_path_note
+  [[ -n "$UNINSTALL_LOG" ]] && info "Full log: $UNINSTALL_LOG"
+}
+
 # ─── Main ────────────────────────────────────────────────────────────────────
 main() {
+  setup_tee
   load_preserve
   build_plan
   print_plan
@@ -383,14 +423,11 @@ main() {
 
   confirm
   perform_removal
+  print_summary
 
-  # R-4.6: report failures and exit non-zero if any removal failed.
-  if [[ ${#FAILURES[@]} -gt 0 ]]; then
-    warn "${#FAILURES[@]} item(s) could not be removed:"
-    for p in "${FAILURES[@]}"; do printf '    %s\n' "$p"; done
-    exit 1
-  fi
-  ok "Squirrel removed."
+  # R-4.6: exit non-zero if any removal failed.
+  [[ ${#FAILURES[@]} -gt 0 ]] && exit 1
+  exit 0
 }
 
 # Run main only when executed directly; sourcing (e.g. from tests) exposes the

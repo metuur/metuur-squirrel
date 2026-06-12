@@ -61,7 +61,7 @@
   - acceptance: R-4.4 — `/Applications/Squirrel.app`, `/usr/local/bin/squirrel{,-backend}`, `/usr/local/share/squirrel` removed in one `sudo` invocation only when at least one exists; no sudo prompt otherwise
   - verify: Per-user-only sandbox run never prompts for sudo; with a real pkg install present, one sudo prompt removes all system paths
 
-- [ ] 4.4 Output tee, summary, and rc-file note (deps: 4.2, est: ~25m)
+- [x] 4.4 Output tee, summary, and rc-file note (deps: 4.2, est: ~25m)
   - acceptance: R-5.5, R-3.5, R-4.7 — full output teed to `/tmp/squirrel-uninstall-<UTC-ts>.log`; summary lists removed paths, failures, and every preserved vault; rc files untouched, note printed when an `export PATH=...$HOME/.local/bin...` line exists
   - verify: Run end-to-end in sandbox → `/tmp` log matches stdout; summary names the vault; `~/.zshrc` with the PATH line is byte-identical after the run and the note appears
 
