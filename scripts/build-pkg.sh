@@ -239,6 +239,24 @@ if [[ -z "$APP" ]]; then
 fi
 [[ -n "$APP" ]] && ok "app → ${APP#$ROOT/}"
 
+# ─── Version-consistency guard ────────────────────────────────────────────────
+# VERSION (line 73) is read from apps/cli/pyproject.toml and stamped onto the
+# .pkg, distribution.xml, welcome.html, and the DMG name — but the PAYLOAD's
+# version is whatever this Squirrel.app actually is. A stale bundle (--skip-build
+# / build-pkg-fast / an old bundle that won the mtime selection) yields a .pkg
+# LABELED $VERSION that CONTAINS an old app. The install then "succeeds" and the
+# user silently runs the old binary (the "installed successfully but it's an old
+# version" bug). Fail loudly instead of shipping a lie. The app version is the
+# source of truth users actually launch (postinstall stamps ~/.squirrel/version
+# from this same CFBundleShortVersionString).
+if [[ -n "$APP" ]]; then
+  APP_VER="$(defaults read "$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo unknown)"
+  if [[ "$APP_VER" != "$VERSION" ]]; then
+    die "version mismatch: packaging $VERSION but $APP is $APP_VER — rebuild the app (stale bundle?). Run 'make build-pkg' (clears stale bundles) and do NOT use --skip-build/build-pkg-fast with a BUMP."
+  fi
+  ok "app version $APP_VER matches $VERSION"
+fi
+
 if [[ ! -f "$DIST/squirrel" || ! -f "$DIST/squirrel-backend" ]]; then
   (( SKIP_BUILD )) && die "dist/ binaries missing and --skip-build set. Run: make build-installers-arm64"
   die "dist/squirrel{,-backend} missing — run 'make build-installers-arm64' first (builds the CLI binaries)"

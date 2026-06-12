@@ -248,8 +248,15 @@ fn spawn_sidecar<R: Runtime>(app: &AppHandle<R>) -> Result<CommandChild, String>
     tauri::async_runtime::spawn(async move {
         while let Some(ev) = rx.recv().await {
             match ev {
-                CommandEvent::Stdout(line) | CommandEvent::Stderr(line) => {
+                CommandEvent::Stdout(line) => {
                     tracing::debug!(target: "backend", "{}", String::from_utf8_lossy(&line).trim_end());
+                }
+                // Backend stderr carries Python tracebacks and startup failures
+                // (e.g. an /api/me 500 that pins the tray to Error). Log it at
+                // WARN so it lands in the default INFO-level squirrel.log —
+                // otherwise a "Backend offline" is undiagnosable from the logs.
+                CommandEvent::Stderr(line) => {
+                    tracing::warn!(target: "backend", "{}", String::from_utf8_lossy(&line).trim_end());
                 }
                 CommandEvent::Terminated(payload) => {
                     tracing::warn!(?payload, "backend child terminated");
@@ -606,12 +613,27 @@ pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
         }
         tokio::time::sleep(STARTUP_ATTEMPT_GAP).await;
     }
+    let reason = probe_health_reason(&client).await;
     tracing::warn!(
         attempts = STARTUP_BUDGET_ATTEMPTS,
+        reason = %reason,
         "backend supervisor: startup health-check budget exhausted"
     );
     let _ = crate::tray::set_state(app, crate::tray::IconState::Error);
     false
+}
+
+/// One-shot human-readable reason the `/api/me` health probe is failing, for the
+/// startup-exhaustion log line. A 200 here would be a race (the loop just saw a
+/// failure); anything else explains the "Backend offline" the user is staring
+/// at — e.g. `HTTP 500` (backend alive but the handler threw) vs a transport
+/// error (process gone / port not bound).
+async fn probe_health_reason(client: &reqwest::Client) -> String {
+    let health_url = format!("http://127.0.0.1:{BACKEND_PORT}/api/me");
+    match client.get(&health_url).send().await {
+        Ok(r) => format!("HTTP {}", r.status().as_u16()),
+        Err(e) => format!("transport error: {e}"),
+    }
 }
 
 /// Long-running health loop. Wakes every `HEALTH_INTERVAL`, probes
