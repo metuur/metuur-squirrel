@@ -53,8 +53,9 @@ run_removal() {  # $1 = sandbox
   HOME="$1" bash -c '
     set -uo pipefail
     source "'"$UNINST"'" >/dev/null 2>&1
-    stop_squirrel() { :; }    # do not touch the live app/service
-    confirm()       { :; }
+    stop_squirrel()     { :; }    # do not touch the live app/service
+    confirm()           { :; }
+    remove_root_scope() { :; }    # /Applications + /usr/local are task 4.3 — never here
     hdr(){ :; }; info(){ :; }; ok(){ :; }; warn(){ :; }
     load_preserve >/dev/null 2>&1
     build_plan
@@ -88,6 +89,7 @@ ORDER="$(HOME="$SB" bash -c '
   set -uo pipefail
   source "'"$UNINST"'" >/dev/null 2>&1
   stop_squirrel(){ :; }; confirm(){ :; }; deregister_plugin(){ :; }
+  remove_root_scope(){ :; }          # exclude /Applications + /usr/local
   hdr(){ :; }; info(){ :; }; ok(){ :; }; warn(){ :; }
   rm_path(){ printf "%s\n" "$1"; }   # record, do not delete
   load_preserve >/dev/null 2>&1; build_plan; perform_removal

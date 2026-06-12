@@ -57,7 +57,7 @@
   - acceptance: R-4.2, R-4.3, R-4.5, R-4.6 — removes plist, `~/.local/bin/squirrel{,-backend}{,.bak}`, four agent packs, all `com.metuur.squirrel{,.dev}` Library paths; `installed_plugins.json` entry removed atomically (temp+rename), unparsable JSON → warn and leave untouched; `~/.squirrel/` deleted last; individual failures reported, run continues, exit non-zero with failures in summary
   - verify: Sandbox `$HOME` populated with the full per-user footprint + a decoy plugin entry → everything removed, decoy entry intact, `~/.squirrel` gone last (instrument with `set -x`); corrupt the JSON → file untouched, warning printed
 
-- [ ] 4.3 Root-scope removals via single conditional sudo batch (deps: 4.2, est: ~25m)
+- [x] 4.3 Root-scope removals via single conditional sudo batch (deps: 4.2, est: ~25m)
   - acceptance: R-4.4 — `/Applications/Squirrel.app`, `/usr/local/bin/squirrel{,-backend}`, `/usr/local/share/squirrel` removed in one `sudo` invocation only when at least one exists; no sudo prompt otherwise
   - verify: Per-user-only sandbox run never prompts for sudo; with a real pkg install present, one sudo prompt removes all system paths
 

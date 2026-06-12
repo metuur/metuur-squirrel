@@ -317,10 +317,54 @@ remove_user_scope() {
   done
 }
 
+# True when the current user can remove $1 without sudo — i.e. its parent dir is
+# writable (entry removal needs parent write, not file ownership). Lets a
+# manual-install /Applications/Squirrel.app (user-owned) be removed prompt-free
+# while root-owned /usr/local/* falls through to the sudo batch.
+user_can_remove() {
+  local parent; parent="$(dirname "$1")"
+  [[ -w "$parent" ]]
+}
+
+# Single sudo invocation for all root-owned targets (seam: tests override this).
+sudo_rm_batch() {
+  /usr/bin/sudo /bin/rm -rf "$@"
+}
+
+# Remove non-$HOME footprint paths (/Applications, /usr/local/...). Anything the
+# user can already delete is removed directly; only genuinely root-owned targets
+# are batched into ONE sudo call — and sudo is never invoked when that batch is
+# empty (R-4.4).
+remove_root_scope() {
+  local p sudo_targets=()
+  for p in "${PLAN[@]:-}"; do
+    case "$p" in "$HOME"/*) continue ;; esac
+    [[ -e "$p" || -L "$p" ]] || continue
+    if user_can_remove "$p"; then
+      rm_path "$p"
+    else
+      sudo_targets+=("$p")
+    fi
+  done
+  [[ ${#sudo_targets[@]} -eq 0 ]] && return 0
+
+  hdr "Removing system files (admin password required)"
+  local t
+  for t in "${sudo_targets[@]}"; do printf '  %s- %s%s\n' "$C_RED" "$t" "$C_RESET"; done
+  if sudo_rm_batch "${sudo_targets[@]}" 2>/dev/null; then
+    for t in "${sudo_targets[@]}"; do ok "removed $t"; done
+  else
+    for t in "${sudo_targets[@]}"; do
+      if [[ -e "$t" || -L "$t" ]]; then warn "failed to remove $t"; FAILURES+=("$t"); else ok "removed $t"; fi
+    done
+  fi
+}
+
 perform_removal() {
   stop_squirrel
   deregister_plugin
   remove_user_scope
+  remove_root_scope
   rm_path "$SQUIRREL_HOME"            # R-4.5: ~/.squirrel removed last
 }
 
