@@ -204,10 +204,48 @@ vault_safety_gate() {
   done
 }
 
-# ─── Removal (deletions: Unit 4) ─────────────────────────────────────────────
+# ─── Stop running Squirrel ───────────────────────────────────────────────────
+# Each external action is its own function so the orchestration order can be
+# unit-tested (the gate against KeepAlive respawn) without a live app.
+stop_app() {
+  /usr/bin/osascript -e 'tell application "Squirrel" to quit' 2>/dev/null || true
+  /usr/bin/pkill -f 'Squirrel.app/Contents/MacOS/squirrel' 2>/dev/null || true
+  info "Quit Squirrel app"
+}
+retire_launchd_service() {
+  local uid; uid="$(/usr/bin/id -u 2>/dev/null || true)"
+  [[ -n "$uid" ]] && /bin/launchctl bootout "gui/$uid/org.squirrel.web-ui" 2>/dev/null || true
+  info "Retired launchd service org.squirrel.web-ui"
+}
+kill_backend() {
+  /usr/bin/pkill -f 'squirrel-backend' 2>/dev/null || true
+  info "Stopped squirrel-backend"
+}
+port_3939_listener() {
+  /usr/sbin/lsof -nP -iTCP:3939 -sTCP:LISTEN 2>/dev/null | /usr/bin/grep -q LISTEN
+}
+
+# Order is load-bearing: bootout the launchd service BEFORE killing the backend,
+# or its KeepAlive immediately respawns the process we just killed (the
+# "Backend offline" respawn loop). Then confirm :3939 is actually free.
+stop_squirrel() {
+  hdr "Stopping Squirrel"
+  stop_app
+  retire_launchd_service
+  kill_backend
+  /bin/sleep 1
+  if port_3939_listener; then
+    warn "Port 3939 still has a listener after stop — a process may be respawning it."
+  else
+    ok "Port 3939 is free"
+  fi
+}
+
+# ─── Removal (file deletions: task 4.2+) ─────────────────────────────────────
 perform_removal() {
-  warn "Removal is not yet wired in this build (deletions land in Unit 4)."
-  warn "The vault safety gate passed; no files were changed."
+  stop_squirrel
+  warn "File removal is not yet wired in this build (deletions land in task 4.2)."
+  warn "The vault safety gate passed and Squirrel was stopped; no files were changed."
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -227,4 +265,8 @@ main() {
   perform_removal
 }
 
-main
+# Run main only when executed directly; sourcing (e.g. from tests) exposes the
+# functions without side effects.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main
+fi

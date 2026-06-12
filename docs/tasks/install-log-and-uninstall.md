@@ -49,7 +49,7 @@
 
 ## Unit 4: Uninstaller — removal coverage
 
-- [ ] 4.1 Stop-everything sequence (deps: 3.1, est: ~30m)
+- [x] 4.1 Stop-everything sequence (deps: 3.1, est: ~30m)
   - acceptance: R-4.1 — ordered: quit/kill `Squirrel` app → `launchctl bootout gui/$(id -u)/org.squirrel.web-ui` → kill remaining `squirrel-backend` → verify no listener on port 3939
   - verify: With the launchd backend running, run the stop phase → service unloaded, no respawn (KeepAlive defeated), `lsof -iTCP:3939` empty
 
