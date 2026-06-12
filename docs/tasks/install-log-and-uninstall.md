@@ -35,7 +35,7 @@
 
 ## Unit 3: Uninstaller — scaffold, vault preservation, safety gate
 
-- [ ] 3.1 Create `installer/uninstall.sh` scaffold: guards, flags, vault enumeration, plan, confirmation (est: ~50m)
+- [x] 3.1 Create `installer/uninstall.sh` scaffold: guards, flags, vault enumeration, plan, confirmation (est: ~50m)
   - acceptance: R-5.1, R-5.2, R-5.3, R-5.4, R-3.1, R-3.2 — macOS-only, refuses root; parses `--dry-run`/`--yes`; reads every uncommented `[[vaults]] path` (tilde-expanded, `[[vaults]]` tables only) into the preserve list before anything else; prints removal plan (existing paths only) + preserve list; `--dry-run` exits 0 with no filesystem change; otherwise requires typed confirmation unless `--yes`; missing/unparsable config → warn, empty preserve list
   - verify: `--dry-run` on this machine prints plan + vaults, exits 0, `find`-verified no mtime changes; config with a commented `# path =` line and a `path` key in another table → neither preserved; `sudo uninstall.sh` refuses
 
