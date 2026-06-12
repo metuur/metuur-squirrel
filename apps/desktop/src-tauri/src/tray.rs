@@ -575,7 +575,7 @@ fn redact_token(url: &str) -> String {
 /// `path` is an absolute web path beginning with `/` (e.g. "/notes/VISA-001"),
 /// or empty for the dashboard root.
 fn open_web_url<R: Runtime>(app: &AppHandle<R>, path: &str) {
-    let token = app.state::<crate::RuntimeToken>().0.clone();
+    let token = app.state::<crate::RuntimeToken>().get();
     let url = format!("{}{}?token={}", BACKEND_ORIGIN, path, token);
     open_url(app, &url);
 }

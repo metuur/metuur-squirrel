@@ -873,7 +873,7 @@ pub fn start_polling<R: Runtime>(app: AppHandle<R>) {
         // items" in the installed app. Auth is enforced only when a token is set
         // (off in dev), which is why this went unnoticed until packaging.
         let mut default_headers = reqwest::header::HeaderMap::new();
-        let token = app.state::<crate::RuntimeToken>().0.clone();
+        let token = app.state::<crate::RuntimeToken>().get();
         match reqwest::header::HeaderValue::from_str(&token) {
             Ok(val) => {
                 default_headers.insert("X-Squirrel-Token", val);
