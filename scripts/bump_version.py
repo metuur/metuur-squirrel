@@ -38,6 +38,7 @@ TARGETS = [
     ("apps/desktop/package.json", JSON_VERSION),
     ("apps/backend/app/package.json", JSON_VERSION),
     ("apps/cli/squirrel", JSON_VERSION),                   # hardcoded plugin version
+    ("agent-pack/.claude-plugin/plugin.json", JSON_VERSION),  # web-UI version via _detect_version()
 ]
 
 
