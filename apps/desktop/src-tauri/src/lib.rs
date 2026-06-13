@@ -13,11 +13,32 @@ use tauri::Manager;
 /// registers its listener, causing the event to be silently dropped.
 pub(crate) struct PendingDeepLink(pub(crate) Mutex<Option<deep_link::FocusProjectPayload>>);
 
-/// Per-launch shared-secret token (Runtime Trust Handshake, R-1.1/R-1.2). Held
-/// in process memory only — never written to disk by the Tauri runtime. Passed
-/// to the spawned sidecar via `--token` (R-1.3) and used to authenticate the
-/// adoption probe against a backend already on port 3939 (Unit 4).
-pub(crate) struct RuntimeToken(pub(crate) String);
+/// Effective shared-secret token the clients use to authenticate to the backend
+/// (Runtime Trust Handshake, R-1.1/R-1.2). Held in process memory only — never
+/// written to disk by the Tauri runtime.
+///
+/// Seeded with the per-launch minted token. When the supervisor *adopts* a
+/// backend already on port 3939 (Unit 4), that backend authenticates with the
+/// token the handshake succeeded under — the launchd token when one is present
+/// — which can differ from this launch's minted token. `spawn_or_adopt`
+/// overwrites this value with the adopted token so every client (webview,
+/// `open_web_url`, health/alert pollers) authenticates against the backend we
+/// actually adopted; otherwise `/api/*` returns 401. Interior-mutable because
+/// the seed is `manage`d before `spawn_or_adopt` runs.
+pub(crate) struct RuntimeToken(pub(crate) std::sync::Mutex<String>);
+
+impl RuntimeToken {
+    /// Current effective token.
+    pub(crate) fn get(&self) -> String {
+        self.0.lock().unwrap_or_else(|p| p.into_inner()).clone()
+    }
+
+    /// Replace the effective token (used when adopting a backend whose token
+    /// differs from the minted per-launch token).
+    pub(crate) fn set(&self, token: String) {
+        *self.0.lock().unwrap_or_else(|p| p.into_inner()) = token;
+    }
+}
 
 #[tauri::command]
 fn drain_pending_deep_link(
@@ -37,7 +58,7 @@ fn greet(name: &str) -> String {
 /// The value lives only in process memory and is never persisted.
 #[tauri::command]
 fn runtime_token(state: tauri::State<RuntimeToken>) -> String {
-    state.0.clone()
+    state.get()
 }
 
 /// Query the current backend-trust state so the webview can show the handshake
@@ -109,7 +130,9 @@ pub fn run() {
         .manage(Mutex::new(backend_supervisor::SupervisorState::new()))
         // R-1.1: mint the per-launch runtime token before any supervisor code
         // runs, so spawn_or_adopt can read it from managed state.
-        .manage(RuntimeToken(backend_supervisor::mint_runtime_token()))
+        .manage(RuntimeToken(std::sync::Mutex::new(
+            backend_supervisor::mint_runtime_token(),
+        )))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -329,4 +352,21 @@ pub fn run() {
                 _ => {}
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RuntimeToken;
+    use std::sync::Mutex;
+
+    // R-5.7: the effective token is interior-mutable so spawn_or_adopt can
+    // promote an adopted backend's token (e.g. the launchd token) over the
+    // minted seed. get() reflects the latest set().
+    #[test]
+    fn runtime_token_get_returns_seed_then_latest_set() {
+        let token = RuntimeToken(Mutex::new("minted".to_string()));
+        assert_eq!(token.get(), "minted");
+        token.set("launchd".to_string());
+        assert_eq!(token.get(), "launchd");
+    }
 }

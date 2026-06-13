@@ -61,6 +61,7 @@
 | R-5.4 | WHEN the Tauri shell launches and finds port 3939 bound, AND `~/.squirrel/launchd-token` exists and satisfies the R-2.3 checks, THE SYSTEM SHALL use the token from that file for the adoption probe defined in R-4.1. |
 | R-5.5 | IF `~/.squirrel/launchd-token` exists but fails the R-2.3 checks (permissions, ownership, format), THE SYSTEM SHALL refuse to use it and SHALL emit an event tagged `LaunchdTokenInvalid` to the React shell for banner rendering. Adoption is refused. |
 | R-5.6 | WHEN the user runs `install.sh --reinstall`, THE SYSTEM SHALL regenerate `~/.squirrel/launchd-token`, rewrite the plist, and re-bootstrap the launchd service so the running backend re-reads the new token. |
+| R-5.7 | WHEN the Tauri shell enters `SupervisionMode::Adopted` against a backend whose adoption probe (R-4.1) succeeded under a token other than this launch's minted runtime token (i.e. the launchd token per R-5.4), THE SYSTEM SHALL promote that token to the effective token used by every subsequent client request — the webview (`runtime_token`), the web-UI launch URL (`open_web_url`), and the health/alert pollers — so all `X-Squirrel-Token` headers match the adopted backend. Absent this promotion, every `/api/*` call returns HTTP `401` and pages render empty. |
 
 ## Unit 6: User-visible state and recovery
 

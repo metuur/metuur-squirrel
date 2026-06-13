@@ -392,6 +392,9 @@ run "cp '$DIST/squirrel'         '$STAGING/bin/squirrel'"
 run "cp '$DIST/squirrel-backend' '$STAGING/bin/squirrel-backend'"
 
 run "cp -r '$ROOT/agent-pack' '$STAGING/agent-pack'"
+# Bundle the Python lib/ inside the agent-pack so script-driven skills and the
+# no-plugin manual installer are self-contained on machines without the repo.
+run "cp -r '$ROOT/apps/cli/lib' '$STAGING/agent-pack/lib'"
 run "cp '$ROOT/apps/backend/launchd/plist.template' '$STAGING/resources/plist.template'"
 run "cp '$ROOT/agent-pack/config/squirrel.toml.example' '$STAGING/resources/squirrel.toml.example'"
 
@@ -399,6 +402,12 @@ run "cp '$ROOT/agent-pack/config/squirrel.toml.example' '$STAGING/resources/squi
 
 run "cp '$ROOT/installer/install.sh' '$STAGING/Install Squirrel'"
 run "chmod +x '$STAGING/Install Squirrel'"
+
+# Ship the install-log snapshot tool (install.sh calls it) and the uninstaller
+# at the DMG root, next to the installer.
+run "cp '$ROOT/installer/install-snapshot.sh' '$STAGING/install-snapshot.sh'"
+run "cp '$ROOT/installer/uninstall.sh' '$STAGING/uninstall.sh'"
+run "chmod +x '$STAGING/install-snapshot.sh' '$STAGING/uninstall.sh'"
 
 ok "Staging assembled → dmg-staging/"
 

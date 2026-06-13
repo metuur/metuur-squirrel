@@ -132,11 +132,13 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
     >
       <div
         style={{
+          position: "relative",
           background: "#fff",
           borderRadius: 12,
-          padding: 20,
-          minWidth: 300,
-          maxWidth: 400,
+          padding: 24,
+          minWidth: 420,
+          maxWidth: 540,
+          width: "90vw",
           boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
         }}
         onClick={e => e.stopPropagation()}
@@ -144,7 +146,7 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
-          rows={4}
+          rows={6}
           style={{
             width: "100%",
             padding: 8,
@@ -186,31 +188,23 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
             boxSizing: "border-box",
           }}
         />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={save}
             disabled={busy}
-            style={{
-              background: "#374151",
-              color: "#fff",
-              padding: "6px 12px",
-              borderRadius: 6,
-              border: "none",
-              cursor: "pointer",
-              opacity: busy ? 0.6 : 1,
-            }}
+            className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
           >
             Save
           </button>
           <button
             onClick={togglePin}
-            style={{ background: "#f3f4f6", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}
+            className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
           >
             {item.pinned ? "Unpin" : "Pin"}
           </button>
           <button
             onClick={archive}
-            style={{ background: "#f3f4f6", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}
+            className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
           >
             Archive
           </button>
@@ -218,45 +212,40 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
           {!confirmDelete ? (
             <button
               onClick={handleDelete}
-              style={{
-                background: "#fee2e2",
-                color: "#dc2626",
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "none",
-                cursor: "pointer",
-              }}
+              className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-critical border-critical"
             >
               Delete
             </button>
           ) : (
-            <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "#dc2626" }}>Sure?</span>
+            <span className="flex items-center gap-2">
+              <span className="text-sm text-critical">Sure?</span>
               <button
                 onClick={handleDelete}
-                style={{ background: "#dc2626", color: "#fff", padding: "4px 8px", borderRadius: 4, border: "none", cursor: "pointer" }}
+                className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-critical border-critical"
               >
                 Yes
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                style={{ background: "#f3f4f6", padding: "4px 8px", borderRadius: 4, border: "none", cursor: "pointer" }}
+                className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
               >
                 Cancel
               </button>
             </span>
           )}
-          <button
-            onClick={onClose}
-            style={{ marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}
-          >
-            ✕
-          </button>
         </div>
         {/* R-5.6: Convert section */}
         <div style={{ marginTop: 12 }}>
           {!showConvert ? (
-            <button onClick={() => setShowConvert(true)} style={{ background: "#eff6ff", color: "#1d4ed8", padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}>
+            <button
+              onClick={() => setShowConvert(true)}
+              className="btn inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold"
+              style={{
+                background: "var(--color-accent)",
+                color: "#fff",
+                borderColor: "var(--color-accent)",
+              }}
+            >
               Convert →
             </button>
           ) : (
@@ -293,6 +282,25 @@ function PostItPopover({ item, onClose, onUpdate, onArchive, onDelete }: PostItP
             </div>
           )}
         </div>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          title="Close"
+          style={{
+            position: "absolute",
+            right: 14,
+            bottom: 14,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "#6b7280",
+            fontSize: 18,
+            lineHeight: 1,
+            padding: 4,
+          }}
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

@@ -44,13 +44,23 @@ Run the same installer from a newer DMG. It detects the existing version, stops 
 
 ### Uninstalling
 
+Run the bundled uninstaller — it removes every Squirrel file across all install
+types (app, CLI, launchd service, agent packs, app data) while **never touching
+your vaults**:
+
 ```bash
-launchctl unload ~/Library/LaunchAgents/org.squirrel.web-ui.plist
-rm ~/Library/LaunchAgents/org.squirrel.web-ui.plist
-rm ~/.local/bin/squirrel ~/.local/bin/squirrel-backend
-rm -rf ~/.claude/plugins/squirrel   # or your agent's equivalent
-# optionally: rm -rf ~/.squirrel
+# .pkg install:
+/usr/local/share/squirrel/uninstall.sh
+
+# DMG / manual-zip install: run uninstall.sh from the mounted DMG or unzipped folder
+./uninstall.sh
+
+# preview without deleting anything:
+./uninstall.sh --dry-run
 ```
+
+It reads your vault paths from `~/.squirrel/config.toml` first and preserves
+them; only system paths (under `/usr/local`) prompt for your admin password.
 
 ### Background service
 
@@ -351,6 +361,48 @@ xcrun stapler validate Squirrel.app            # notarization staple
 spctl --assess --type execute --verbose Squirrel.app
 # → accepted  source=Notarized Developer ID
 ```
+
+---
+
+## Publishing the landing page & download
+
+Once you've built a DMG, **`scripts/deploy-landing.sh`** ships it: it uploads the
+bundle to Cloudflare R2 and (re)deploys the public landing page that links to it —
+in one command.
+
+```bash
+./scripts/deploy-landing.sh          # upload dmg + update manifest + deploy pages
+```
+
+What it does:
+
+1. **Uploads the bundle** — pushes the macOS `.dmg` to the R2 bucket `squirrel` at
+   `dmg/squirrel-macos-v<version>.dmg`, served from `https://squirrel-file.metuur.com/dmg`.
+2. **Updates the download manifest** — rewrites `landing/pages/downloads.json` to point
+   at that version/URL (via `scripts/update-landing-download.sh`).
+3. **Deploys the landing page** — `wrangler pages deploy landing/pages`, to the project's
+   production branch (`squirrel`) by default so it lands in Production.
+
+The version is read from `package.json` (strip a leading `v`). The `.dmg` is auto-located —
+it checks `squirrel-macos-v<version>-arm64.dmg`, `squirrel-macos-arm64.dmg`,
+`squirrel-macos.dmg`, then the Tauri `target/.../dmg/Squirrel_<version>_aarch64.dmg`
+paths — unless you pass `--dmg`.
+
+**Prerequisites:** `wrangler` (logged in via `wrangler login`) and `jq`.
+
+| Flag                | Effect                                                                 |
+| ------------------- | --------------------------------------------------------------------- |
+| `--pages-only`      | Only redeploy the landing page (skip the R2 upload)                   |
+| `--dmg-only`        | Only upload the `.dmg` + update the manifest (skip the Pages deploy)  |
+| `--dmg /path.dmg`   | Use a specific bundle instead of auto-locating                        |
+| `--version 0.8.0`   | Override the version (default: `package.json`)                        |
+| `--branch <name>`   | Deploy to a specific Pages branch                                     |
+| `--preview`         | Deploy as a Preview off the current git branch (not Production)       |
+| `--dry-run`         | Print every action without executing it                              |
+
+Typical release flow: `make build-pkg` (or `build-dmg.sh`) → `./scripts/deploy-landing.sh`.
+Note this is distinct from `scripts/publish-release.sh` / `scripts/publish.sh`, which cut
+a GitHub Release / GHCR artifact rather than the R2-hosted landing download.
 
 ---
 

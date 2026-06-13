@@ -105,11 +105,41 @@ as_user /bin/rm -f "$sqdir/launchd-token" 2>/dev/null || true
 # Multiple bundles share the id com.metuur.squirrel; without this, macOS may
 # launch a stale 0.x copy from an unmounted DMG instead of the new install —
 # the root cause of "the installer opened an older version".
+# `-f /Applications/Squirrel.app` only ADDS the new bundle; it does not remove
+# the stale registrations that accumulate from mounted-DMG and /tmp copies, any
+# of which macOS may still resolve by bundle id. `-kill -r` rebuilds the whole
+# database from disk, dropping every registration whose path no longer exists
+# (unmounted DMGs, deleted tmp builds). Heavy but runs once at install.
 LSREG="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
-[ -x "$LSREG" ] && as_user "$LSREG" -f /Applications/Squirrel.app 2>/dev/null || true
+if [ -x "$LSREG" ]; then
+  as_user "$LSREG" -kill -r -domain local -domain system -domain user 2>/dev/null || true
+  as_user "$LSREG" -f /Applications/Squirrel.app 2>/dev/null || true
+fi
 
 # Launch the freshly installed build BY PATH — never `open -a "Squirrel"`, which
-# resolves by bundle id and can pick a stale registered copy.
-as_user /usr/bin/open /Applications/Squirrel.app 2>/dev/null || true
+# resolves by bundle id and can pick a stale registered copy. Guard on existence:
+# a missing bundle here means the payload did not land (bad .pkg), and a silent
+# `|| true` would hide that as "installed fine but never opened".
+if [ -d /Applications/Squirrel.app ]; then
+  as_user /usr/bin/open /Applications/Squirrel.app 2>/dev/null || \
+    echo "postinstall: WARNING — failed to launch /Applications/Squirrel.app" >&2
+else
+  echo "postinstall: ERROR — /Applications/Squirrel.app missing after install; payload did not land" >&2
+fi
+
+# ── Install-log: append the AFTER snapshot ───────────────────────────────────
+# Reuse the log path preinstall stashed in `.current` so BEFORE and AFTER land in
+# the same file; fall back to a fresh path if preinstall didn't run. Best-effort
+# only — never affects the install outcome.
+scriptDir="$(/usr/bin/dirname "$0")"
+SNAPSHOT="$scriptDir/install-snapshot.sh"
+logDir="$sqdir/install-logs"
+if [ -f "$SNAPSHOT" ]; then
+  logFile="$(as_user /bin/cat "$logDir/.current" 2>/dev/null || true)"
+  [ -n "$logFile" ] || logFile="$logDir/$(/bin/date -u +%Y%m%dT%H%M%SZ)-pkg.log"
+  as_user /bin/mkdir -p "$logDir" 2>/dev/null || true
+  as_user /bin/bash "$SNAPSHOT" after "$logFile" pkg "$newver" 2>/dev/null || true
+  as_user /bin/rm -f "$logDir/.current" 2>/dev/null || true
+fi
 
 exit 0

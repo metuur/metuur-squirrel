@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,118 +7,144 @@
   <meta name="description" content="Squirrel is a local-first task companion for attention-hyperactive minds. Capture the scatter, chunk the overwhelm, and pick up the trail after every distraction. Lives in your menu bar and your terminal.">
   <link rel="icon" href="squirrel.svg" type="image/svg+xml">
 
+  <!-- Social cards -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Squirrel — your brain jumps. Squirrel keeps the trail.">
+  <meta property="og:description" content="A calm, local-first focus companion for attention that scatters. Capture the noise, chunk the overwhelm, pick up exactly where you left off.">
+  <meta property="og:image" content="squirrel.svg">
+  <meta name="twitter:card" content="summary">
+
   <!-- Tailwind (utility classes) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Fonts: Inter (body) + Geist (headings/UI) -->
+  <!-- GSAP (motion system) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <!-- Fonts: Inter (body) + Geist (headings/UI) + Instrument Serif (accent italics) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>.font-geist { font-family: 'Geist', sans-serif !important; }</style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 
-  <!-- Entrance animation keyframe (from the Wallet template) -->
   <style>
-    @keyframes fadeSlideIn {
-      0%   { opacity: 0; transform: translateY(30px); filter: blur(8px); }
-      100% { opacity: 1; transform: translateY(0);    filter: blur(0px); }
-    }
-    #lifecycleCards::-webkit-scrollbar { display: none; }
+    html, body { overflow-x: clip; }
+    .font-geist  { font-family: 'Geist', sans-serif !important; }
+    .font-serif-accent { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
 
-    /* WebGL background canvas — sits behind all content, reacts to the cursor */
-    #bgScene { position: fixed; inset: 0; z-index: -10; pointer-events: none;
-               filter: var(--bg-filter, none); transition: filter .7s ease; }
-    /* Subtle static fallback gradient shown until/if the WebGL scene loads */
+    /* ── Palette tokens (unchanged) ─────────────────────────────────────── */
+    :root {
+      --ink: #c2410c;            /* burnt orange — buttons + footer */
+      --cream: #FBF4E7;
+      --paper: #FBF3D4;
+      --paper-edge: #EFE2B4;
+      --paper-text: #5A4B2E;
+      --pin: #C2562F;
+    }
+    .surface-ink { background-color: var(--ink); }
+    .btn-ink { background-color: var(--ink); transition: background-color .3s ease, box-shadow .3s ease; }
+    .btn-ink:hover { background-color: color-mix(in srgb, var(--ink), #ffffff 14%); }
+
+    /* ── WebGL background canvas — behind all content, cursor-reactive ──── */
+    #bgScene { position: fixed; inset: 0; z-index: -10; pointer-events: none; }
     #bgScene::before {
       content: ""; position: absolute; inset: 0;
       background:
-        radial-gradient(40rem 30rem at 72% 12%, rgba(217,70,239,0.12), transparent 60%),
-        radial-gradient(38rem 28rem at 28% 30%, rgba(99,102,241,0.12), transparent 60%);
+        radial-gradient(40rem 30rem at 72% 12%, rgba(251,146,60,0.14), transparent 60%),
+        radial-gradient(38rem 28rem at 28% 30%, rgba(244,63,94,0.10), transparent 60%);
     }
     #bgScene canvas { position: relative; }
 
-    /* Palette dock — frosted control to test background color combinations */
-    #paletteDock {
-      position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%);
-      z-index: 50; display: flex; align-items: center; gap: .5rem;
-      padding: .5rem .625rem; border-radius: 9999px;
-      background: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.6);
-      backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
-      box-shadow: 0 1px 1px rgba(0,0,0,.04), 0 8px 24px rgba(17,24,39,.12), 0 24px 48px rgba(17,24,39,.10);
-      display: none !important;
+    /* ── Film grain — subtle premium texture over the gradient ──────────── */
+    body::after {
+      content: ""; position: fixed; inset: 0; z-index: -5; pointer-events: none;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
-    #paletteDock .pd-label {
-      font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-      color: #6b7280; padding: 0 .25rem 0 .375rem; user-select: none;
-    }
-    .pd-swatch {
-      position: relative; height: 1.6rem; width: 1.6rem; border-radius: 9999px;
-      cursor: pointer; border: 0; padding: 0; outline: none; flex: none;
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
-      transition: transform .2s ease, box-shadow .2s ease;
-    }
-    .pd-swatch:hover { transform: translateY(-2px) scale(1.06); }
-    .pd-swatch:focus-visible { box-shadow: inset 0 0 0 1px rgba(0,0,0,.06), 0 0 0 3px rgba(17,24,39,.25); }
-    .pd-swatch[aria-pressed="true"] {
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,.06), 0 0 0 2px #fff, 0 0 0 4px rgba(17,24,39,.85);
-    }
-    .pd-swatch::after {
-      content: attr(data-name); position: absolute; bottom: calc(100% + .5rem); left: 50%;
-      transform: translateX(-50%) translateY(4px); white-space: nowrap;
-      font-size: 11px; font-weight: 500; color: #fff; background: rgba(17,24,39,.9);
-      padding: .2rem .45rem; border-radius: .375rem; opacity: 0; pointer-events: none;
-      transition: opacity .15s ease, transform .15s ease;
-    }
-    .pd-swatch:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
-    @media (max-width: 480px) { #paletteDock .pd-label { display: none; } }
 
-    /* Floating drift for the pinned post-it notes on the hero illustration */
+    /* ── Scroll progress hairline ────────────────────────────────────────── */
+    #scrollProgress {
+      position: fixed; top: 0; left: 0; right: 0; height: 2.5px; z-index: 60;
+      background: linear-gradient(90deg, #f59e0b, #f43f5e);
+      transform: scaleX(0); transform-origin: 0 50%; pointer-events: none;
+    }
+
+    /* ── Sticky nav — turns to frosted glass once you scroll ────────────── */
+    #siteHeader { transition: background-color .35s ease, box-shadow .35s ease, border-color .35s ease, backdrop-filter .35s ease; border-bottom: 1px solid transparent; }
+    #siteHeader.is-scrolled {
+      background: rgba(255,255,255,.72);
+      -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+      border-color: rgba(17,24,39,.06);
+      box-shadow: 0 1px 0 rgba(17,24,39,.02), 0 8px 24px -16px rgba(17,24,39,.18);
+    }
+    #siteHeader nav a[aria-current="true"] { color: #111827; }
+    #siteHeader nav a { position: relative; }
+    #siteHeader nav a::after {
+      content: ""; position: absolute; left: 0; right: 100%; bottom: -4px; height: 1.5px;
+      background: linear-gradient(90deg, #f59e0b, #f43f5e); transition: right .3s ease;
+    }
+    #siteHeader nav a:hover::after, #siteHeader nav a[aria-current="true"]::after { right: 0; }
+
+    /* ── Floating drift for the pinned post-it notes ─────────────────────── */
     @keyframes floatSoft {
       0%,100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
       50%     { transform: translateY(-7px) rotate(var(--rot, 0deg)); }
     }
     .postit { animation: floatSoft 5.4s ease-in-out infinite; }
-    @media (prefers-reduced-motion: reduce) { .postit { animation: none; } }
 
-    /* Palette-driven dark surfaces — footer + primary buttons repaint with the
-       selected swatch's `data-ink` near-black tint (set on :root by the dock). */
-    :root { --ink: #c2410c; }
-    .surface-ink { background-color: var(--ink); transition: background-color .5s ease; }
-    .btn-ink { background-color: var(--ink); transition: background-color .3s ease, box-shadow .3s ease, transform .3s ease; }
-    .btn-ink:hover { background-color: color-mix(in srgb, var(--ink), #ffffff 14%); }
+    /* ── Command marquee ─────────────────────────────────────────────────── */
+    @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    #marquee .track { display: flex; width: max-content; animation: marquee 36s linear infinite; }
+    #marquee:hover .track { animation-play-state: paused; }
+    #marquee { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+
+    /* ── Spotlight cards — cursor-tracked radial highlight ───────────────── */
+    .spot { position: relative; overflow: hidden; }
+    .spot::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      opacity: 0; transition: opacity .4s ease;
+      background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(245,158,11,.10), rgba(244,63,94,.05) 45%, transparent 70%);
+    }
+    .spot:hover::before { opacity: 1; }
+
+    /* ── Hero headline word-mask (set up by JS; harmless without it) ─────── */
+    .word-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .08em; margin-bottom: -.08em; }
+    .word-mask > span { display: inline-block; will-change: transform; }
+
+    /* ── Scrollytelling steps ─────────────────────────────────────────────── */
+    .how-step { transition: opacity .45s ease; }
+    @media (min-width: 1024px) {
+      .how-step { opacity: .3; }
+      .how-step.is-active { opacity: 1; }
+    }
+    .terminal-caret { display: inline-block; width: .55em; height: 1.1em; vertical-align: text-bottom; background: #fbbf24; animation: caretBlink 1s steps(1) infinite; }
+    @keyframes caretBlink { 50% { opacity: 0; } }
+
+    /* ── Scroll cue ──────────────────────────────────────────────────────── */
+    @keyframes cueDrop { 0%, 100% { transform: translateY(0); opacity: .9; } 50% { transform: translateY(6px); opacity: .4; } }
+    .scroll-cue-dot { animation: cueDrop 1.8s ease-in-out infinite; }
+
+    /* ── Focus visibility (keyboard users) ───────────────────────────────── */
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px;
+    }
+    .skip-link {
+      position: absolute; left: 1rem; top: -100%; z-index: 100;
+      background: #111827; color: #fff; padding: .5rem 1rem; border-radius: 0 0 .5rem .5rem;
+      font-size: .8rem; transition: top .2s ease;
+    }
+    .skip-link:focus { top: 0; }
+
+    /* ── Reduced motion: kill every ornament, keep every word ────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .postit, #marquee .track, .scroll-cue-dot, .terminal-caret { animation: none !important; }
+    }
   </style>
-
-  <!-- Replay-on-scroll: pause fadeSlideIn until element enters the viewport -->
-  <script>
-    (function () {
-      const style = document.createElement("style");
-      style.textContent = `
-        .animate-on-scroll { animation-play-state: paused !important; }
-        .animate-on-scroll.animate { animation-play-state: running !important; }
-      `;
-      document.head.appendChild(style);
-
-      const once = true;
-      if (!window.__inViewIO) {
-        window.__inViewIO = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add("animate");
-              if (once) window.__inViewIO.unobserve(entry.target);
-            }
-          });
-        }, { threshold: 0.2, rootMargin: "0px 0px -10% 0px" });
-      }
-      window.initInViewAnimations = function (selector = ".animate-on-scroll") {
-        document.querySelectorAll(selector).forEach((el) => window.__inViewIO.observe(el));
-      };
-      document.addEventListener("DOMContentLoaded", () => initInViewAnimations());
-    })();
-  </script>
 </head>
 
 <body class="min-h-screen antialiased text-gray-900 bg-white" style="font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial;">
+
+  <a href="#top" class="skip-link font-geist">Skip to content</a>
+  <div id="scrollProgress" aria-hidden="true"></div>
 
   <!-- Cursor-reactive WebGL background — our own GLSL shader (no external CDN).
        An organic, slowly-morphing fbm cloud that reacts to the cursor. fps-capped
@@ -129,13 +155,13 @@
   </div>
 
   <!-- ───────────────────────── Top Navigation ───────────────────────── -->
-  <header class="relative z-20 border-b border-gray-100">
+  <header id="siteHeader" class="sticky top-0 z-40">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-4 sm:py-6">
+      <div class="flex items-center justify-between py-3.5 sm:py-4">
         <!-- Brand -->
         <a href="#top" class="flex items-center gap-2.5">
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF4E7] shadow-lg shadow-gray-900/10 ring-1 ring-black/5">
-            <img src="squirrel.svg" alt="Squirrel" class="h-6 w-6">
+            <img src="squirrel.svg" alt="" class="h-6 w-6">
           </span>
           <span class="flex flex-col leading-none">
             <span class="text-base font-semibold tracking-tight font-geist">Squirrel</span>
@@ -143,7 +169,7 @@
           </span>
         </a>
         <!-- Desktop nav -->
-        <nav class="hidden md:flex items-center gap-6 lg:gap-8 text-sm text-gray-600">
+        <nav class="hidden md:flex items-center gap-6 lg:gap-8 text-sm text-gray-600" aria-label="Primary">
           <a href="#why" class="hover:text-gray-900 transition-colors font-geist">Why</a>
           <a href="#features" class="hover:text-gray-900 transition-colors font-geist">Features</a>
           <a href="#how" class="hover:text-gray-900 transition-colors font-geist">How it works</a>
@@ -151,7 +177,7 @@
           <a href="#privacy" class="hover:text-gray-900 transition-colors font-geist">Privacy</a>
         </nav>
         <div class="flex items-center gap-3">
-          <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="hidden sm:inline-flex items-center rounded-full btn-ink px-4 py-2 text-sm font-medium text-white shadow-lg shadow-gray-900/20 transition-colors font-geist">Download</a>
+          <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="magnetic hidden sm:inline-flex items-center rounded-full btn-ink px-4 py-2 text-sm font-medium text-white shadow-lg shadow-gray-900/20 transition-colors font-geist">Download</a>
           <!-- Mobile toggle -->
           <button id="mobileToggle" aria-controls="mobileMenu" aria-expanded="false" class="md:hidden inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="menu" id="iconMenu" class="h-5 w-5"></svg>
@@ -162,7 +188,7 @@
       </div>
     </div>
     <!-- Mobile menu -->
-    <div id="mobileMenu" class="md:hidden hidden">
+    <div id="mobileMenu" class="md:hidden hidden bg-white/95 backdrop-blur-md">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="py-3 space-y-1 divide-y divide-gray-100 border-t border-b border-gray-100">
           <a href="#why" class="block px-2 py-3 text-sm text-gray-700 hover:text-gray-900 font-geist">Why</a>
@@ -170,7 +196,7 @@
           <a href="#how" class="block px-2 py-3 text-sm text-gray-700 hover:text-gray-900 font-geist">How it works</a>
           <a href="#peace" class="block px-2 py-3 text-sm text-gray-700 hover:text-gray-900 font-geist">Peace of mind</a>
           <a href="#privacy" class="block px-2 py-3 text-sm text-gray-700 hover:text-gray-900 font-geist">Privacy</a>
-          <div class="pt-3">
+          <div class="pt-3 pb-2">
             <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="inline-flex w-full items-center justify-center rounded-full btn-ink px-4 py-2 text-sm font-medium text-white shadow-lg shadow-gray-900/20 transition-colors font-geist">Download</a>
           </div>
         </div>
@@ -180,43 +206,46 @@
 
   <!-- ───────────────────────── Hero ───────────────────────── -->
   <main id="top" class="relative">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 lg:pt-28 xl:pt-36 pb-24 sm:pb-24 lg:pb-32 xl:pb-40">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-24 xl:pt-32 pb-20 sm:pb-24 lg:pb-28">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 xl:gap-20 items-center">
         <!-- Left: copy -->
-        <section class="order-2 lg:order-1 relative">
-          <div class="inline-flex items-center gap-2 text-xs text-gray-700 font-geist bg-white/10 border border-white/20 rounded-full px-3 py-1 backdrop-blur-md" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-            <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+        <section class="order-2 lg:order-1 relative" aria-label="Introduction">
+          <div data-hero="badge" class="inline-flex items-center gap-2 text-xs text-gray-700 font-geist bg-white/10 border border-white/20 rounded-full px-3 py-1 backdrop-blur-md">
+            <span class="relative inline-flex h-1.5 w-1.5">
+              <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            </span>
             Local-first · Attention-hyperactive
           </div>
 
-          <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl lg:text-5xl xl:text-6xl 2xl:text-7xl leading-[0.95] tracking-tighter font-geist" style="animation: fadeSlideIn 1s ease-out 0.2s both;">
-            Your brain jumps. Squirrel keeps <span class="bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">the trail.</span>
+          <h1 id="heroTitle" class="mt-6 text-[2.65rem] leading-[0.98] sm:text-6xl md:text-6xl lg:text-6xl xl:text-7xl sm:leading-[0.95] tracking-tighter font-geist">
+            Your brain jumps. Squirrel keeps <span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">the trail.</span>
           </h1>
 
-          <p class="mt-6 text-base sm:text-lg lg:text-base xl:text-lg text-gray-600 font-geist max-w-xl" style="animation: fadeSlideIn 1s ease-out 0.2s both;">
+          <p data-hero="sub" class="mt-6 text-base sm:text-lg lg:text-base xl:text-lg text-gray-600 font-geist max-w-xl">
             A calm, local-first focus companion for attention that scatters — <span class="text-gray-900 font-medium">capture the noise, break the overwhelm into chunks, and pick up exactly where you left off</span> after every distraction. It's durable working memory, so no context is lost and no thought is stranded on the wrong machine.
           </p>
 
-          <div class="mt-8 flex flex-col sm:flex-row gap-3 sm:items-center" style="animation: fadeSlideIn 1s ease-out 0.4s both;">
-            <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="group inline-flex items-center gap-3 text-sm font-medium text-white btn-ink rounded-full px-8 py-3 xl:py-4 hover:shadow-xl transition-all duration-300 transform hover:scale-105 shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),_0_6.7px_5.3px_rgba(0,0,0,0.048),_0_12.5px_10px_rgba(0,0,0,0.06),_0_22.3px_17.9px_rgba(0,0,0,0.072),_0_41.8px_33.4px_rgba(0,0,0,0.086),_0_100px_80px_rgba(0,0,0,0.12)]">
+          <div data-hero="cta" class="mt-8 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="magnetic group inline-flex items-center justify-center sm:justify-start gap-3 text-sm font-medium text-white btn-ink rounded-full px-8 py-3 xl:py-4 hover:shadow-xl transition-all duration-300 shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),_0_6.7px_5.3px_rgba(0,0,0,0.048),_0_12.5px_10px_rgba(0,0,0,0.06),_0_22.3px_17.9px_rgba(0,0,0,0.072),_0_41.8px_33.4px_rgba(0,0,0,0.086),_0_100px_80px_rgba(0,0,0,0.12)]">
               <span>Download for Mac</span>
-              <div class="relative flex items-center justify-center w-5 h-5 bg-white/20 rounded-full group-hover:bg-white/30 transition-all duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:translate-x-0.5">
+              <span class="relative flex items-center justify-center w-5 h-5 bg-white/20 rounded-full group-hover:bg-white/30 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true">
                   <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
                 </svg>
-              </div>
+              </span>
             </a>
-            <a href="#how" class="inline-flex items-center justify-center gap-2 text-sm font-medium text-gray-900 font-geist bg-white/10 border border-white/20 rounded-full px-4 sm:px-5 py-3 backdrop-blur-md hover:bg-white/10 transition shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)]">
+            <a href="#how" class="inline-flex items-center justify-center gap-2 text-sm font-medium text-gray-900 font-geist bg-white/10 border border-white/20 rounded-full px-4 sm:px-5 py-3 backdrop-blur-md hover:bg-white/30 transition shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)]">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="circle-play" class="h-5 w-5 text-gray-700"></svg>
               See how it works
             </a>
           </div>
 
-          <div class="mt-6 sm:mt-8 h-px bg-gray-900/10"></div>
+          <div data-hero="rule" class="mt-6 sm:mt-8 h-px bg-gray-900/10"></div>
 
           <!-- Trust bullets -->
-          <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6" style="animation: fadeSlideIn 1s ease-out 0.5s both;">
-            <div class="flex items-start gap-3">
+          <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+            <div data-hero="trust" class="flex items-start gap-3">
               <div class="flex shrink-0 w-8 h-8 sm:w-9 sm:h-9 items-center justify-center bg-white/10 border border-white/10 rounded-lg mt-0.5 backdrop-blur-md shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="shield-check" class="h-4 w-4 sm:h-5 sm:w-5 text-gray-700"></svg>
               </div>
@@ -225,7 +254,7 @@
                 <p class="text-sm text-gray-600 font-geist">No cloud, no account — it never leaves your laptop.</p>
               </div>
             </div>
-            <div class="flex items-start gap-3">
+            <div data-hero="trust" class="flex items-start gap-3">
               <div class="flex shrink-0 w-8 h-8 sm:w-9 sm:h-9 items-center justify-center bg-white/10 border border-white/10 rounded-lg mt-0.5 backdrop-blur-md shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="file-text" class="h-4 w-4 sm:h-5 sm:w-5 text-gray-700"></svg>
               </div>
@@ -234,7 +263,7 @@
                 <p class="text-sm text-gray-600 font-geist">Just files you can read, grep, and back up.</p>
               </div>
             </div>
-            <div class="flex items-start gap-3">
+            <div data-hero="trust" class="flex items-start gap-3">
               <div class="flex shrink-0 w-8 h-8 sm:w-9 sm:h-9 items-center justify-center bg-white/10 border border-white/10 rounded-lg mt-0.5 backdrop-blur-md shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="zap" class="h-4 w-4 sm:h-5 sm:w-5 text-gray-700"></svg>
               </div>
@@ -247,81 +276,165 @@
         </section>
 
         <!-- Right: visual — the light app window glowing, with pinned post-its -->
-        <section class="order-1 lg:order-2 relative" style="animation: fadeSlideIn 1s ease-out 0.6s both;">
-          <div class="pointer-events-none absolute -inset-6 sm:-inset-10">
+        <section class="order-1 lg:order-2 relative" aria-label="App preview" data-hero="visual">
+          <div class="pointer-events-none absolute -inset-6 sm:-inset-10" aria-hidden="true">
             <div class="absolute right-6 sm:right-10 top-0 h-48 w-48 sm:h-72 sm:w-72 rounded-full bg-amber-400/30 blur-3xl"></div>
             <div class="absolute left-2 sm:left-5 top-12 sm:top-20 h-48 w-48 sm:h-72 sm:w-72 rounded-full bg-rose-400/25 blur-3xl"></div>
           </div>
 
-          <!-- Pinned post-its -->
-          <div class="postit absolute -top-5 -right-3 z-20 rounded-xl bg-[#FBF3D4] border border-[#EFE2B4] px-3.5 py-2.5 text-[13px] font-bold text-[#5A4B2E] shadow-[0_18px_30px_-16px_rgba(0,0,0,0.45)]" style="--rot:5deg; transform: rotate(5deg); animation-delay: .2s;">
-            <span class="absolute -top-1.5 left-4 h-2.5 w-2.5 rounded-full bg-[#C2562F] shadow"></span>
-            captured ✓<span class="block font-medium text-[11px] text-[#9A8A66] mt-0.5">filed to @home</span>
-          </div>
-          <div class="postit absolute -bottom-5 -left-4 z-20 rounded-xl bg-[#FBF3D4] border border-[#EFE2B4] px-3.5 py-2.5 text-[13px] font-bold text-[#5A4B2E] shadow-[0_18px_30px_-16px_rgba(0,0,0,0.45)]" style="--rot:-5deg; transform: rotate(-5deg); animation-delay: .9s;">
-            <span class="absolute -top-1.5 left-4 h-2.5 w-2.5 rounded-full bg-[#C2562F] shadow"></span>
-            chunk 2 / 5<span class="block font-medium text-[11px] text-[#9A8A66] mt-0.5">~20 min · doable</span>
-          </div>
-
-          <!-- App window -->
-          <div class="relative rounded-3xl bg-white/70 border border-white/40 backdrop-blur-xl p-5 sm:p-6 shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),_0_12.5px_10px_rgba(0,0,0,0.06),_0_41.8px_33.4px_rgba(0,0,0,0.086),_0_100px_80px_rgba(0,0,0,0.12)]">
-            <div class="flex gap-2 mb-4">
-              <span class="h-2.5 w-2.5 rounded-full bg-[#E08A5A]"></span>
-              <span class="h-2.5 w-2.5 rounded-full bg-[#D8B25A]"></span>
-              <span class="h-2.5 w-2.5 rounded-full bg-[#7FAE7E]"></span>
+          <div id="heroTilt" class="relative" style="transform-style: preserve-3d; will-change: transform;">
+            <!-- Pinned post-its -->
+            <div class="postit absolute -top-5 -right-3 z-20 rounded-xl bg-[#FBF3D4] border border-[#EFE2B4] px-3.5 py-2.5 text-[13px] font-bold text-[#5A4B2E] shadow-[0_18px_30px_-16px_rgba(0,0,0,0.45)]" style="--rot:5deg; transform: rotate(5deg); animation-delay: .2s;">
+              <span class="absolute -top-1.5 left-4 h-2.5 w-2.5 rounded-full bg-[#C2562F] shadow"></span>
+              captured ✓<span class="block font-medium text-[11px] text-[#9A8A66] mt-0.5">filed to @home</span>
             </div>
-            <p class="text-[11px] tracking-[0.08em] text-gray-400 font-mono">TODAY · SUN, MAY 31</p>
-            <h3 class="mt-1 text-xl sm:text-2xl font-semibold tracking-tight font-geist text-gray-900">Your focus is set.</h3>
-
-            <div class="mt-4 flex items-center gap-3 rounded-2xl bg-[#F7ECE5] px-3.5 py-3">
-              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F6E2D8] text-[#C2562F]"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-lucide="target"></svg></span>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-gray-900 font-geist truncate">Pasaportes vigentes</p>
-                <p class="text-[11px] text-gray-400 font-mono">VISA-FAMILIA · today</p>
-              </div>
-              <span class="rounded-full bg-[#F6E9CF] px-2.5 py-1 text-[10.5px] font-semibold text-[#A9741C] font-mono">AM</span>
+            <div class="postit absolute -bottom-5 -left-4 z-20 rounded-xl bg-[#FBF3D4] border border-[#EFE2B4] px-3.5 py-2.5 text-[13px] font-bold text-[#5A4B2E] shadow-[0_18px_30px_-16px_rgba(0,0,0,0.45)]" style="--rot:-5deg; transform: rotate(-5deg); animation-delay: .9s;">
+              <span class="absolute -top-1.5 left-4 h-2.5 w-2.5 rounded-full bg-[#C2562F] shadow"></span>
+              chunk 2 / 5<span class="block font-medium text-[11px] text-[#9A8A66] mt-0.5">~20 min · doable</span>
             </div>
 
-            <div class="mt-2.5 flex items-center gap-3 rounded-2xl bg-[#F4EFE7] px-3.5 py-3">
-              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E2EDE3] text-[#3E7D5C]"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-lucide="list"></svg></span>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-gray-900 font-geist truncate">Declaración impuestos 2025</p>
-                <p class="text-[11px] text-gray-400 font-mono">pressing · 45d overdue</p>
+            <!-- App window -->
+            <div class="relative rounded-3xl bg-white/70 border border-white/40 backdrop-blur-xl p-5 sm:p-6 shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),_0_12.5px_10px_rgba(0,0,0,0.06),_0_41.8px_33.4px_rgba(0,0,0,0.086),_0_100px_80px_rgba(0,0,0,0.12)]">
+              <div class="flex gap-2 mb-4" aria-hidden="true">
+                <span class="h-2.5 w-2.5 rounded-full bg-[#E08A5A]"></span>
+                <span class="h-2.5 w-2.5 rounded-full bg-[#D8B25A]"></span>
+                <span class="h-2.5 w-2.5 rounded-full bg-[#7FAE7E]"></span>
               </div>
-              <span class="rounded-full bg-[#F7DCD4] px-2.5 py-1 text-[10.5px] font-semibold text-[#B23A2A] font-mono">due</span>
+              <p class="text-[11px] tracking-[0.08em] text-gray-400 font-mono">TODAY · SUN, MAY 31</p>
+              <h2 class="mt-1 text-xl sm:text-2xl font-semibold tracking-tight font-geist text-gray-900">Your focus is set.</h2>
+
+              <div class="mt-4 flex items-center gap-3 rounded-2xl bg-[#F7ECE5] px-3.5 py-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F6E2D8] text-[#C2562F]"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-lucide="target"></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 font-geist truncate">Pasaportes vigentes</p>
+                  <p class="text-[11px] text-gray-400 font-mono">VISA-FAMILIA · today</p>
+                </div>
+                <span class="rounded-full bg-[#F6E9CF] px-2.5 py-1 text-[10.5px] font-semibold text-[#A9741C] font-mono">AM</span>
+              </div>
+
+              <div class="mt-2.5 flex items-center gap-3 rounded-2xl bg-[#F4EFE7] px-3.5 py-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E2EDE3] text-[#3E7D5C]"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-lucide="list"></svg></span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 font-geist truncate">Declaración impuestos 2025</p>
+                  <p class="text-[11px] text-gray-400 font-mono">pressing · 45d overdue</p>
+                </div>
+                <span class="rounded-full bg-[#F7DCD4] px-2.5 py-1 text-[10.5px] font-semibold text-[#B23A2A] font-mono">due</span>
+              </div>
             </div>
           </div>
         </section>
+      </div>
+
+      <!-- Scroll cue -->
+      <div class="mt-14 hidden lg:flex justify-center" aria-hidden="true">
+        <a href="#why" class="flex flex-col items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors" tabindex="-1">
+          <span class="text-[10px] uppercase tracking-[0.2em] font-geist">Scroll</span>
+          <span class="flex h-9 w-5 items-start justify-center rounded-full border border-gray-300 p-1.5">
+            <span class="scroll-cue-dot h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <!-- ── Command marquee — the vocabulary of the system, at a glance ── -->
+    <div id="marquee" class="relative border-y border-black/5 bg-white/40 backdrop-blur-sm py-3 overflow-hidden" aria-hidden="true">
+      <div class="track gap-3 pr-3">
+        <!-- track A -->
+        <div class="flex items-center gap-3">
+          <span class="rounded-full bg-amber-500/10 text-amber-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-capture</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-rose-500/10 text-rose-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-chunk</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-emerald-500/10 text-emerald-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-start</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-sky-500/10 text-sky-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-focus</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-indigo-500/10 text-indigo-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-brief</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-orange-500/10 text-orange-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-deadlines</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-violet-500/10 text-violet-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">mind-journal</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-teal-500/10 text-teal-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-estimate</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-cyan-500/10 text-cyan-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-reminders</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-fuchsia-500/10 text-fuchsia-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-sync-out</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-lime-600/10 text-lime-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">scratch-pad</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-pink-500/10 text-pink-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">post-its</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-purple-500/10 text-purple-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">quick-tasks</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-amber-500/10 text-amber-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">hyperfocus-guardian</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-gray-500/10 text-gray-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">⌃⌘S</span>
+          <span class="text-gray-300">·</span>
+        </div>
+        <!-- track B (duplicate for seamless loop) -->
+        <div class="flex items-center gap-3">
+          <span class="rounded-full bg-amber-500/10 text-amber-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-capture</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-rose-500/10 text-rose-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-chunk</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-emerald-500/10 text-emerald-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-start</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-sky-500/10 text-sky-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-focus</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-indigo-500/10 text-indigo-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-brief</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-orange-500/10 text-orange-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-deadlines</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-violet-500/10 text-violet-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">mind-journal</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-teal-500/10 text-teal-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-estimate</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-cyan-500/10 text-cyan-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-reminders</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-fuchsia-500/10 text-fuchsia-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">/sq-sync-out</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-lime-600/10 text-lime-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">scratch-pad</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-pink-500/10 text-pink-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">post-its</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-purple-500/10 text-purple-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">quick-tasks</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-amber-500/10 text-amber-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">hyperfocus-guardian</span>
+          <span class="text-gray-300">·</span>
+          <span class="rounded-full bg-gray-500/10 text-gray-700 px-3.5 py-1 text-xs font-mono whitespace-nowrap">⌃⌘S</span>
+          <span class="text-gray-300">·</span>
+        </div>
       </div>
     </div>
   </main>
 
   <!-- ───────────────────────── Problem ───────────────────────── -->
-  <section id="why" aria-labelledby="why-title" class="overflow-hidden border-t border-black/5 relative">
+  <section id="why" aria-labelledby="why-title" class="overflow-hidden relative">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-      <div class="max-w-2xl animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-        <p class="text-xs sm:text-sm text-gray-500 font-geist">The attention tax</p>
-        <h2 id="why-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist">Most task apps assume you'll <span class="bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">remember to come back.</span></h2>
-        <p class="mt-4 text-gray-600 font-geist">Squirrel is built for the way attention actually behaves — it does the remembering so you don't have to. It's durable working memory for minds that jump between projects: <span class="text-gray-900 font-medium">no context lost, no decision forgotten, no deadline silently slipped, no thought trapped on the wrong machine.</span></p>
+      <div class="max-w-2xl" data-reveal-group>
+        <p class="text-xs sm:text-sm text-gray-500 font-geist" data-reveal><span class="font-mono text-amber-600/80">01</span> — The attention tax</p>
+        <h2 id="why-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist" data-reveal>Most task apps assume you'll <span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">remember to come back.</span></h2>
+        <p class="mt-4 text-gray-600 font-geist" data-reveal>Squirrel is built for the way attention actually behaves — it does the remembering so you don't have to. It's durable working memory for minds that jump between projects: <span class="text-gray-900 font-medium">no context lost, no decision forgotten, no deadline silently slipped, no thought trapped on the wrong machine.</span></p>
       </div>
 
-      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.3s both;">
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6" data-reveal-group>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="rotate-ccw" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">"Wait, where was I?"</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">One ping and the whole mental stack is gone. Rebuilding it costs 20 minutes you didn't have.</p>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="ban" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">The task won't start</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">It's too big to look at. So it sits, and it stares, and the guilt grows louder than the task.</p>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="sticky-note" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Ideas everywhere</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">Sticky notes, three apps, the back of a receipt. Capture is easy — finding it again is not.</p>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="alarm-clock" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Deadlines ambush you</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">"Due Friday" feels infinitely far away — right up until it's Friday at 4pm.</p>
@@ -333,92 +446,202 @@
   <!-- ───────────────────────── Features ───────────────────────── -->
   <section id="features" aria-labelledby="features-title" class="overflow-hidden border-t border-black/5 relative">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-      <div class="max-w-2xl animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-        <p class="text-xs sm:text-sm text-gray-500 font-geist">What it does</p>
-        <h2 id="features-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist">A companion that <span class="bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">catches what you drop.</span></h2>
-        <p class="mt-4 text-gray-600 font-geist">Squirrel doesn't nag you to be more disciplined. It handles the remembering, the chunking, and the context-rebuilding so your attention is free for the work.</p>
+      <div class="max-w-2xl" data-reveal-group>
+        <p class="text-xs sm:text-sm text-gray-500 font-geist" data-reveal><span class="font-mono text-amber-600/80">02</span> — What it does</p>
+        <h2 id="features-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist" data-reveal>A companion that <span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">catches what you drop.</span></h2>
+        <p class="mt-4 text-gray-600 font-geist" data-reveal>Squirrel doesn't nag you to be more disciplined. It handles the remembering, the chunking, and the context-rebuilding so your attention is free for the work.</p>
       </div>
 
-      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.3s both;">
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="footprints" class="h-5 w-5"></svg></div>
-          <h3 class="mt-5 text-lg font-semibold font-geist">Pick up the trail</h3>
-          <p class="mt-2 text-sm text-gray-600 font-geist">Pulled away? One command reloads your last session — what you were doing, why, and the exact next step — so re-entry takes seconds.</p>
-          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-start</code>
+      <!-- The core loop — three pillars, larger -->
+      <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6" data-reveal-group>
+        <div data-reveal class="spot group rounded-3xl bg-white border border-gray-100 p-7 sm:p-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="zap" class="h-6 w-6"></svg></div>
+          <h3 class="mt-6 text-xl font-semibold font-geist">Capture the scatter</h3>
+          <p class="mt-2.5 text-sm leading-relaxed text-gray-600 font-geist">Brain-dump a thought the instant it appears, mid-task, without losing focus. It lands in the right pile automatically.</p>
+          <code class="mt-5 inline-block rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700">/sq-capture</code>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="zap" class="h-5 w-5"></svg></div>
-          <h3 class="mt-5 text-lg font-semibold font-geist">Capture the scatter</h3>
-          <p class="mt-2 text-sm text-gray-600 font-geist">Brain-dump a thought the instant it appears, mid-task, without losing focus. It lands in the right pile automatically.</p>
-          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-capture</code>
+        <div data-reveal class="spot group rounded-3xl bg-white border border-gray-100 p-7 sm:p-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="scissors" class="h-6 w-6"></svg></div>
+          <h3 class="mt-6 text-xl font-semibold font-geist">Chunk the overwhelm</h3>
+          <p class="mt-2.5 text-sm leading-relaxed text-gray-600 font-geist">Hand Squirrel a task that feels impossible. It splits it into 20-minute pieces and hands you the very first one.</p>
+          <code class="mt-5 inline-block rounded-lg bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-700">/sq-chunk</code>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="scissors" class="h-5 w-5"></svg></div>
-          <h3 class="mt-5 text-lg font-semibold font-geist">Chunk the overwhelm</h3>
-          <p class="mt-2 text-sm text-gray-600 font-geist">Hand Squirrel a task that feels impossible. It splits it into 20-minute pieces and hands you the very first one.</p>
-          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-chunk</code>
+        <div data-reveal class="spot group rounded-3xl bg-white border border-gray-100 p-7 sm:p-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="footprints" class="h-6 w-6"></svg></div>
+          <h3 class="mt-6 text-xl font-semibold font-geist">Pick up the trail</h3>
+          <p class="mt-2.5 text-sm leading-relaxed text-gray-600 font-geist">Pulled away? One command reloads your last session — what you were doing, why, and the exact next step — so re-entry takes seconds.</p>
+          <code class="mt-5 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-start</code>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+      </div>
+
+      <!-- The full toolkit — dense, content-first grid -->
+      <p class="mt-12 text-[11px] uppercase tracking-[0.18em] text-gray-400 font-geist" data-reveal>…and the rest of the toolkit</p>
+      <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" data-reveal-group>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="shield" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Guard the hyperfocus</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">When you finally lock in, Squirrel protects the flow — and nudges you toward breaks before the day disappears.</p>
           <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">hyperfocus-guardian</code>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="calendar-clock" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Deadlines that surface</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">Due dates rise to the top before they bite. Squirrel reads the urgency and tells you what genuinely can't wait.</p>
           <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-deadlines</code>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="file-text" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Instant briefs</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">Need to tell a lead where things stand? Get a clean six-section brief of every project in seconds.</p>
           <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-brief</code>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="brain" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Check in with your mind</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">Every few hours the Mind Journal asks what you're thinking and what you're doing — a one-tap mood log that externalizes the swirl before it runs the day.</p>
           <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">mind-journal</code>
         </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-left-right" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Cross the air gap</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Move context between your personal and corporate machines as hash-verified Markdown packages you paste yourself — diffed against your vault and applied atomically, with zero network calls.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-sync-out</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="target" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Pick your own focus</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Overrule the heuristic. Declare what today and this week are really about — your pick expires daily and weekly, so you re-commit instead of drifting.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-focus</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="sun" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Split your day</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Set a separate morning and afternoon intent, then check in and out — Squirrel logs the time you actually spent and shows it back to you.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">AM · PM</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="gauge" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Estimate vs. reality</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Squirrel pads your estimate for ADHD time-blindness, then measures what it actually took. Over time the gap closes into a signal you can trust.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-estimate</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="radar" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">On your radar</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Attach a reminder date to any task or note. It quietly resurfaces a week ahead, then parks in "Reminder due" until you act — separate from deadline pressure.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-reminders</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-lime-500/10 text-lime-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="notebook-pen" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">A Scratch Pad in every vault</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">A protected catch-all project that's always there from first launch — a safe home for ideas and captures that don't belong to any project yet.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">scratch-pad</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-pink-500/10 text-pink-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="sticky-note" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">A wall of Post-its</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Grab a thought before you know what it is. Pin it, color it, drag it around a sticky-note board — and convert it into a task or note once it makes sense.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">post-its</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="layers" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Park the interruptions</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">A two-minute interruption doesn't have to break focus. Drop it on the Quick Task stack — capped at five, cleared in order — and stay in the work.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">quick-tasks</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="bell" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Alerts that stay in the tray</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">A notification center lives inside the menu-bar popup with unread badges and history. Native banners deep-link straight to the exact card and pulse it into view.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">tray inbox</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="import" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Bring your Obsidian vault</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Already living in Obsidian? A copy-only migration maps your existing notes into Squirrel's structure — with a dry-run plan you approve before anything is written.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-migrate-vault</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="keyboard" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Summon from anywhere</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">One global shortcut brings the popup to the front from any app, then hides it back to the tray when you're done. No Dock clutter, no window-hunting.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">⌃⌘S</code>
+        </div>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="bot" class="h-5 w-5"></svg></div>
+          <h3 class="mt-5 text-lg font-semibold font-geist">Lives inside your agents</h3>
+          <p class="mt-2 text-sm text-gray-600 font-geist">Squirrel ships into Claude Code, Codex, Cursor, Copilot, and Windsurf as portable skills and commands — not one more cloud API you have to log into.</p>
+          <code class="mt-4 inline-block rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">/sq-*</code>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ───────────────────────── How it works ───────────────────────── -->
-  <section id="how" aria-labelledby="how-title" class="overflow-hidden border-t border-black/5 relative">
+  <!-- ───────────────────────── How it works — scrollytelling ───────────────────────── -->
+  <section id="how" aria-labelledby="how-title" class="border-t border-black/5 relative">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-      <div class="max-w-2xl animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-        <p class="text-xs sm:text-sm text-gray-500 font-geist">The loop</p>
-        <h2 id="how-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist">Three moves. <span class="bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">That's the whole system.</span></h2>
-        <p class="mt-4 text-gray-600 font-geist">No elaborate methodology to abandon by Tuesday. Just a rhythm loose enough to actually keep.</p>
+      <div class="max-w-2xl" data-reveal-group>
+        <p class="text-xs sm:text-sm text-gray-500 font-geist" data-reveal><span class="font-mono text-amber-600/80">03</span> — The loop</p>
+        <h2 id="how-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist" data-reveal>Three moves. <span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">That's the whole system.</span></h2>
+        <p class="mt-4 text-gray-600 font-geist" data-reveal>No elaborate methodology to abandon by Tuesday. Just a rhythm loose enough to actually keep.</p>
       </div>
 
-      <div class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.3s both;">
-        <div class="rounded-2xl bg-white border border-gray-100 p-6 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
-          <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 text-sm font-semibold font-mono">01</span>
-          <h3 class="mt-5 text-lg font-semibold font-geist">Dump it</h3>
-          <p class="mt-2 text-sm text-gray-600 font-geist">Whatever's rattling around — a task, a worry, a half-idea — throw it at Squirrel and keep moving.</p>
-          <pre class="mt-4 rounded-xl bg-gray-950 text-gray-300 text-xs leading-relaxed font-mono p-4 overflow-x-auto"><code><span class="text-amber-400">›</span> /sq-capture
+      <div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
+        <!-- Steps (left) -->
+        <div id="howSteps" class="space-y-6 lg:space-y-0">
+          <article class="how-step is-active lg:min-h-[60vh] lg:flex lg:items-center" data-step="0">
+            <div class="rounded-2xl bg-white border border-gray-100 p-6 lg:p-8 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)] lg:bg-transparent lg:border-0 lg:shadow-none lg:p-0 w-full">
+              <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 text-sm font-semibold font-mono">01</span>
+              <h3 class="mt-5 text-xl lg:text-2xl font-semibold font-geist">Dump it</h3>
+              <p class="mt-2 text-sm lg:text-base text-gray-600 font-geist max-w-md">Whatever's rattling around — a task, a worry, a half-idea — throw it at Squirrel and keep moving.</p>
+              <pre class="lg:hidden mt-4 rounded-xl bg-gray-950 text-gray-300 text-xs leading-relaxed font-mono p-4 overflow-x-auto"><code><span class="text-amber-400">›</span> /sq-capture
 <span class="text-gray-500"># "email the landlord re: lease"</span>
 → filed under <span class="text-emerald-400">@home</span> ✓</code></pre>
-        </div>
-        <div class="rounded-2xl bg-white border border-gray-100 p-6 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
-          <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 text-sm font-semibold font-mono">02</span>
-          <h3 class="mt-5 text-lg font-semibold font-geist">Break it down</h3>
-          <p class="mt-2 text-sm text-gray-600 font-geist">When something feels too heavy to start, ask Squirrel to slice it into a first step you can't say no to.</p>
-          <pre class="mt-4 rounded-xl bg-gray-950 text-gray-300 text-xs leading-relaxed font-mono p-4 overflow-x-auto"><code><span class="text-amber-400">›</span> /sq-chunk "quarterly report"
+            </div>
+          </article>
+          <article class="how-step lg:min-h-[60vh] lg:flex lg:items-center" data-step="1">
+            <div class="rounded-2xl bg-white border border-gray-100 p-6 lg:p-8 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)] lg:bg-transparent lg:border-0 lg:shadow-none lg:p-0 w-full">
+              <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 text-sm font-semibold font-mono">02</span>
+              <h3 class="mt-5 text-xl lg:text-2xl font-semibold font-geist">Break it down</h3>
+              <p class="mt-2 text-sm lg:text-base text-gray-600 font-geist max-w-md">When something feels too heavy to start, ask Squirrel to slice it into a first step you can't say no to.</p>
+              <pre class="lg:hidden mt-4 rounded-xl bg-gray-950 text-gray-300 text-xs leading-relaxed font-mono p-4 overflow-x-auto"><code><span class="text-amber-400">›</span> /sq-chunk "quarterly report"
 <span class="text-gray-500"># 5 chunks · ~20 min each</span>
 → start: <span class="text-emerald-400">open last quarter's doc</span></code></pre>
-        </div>
-        <div class="rounded-2xl bg-white border border-gray-100 p-6 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
-          <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 text-sm font-semibold font-mono">03</span>
-          <h3 class="mt-5 text-lg font-semibold font-geist">Re-enter</h3>
-          <p class="mt-2 text-sm text-gray-600 font-geist">Distracted? Tomorrow? Next week? One command rebuilds the full picture and points you at the next thing.</p>
-          <pre class="mt-4 rounded-xl bg-gray-950 text-gray-300 text-xs leading-relaxed font-mono p-4 overflow-x-auto"><code><span class="text-amber-400">›</span> /sq-start report
+            </div>
+          </article>
+          <article class="how-step lg:min-h-[60vh] lg:flex lg:items-center" data-step="2">
+            <div class="rounded-2xl bg-white border border-gray-100 p-6 lg:p-8 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)] lg:bg-transparent lg:border-0 lg:shadow-none lg:p-0 w-full">
+              <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 text-sm font-semibold font-mono">03</span>
+              <h3 class="mt-5 text-xl lg:text-2xl font-semibold font-geist">Re-enter</h3>
+              <p class="mt-2 text-sm lg:text-base text-gray-600 font-geist max-w-md">Distracted? Tomorrow? Next week? One command rebuilds the full picture and points you at the next thing.</p>
+              <pre class="lg:hidden mt-4 rounded-xl bg-gray-950 text-gray-300 text-xs leading-relaxed font-mono p-4 overflow-x-auto"><code><span class="text-amber-400">›</span> /sq-start report
 <span class="text-gray-500"># last touched 2 days ago</span>
 → you're on <span class="text-emerald-400">chunk 3 of 5</span></code></pre>
+            </div>
+          </article>
+        </div>
+
+        <!-- Sticky terminal (right, desktop only) -->
+        <div class="hidden lg:block" aria-hidden="true">
+          <div class="sticky top-28">
+            <div class="rounded-2xl bg-gray-950 shadow-2xl overflow-hidden ring-1 ring-white/10">
+              <div class="flex items-center gap-2 px-5 py-3.5 border-b border-white/5">
+                <span class="h-3 w-3 rounded-full bg-[#E08A5A]"></span>
+                <span class="h-3 w-3 rounded-full bg-[#D8B25A]"></span>
+                <span class="h-3 w-3 rounded-full bg-[#7FAE7E]"></span>
+                <span class="ml-3 text-[11px] uppercase tracking-[0.12em] text-gray-500 font-mono">squirrel · your agent</span>
+              </div>
+              <pre class="px-6 py-6 min-h-[200px] text-sm leading-loose font-mono text-gray-300 whitespace-pre-wrap"><code id="howTerminal"></code><span class="terminal-caret" id="howCaret"></span></pre>
+              <div class="flex items-center justify-between px-6 pb-5">
+                <div class="flex gap-1.5" id="howDots">
+                  <span class="h-1.5 w-6 rounded-full bg-amber-400 transition-colors duration-300"></span>
+                  <span class="h-1.5 w-6 rounded-full bg-white/15 transition-colors duration-300"></span>
+                  <span class="h-1.5 w-6 rounded-full bg-white/15 transition-colors duration-300"></span>
+                </div>
+                <span class="text-[10px] uppercase tracking-[0.18em] text-gray-600 font-geist">the loop</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -427,24 +650,24 @@
   <!-- ───────────────────────── Peace of mind ───────────────────────── -->
   <section id="peace" aria-labelledby="peace-title" class="overflow-hidden border-t border-black/5 relative">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-      <div class="max-w-2xl animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-        <p class="text-xs sm:text-sm text-gray-500 font-geist">The payoff</p>
-        <h2 id="peace-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist">Less in your head. <span class="bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">More peace of mind.</span></h2>
-        <p class="mt-4 text-gray-600 font-geist">The point isn't more productivity — it's a quieter mind. When the remembering happens somewhere safe, the stress, the clutter, and the low-grade dread have somewhere to go.</p>
+      <div class="max-w-2xl" data-reveal-group>
+        <p class="text-xs sm:text-sm text-gray-500 font-geist" data-reveal><span class="font-mono text-amber-600/80">04</span> — The payoff</p>
+        <h2 id="peace-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist" data-reveal>Less in your head. <span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">More peace of mind.</span></h2>
+        <p class="mt-4 text-gray-600 font-geist" data-reveal>The point isn't more productivity — it's a quieter mind. When the remembering happens somewhere safe, the stress, the clutter, and the low-grade dread have somewhere to go.</p>
       </div>
 
-      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.3s both;">
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6" data-reveal-group>
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="wind" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Stress, offloaded</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">Your head stops being the only place your work lives. Captures, chunks, and decisions are held for you — so you can put something down without the fear of losing it.</p>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="layout-grid" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Order, by default</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">One vault instead of sticky notes, three apps, and the back of a receipt. Projects, notes, and deadlines land in the right place on their own — clutter never piles up.</p>
         </div>
-        <div class="group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
+        <div data-reveal class="spot group rounded-2xl bg-white border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_0px_0px_1px_rgba(25,28,33,0.08)]">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="heart-pulse" class="h-5 w-5"></svg></div>
           <h3 class="mt-5 text-lg font-semibold font-geist">Anxiety, quieted</h3>
           <p class="mt-2 text-sm text-gray-600 font-geist">Nothing slips silently. Deadlines surface before they bite and the Mind Journal checks in every few hours — so the "what am I forgetting?" dread has nowhere left to grow.</p>
@@ -457,36 +680,36 @@
   <section id="privacy" aria-labelledby="privacy-title" class="overflow-hidden border-t border-black/5 relative">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-        <div class="animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-          <p class="text-xs sm:text-sm text-gray-500 font-geist">Yours, actually</p>
-          <h2 id="privacy-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist">No cloud. No account.<br>No watching you.</h2>
-          <p class="mt-4 text-gray-600 font-geist max-w-md">Squirrel is a vault of plain Markdown files on your own machine. It runs offline — there's no server holding your half-formed thoughts hostage, and nothing to subscribe to. Deterministic work runs in local scripts, so your agent only handles judgment — a typical session costs a fraction of the tokens.</p>
+        <div data-reveal-group>
+          <p class="text-xs sm:text-sm text-gray-500 font-geist" data-reveal><span class="font-mono text-amber-600/80">05</span> — Yours, actually</p>
+          <h2 id="privacy-title" class="mt-4 text-3xl sm:text-5xl tracking-tight font-geist" data-reveal>No cloud. No account.<br><span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">No watching you.</span></h2>
+          <p class="mt-4 text-gray-600 font-geist max-w-md" data-reveal>Squirrel is a vault of plain Markdown files on your own machine. It runs offline — there's no server holding your half-formed thoughts hostage, and nothing to subscribe to. Deterministic work runs in local scripts, so your agent only handles judgment — a typical session costs a fraction of the tokens.</p>
           <ul class="mt-8 space-y-4">
-            <li class="flex gap-3">
+            <li class="flex gap-3" data-reveal>
               <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 mt-0.5"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-lucide="check"></svg></span>
               <p class="text-sm text-gray-600 font-geist"><span class="font-semibold text-gray-900">Plain Markdown vault.</span> Read it, grep it, back it up, version it with Git, or open it in Obsidian. It's just files.</p>
             </li>
-            <li class="flex gap-3">
+            <li class="flex gap-3" data-reveal>
               <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 mt-0.5"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-lucide="check"></svg></span>
               <p class="text-sm text-gray-600 font-geist"><span class="font-semibold text-gray-900">Runs on localhost.</span> The backend serves only <code class="text-amber-600 font-mono">127.0.0.1</code> — nothing leaves your laptop.</p>
             </li>
-            <li class="flex gap-3">
+            <li class="flex gap-3" data-reveal>
               <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 mt-0.5"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-lucide="check"></svg></span>
               <p class="text-sm text-gray-600 font-geist"><span class="font-semibold text-gray-900">Lives in your menu bar.</span> A native macOS popup, plus a CLI, a local web UI, and skills inside your AI agents.</p>
             </li>
-            <li class="flex gap-3">
+            <li class="flex gap-3" data-reveal>
               <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 mt-0.5"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-lucide="check"></svg></span>
               <p class="text-sm text-gray-600 font-geist"><span class="font-semibold text-gray-900">Air-gap by design.</span> Move context between worlds with hash-verified packages you paste — the human is the bridge, never a sync robot.</p>
             </li>
           </ul>
         </div>
         <!-- vault file tree -->
-        <div class="animate-on-scroll" style="animation: fadeSlideIn 1s ease-out 0.2s both;">
-          <div class="rounded-2xl bg-gray-950 shadow-xl overflow-hidden">
+        <div data-reveal>
+          <div class="rounded-2xl bg-gray-950 shadow-xl overflow-hidden ring-1 ring-white/10">
             <div class="flex items-center justify-between px-6 pt-5 pb-3 text-[10.5px] uppercase tracking-[0.08em] text-gray-500 font-mono">
               <span>~/squirrel-vault</span><span>plain text</span>
             </div>
-            <pre class="px-6 pb-6 text-xs sm:text-sm leading-relaxed font-mono overflow-x-auto"><code><span class="text-amber-400">📁 projects/</span>
+            <pre class="px-6 pb-6 text-xs sm:text-sm leading-relaxed font-mono overflow-x-auto"><code id="vaultTree"><span class="text-amber-400">📁 projects/</span>
 <span class="text-gray-500">  📁 migration/</span>
 <span class="text-gray-300">    📄 intent.md</span>
 <span class="text-gray-300">    📄 chunks.md</span>
@@ -505,23 +728,23 @@
   <!-- ───────────────────────── Final CTA ───────────────────────── -->
   <section id="download" aria-labelledby="cta-title" class="overflow-hidden border-t border-black/5 relative">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-      <div class="relative mx-auto max-w-3xl text-center rounded-3xl bg-white/60 border border-white/40 backdrop-blur-xl px-6 sm:px-10 py-14 sm:py-16 animate-on-scroll shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),_0_12.5px_10px_rgba(0,0,0,0.06),_0_41.8px_33.4px_rgba(0,0,0,0.086),_0_100px_80px_rgba(0,0,0,0.12)]" style="animation: fadeSlideIn 1s ease-out 0.1s both;">
-        <div class="pointer-events-none absolute -inset-10 -z-10">
+      <div data-reveal class="relative mx-auto max-w-3xl text-center rounded-3xl bg-white/60 border border-white/40 backdrop-blur-xl px-6 sm:px-10 py-14 sm:py-16 shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),_0_12.5px_10px_rgba(0,0,0,0.06),_0_41.8px_33.4px_rgba(0,0,0,0.086),_0_100px_80px_rgba(0,0,0,0.12)]">
+        <div class="pointer-events-none absolute -inset-10 -z-10" aria-hidden="true">
           <div class="absolute left-1/2 -translate-x-1/2 top-0 h-56 w-56 sm:h-72 sm:w-72 rounded-full bg-amber-400/30 blur-3xl"></div>
         </div>
         <div class="inline-flex items-center gap-2 text-xs text-gray-700 font-geist bg-white/10 border border-white/20 rounded-full px-3 py-1 backdrop-blur-md">
           <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
           Free · Open · Local
         </div>
-        <h2 id="cta-title" class="mt-6 text-3xl sm:text-5xl tracking-tight font-geist">Stop losing <span class="bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">the thread.</span></h2>
+        <h2 id="cta-title" class="mt-6 text-3xl sm:text-5xl tracking-tight font-geist">Stop losing <span class="font-serif-accent bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent">the thread.</span></h2>
         <p class="mt-4 text-gray-600 font-geist max-w-xl mx-auto">Install Squirrel, point it at a folder, and tell your agent <code class="text-amber-600 font-mono">/sq-status</code>. That's the whole setup.</p>
         <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="group inline-flex items-center justify-center gap-3 text-sm font-medium text-white btn-ink rounded-full px-8 py-3.5 hover:shadow-xl transition-all duration-300 transform hover:scale-105 shadow-[0_12.5px_10px_rgba(0,0,0,0.06),_0_41.8px_33.4px_rgba(0,0,0,0.086)]">
+          <a href="https://squirrel-file.metuur.com/dmg/squirrel-macos.dmg" data-download-link download class="magnetic group inline-flex items-center justify-center gap-3 text-sm font-medium text-white btn-ink rounded-full px-8 py-3.5 hover:shadow-xl transition-all duration-300 shadow-[0_12.5px_10px_rgba(0,0,0,0.06),_0_41.8px_33.4px_rgba(0,0,0,0.086)]">
             Download for Mac
             <span class="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-mono">.dmg</span>
           </a>
           <a href="https://github.com" class="inline-flex items-center justify-center gap-2 text-sm font-medium text-gray-900 font-geist bg-white/10 border border-white/20 rounded-full px-6 py-3.5 backdrop-blur-md hover:bg-white/20 transition">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-lucide="github"></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>
             View on GitHub
           </a>
         </div>
@@ -535,14 +758,14 @@
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <a href="#top" class="flex items-center gap-2.5">
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF4E7]">
-            <img src="squirrel.svg" alt="Squirrel" class="h-6 w-6">
+            <img src="squirrel.svg" alt="" class="h-6 w-6">
           </span>
           <span class="flex flex-col leading-none">
             <span class="text-base font-semibold tracking-tight font-geist">Squirrel</span>
             <span class="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-white/60 font-geist">for attention-hyperactive minds</span>
           </span>
         </a>
-        <nav class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/75">
+        <nav class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/75" aria-label="Footer">
           <a href="#why" class="hover:text-white transition font-geist">Why</a>
           <a href="#features" class="hover:text-white transition font-geist">Features</a>
           <a href="#how" class="hover:text-white transition font-geist">How it works</a>
@@ -554,41 +777,11 @@
       <div class="mt-6 pt-4 border-t border-white/20 text-sm text-white/60">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p class="font-mono text-xs">© 2026 Squirrel. Made with ❤️ by @javierhbr.</p>
-          <a href="https://buymeacoffee.com/javierhbr" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors text-xs font-medium border border-slate-800 rounded-full px-3 py-1.5 bg-slate-900/50 hover:bg-slate-800 hover:border-yellow-400/30"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-coffee w-3.5 h-3.5"><path d="M10 2v2"></path><path d="M14 2v2"></path><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"></path><path d="M6 2v2"></path></svg><span>Buy me a coffee</span></a>
+          <a href="https://buymeacoffee.com/javierhbr" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-white/60 hover:text-yellow-300 transition-colors text-xs font-medium border border-white/20 rounded-full px-3 py-1.5 bg-white/5 hover:bg-white/10 hover:border-yellow-300/40"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-coffee w-3.5 h-3.5"><path d="M10 2v2"></path><path d="M14 2v2"></path><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"></path><path d="M6 2v2"></path></svg><span>Buy me a coffee</span></a>
         </div>
       </div>
     </div>
   </footer>
-
-  <!-- Palette dock: live-test background color combinations -->
-  <div id="paletteDock" role="group" aria-label="Background palette">
-    <span class="pd-label font-geist">Palette</span>
-    <button class="pd-swatch" data-name="Aurora"  data-filter="none" data-ink="#7c3aed"
-            style="background:linear-gradient(135deg,#f7944d,#d65cc8,#6f74f0)"></button>
-    <button class="pd-swatch" data-name="Lagoon"  data-filter="hue-rotate(160deg) saturate(1.12)" data-ink="#0369a1"
-            style="background:linear-gradient(135deg,#22d3ee,#38bdf8,#6366f1)"></button>
-    <button class="pd-swatch" data-name="Emerald" data-filter="hue-rotate(115deg) saturate(1.05)" data-ink="#047857"
-            style="background:linear-gradient(135deg,#34d399,#22d3ee,#4ade80)"></button>
-    <button class="pd-swatch" data-name="Sunset"  data-filter="hue-rotate(-28deg) saturate(1.22) brightness(1.02)" data-ink="#c2410c"
-            style="background:linear-gradient(135deg,#fb923c,#f43f5e,#f59e0b)"></button>
-    <button class="pd-swatch" data-name="Rosé"    data-filter="hue-rotate(312deg) saturate(1.12)" data-ink="#be185d"
-            style="background:linear-gradient(135deg,#fb7185,#e879f9,#f472b6)"></button>
-    <button class="pd-swatch" data-name="Iris"    data-filter="hue-rotate(38deg) saturate(0.82)" data-ink="#4f46e5"
-            style="background:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc)"></button>
-    <button class="pd-swatch" data-name="Noir"    data-filter="saturate(0.18) brightness(1.04)" data-ink="#475569"
-            style="background:linear-gradient(135deg,#d1d5db,#9ca3af,#4b5563)"></button>
-    <!-- From the Squirrel app + design-system (paper-indigo) tokens -->
-    <button class="pd-swatch" data-name="Paper Indigo" data-filter="hue-rotate(205deg) saturate(0.85) brightness(1.02)" data-ink="#1F3A8A"
-            style="background:linear-gradient(135deg,#EEF3FB,#5B79D6,#1F3A8A)"></button>
-    <button class="pd-swatch" data-name="Focus"        data-filter="hue-rotate(178deg) saturate(0.7) brightness(1.08)" data-ink="#1d4ed8"
-            style="background:linear-gradient(135deg,#F4F2EE,#C8D7EE,#1F3A8A)"></button>
-    <button class="pd-swatch" data-name="Amber"        data-filter="hue-rotate(-18deg) saturate(1.15) brightness(1.04)" data-ink="#b45309"
-            style="background:linear-gradient(135deg,#FBF1E5,#E7AE5E,#C56A14)"></button>
-    <button class="pd-swatch" data-name="Ember"        data-filter="hue-rotate(-40deg) saturate(1.2)" data-ink="#C8362A"
-            style="background:linear-gradient(135deg,#FBEEEC,#E5736A,#C8362A)"></button>
-    <button class="pd-swatch" data-name="Sage"         data-filter="hue-rotate(118deg) saturate(0.82)" data-ink="#2F6B4F"
-            style="background:linear-gradient(135deg,#E2EDE3,#5E9E7C,#2F6B4F)"></button>
-  </div>
 
   <!-- ───────────────────────── Scripts ───────────────────────── -->
   <script>
@@ -596,6 +789,9 @@
     if (window.lucide && typeof lucide.createIcons === 'function') {
       lucide.createIcons({ attrs: { 'stroke-width': 1.5 } });
     }
+
+    const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const FINE_POINTER  = window.matchMedia('(pointer: fine)').matches;
 
     // Download CTA hydration — one manifest file updates every download button.
     (function () {
@@ -618,36 +814,13 @@
         });
     })();
 
-    // Palette dock — apply a CSS filter to the WebGL background to preview color combinations
-    (function () {
-      const dock = document.getElementById('paletteDock');
-      if (!dock) return;
-      const swatches = Array.from(dock.querySelectorAll('.pd-swatch'));
-      const root = document.documentElement;
-      const KEY = 'sq-bg-palette';
-
-      function apply(name, persist) {
-        const btn = swatches.find(s => s.dataset.name === name) || swatches[0];
-        const filter = btn.dataset.filter || 'none';
-        root.style.setProperty('--bg-filter', filter);
-        // Repaint the dark surfaces (footer + primary buttons) to match the palette.
-        if (btn.dataset.ink) root.style.setProperty('--ink', btn.dataset.ink);
-        swatches.forEach(s => s.setAttribute('aria-pressed', String(s === btn)));
-        if (persist) { try { localStorage.setItem(KEY, btn.dataset.name); } catch (e) {} }
-      }
-      swatches.forEach(s => s.addEventListener('click', () => apply(s.dataset.name, true)));
-
-      let saved = null;
-      try { saved = localStorage.getItem(KEY); } catch (e) {}
-      apply(saved || 'Sunset', false);
-    })();
-
     // Mobile menu toggle
-    const toggleBtn = document.getElementById('mobileToggle');
-    const mobileMenu = document.getElementById('mobileMenu');
-    const iconMenu = document.getElementById('iconMenu');
-    const iconClose = document.getElementById('iconClose');
-    if (toggleBtn) {
+    (function () {
+      const toggleBtn = document.getElementById('mobileToggle');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const iconMenu = document.getElementById('iconMenu');
+      const iconClose = document.getElementById('iconClose');
+      if (!toggleBtn) return;
       toggleBtn.addEventListener('click', () => {
         const isHidden = mobileMenu.classList.toggle('hidden');
         const expanded = !isHidden;
@@ -655,7 +828,260 @@
         iconMenu.classList.toggle('hidden', expanded);
         iconClose.classList.toggle('hidden', !expanded);
       });
+      // Close the sheet after choosing a destination
+      mobileMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        iconMenu.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+      }));
+    })();
+
+    // Sticky header: frosted glass once scrolled + hairline progress bar
+    (function () {
+      const header = document.getElementById('siteHeader');
+      const bar = document.getElementById('scrollProgress');
+      let ticking = false;
+      function update() {
+        ticking = false;
+        header.classList.toggle('is-scrolled', window.scrollY > 8);
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(window.scrollY / max, 1) : 0) + ')';
+      }
+      window.addEventListener('scroll', () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+      }, { passive: true });
+      update();
+    })();
+
+    // Nav: highlight the section currently in view
+    (function () {
+      const links = Array.from(document.querySelectorAll('#siteHeader nav a[href^="#"]'));
+      if (!links.length || !('IntersectionObserver' in window)) return;
+      const map = new Map();
+      links.forEach((a) => {
+        const sec = document.querySelector(a.getAttribute('href'));
+        if (sec) map.set(sec, a);
+      });
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const link = map.get(entry.target);
+          if (!link) return;
+          if (entry.isIntersecting) {
+            links.forEach((a) => a.removeAttribute('aria-current'));
+            link.setAttribute('aria-current', 'true');
+          }
+        });
+      }, { rootMargin: '-40% 0px -55% 0px' });
+      map.forEach((_, sec) => io.observe(sec));
+    })();
+
+    // Spotlight cards — cursor-tracked radial highlight (cheap: two CSS vars)
+    if (FINE_POINTER) {
+      document.querySelectorAll('.spot').forEach((card) => {
+        card.addEventListener('pointermove', (e) => {
+          const r = card.getBoundingClientRect();
+          card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+          card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+        }, { passive: true });
+      });
     }
+
+    // ── GSAP motion system ───────────────────────────────────────────────────
+    // Everything is gsap.from(), so if GSAP never loads (or reduced motion is
+    // on) the page is simply static and fully visible — no hidden content.
+    window.addEventListener('DOMContentLoaded', () => {
+      if (REDUCE_MOTION || typeof gsap === 'undefined') return;
+
+      // 1 · Hero headline — wrap each word in an overflow mask, slide up
+      const title = document.getElementById('heroTitle');
+      if (title) {
+        const splitWords = (el) => {
+          const isGradient = el.classList && el.classList.contains('bg-clip-text');
+          Array.from(el.childNodes).forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              const frag = document.createDocumentFragment();
+              node.textContent.split(/(\s+)/).forEach((part) => {
+                if (!part) return;
+                if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(' ')); return; }
+                const mask = document.createElement('span');
+                mask.className = 'word-mask';
+                const word = document.createElement('span');
+                word.textContent = part;
+                if (isGradient) word.className = 'bg-gradient-to-r from-amber-500 to-rose-500 bg-clip-text text-transparent';
+                mask.appendChild(word);
+                frag.appendChild(mask);
+              });
+              el.replaceChild(frag, node);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+              splitWords(node);
+            }
+          });
+        };
+        splitWords(title);
+        gsap.from('#heroTitle .word-mask > span', {
+          yPercent: 115, duration: 0.9, ease: 'power4.out', stagger: 0.055, delay: 0.15
+        });
+      }
+
+      // 2 · Hero supporting elements — staggered entrance
+      gsap.from('[data-hero="badge"]',  { y: 18, autoAlpha: 0, duration: 0.7, ease: 'power3.out', delay: 0.1 });
+      gsap.from('[data-hero="sub"]',    { y: 24, autoAlpha: 0, duration: 0.8, ease: 'power3.out', delay: 0.55 });
+      gsap.from('[data-hero="cta"]',    { y: 24, autoAlpha: 0, duration: 0.8, ease: 'power3.out', delay: 0.7 });
+      gsap.from('[data-hero="rule"]',   { scaleX: 0, transformOrigin: '0 50%', duration: 0.9, ease: 'power3.inOut', delay: 0.8 });
+      gsap.from('[data-hero="trust"]',  { y: 22, autoAlpha: 0, duration: 0.7, ease: 'power3.out', stagger: 0.12, delay: 0.9 });
+      gsap.from('[data-hero="visual"]', { y: 36, autoAlpha: 0, scale: 0.965, duration: 1.1, ease: 'power3.out', delay: 0.35 });
+
+      // 3 · Section reveals — any [data-reveal], staggered within its group.
+      // Driven by IntersectionObserver (not scroll position math) so they fire
+      // reliably no matter how fast the user jumps through the page.
+      if ('IntersectionObserver' in window) {
+        const playReveal = (els) => gsap.to(els, { y: 0, autoAlpha: 1, duration: 0.85, ease: 'power3.out', stagger: 0.09, overwrite: true });
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            io.unobserve(entry.target);
+            const group = entry.target.__revealItems;
+            playReveal(group || entry.target);
+          });
+        }, { threshold: 0.05, rootMargin: '0px 0px -10% 0px' });
+
+        document.querySelectorAll('[data-reveal-group]').forEach((group) => {
+          const items = group.querySelectorAll('[data-reveal]');
+          if (!items.length) return;
+          gsap.set(items, { y: 28, autoAlpha: 0 });
+          group.__revealItems = items;
+          io.observe(group);
+        });
+        document.querySelectorAll('[data-reveal]').forEach((el) => {
+          if (el.closest('[data-reveal-group]')) return;
+          gsap.set(el, { y: 28, autoAlpha: 0 });
+          io.observe(el);
+        });
+      }
+
+      // 4 · Hero visual parallax tilt (desktop, fine pointer only)
+      const tilt = document.getElementById('heroTilt');
+      if (tilt && FINE_POINTER) {
+        const zone = tilt.closest('section');
+        const qx = gsap.quickTo(tilt, 'rotationY', { duration: 0.6, ease: 'power3.out' });
+        const qy = gsap.quickTo(tilt, 'rotationX', { duration: 0.6, ease: 'power3.out' });
+        gsap.set(tilt, { transformPerspective: 1100 });
+        zone.addEventListener('pointermove', (e) => {
+          const r = zone.getBoundingClientRect();
+          qx(((e.clientX - r.left) / r.width - 0.5) * 7);
+          qy(-((e.clientY - r.top) / r.height - 0.5) * 7);
+        }, { passive: true });
+        zone.addEventListener('pointerleave', () => { qx(0); qy(0); });
+      }
+
+      // 5 · Magnetic buttons (fine pointer only)
+      if (FINE_POINTER) {
+        document.querySelectorAll('.magnetic').forEach((btn) => {
+          const tx = gsap.quickTo(btn, 'x', { duration: 0.4, ease: 'power3.out' });
+          const ty = gsap.quickTo(btn, 'y', { duration: 0.4, ease: 'power3.out' });
+          btn.addEventListener('pointermove', (e) => {
+            const r = btn.getBoundingClientRect();
+            tx((e.clientX - (r.left + r.width / 2)) * 0.22);
+            ty((e.clientY - (r.top + r.height / 2)) * 0.22);
+          }, { passive: true });
+          btn.addEventListener('pointerleave', () => { tx(0); ty(0); });
+        });
+      }
+    });
+
+    // ── Scrollytelling terminal ("How it works", desktop) ───────────────────
+    (function () {
+      const out = document.getElementById('howTerminal');
+      const dots = document.getElementById('howDots');
+      if (!out || !('IntersectionObserver' in window)) return;
+
+      // Each step's terminal script as [text, cssClass] segments
+      const SCRIPTS = [
+        [
+          [['› ', 'text-amber-400'], ['/sq-capture', 'text-gray-100']],
+          [['# "email the landlord re: lease"', 'text-gray-500']],
+          [['→ filed under ', ''], ['@home', 'text-emerald-400'], [' ✓', '']]
+        ],
+        [
+          [['› ', 'text-amber-400'], ['/sq-chunk "quarterly report"', 'text-gray-100']],
+          [['# 5 chunks · ~20 min each', 'text-gray-500']],
+          [['→ start: ', ''], ["open last quarter's doc", 'text-emerald-400']]
+        ],
+        [
+          [['› ', 'text-amber-400'], ['/sq-start report', 'text-gray-100']],
+          [['# last touched 2 days ago', 'text-gray-500']],
+          [['→ you\'re on ', ''], ['chunk 3 of 5', 'text-emerald-400']]
+        ]
+      ];
+
+      let current = -1, typeToken = 0;
+
+      function typeScript(idx) {
+        if (idx === current) return;
+        current = idx;
+        const token = ++typeToken;
+        out.textContent = '';
+        if (dots) Array.from(dots.children).forEach((d, i) => {
+          d.classList.toggle('bg-amber-400', i === idx);
+          d.classList.toggle('bg-white/15', i !== idx);
+        });
+
+        const lines = SCRIPTS[idx];
+
+        if (REDUCE_MOTION) { // instant render, no typing
+          lines.forEach((segs, li) => {
+            segs.forEach(([text, cls]) => {
+              const s = document.createElement('span');
+              if (cls) s.className = cls;
+              s.textContent = text;
+              out.appendChild(s);
+            });
+            if (li < lines.length - 1) out.appendChild(document.createTextNode('\n'));
+          });
+          return;
+        }
+
+        let li = 0, si = 0, ci = 0;
+        let span = null;
+        function tick() {
+          if (token !== typeToken) return; // a newer step took over
+          if (li >= lines.length) return;
+          const segs = lines[li];
+          if (si >= segs.length) {
+            li++; si = 0; ci = 0; span = null;
+            if (li < lines.length) {
+              out.appendChild(document.createTextNode('\n'));
+              setTimeout(tick, 260); // beat between lines
+            }
+            return;
+          }
+          const [text, cls] = segs[si];
+          if (!span) {
+            span = document.createElement('span');
+            if (cls) span.className = cls;
+            out.appendChild(span);
+          }
+          span.textContent = text.slice(0, ++ci);
+          if (ci >= text.length) { si++; ci = 0; span = null; }
+          setTimeout(tick, 18);
+        }
+        tick();
+      }
+
+      const steps = document.querySelectorAll('.how-step');
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const idx = Number(entry.target.dataset.step);
+          steps.forEach((s) => s.classList.toggle('is-active', s === entry.target));
+          typeScript(idx);
+        });
+      }, { rootMargin: '-45% 0px -45% 0px' });
+      steps.forEach((s) => io.observe(s));
+
+      typeScript(0); // initial render
+    })();
 
     // ── Our own WebGL shader background ──────────────────────────────────────
     // A self-contained, cursor-reactive fbm cloud — no external library. Renders
@@ -704,18 +1130,22 @@
           vec2 uv  = gl_FragCoord.xy / u_res.xy;
           vec2 asp = vec2(u_res.x / u_res.y, 1.0);
           vec2 p   = uv * asp;
-          float t  = u_time * 0.04;
+          float t  = u_time * 0.16;
           vec2  m  = (u_mouse - 0.5) * asp;
 
-          // domain warp → organic, slowly-morphing silhouette
+          // domain warp → organic, visibly-morphing silhouette
           vec2 q = vec2(fbm(p * 1.6 + vec2(0.0,  t)),
                         fbm(p * 1.6 + vec2(5.2, -t)));
-          vec2 r = vec2(fbm(p * 1.6 + 1.8 * q + vec2(1.7, 9.2) + 0.15 * m + t),
-                        fbm(p * 1.6 + 1.8 * q + vec2(8.3, 2.8) - 0.15 * m - t));
+          vec2 r = vec2(fbm(p * 1.6 + 1.8 * q + vec2(1.7, 9.2) + 0.5 * m + t),
+                        fbm(p * 1.6 + 1.8 * q + vec2(8.3, 2.8) - 0.5 * m - t));
           float f = fbm(p * 1.4 + 2.0 * r);
 
-          // main warm cloud, concentrated toward the upper-right (tight + soft)
-          float d1   = length((uv - vec2(0.70, 0.66)) * vec2(1.0, 1.25));
+          // main warm cloud, concentrated toward the upper-right — its center
+          // drifts slowly and leans a little toward the cursor
+          vec2 c1 = vec2(0.70, 0.66)
+                  + 0.05 * vec2(sin(u_time * 0.23), cos(u_time * 0.31))
+                  + 0.06 * m;
+          float d1   = length((uv - c1) * vec2(1.0, 1.25));
           float mask = smoothstep(0.62, 0.06, d1);
           float g    = clamp(f * 0.85 - 0.04, 0.0, 1.0) * mask;
 
@@ -733,6 +1163,11 @@
           float d2    = length((uv - vec2(0.28, 0.30)) * vec2(1.0, 1.25));
           float mask2 = smoothstep(0.55, 0.06, d2) * clamp(fbm(p * 1.3 - r * 1.5) * 0.85 - 0.05, 0.0, 1.0);
           col = mix(col, indigo, mask2 * 0.13);
+
+          // soft warm halo that follows the cursor — makes reactivity legible
+          float dm   = length((uv - u_mouse) * asp);
+          float glow = smoothstep(0.5, 0.0, dm);
+          col = mix(col, amber, glow * glow * 0.12);
 
           gl_FragColor = vec4(col, 1.0);
         }`;
@@ -772,7 +1207,8 @@
         }
         gl.uniform2f(uRes, canvas.width, canvas.height);
       }
-      window.addEventListener('resize', resize);
+      // Resizing the canvas clears it — repaint a static frame if the loop is paused
+      window.addEventListener('resize', () => { resize(); if (!running) renderOnce(); });
 
       // cursor — smoothed toward the latest pointer position
       const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
@@ -781,7 +1217,7 @@
         mouse.ty = 1.0 - e.clientY / window.innerHeight; // gl y is bottom-up
       }, { passive: true });
 
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const reduce = REDUCE_MOTION;
       const FRAME  = 1000 / 30; // cap at 30fps
       let running = false, raf = 0, last = 0, t0 = 0, heroVisible = true;
 
@@ -791,8 +1227,8 @@
         if (now - last < FRAME) return;
         last = now;
         if (!t0) t0 = now;
-        mouse.x += (mouse.tx - mouse.x) * 0.05;
-        mouse.y += (mouse.ty - mouse.y) * 0.05;
+        mouse.x += (mouse.tx - mouse.x) * 0.09;
+        mouse.y += (mouse.ty - mouse.y) * 0.09;
         gl.uniform1f(uTime, (now - t0) / 1000);
         gl.uniform2f(uMouse, mouse.x, mouse.y);
         gl.drawArrays(gl.TRIANGLES, 0, 3);

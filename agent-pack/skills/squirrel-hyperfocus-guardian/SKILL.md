@@ -28,6 +28,7 @@ cat ~/.squirrel/state.json 2>/dev/null
 ```
 
 Extract:
+
 - `session_started_at` — when this session began
 - `last_active_project` — what they're working on
 - `active_intent` — which specific task
@@ -37,13 +38,13 @@ directly: "How long have you been at this?"
 
 ## Step 2: Classify the alert level
 
-| Duration | Alert level | Response |
-|----------|-------------|----------|
-| < 90 min | None | Don't intervene |
-| 90–120 min | Yellow | Gentle nudge |
-| 120–180 min | Orange | Strong suggestion to break |
-| > 180 min | Red | Mandatory break protocol |
-| > 240 min | Critical | Hard stop, save everything now |
+| Duration    | Alert level | Response                       |
+| ----------- | ----------- | ------------------------------ |
+| < 90 min    | None        | Don't intervene                |
+| 90–120 min  | Yellow      | Gentle nudge                   |
+| 120–180 min | Orange      | Strong suggestion to break     |
+| > 180 min   | Red         | Mandatory break protocol       |
+| > 240 min   | Critical    | Hard stop, save everything now |
 
 If the user reported "just one more thing" multiple times → escalate one level.
 
@@ -197,7 +198,6 @@ then check in again. Never disable the guardian entirely for a session.
 - Acknowledge the work done — it's real and valuable.
 - Offer a concrete out (not "take a break" but "what specifically to do in the break").
 - Never shame. Time blindness is neurological, not a character flaw.
-- Use the user's language (Spanish/English based on the session).
 
 ## Anti-patterns
 

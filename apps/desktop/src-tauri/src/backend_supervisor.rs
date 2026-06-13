@@ -234,7 +234,7 @@ fn spawn_sidecar<R: Runtime>(app: &AppHandle<R>) -> Result<CommandChild, String>
     // R-1.3: hand the per-launch token to the sidecar via argv. R-1.4: never
     // via env — env leaks through /proc and is inherited by grandchildren.
     // We pass `--token` and set NO environment variables on the command.
-    let token = app.state::<crate::RuntimeToken>().0.clone();
+    let token = app.state::<crate::RuntimeToken>().get();
     let cmd = app
         .shell()
         .sidecar(SIDECAR_NAME)
@@ -248,8 +248,15 @@ fn spawn_sidecar<R: Runtime>(app: &AppHandle<R>) -> Result<CommandChild, String>
     tauri::async_runtime::spawn(async move {
         while let Some(ev) = rx.recv().await {
             match ev {
-                CommandEvent::Stdout(line) | CommandEvent::Stderr(line) => {
+                CommandEvent::Stdout(line) => {
                     tracing::debug!(target: "backend", "{}", String::from_utf8_lossy(&line).trim_end());
+                }
+                // Backend stderr carries Python tracebacks and startup failures
+                // (e.g. an /api/me 500 that pins the tray to Error). Log it at
+                // WARN so it lands in the default INFO-level squirrel.log —
+                // otherwise a "Backend offline" is undiagnosable from the logs.
+                CommandEvent::Stderr(line) => {
+                    tracing::warn!(target: "backend", "{}", String::from_utf8_lossy(&line).trim_end());
                 }
                 CommandEvent::Terminated(payload) => {
                     tracing::warn!(?payload, "backend child terminated");
@@ -511,7 +518,7 @@ pub(crate) fn spawn_or_adopt<R: Runtime>(
         // present and valid; a present-but-invalid file refuses immediately.
         let token = match read_launchd_token() {
             Ok(Some(launchd)) => launchd,
-            Ok(None) => app.state::<crate::RuntimeToken>().0.clone(),
+            Ok(None) => app.state::<crate::RuntimeToken>().get(),
             Err(e) => {
                 tracing::warn!(error = ?e, "launchd-token present but invalid; refusing adoption");
                 tracing::info!(
@@ -535,7 +542,17 @@ pub(crate) fn spawn_or_adopt<R: Runtime>(
             "handshake_attempt"
         );
         return match outcome {
-            HandshakeOutcome::Adopted => (SupervisionMode::Adopted, None),
+            HandshakeOutcome::Adopted => {
+                // R-5.7: the adopted backend authenticates with `token` (the
+                // launchd token when `~/.squirrel/launchd-token` is present),
+                // which can differ from this launch's minted runtime token.
+                // Promote it to the effective token so every client — the
+                // webview (`runtime_token`), `open_web_url`, and the health /
+                // alert pollers — authenticates against the backend we adopted.
+                // Without this, /api/* returns 401 and pages render empty.
+                app.state::<crate::RuntimeToken>().set(token.clone());
+                (SupervisionMode::Adopted, None)
+            }
             // R-4.11: a token-mismatch / wedged listener that is verifiably our
             // OWN orphaned sidecar (prior launch) is reclaimed — kill it and
             // spawn fresh. Self-ownership is enforced inside
@@ -584,7 +601,7 @@ pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
         notify_refusal(app);
         return false;
     }
-    let client = match build_client(&app.state::<crate::RuntimeToken>().0) {
+    let client = match build_client(&app.state::<crate::RuntimeToken>().get()) {
         Some(c) => c,
         None => return false,
     };
@@ -596,12 +613,27 @@ pub(crate) async fn wait_for_ready<R: Runtime>(app: &AppHandle<R>) -> bool {
         }
         tokio::time::sleep(STARTUP_ATTEMPT_GAP).await;
     }
+    let reason = probe_health_reason(&client).await;
     tracing::warn!(
         attempts = STARTUP_BUDGET_ATTEMPTS,
+        reason = %reason,
         "backend supervisor: startup health-check budget exhausted"
     );
     let _ = crate::tray::set_state(app, crate::tray::IconState::Error);
     false
+}
+
+/// One-shot human-readable reason the `/api/me` health probe is failing, for the
+/// startup-exhaustion log line. A 200 here would be a race (the loop just saw a
+/// failure); anything else explains the "Backend offline" the user is staring
+/// at — e.g. `HTTP 500` (backend alive but the handler threw) vs a transport
+/// error (process gone / port not bound).
+async fn probe_health_reason(client: &reqwest::Client) -> String {
+    let health_url = format!("http://127.0.0.1:{BACKEND_PORT}/api/me");
+    match client.get(&health_url).send().await {
+        Ok(r) => format!("HTTP {}", r.status().as_u16()),
+        Err(e) => format!("transport error: {e}"),
+    }
 }
 
 /// Long-running health loop. Wakes every `HEALTH_INTERVAL`, probes
@@ -618,7 +650,7 @@ pub(crate) async fn run_health_loop<R: Runtime>(app: AppHandle<R>) {
         tracing::info!("backend supervisor: adoption refused — health loop disabled (R-4.7)");
         return;
     }
-    let client = match build_client(&app.state::<crate::RuntimeToken>().0) {
+    let client = match build_client(&app.state::<crate::RuntimeToken>().get()) {
         Some(c) => c,
         None => {
             tracing::error!("backend supervisor: failed to build health-check client");

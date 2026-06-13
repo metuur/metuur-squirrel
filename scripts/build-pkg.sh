@@ -239,6 +239,24 @@ if [[ -z "$APP" ]]; then
 fi
 [[ -n "$APP" ]] && ok "app → ${APP#$ROOT/}"
 
+# ─── Version-consistency guard ────────────────────────────────────────────────
+# VERSION (line 73) is read from apps/cli/pyproject.toml and stamped onto the
+# .pkg, distribution.xml, welcome.html, and the DMG name — but the PAYLOAD's
+# version is whatever this Squirrel.app actually is. A stale bundle (--skip-build
+# / build-pkg-fast / an old bundle that won the mtime selection) yields a .pkg
+# LABELED $VERSION that CONTAINS an old app. The install then "succeeds" and the
+# user silently runs the old binary (the "installed successfully but it's an old
+# version" bug). Fail loudly instead of shipping a lie. The app version is the
+# source of truth users actually launch (postinstall stamps ~/.squirrel/version
+# from this same CFBundleShortVersionString).
+if [[ -n "$APP" ]]; then
+  APP_VER="$(defaults read "$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo unknown)"
+  if [[ "$APP_VER" != "$VERSION" ]]; then
+    die "version mismatch: packaging $VERSION but $APP is $APP_VER — rebuild the app (stale bundle?). Run 'make build-pkg' (clears stale bundles) and do NOT use --skip-build/build-pkg-fast with a BUMP."
+  fi
+  ok "app version $APP_VER matches $VERSION"
+fi
+
 if [[ ! -f "$DIST/squirrel" || ! -f "$DIST/squirrel-backend" ]]; then
   (( SKIP_BUILD )) && die "dist/ binaries missing and --skip-build set. Run: make build-installers-arm64"
   die "dist/squirrel{,-backend} missing — run 'make build-installers-arm64' first (builds the CLI binaries)"
@@ -309,20 +327,49 @@ else
 fi
 
 run "cp -R '$ROOT/agent-pack' '$STAGING/usr/local/share/squirrel/agent-pack'"
+# Bundle the Python lib/ inside the agent-pack so script-driven skills and the
+# no-plugin manual installer are self-contained on machines without the repo.
+run "cp -R '$ROOT/apps/cli/lib' '$STAGING/usr/local/share/squirrel/agent-pack/lib'"
 run "cp '$ROOT/agent-pack/config/squirrel.toml.example' '$STAGING/usr/local/share/squirrel/resources/squirrel.toml.example'"
+run "cp '$ROOT/installer/uninstall.sh' '$STAGING/usr/local/share/squirrel/uninstall.sh'"
+run "chmod +x '$STAGING/usr/local/share/squirrel/uninstall.sh'"
 ok "payload → pkg-staging/"
+
+# Bundle the install-log snapshot tool next to pre/postinstall so the .pkg
+# scripts can call it (pkgbuild --scripts includes every file in that dir).
+run "cp '$ROOT/installer/install-snapshot.sh' '$PKG_SRC/scripts/install-snapshot.sh'"
+run "chmod +x '$PKG_SRC/scripts/install-snapshot.sh'"
 
 # ─── pkgbuild: component package ──────────────────────────────────────────────
 hdr "pkgbuild — component package"
 COMPONENT="$BUILD/squirrel-component.pkg"
+
+# Disable bundle relocation. By default pkgbuild marks an app bundle relocatable,
+# so the Installer drops the payload ON TOP of any pre-existing copy of
+# com.metuur.squirrel found anywhere on disk (a stale registered bundle, a dev
+# build, an unmounted-DMG ghost) INSTEAD of the declared /Applications location.
+# The result: the .pkg "installs successfully" but /Applications/Squirrel.app
+# never appears and nothing launches — exactly the failure we hit. (The CLI
+# binaries under /usr/local/bin are flat files, not bundles, so they are immune
+# and install correctly, which is why only the app went missing.) Generate the
+# component plist, force BundleIsRelocatable=false, and feed it back to pkgbuild.
+COMPONENT_PLIST="$BUILD/squirrel-component.plist"
+if (( ! DRY_RUN )); then
+  pkgbuild --analyze --root "$STAGING" "$COMPONENT_PLIST" >/dev/null \
+    || die "pkgbuild --analyze failed"
+  # Single bundle in the payload → array index 0. --analyze always emits the key.
+  plutil -replace 0.BundleIsRelocatable -bool false "$COMPONENT_PLIST" \
+    || die "failed to set BundleIsRelocatable=false in $COMPONENT_PLIST"
+fi
 run "pkgbuild \
   --root '$STAGING' \
+  --component-plist '$COMPONENT_PLIST' \
   --identifier '$APP_ID' \
   --version '$VERSION' \
   --scripts '$PKG_SRC/scripts' \
   --install-location / \
   '$COMPONENT'"
-ok "component → ${COMPONENT#$ROOT/}"
+ok "component → ${COMPONENT#$ROOT/} (relocation disabled)"
 
 # ─── productbuild: distribution (the GUI installer) ──────────────────────────
 hdr "productbuild — distribution installer"

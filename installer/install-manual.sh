@@ -100,6 +100,18 @@ CLI_BIN="$INSTALL_BIN/squirrel"
 BACKEND_BIN="$INSTALL_BIN/squirrel-backend"
 PORT=3939
 
+# ─── Install-log snapshot (troubleshooting) ──────────────────────────────────
+# Best-effort before/after snapshot to ~/.squirrel/install-logs/. A missing or
+# failing snapshot script must never fail the install, so failures are swallowed.
+SNAPSHOT_SH="$SCRIPT_DIR/install-snapshot.sh"
+INSTALL_LOG_FILE="$SQUIRREL_HOME/install-logs/$(date -u +%Y%m%dT%H%M%SZ)-manual.log"
+snapshot() {
+  [[ -x "$SNAPSHOT_SH" ]] && "$SNAPSHOT_SH" "$1" "$INSTALL_LOG_FILE" manual "$VERSION" >/dev/null 2>&1 || true
+}
+
+# Capture pre-install state before any filesystem change.
+snapshot before
+
 mkdir -p "$INSTALL_BIN" "$SQUIRREL_HOME" "$HOME/Library/LaunchAgents"
 
 # ─── Step 1: Strip quarantine from bundle ─────────────────────────────────────
@@ -447,3 +459,6 @@ say "    rm -rf $INSTALL_BIN/squirrel $INSTALL_BIN/squirrel-backend"
 say "    rm -rf $PLUGIN_DIR $PLIST_PATH"
 (( HAS_APP )) && say "    rm -rf /Applications/Squirrel.app"
 say ""
+
+# Capture post-install state (final step; never affects install outcome).
+snapshot after

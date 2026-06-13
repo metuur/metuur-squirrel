@@ -3823,7 +3823,7 @@ dependencies = [
 
 [[package]]
 name = "squirrel"
-version = "0.8.1"
+version = "0.8.6"
 dependencies = [
  "dirs 5.0.1",
  "image",

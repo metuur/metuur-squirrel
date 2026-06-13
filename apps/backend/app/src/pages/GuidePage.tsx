@@ -636,6 +636,41 @@ const FAQ_ENTRIES: FaqEntry[] = [
     ),
   },
   {
+    q: 'My company blocks installing plugins — can I still use the /sq-* commands?',
+    haystack:
+      'company corporate org blocks plugins marketplace restricted locked down enterprise managed policy no-plugin manual install claude code skills commands hooks settings.json ~/.claude/skills ~/.claude/commands disableallhooks install-claude-manual',
+    body: (
+      <>
+        <p>
+          Yes. Some organizations block Claude Code’s plugin marketplace, so the
+          normal <Cmd>squirrel install --agent claude</Cmd> (which registers a
+          plugin) won’t load. Use the <strong>no-plugin installer</strong>{' '}
+          instead — it drops the skills and <Cmd>/sq-*</Cmd> commands into Claude
+          Code’s native personal folders, which load without the marketplace and
+          aren’t affected by the plugin block:
+        </p>
+        <p>
+          <Cmd>./scripts/install-claude.sh --no-plugin</Cmd> (or run{' '}
+          <Cmd>./scripts/install-claude-manual.sh</Cmd> directly).
+        </p>
+        <p>
+          It installs the skills to <Cmd>~/.claude/skills/</Cmd>, the commands to{' '}
+          <Cmd>~/.claude/commands/</Cmd>, and merges the hooks into{' '}
+          <Cmd>~/.claude/settings.json</Cmd> — nothing under{' '}
+          <Cmd>~/.claude/plugins/</Cmd>. Restart Claude Code and the{' '}
+          <Cmd>/sq-*</Cmd> commands appear as usual (there’s no{' '}
+          <Cmd>/plugin list</Cmd> entry — that’s expected).
+        </p>
+        <p>
+          One caveat: if your org also sets <Cmd>"disableAllHooks": true</Cmd> in
+          managed settings, the proactive hook nudges won’t fire — but the skills
+          and slash commands still work. Undo it any time with{' '}
+          <Cmd>./scripts/uninstall-claude-manual.sh</Cmd>.
+        </p>
+      </>
+    ),
+  },
+  {
     q: 'Do I need Obsidian?',
     haystack: 'do i need obsidian required optional markdown editor view vault',
     body: (
@@ -702,32 +737,73 @@ const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     q: 'How do I update Squirrel?',
-    haystack: 'update upgrade new version installer latest release config preserved',
+    haystack:
+      'update upgrade new version installer latest release config preserved install log before after snapshot backend offline recovery',
     body: (
-      <p>
-        Download the newer DMG and run the installer again. It detects your
-        existing version, swaps the binaries, and replaces the agent commands —
-        your <Cmd>~/.squirrel/config.toml</Cmd> and your vault are never
-        touched.
-      </p>
+      <>
+        <p>
+          Download the newer DMG and run the installer again. It detects your
+          existing version, swaps the binaries, and replaces the agent commands —
+          your <Cmd>~/.squirrel/config.toml</Cmd> and your vault are never
+          touched.
+        </p>
+        <p>
+          Each run records a before/after snapshot of the install under{' '}
+          <Cmd>~/.squirrel/install-logs/</Cmd>, so if an upgrade ever leaves the
+          app stuck on “Backend offline,” that log shows what changed. The usual
+          culprit is a leftover background service from an older install —
+          reinstalling with the <Cmd>.pkg</Cmd> installer retires it
+          automatically.
+        </p>
+      </>
     ),
   },
   {
     q: 'How do I uninstall?',
     haystack:
-      'uninstall remove delete squirrel app cli config vault kept trash applications',
+      'uninstall remove delete squirrel app cli config vault kept trash applications dry-run preview confirm admin password sudo',
     body: (
       <>
         <p>
-          Quit Squirrel from the menu bar, drag{' '}
-          <Cmd>/Applications/Squirrel.app</Cmd> to the Trash, and remove the CLI
-          with <Cmd>sudo rm /usr/local/bin/squirrel</Cmd>. Optionally delete{' '}
-          <Cmd>~/.squirrel/</Cmd> (config and logs) and the agent commands (e.g.{' '}
-          <Cmd>~/.claude/plugins/squirrel/</Cmd>).
+          Run the bundled <Cmd>uninstall.sh</Cmd> — it removes the app, CLI,
+          background service, agent commands, and app data in one pass. For a{' '}
+          <Cmd>.pkg</Cmd> install run{' '}
+          <Cmd>/usr/local/share/squirrel/uninstall.sh</Cmd>; for a DMG or
+          manual-zip install run <Cmd>./uninstall.sh</Cmd> from the mounted DMG
+          or unzipped folder.
         </p>
         <p>
-          Your vault is never deleted — it’s your folder of Markdown files and
-          stays exactly where it is.
+          It prints exactly what it will remove and asks you to confirm first —
+          add <Cmd>--dry-run</Cmd> to preview without touching anything, or{' '}
+          <Cmd>--yes</Cmd> to skip the prompt. Only system files under{' '}
+          <Cmd>/usr/local</Cmd> ask for your admin password; if you only ever ran
+          the drag-installer, it won’t ask at all.
+        </p>
+        <p>
+          <strong>Your vaults are never deleted.</strong> The uninstaller reads
+          every vault path from your config first and leaves those folders of
+          Markdown files exactly where they are.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Where can I find install diagnostics for troubleshooting?',
+    haystack:
+      'install log logs diagnostics troubleshoot what changed before after snapshot install-logs failed install upgrade support metadata no secrets safe to share',
+    body: (
+      <>
+        <p>
+          Every installer run writes a timestamped before/after snapshot to{' '}
+          <Cmd>~/.squirrel/install-logs/</Cmd>. Each one captures which Squirrel
+          files and background services were on the system before the install and
+          after — so when something looks wrong, the diff between the two sections
+          points straight at what changed.
+        </p>
+        <p>
+          The log records file metadata only — sizes, timestamps, and checksums,
+          never your notes or any tokens — so it’s safe to share when you ask for
+          help. The newest ten runs are kept; older logs are pruned automatically.
         </p>
       </>
     ),
@@ -735,7 +811,7 @@ const FAQ_ENTRIES: FaqEntry[] = [
   {
     q: 'The popup says “Backend offline” — what do I do?',
     haystack:
-      'backend offline unavailable not responding error red banner restart service logs squirrel.log troubleshoot',
+      'backend offline unavailable not responding error red banner restart service logs squirrel.log install-logs troubleshoot upgrade port collision leftover service',
     body: (
       <>
         <p>
@@ -747,6 +823,12 @@ const FAQ_ENTRIES: FaqEntry[] = [
           A common cause is two Squirrels fighting over the same port (for
           example, the installed app plus a development copy). Quit one of them
           and restart the other.
+        </p>
+        <p>
+          If it started right after an update, the before/after snapshots in{' '}
+          <Cmd>~/.squirrel/install-logs/</Cmd> show what the install changed —
+          usually a leftover background service from an older copy. Reinstalling
+          with the <Cmd>.pkg</Cmd> installer retires it and clears the conflict.
         </p>
       </>
     ),

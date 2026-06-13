@@ -21,6 +21,9 @@
 #                                 in --auto unless this flag is passed).
 #   ./install.sh --with-menubar # also install the macOS menu bar companion
 #                                 (SwiftBar plugin; implies --with-web-ui).
+#   ./install.sh --no-plugin    # install Claude Code natively (skills/commands/
+#                                 hooks) instead of as a plugin — for orgs that
+#                                 block plugin installs. Affects Claude only.
 #
 # Other flags (mirror the per-agent installers):
 #   --no-config / --no-cli / --no-reminders / --link / --prefix=PATH / --yes
@@ -49,6 +52,7 @@ WANT_CURSOR=0
 WANT_STANDALONE=0
 WANT_WEB_UI=0   # opt-in: --with-web-ui (interactive default is No — R-11.1)
 WANT_MENUBAR=0  # opt-in: --with-menubar (macOS only; implies WANT_WEB_UI)
+NO_PLUGIN=0     # opt-in: --no-plugin (Claude Code native install, no marketplace)
 HAS_CLAUDE=0
 HAS_CODEX=0
 HAS_CURSOR=0
@@ -58,10 +62,11 @@ PROCEED=0   # set by the summary screen
 RAW_ARGS=()
 for arg in "$@"; do
   case "$arg" in
-    --auto)         AUTO_MODE=1 ;;
-    --with-web-ui)  WANT_WEB_UI=1 ;;
-    --with-menubar) WANT_MENUBAR=1; WANT_WEB_UI=1 ;;
-    -h|--help)      print_help_and_exit ;;
+    --auto)              AUTO_MODE=1 ;;
+    --with-web-ui)       WANT_WEB_UI=1 ;;
+    --with-menubar)      WANT_MENUBAR=1; WANT_WEB_UI=1 ;;
+    --no-plugin|--manual) NO_PLUGIN=1 ;;
+    -h|--help)           print_help_and_exit ;;
     *)              RAW_ARGS+=("$arg") ;;
   esac
 done
@@ -106,6 +111,7 @@ detect_agents() {
   [[ -d "$HOME/.claude" ]] && HAS_CLAUDE=1
   [[ -d "$HOME/.codex"  ]] && HAS_CODEX=1
   [[ -d "$HOME/.cursor" ]] && HAS_CURSOR=1
+  return 0   # detection never fails the install (set -e safe)
 }
 
 # ─── Key reader ──────────────────────────────────────────────────────────────
@@ -415,10 +421,24 @@ do_install() {
     banner
   fi
   hdr "Installing"
-  install_canonical "$ROOT"
+  if (( NO_PLUGIN )); then
+    # Native, no-marketplace install for Claude Code (skills/commands/hooks/lib/
+    # config/CLI). install-claude-manual.sh handles config + CLI itself, so we
+    # skip install_post_steps below for the Claude target.
+    hdr "Claude Code — manual (no-plugin) install"
+    local margs=()
+    (( DRY_RUN ))     && margs+=(--dry-run)
+    (( SKIP_CONFIG )) && margs+=(--no-config)
+    (( SKIP_CLI ))    && margs+=(--no-cli)
+    (( ASSUME_YES ))  && margs+=(--yes)
+    margs+=(--prefix="$CLI_PREFIX")
+    bash "$ROOT/scripts/install-claude-manual.sh" "${margs[@]}"
+  else
+    install_canonical "$ROOT"
+  fi
   (( WANT_CODEX ))  && install_agent_integration "$ROOT" "codex"
   (( WANT_CURSOR )) && install_agent_integration "$ROOT" "cursor"
-  install_post_steps "$ROOT"
+  (( NO_PLUGIN ))   || install_post_steps "$ROOT"
   if (( WANT_WEB_UI )); then
     hdr "Web UI (browser interface)"
     bash "$ROOT/scripts/install-web-ui.sh" || true
@@ -506,7 +526,9 @@ show_detection() {
 # ─── Main flow ───────────────────────────────────────────────────────────────
 main() {
   require_python
-  require_squirrel_cli "$ROOT"
+  # The no-plugin installer resolves its own sources (incl. the CLI under
+  # apps/cli/), so it doesn't require a co-located ./squirrel binary.
+  (( NO_PLUGIN )) || require_squirrel_cli "$ROOT"
   detect_agents
 
   if (( AUTO_MODE )); then

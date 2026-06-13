@@ -115,6 +115,67 @@ it will tell you there is no previous activity.
 
 ---
 
+## 🔒 Restricted / no-plugin environments (Claude Code)
+
+Some organizations block installing Claude Code **plugins** from outside the
+company (the marketplace/plugin registry is disabled by managed policy). In that
+case the normal install above won't load, because it registers squirrel as a
+plugin under `~/.claude/plugins/`.
+
+Use the **manual installer** instead. It installs squirrel into Claude Code's
+**native personal locations**, which load independently of the plugin
+marketplace and are not affected by an org's plugin block:
+
+```bash
+# from the repo (or an unpacked release):
+./agent-pack/scripts/install-claude-manual.sh
+
+# preview first, without writing anything:
+./agent-pack/scripts/install-claude-manual.sh --dry-run
+
+# equivalent shortcuts:
+./agent-pack/scripts/install-claude.sh --no-plugin
+./agent-pack/install.sh --no-plugin --auto
+```
+
+What it installs (no `~/.claude/plugins/` entry, no marketplace registration):
+
+| What | Where |
+|------|-------|
+| 17 skills | `~/.claude/skills/squirrel-*/` |
+| 24 `/sq-*` slash commands | `~/.claude/commands/sq-*.md` |
+| Hooks | merged into `~/.claude/settings.json` (`hooks` key) |
+| Python `lib/`, wrapper scripts, templates, `squirrel` CLI | `~/.claude/squirrel/` |
+| Config seed | `~/.squirrel/config.toml` (only if missing) |
+| CLI symlink (optional) | `~/.local/bin/squirrel` |
+
+Hardcoded `~/.claude/plugins/squirrel/...` paths inside the copied skills,
+commands, and wrappers are rewritten to `~/.claude/squirrel/...` automatically.
+The hook merge is additive and idempotent — it preserves any hooks you already
+have and re-running never duplicates entries.
+
+Opt-out flags: `--no-config`, `--no-cli`, `--no-hooks`, `--prefix=PATH`, `--yes`.
+
+> ⚠️ **Caveat:** if your org also sets `"disableAllHooks": true` in *managed*
+> settings, the merged hooks won't fire. The skills and `/sq-*` slash commands
+> still work — you just lose the proactive session/decision/deadline nudges.
+
+After installing, **restart Claude Code**, then run `/sq-init` and
+`/sq-where-am-i` (same as Step 4–5 above). There is no `/plugin list` entry —
+that's expected.
+
+### Uninstall
+
+```bash
+./agent-pack/scripts/uninstall-claude-manual.sh          # keeps ~/.squirrel/ config
+./agent-pack/scripts/uninstall-claude-manual.sh --purge  # also removes config
+```
+
+It reads `~/.claude/squirrel/.install-manifest.json` and removes exactly what
+was installed, stripping only squirrel's own hook entries from `settings.json`.
+
+---
+
 ## 🚀 Installing in Codex CLI
 
 Codex handles skills and commands similarly, but with different paths.
