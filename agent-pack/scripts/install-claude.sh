@@ -20,6 +20,12 @@
 #   --no-reminders   do not install the macOS launchd daemon
 #   --prefix=PATH    install CLI symlink here (default: ~/.local/bin)
 #
+# Restricted / no-plugin environments:
+#   --no-plugin      install skills, commands, and hooks into Claude Code's
+#   --manual         native locations instead of registering a plugin (for orgs
+#                    that block plugin installs). Delegates to
+#                    install-claude-manual.sh.
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +36,20 @@ print_help_and_exit() {
   awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "${BASH_SOURCE[0]}"
   exit 0
 }
+
+# Route to the manual (no-plugin) installer if requested, passing the other args
+# through untouched.
+NO_PLUGIN=0
+PASS_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --no-plugin|--manual) NO_PLUGIN=1 ;;
+    *)                    PASS_ARGS+=("$arg") ;;
+  esac
+done
+if (( NO_PLUGIN )); then
+  exec "$SCRIPT_DIR/install-claude-manual.sh" "${PASS_ARGS[@]+"${PASS_ARGS[@]}"}"
+fi
 
 ROOT="$(project_root "${BASH_SOURCE[0]}")"
 parse_common_args "$@"

@@ -636,6 +636,41 @@ const FAQ_ENTRIES: FaqEntry[] = [
     ),
   },
   {
+    q: 'My company blocks installing plugins — can I still use the /sq-* commands?',
+    haystack:
+      'company corporate org blocks plugins marketplace restricted locked down enterprise managed policy no-plugin manual install claude code skills commands hooks settings.json ~/.claude/skills ~/.claude/commands disableallhooks install-claude-manual',
+    body: (
+      <>
+        <p>
+          Yes. Some organizations block Claude Code’s plugin marketplace, so the
+          normal <Cmd>squirrel install --agent claude</Cmd> (which registers a
+          plugin) won’t load. Use the <strong>no-plugin installer</strong>{' '}
+          instead — it drops the skills and <Cmd>/sq-*</Cmd> commands into Claude
+          Code’s native personal folders, which load without the marketplace and
+          aren’t affected by the plugin block:
+        </p>
+        <p>
+          <Cmd>./scripts/install-claude.sh --no-plugin</Cmd> (or run{' '}
+          <Cmd>./scripts/install-claude-manual.sh</Cmd> directly).
+        </p>
+        <p>
+          It installs the skills to <Cmd>~/.claude/skills/</Cmd>, the commands to{' '}
+          <Cmd>~/.claude/commands/</Cmd>, and merges the hooks into{' '}
+          <Cmd>~/.claude/settings.json</Cmd> — nothing under{' '}
+          <Cmd>~/.claude/plugins/</Cmd>. Restart Claude Code and the{' '}
+          <Cmd>/sq-*</Cmd> commands appear as usual (there’s no{' '}
+          <Cmd>/plugin list</Cmd> entry — that’s expected).
+        </p>
+        <p>
+          One caveat: if your org also sets <Cmd>"disableAllHooks": true</Cmd> in
+          managed settings, the proactive hook nudges won’t fire — but the skills
+          and slash commands still work. Undo it any time with{' '}
+          <Cmd>./scripts/uninstall-claude-manual.sh</Cmd>.
+        </p>
+      </>
+    ),
+  },
+  {
     q: 'Do I need Obsidian?',
     haystack: 'do i need obsidian required optional markdown editor view vault',
     body: (
