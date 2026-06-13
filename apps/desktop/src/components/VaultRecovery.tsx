@@ -26,8 +26,23 @@ export function VaultRecovery({
   const [copied, setCopied] = useState(false);
 
   const isEmpty = info.code === "VAULT_EMPTY";
+  const isLegacy = info.code === "VAULT_LEGACY";
   const isUnstructured = info.code === "VAULT_UNSTRUCTURED";
   const migrateCmd = info.migrate_command ?? `/sq-migrate-vault ${currentPath}`;
+
+  // Legacy layout: rename old folders to the canonical names in place, then re-probe.
+  const repair = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.repairVault();
+      onRecovered();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not repair the workspace.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Set/repair the active vault, then leave the recovery screen (re-probe).
   const setup = async (targetPath: string) => {
@@ -91,9 +106,11 @@ export function VaultRecovery({
         <h1 className="title text-[18px]">
           {isEmpty
             ? "Your workspace is empty"
-            : isUnstructured
-              ? "Convert your existing vault"
-              : "Workspace not found"}
+            : isLegacy
+              ? "Update your workspace structure"
+              : isUnstructured
+                ? "Convert your existing vault"
+                : "Workspace not found"}
         </h1>
 
         <p className="text-ink-3 text-[13px]">{info.error}</p>
@@ -165,6 +182,25 @@ export function VaultRecovery({
             <div className="flex justify-end">
               <button type="button" className="btn" disabled={busy} onClick={onRecovered}>
                 Open Squirrel
+              </button>
+            </div>
+          </section>
+        ) : isLegacy ? (
+          <section className="flex flex-col gap-3">
+            <p className="text-ink-3 text-[13px]">
+              This workspace uses Squirrel’s old folder names. Rename them to the
+              current structure in place — your notes stay where they are, only
+              the top-level folders are renamed.
+            </p>
+            {error && <p className="text-[13px]" style={{ color: "var(--danger, #c0392b)" }}>{error}</p>}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={() => void repair()}
+              >
+                {busy ? "Repairing…" : "Repair structure"}
               </button>
             </div>
           </section>

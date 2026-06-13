@@ -24,8 +24,23 @@ export function VaultRecovery({
   const [copied, setCopied] = useState(false);
 
   const isEmpty = info.code === 'VAULT_EMPTY';
+  const isLegacy = info.code === 'VAULT_LEGACY';
   const isUnstructured = info.code === 'VAULT_UNSTRUCTURED';
   const migrateCmd = info.migrate_command ?? `/sq-migrate-vault ${currentPath}`;
+
+  // Legacy layout: rename old folders to the canonical names in place, then re-probe.
+  async function repair() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.repairVault();
+      onRecovered();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not repair the workspace.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Set/repair the active vault, then leave the recovery screen (re-probe).
   async function setup(targetPath: string) {
@@ -80,9 +95,11 @@ export function VaultRecovery({
           <h1 className="text-xl font-bold text-ink">
             {isEmpty
               ? 'Your workspace is empty'
-              : isUnstructured
-                ? 'Convert your existing vault'
-                : 'Workspace not found'}
+              : isLegacy
+                ? 'Update your workspace structure'
+                : isUnstructured
+                  ? 'Convert your existing vault'
+                  : 'Workspace not found'}
           </h1>
         </div>
 
@@ -160,6 +177,24 @@ export function VaultRecovery({
               onClick={onRecovered}
             >
               Open Squirrel
+            </button>
+          </div>
+        ) : isLegacy ? (
+          /* ── Legacy: rename old folders to canonical names in place ── */
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-ink-3">
+              This workspace uses Squirrel’s old folder names. Rename them to the
+              current structure in place — your notes stay where they are, only the
+              top-level folders are renamed.
+            </p>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <button
+              type="button"
+              className="btn btn-primary px-4 py-1.5 text-sm font-semibold disabled:opacity-50 w-fit"
+              disabled={busy}
+              onClick={() => repair()}
+            >
+              {busy ? 'Repairing…' : 'Repair structure'}
             </button>
           </div>
         ) : isEmpty ? (

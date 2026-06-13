@@ -193,7 +193,7 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
           </Link>
           {(timeStr || isActive) && (
             <div className="mt-0.5 flex items-center gap-2 text-[10.5px]">
-              {timeStr && <span className="text-ink-4 tabular">⏱ {timeStr}</span>}
+              {timeStr && <span className="text-ink-3 tabular">⏱ {timeStr}</span>}
               {isActive && <span className="flex items-center gap-1 text-accent font-medium"><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />Active</span>}
             </div>
           )}
@@ -331,7 +331,7 @@ function Header({ parakeet, focus, manualFocus, projects, onRefresh }: {
             >
               <span className="w-2 h-2 rounded-full bg-accent" />
               <span className="text-[12.5px] font-semibold">Pick today's focus</span>
-              <span className="text-[10.5px] text-ink-4 truncate">— {parakeet || 'nothing pressing'}</span>
+              <span className="text-[10.5px] text-ink-3 truncate">— {parakeet || 'nothing pressing'}</span>
             </button>
           )}
         </div>
@@ -456,7 +456,7 @@ function BoardHelp({ onClose }: { onClose: () => void }) {
             </li>
           ))}
         </ul>
-        <p className="text-[11px] text-ink-4 leading-snug pt-1 border-t border-hairline-2">
+        <p className="text-[11px] text-ink-3 leading-snug pt-1 border-t border-hairline-2">
           Drag a project card between lanes to change its deadline, or drag a PRESSING card into a
           lane to defer it. PRESSING is computed and not a drop target.
         </p>
@@ -722,7 +722,7 @@ function BoardView({ projects, pressing, onChanged }: {
                 {col.key === 'done' && cols.done.map((p) => card(p, 'done'))}
                 {col.count === 0 && (
                   <div className="h-24 border-2 border-dashed border-hairline rounded-lg flex items-center justify-center">
-                    <span className="text-[10px] text-ink-4 uppercase font-bold tracking-widest">Empty</span>
+                    <span className="text-[10px] text-ink-3 uppercase font-bold tracking-widest">Empty</span>
                   </div>
                 )}
               </div>

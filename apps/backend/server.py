@@ -284,6 +284,16 @@ _VAULT_STRUCTURE_MARKERS = (
     "99-Resources",
 )
 
+# Legacy (pre-canonical, e.g. Spanish) top-level folder names. A vault with any
+# of these but none of the canonical markers is an OLD Squirrel vault, not a raw
+# Obsidian one — it needs an in-place rename, not the Obsidian importer. Mirrors
+# new_project_writer._LEGACY_DIR_MAP (the source of truth for the rename targets).
+_LEGACY_DIR_MARKERS = (
+    "01-Proyectos-Activos",
+    "03-Recursos",
+    "04-Archivo",
+)
+
 
 def classify_vault(path: pathlib.Path) -> str:
     """Classify a configured vault directory so the UIs can guide recovery.
@@ -293,6 +303,8 @@ def classify_vault(path: pathlib.Path) -> str:
       - "missing"      — the path does not exist (or isn't a directory).
       - "empty"        — the directory exists but holds no real content
                          (only dotfiles like .DS_Store / .obsidian).
+      - "legacy"       — an old Squirrel vault using pre-canonical folder names
+                         (e.g. Spanish) → needs in-place repair, not migration.
       - "unstructured" — has files/folders but none of the Squirrel markers
                          (e.g. a raw Obsidian vault → needs /sq-migrate-vault).
     """
@@ -301,6 +313,8 @@ def classify_vault(path: pathlib.Path) -> str:
         return "missing"
     if any((p / marker).is_dir() for marker in _VAULT_STRUCTURE_MARKERS):
         return "ok"
+    if any((p / old).is_dir() for old in _LEGACY_DIR_MARKERS):
+        return "legacy"
     try:
         for child in p.iterdir():
             if child.name == ".DS_Store" or child.name.startswith("."):
@@ -328,6 +342,11 @@ def _vault_setup_error(vault, status: str) -> "_UserError":
         code = "VAULT_EMPTY"
         msg = (f"Your workspace folder is empty: {path}. "
                "Generate the Squirrel structure to get started.")
+    elif status == "legacy":
+        code = "VAULT_LEGACY"
+        details["repair_command"] = "squirrel vaults repair --apply"
+        msg = (f"{path} uses Squirrel's old folder names. "
+               "Repair it to the current structure to continue.")
     else:  # "unstructured"
         code = "VAULT_UNSTRUCTURED"
         details["migrate_command"] = f"/sq-migrate-vault {path}"
@@ -463,6 +482,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
     ("POST", re.compile(r"^/api/vault$"),                             "api_set_vault"),
     ("GET",  re.compile(r"^/api/env/obsidian$"),                      "api_env_obsidian"),
     ("POST", re.compile(r"^/api/config/vault$"),                      "api_config_vault"),
+    ("POST", re.compile(r"^/api/vault/repair$"),                      "api_vault_repair"),
     ("GET",  re.compile(r"^/api/home$"),                              "api_home"),
     ("GET",  re.compile(r"^/api/focus$"),                             "api_focus_get"),
     ("PUT",  re.compile(r"^/api/focus/today$"),                       "api_focus_put_today"),
@@ -880,6 +900,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_json(
             {"name": vault.name, "path": str(vault.path), "default": True}
         )
+
+    # ── /api/vault/repair — bring a legacy-named vault up to canonical ────────
+
+    def api_vault_repair(self) -> None:
+        """Rename an old (legacy/Spanish) vault's folders to the canonical names
+        in place, so the readers can see its content. Resolves the active vault
+        WITHOUT the structure gate — a legacy vault makes _context() raise the
+        very 409 this endpoint exists to clear."""
+        cookies = parse_cookie_header(self.headers.get("Cookie"))
+        ctx = resolve_vault(cookies.get(WORKSPACE_COOKIE))
+        if ctx is None:
+            raise _UserError(
+                503, "No workspace is set up yet.", code="NO_VAULT"
+            )
+        path = pathlib.Path(ctx.active.path)
+        if not path.is_dir():
+            raise _vault_setup_error(ctx.active, "missing")
+        try:
+            from new_project_writer import repair_legacy_layout
+            from mind_journal import ensure_mind_journal
+            repaired = repair_legacy_layout(path)
+            ensure_mind_journal(path, ctx.active.name)
+        except Exception as exc:
+            raise _UserError(500, f"Could not repair the workspace: {exc}")
+        self._invalidate_vault_cache(ctx)
+        self._send_json({"repaired": repaired, "path": str(path)})
 
     def api_set_theme(self) -> None:
         payload = self._read_json_body()

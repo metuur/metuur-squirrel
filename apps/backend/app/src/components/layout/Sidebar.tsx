@@ -77,7 +77,7 @@ export function Sidebar() {
         <h3 className="eyebrow mb-2 px-2">Recents</h3>
         <div className="space-y-1">
           {recent.length === 0 && (
-            <div className="text-xs text-ink-4 px-2">Nothing yet.</div>
+            <div className="text-xs text-ink-3 px-2">Nothing yet.</div>
           )}
           {recent.map((it) => (
             <button
@@ -92,7 +92,7 @@ export function Sidebar() {
               <div className="text-xs font-medium truncate text-ink-2 group-hover:text-accent">
                 {it.title}
               </div>
-              <div className="text-[10px] text-ink-4 mt-0.5 truncate">
+              <div className="text-[10px] text-ink-3 mt-0.5 truncate">
                 {it.kind === 'project' ? 'Project' : 'Note'} • {fromNow(it.modified_at)}
               </div>
             </button>
@@ -119,7 +119,7 @@ export function Sidebar() {
           </div>
           <div className="text-sm font-medium text-ink-2">Settings</div>
         </button>
-        <div className="px-2 pt-2 text-[10px] leading-relaxed text-ink-4">
+        <div className="px-2 pt-2 text-[10px] leading-relaxed text-ink-3">
           <div>
             © 2026 Squirrel <span className="tabular">v{me?.version ?? '?'}</span>. Made with ❤️ by @javierhbr.
           </div>

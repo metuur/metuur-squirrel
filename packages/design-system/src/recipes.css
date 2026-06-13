@@ -271,3 +271,23 @@
   /* Pulse keyframes live in primitives.css alongside reduced-motion guard. */
   animation: pulse-soft 2.4s ease-in-out infinite;
 }
+
+
+/* ── §8 Accessibility: global focus-visible ring ─────────────────
+ * Restores a visible, on-brand focus indicator on every natively-
+ * focusable control that doesn't already carry one — links, the
+ * header's round icon buttons, and form fields that opt into Tailwind's
+ * `outline-none`. Because `outline-none` lives in Tailwind's utilities
+ * layer (which beats this components layer), the outline is marked
+ * !important to win that cascade. .btn / .btn-tactile are excluded:
+ * they paint their own box-shadow ring on :focus-visible, so an added
+ * outline would double up. */
+a:focus-visible,
+button:not(.btn):not(.btn-tactile):focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-focus-ring) !important;
+  outline-offset: 2px;
+}

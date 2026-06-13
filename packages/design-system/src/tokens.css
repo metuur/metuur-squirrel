@@ -25,7 +25,7 @@
   --color-ink:          #0E1116;
   --color-ink-2:        #2A2F38;
   --color-ink-3:        #5C6470;
-  --color-ink-4:        #97A0AD;
+  --color-ink-4:        #737B88;   /* ~4.3:1 on white (was #97A0AD ≈2.6:1) */
 
   /* ── Hairlines / dividers ───────────────────────────────── */
   --color-hairline:     #E6E3DC;
@@ -33,6 +33,7 @@
 
   /* ── Brand + status ─────────────────────────────────────── */
   --color-accent:       #1F3A8A;
+  --color-focus-ring:   rgba(31, 58, 138, 0.45);  /* derived from accent */
   --color-critical:     #C8362A;
   --color-critical-bg:  #FBEEEC;
   --color-warning:      #C56A14;

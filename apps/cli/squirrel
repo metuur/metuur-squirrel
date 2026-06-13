@@ -862,6 +862,22 @@ def cmd_vaults(args):
         elif subcmd == "default":
             set_default(args.name)
             print(f"✅  Default vault is now {args.name!r}")
+        elif subcmd == "repair":
+            from new_project_writer import plan_legacy_repair, repair_legacy_layout
+            vault_path = _vault(getattr(args, "name", None))
+            plan = plan_legacy_repair(vault_path)
+            if not plan:
+                print(f"✅  {vault_path} already uses the current structure — nothing to repair.")
+                return
+            print(f"Vault: {vault_path}")
+            for step in plan:
+                arrow = "→" if step["action"] == "rename" else "⇒ (merge)"
+                print(f"  {step['from']:<22} {arrow} {step['to']}")
+            if not args.apply:
+                print("\n(dry-run) re-run with --apply to perform these changes.")
+                return
+            done = repair_legacy_layout(vault_path)
+            print(f"\n✅  Repaired {len(done)} folder(s) → canonical structure.")
         else:
             print(f"❌  Unknown vaults subcommand: {subcmd}", file=sys.stderr)
             sys.exit(1)
@@ -1149,6 +1165,12 @@ def main():
     v_rm.add_argument("name", help="Name of the vault to remove")
     v_def = v_sub.add_parser("default", help="Set the default vault")
     v_def.add_argument("name", help="Name of the vault to make default")
+    v_rep = v_sub.add_parser(
+        "repair", help="Rename an old vault's folders (e.g. Spanish) to the current structure")
+    v_rep.add_argument("name", nargs="?", default=None,
+                       help="Vault name (default: the default vault)")
+    v_rep.add_argument("--apply", action="store_true",
+                       help="Perform the renames (omit for a dry-run preview)")
 
     # web subcommand group — companions/web-ui lifecycle
     w = sub.add_parser("web", help="Manage the local browser interface")

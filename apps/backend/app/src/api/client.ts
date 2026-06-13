@@ -85,14 +85,16 @@ export type VaultRecoveryCode =
   | 'NO_VAULT'
   | 'VAULT_MISSING'
   | 'VAULT_EMPTY'
+  | 'VAULT_LEGACY'
   | 'VAULT_UNSTRUCTURED';
 
 export interface VaultRecoveryPayload {
   error: string;
   code: VaultRecoveryCode;
   vault?: { name: string; path: string };
-  vault_status?: 'missing' | 'empty' | 'unstructured';
+  vault_status?: 'missing' | 'empty' | 'legacy' | 'unstructured';
   migrate_command?: string;
+  repair_command?: string;
 }
 
 /** Narrow an unknown error to a vault-recovery payload, or null. */
@@ -104,11 +106,17 @@ export function asVaultRecovery(err: unknown): VaultRecoveryPayload | null {
     code === 'NO_VAULT' ||
     code === 'VAULT_MISSING' ||
     code === 'VAULT_EMPTY' ||
+    code === 'VAULT_LEGACY' ||
     code === 'VAULT_UNSTRUCTURED'
   ) {
     return p as VaultRecoveryPayload;
   }
   return null;
+}
+
+export interface VaultRepairResult {
+  repaired: { from: string; to: string; action: 'rename' | 'merge' }[];
+  path: string;
 }
 
 export interface FocusItem {
@@ -512,6 +520,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  // Rename an old (legacy/Spanish) vault's folders to the canonical names in place.
+  repairVault: () =>
+    call<VaultRepairResult>('/vault/repair', { method: 'POST' }),
   setTheme: (theme: 'auto' | 'light' | 'dark') =>
     call<{ success: true; theme: string }>('/theme', {
       method: 'POST',

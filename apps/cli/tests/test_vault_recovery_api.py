@@ -79,6 +79,16 @@ class VaultRecoveryApiTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read().decode("utf-8"))
 
+    def _post(self, path):
+        """POST with an empty body. Return (status, parsed_body)."""
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}{path}", data=b"", method="POST")
+        try:
+            r = urllib.request.urlopen(req, timeout=3)
+            return r.status, json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
     def test_ok_vault_returns_200(self):
         shutil.copytree(FIXTURE_VAULT, self.vault)
         self._start()
@@ -112,6 +122,35 @@ class VaultRecoveryApiTest(unittest.TestCase):
         self.assertEqual(status, 409)
         self.assertEqual(body["code"], "VAULT_UNSTRUCTURED")
         self.assertEqual(body["migrate_command"], f"/sq-migrate-vault {self.vault}")
+
+    def test_legacy_vault_returns_409_with_repair_command(self):
+        # Old (Spanish) folder names but none of the current markers → legacy,
+        # not unstructured: the UI should offer repair, not the Obsidian importer.
+        self.vault.mkdir()
+        (self.vault / "01-Proyectos-Activos" / "PROJ").mkdir(parents=True)
+        (self.vault / "01-Proyectos-Activos" / "PROJ" / "PROJ.md").write_text("# p\n")
+        self._start()
+        status, body = self._me()
+        self.assertEqual(status, 409)
+        self.assertEqual(body["code"], "VAULT_LEGACY")
+        self.assertEqual(body["repair_command"], "squirrel vaults repair --apply")
+
+    def test_repair_endpoint_renames_legacy_then_me_returns_200(self):
+        self.vault.mkdir()
+        (self.vault / "01-Proyectos-Activos" / "PROJ").mkdir(parents=True)
+        (self.vault / "01-Proyectos-Activos" / "PROJ" / "PROJ.md").write_text("# p\n")
+        self._start()
+        # Before repair: legacy.
+        self.assertEqual(self._me()[1]["code"], "VAULT_LEGACY")
+        # Repair renames the folders in place and preserves content.
+        status, body = self._post("/api/vault/repair")
+        self.assertEqual(status, 200)
+        froms = {r["from"] for r in body["repaired"]}
+        self.assertIn("01-Proyectos-Activos", froms)
+        self.assertTrue((self.vault / "01-Active-Projects" / "PROJ" / "PROJ.md").is_file())
+        self.assertFalse((self.vault / "01-Proyectos-Activos").exists())
+        # After repair: the vault is usable.
+        self.assertEqual(self._me()[0], 200)
 
 
 if __name__ == "__main__":

@@ -363,6 +363,67 @@ def ensure_vault_skeleton(vault_path: pathlib.Path) -> None:
     ensure_scratch_pad(vault_path)
 
 
+# Legacy (pre-canonical, e.g. Spanish) top-level folder names → the current
+# canonical names. Source of truth for the "old folder names" recognized by
+# vocabulary._BASE_TERMS. Used by vault repair to bring an old vault in line with
+# the names the readers and _VAULT_STRUCTURE_MARKERS actually expect.
+_LEGACY_DIR_MAP: dict[str, str] = {
+    "01-Proyectos-Activos": "01-Active-Projects",
+    "03-Recursos": "99-Resources",
+    "04-Archivo": "06-Archive",
+}
+
+
+def plan_legacy_repair(vault_path: pathlib.Path) -> list[dict]:
+    """Read-only: describe what repair_legacy_layout would do for a legacy vault.
+
+    Returns one entry per legacy folder present on disk:
+      {"from": old, "to": new, "action": "rename"|"merge"}
+      - "rename" — the canonical target does not exist yet (clean rename).
+      - "merge"  — the canonical target already exists; contents are moved in
+                   (existing files never overwritten) and the empty legacy folder
+                   removed.
+    """
+    vault_path = pathlib.Path(vault_path)
+    plan: list[dict] = []
+    for old, new in _LEGACY_DIR_MAP.items():
+        if not (vault_path / old).is_dir():
+            continue
+        action = "merge" if (vault_path / new).exists() else "rename"
+        plan.append({"from": old, "to": new, "action": action})
+    return plan
+
+
+def repair_legacy_layout(vault_path: pathlib.Path) -> list[dict]:
+    """Rename legacy folders to their canonical names, in place. Never clobbers:
+    on a name collision, children are moved into the existing canonical folder
+    (skipping any that already exist) and the emptied legacy folder is removed.
+    Backfills any still-missing canonical folders. Idempotent; returns the plan
+    that was executed (empty list if there was nothing to repair)."""
+    vault_path = pathlib.Path(vault_path)
+    done = plan_legacy_repair(vault_path)
+    for step in done:
+        src = vault_path / step["from"]
+        dst = vault_path / step["to"]
+        if step["action"] == "rename":
+            src.rename(dst)
+            continue
+        # merge — move children that don't collide, then drop the empty source.
+        dst.mkdir(parents=True, exist_ok=True)
+        for child in src.iterdir():
+            target = dst / child.name
+            if target.exists():
+                continue  # never overwrite existing content
+            child.rename(target)
+        try:
+            src.rmdir()  # only succeeds once the legacy folder is empty
+        except OSError:
+            pass  # leftover collisions remain in the legacy folder for the user
+    if done:
+        ensure_vault_skeleton(vault_path)
+    return done
+
+
 def ensure_scratch_pad(vault_path: pathlib.Path) -> None:
     """Create SCRATCH-PAD project if absent. Called at every server start."""
     project_dir = vault_path / "01-Active-Projects" / "SCRATCH-PAD"

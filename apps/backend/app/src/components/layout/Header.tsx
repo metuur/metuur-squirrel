@@ -109,9 +109,10 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             </span>
           )}
 
-          <div className="hidden md:flex bg-surface-2 p-0.5 rounded border border-hairline">
+          <div role="group" aria-label="View mode" className="hidden md:flex bg-surface-2 p-0.5 rounded border border-hairline">
             <button
               onClick={() => { setViewMode('List'); if (location.pathname !== '/') navigate('/'); }}
+              aria-pressed={viewMode === 'List'}
               className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
                 viewMode === 'List'
                   ? 'text-accent bg-surface shadow-sm'
@@ -122,6 +123,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             </button>
             <button
               onClick={() => { setViewMode('Board'); if (location.pathname !== '/') navigate('/'); }}
+              aria-pressed={viewMode === 'Board'}
               className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
                 viewMode === 'Board'
                   ? 'text-accent bg-surface shadow-sm'
@@ -139,6 +141,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               <select
                 value={me.active_workspace.name}
                 onChange={(e) => switchWorkspace(e.target.value)}
+                aria-label="Switch workspace"
                 className="appearance-none flex items-center gap-2 pl-9 pr-8 py-1.5 border border-hairline rounded bg-surface text-sm font-medium text-ink-2 cursor-pointer hover:border-ink-4 transition-all outline-none focus:ring-1 focus:ring-accent"
               >
                 {me.workspaces.map((w) => (
@@ -159,6 +162,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               onChange={(e) => setQ(e.target.value)}
               onFocus={() => results.length && setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 150)}
+              aria-label="Search notes"
               className="w-full pl-10 pr-10 py-1.5 text-sm border border-hairline rounded-md bg-surface text-ink focus:border-accent focus:ring-0 outline-none transition-all placeholder-ink-4"
               placeholder="Search notes... (Cmd+K)"
             />
@@ -295,6 +299,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
               onClick={toggleDarkMode}
               className="w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
               title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               <span className="material-icons text-xl">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
             </button>

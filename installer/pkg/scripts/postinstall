@@ -82,7 +82,26 @@ as_user /usr/bin/osascript -e 'tell application "Squirrel" to quit' 2>/dev/null 
 # bundle launched it (stale mounted-DMG copies, old /Applications builds, etc.).
 /usr/bin/pkill -f 'Squirrel.app/Contents/MacOS/squirrel' 2>/dev/null || true
 /usr/bin/pkill -f 'squirrel-backend --port 3939' 2>/dev/null || true
-/bin/sleep 1
+
+# Verify the port is ACTUALLY free before launching. SIGTERM is graceful: the old
+# sidecar may not release :3939 for a moment (shutdown / TIME_WAIT), and a `sleep 1`
+# guess is exactly how the new sidecar ends up launching into a still-bound port,
+# failing to bind, and adopting the stale backend whose token it can't verify →
+# "Backend offline". Poll until free, escalating to SIGKILL on whatever still holds
+# the port — including a process our name patterns missed (renamed/relocated binary).
+LSOF="/usr/sbin/lsof"
+port_holder() { [ -x "$LSOF" ] && "$LSOF" -nP -iTCP:3939 -sTCP:LISTEN -t 2>/dev/null | /usr/bin/head -1; }
+_try=0
+while [ "$_try" -lt 10 ]; do
+  holder="$(port_holder)"
+  [ -z "$holder" ] && break
+  [ "$_try" -ge 4 ] && /bin/kill -9 "$holder" 2>/dev/null || true  # escalate after grace
+  /bin/sleep 0.5
+  _try=$((_try + 1))
+done
+if [ -n "$(port_holder)" ]; then
+  echo "postinstall: WARNING — port 3939 still held after cleanup; the app may show Backend offline" >&2
+fi
 
 # Retire a prior DRAG-installed launchd backend (org.squirrel.web-ui). The .pkg
 # app manages its OWN sidecar; a leftover launchd service would keep serving

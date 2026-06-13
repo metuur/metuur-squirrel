@@ -45,6 +45,12 @@ export function Layout() {
 
   return (
     <div className="flex flex-col h-full">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[300] focus:top-3 focus:left-3 focus:px-3 focus:py-2 focus:rounded-md focus:bg-accent focus:text-surface focus:text-sm focus:font-semibold focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <Header
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -53,7 +59,7 @@ export function Layout() {
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto p-6">
+        <main id="main-content" className="flex-1 overflow-auto p-6">
           <Outlet context={{ viewMode, setViewMode }} />
         </main>
       </div>

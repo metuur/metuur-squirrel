@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 interface ModalProps {
   open: boolean;
@@ -17,12 +17,41 @@ const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
   lg: 'max-w-3xl',
 };
 
+const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({ open, onClose, title, subtitle, icon = 'bolt', children, footer, size = 'md' }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+
+    // Restore focus to whatever was focused before the dialog opened.
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    // Move focus into the dialog (first focusable, falling back to the panel).
+    const panel = panelRef.current;
+    const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
+    (first ?? panel)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab' || !panel) return;
+      // Minimal focus trap: wrap Tab/Shift+Tab at the dialog's edges.
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) { e.preventDefault(); return; }
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === firstItem) {
+        e.preventDefault(); lastItem.focus();
+      } else if (!e.shiftKey && document.activeElement === lastItem) {
+        e.preventDefault(); firstItem.focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      previouslyFocused?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -33,6 +62,11 @@ export function Modal({ open, onClose, title, subtitle, icon = 'bolt', children,
       onClick={onClose}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={`w-full ${SIZE_CLASS[size]} panel max-h-[90vh] flex flex-col overflow-hidden sq-pop shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -43,7 +77,7 @@ export function Modal({ open, onClose, title, subtitle, icon = 'bolt', children,
                 <span className="material-icons text-accent">{icon}</span>
               </div>
               <div className="min-w-0">
-                <h2 className="text-lg font-bold text-ink leading-tight truncate">
+                <h2 id={titleId} className="text-lg font-bold text-ink leading-tight truncate">
                   {title}
                 </h2>
                 {subtitle && (
