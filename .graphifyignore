@@ -9,9 +9,13 @@
 **/.pytest_cache/
 **/**pycache**/
 dmg-staging/bin/
-
+.uncle-dev/research/
+.devlocal/
+.agents/
+.claude/
 # Exclude framework configs and rules
-
+pkg-staging/
+dmg-staging/
 **/.opencode/
 **/.claude/
 **/.agents/
