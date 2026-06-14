@@ -71,7 +71,7 @@ dmg-staging
 .uncle-dev/*
 !.uncle-dev/learns/
 .devlocal/
-
+.playwright-mcp/
 
 dmg-staging/bin/
 pkg-staging/

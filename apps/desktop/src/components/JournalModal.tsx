@@ -32,6 +32,7 @@ export function JournalModal({ open, onClose, onLogged }: Props) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [exists, setExists] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
@@ -54,8 +55,28 @@ export function JournalModal({ open, onClose, onLogged }: Props) {
 
   if (!open) return null;
 
+  // Require at least 3 chars in either prompt so empty check-ins can't be
+  // logged (mirrors the web JournalPage rule).
+  const canSave = mind.trim().length >= 3 || doing.trim().length >= 3;
+
+  const handleCreate = async () => {
+    if (creating) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const j = await api.journalCreate();
+      setExists(j.exists);
+      setEntries(j.entries ?? []);
+      toast.show("Mind Journal created.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (saving) return;
+    if (saving || !canSave) return;
     setSaving(true);
     setError(null);
     try {
@@ -87,8 +108,18 @@ export function JournalModal({ open, onClose, onLogged }: Props) {
         </div>
 
         {!exists ? (
-          <div className="px-4 py-6 text-center text-ink-3 text-xs">
-            No Mind Journal here — it was removed. That's fine.
+          <div className="px-4 py-6 flex flex-col items-center gap-3 text-center">
+            <p className="text-ink-3 text-xs">
+              No Mind Journal here — it was removed. That's fine.
+            </p>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={creating}
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {creating ? "Adding…" : "Add Journal"}
+            </button>
           </div>
         ) : (
           <>
@@ -176,7 +207,7 @@ export function JournalModal({ open, onClose, onLogged }: Props) {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || !canSave}
                 className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : "Log this moment"}

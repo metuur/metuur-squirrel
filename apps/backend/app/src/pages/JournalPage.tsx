@@ -32,10 +32,25 @@ export default function JournalPage() {
   const [mood, setMood] = useState<Mood>('neutral');
   const [saving, setSaving] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   if (isLoading && !data) {
     return <div className="h-64 animate-pulse rounded-lg bg-surface-2" />;
   }
+
+  const createJournal = async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      await api.journalCreate();
+      toast.show('Mind Journal created.', 'success');
+      mutate();
+    } catch (err) {
+      toast.show((err as Error).message || 'Could not create the journal.', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (data && !data.exists) {
     return (
@@ -46,6 +61,15 @@ export default function JournalPage() {
           <p className="text-ink-3 mt-2">
             No Mind Journal here. It was removed — and that's fine.
           </p>
+          <button
+            type="button"
+            onClick={createJournal}
+            disabled={creating}
+            className="btn btn-primary mt-5 inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="material-icons text-base">add</span>
+            {creating ? 'Adding…' : 'Add Journal'}
+          </button>
         </div>
       </div>
     );

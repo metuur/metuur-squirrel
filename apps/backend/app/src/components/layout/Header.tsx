@@ -82,7 +82,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
 
   return (
     <div className="flex flex-col sticky top-0 z-20">
-      <header className="h-14 border-b border-hairline bg-surface flex items-center px-6 gap-10">
+      <header className="h-14 border-b border-hairline bg-surface flex items-center px-6 gap-10 shadow-[0_1px_0_rgba(14,17,22,0.03),0_6px_16px_-12px_rgba(14,17,22,0.18)]">
         <div className="flex items-center gap-6 shrink-0">
           <Link
             to="/"
@@ -192,16 +192,16 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
           <div className="flex items-center gap-3 ml-2">
             <button
               onClick={() => openCapture()}
-              className="btn btn-primary text-sm font-semibold px-4 py-1.5 flex items-center gap-1"
+              className="btn btn-primary text-xs font-semibold px-3 py-1 flex items-center gap-1"
             >
-              <span className="material-icons text-lg">add</span>
+              <span className="material-icons text-base">add</span>
               Add a note
             </button>
 
             <div className="relative">
               <button
                 onClick={() => setQuickTasksOpen((v) => !v)}
-                className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                className="relative w-8 h-8 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
                 title="Quick Tasks"
                 aria-label="Quick Tasks"
               >
@@ -225,15 +225,15 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
 
             <Link
               to="/journal"
-              className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+              className="relative w-8 h-8 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
               title="Mind Journal"
               aria-label="Mind Journal"
             >
               {/* brain icon — mirrors public/brain.svg (lucide brain) */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -261,7 +261,7 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
             <div className="relative">
               <button
                 onClick={() => setNotifOpen((v) => !v)}
-                className="relative w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                className="relative w-8 h-8 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
                 title="Notifications"
                 aria-label="Notifications"
               >
@@ -297,11 +297,11 @@ export function Header({ viewMode, setViewMode, isDarkMode, toggleDarkMode }: He
 
             <button
               onClick={toggleDarkMode}
-              className="w-9 h-9 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+              className="w-8 h-8 flex items-center justify-center rounded-full border-2 border-accent text-accent hover:bg-accent hover:text-surface transition-all shadow-[2px_2px_0_rgba(31,58,138,0.20)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
               title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              <span className="material-icons text-xl">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
+              <span className="material-icons text-lg">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
             </button>
           </div>
         </div>

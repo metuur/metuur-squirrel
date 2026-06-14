@@ -203,6 +203,38 @@ def ensure_mind_journal(vault_path: Path, vault_name: str) -> None:
         _log.warning("ensure_mind_journal failed: %s", exc)
 
 
+def create_journal(vault_path: Path, vault_name: str) -> Path:
+    """Explicitly (re)create the Mind Journal task on user request.
+
+    Unlike ensure_mind_journal (which honours the seeded flag so a deleted
+    journal is not auto-resurrected — R-1.5), this is a deliberate user action
+    triggered from the "Add Journal" button, so it writes the task even when
+    the seeded flag is set. Idempotent: if a journal already exists, returns it
+    untouched. Raises on failure so the caller can surface an error.
+    """
+    vault_path = Path(vault_path)
+    existing = find_journal(vault_path)
+    if existing is not None:
+        _set_seeded_flag(vault_name)
+        return existing
+    project_dir = vault_path / PROJECTS_DIR / SCRATCH_PAD_SLUG
+    project_dir.mkdir(parents=True, exist_ok=True)
+    journal_path = project_dir / f"{JOURNAL_ID}.md"
+    now = _now()
+    content = _JOURNAL_TEMPLATE.format(
+        id=JOURNAL_ID,
+        created_date=now.date().isoformat(),
+        created_ts=now.isoformat(timespec="seconds"),
+        project=SCRATCH_PAD_SLUG,
+        interval=DEFAULT_INTERVAL_HOURS,
+        waking_start=DEFAULT_WAKING_START,
+        waking_end=DEFAULT_WAKING_END,
+    )
+    journal_path.write_text(content, encoding="utf-8")
+    _set_seeded_flag(vault_name)  # R-1.4
+    return journal_path
+
+
 # ── R-2.x — Recurrence & due computation (request-time, no scheduler) ─────────
 
 def compute_due(fm: dict, now: Optional[datetime.datetime] = None) -> dict:

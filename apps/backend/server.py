@@ -510,6 +510,7 @@ ROUTES: list[tuple[str, "re.Pattern[str]", str]] = [
                                                                        "api_note_save"),
     ("POST", re.compile(r"^/api/notes$"),                             "api_note_create"),
     ("GET",   re.compile(r"^/api/journal$"),                          "api_journal_get"),
+    ("POST",  re.compile(r"^/api/journal$"),                           "api_journal_create"),
     ("POST",  re.compile(r"^/api/journal/entry$"),                    "api_journal_entry"),
     ("PATCH", re.compile(r"^/api/journal/config$"),                   "api_journal_config"),
     ("GET",  re.compile(r"^/api/reminders$"),                         "api_reminders"),
@@ -1679,6 +1680,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             _log_exception(exc)
             data = {"exists": False}
         self._send_json(data)
+
+    def api_journal_create(self) -> None:
+        # User-initiated (re)create from the "Add Journal" empty-state button.
+        # Bypasses the seeded-flag short-circuit that blocks auto-resurrection.
+        ctx, _ = self._context()
+        from mind_journal import create_journal, read_journal
+        try:
+            create_journal(ctx.active.path, ctx.active.name)
+        except Exception as exc:
+            _log_exception(exc)
+            raise _UserError(500, "Could not create your Mind Journal.")
+        self._invalidate_vault_cache(ctx)
+        self._send_json(read_journal(ctx.active.path), status=201)
 
     def api_journal_entry(self) -> None:
         ctx, _ = self._context()

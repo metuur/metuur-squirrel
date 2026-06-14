@@ -539,15 +539,7 @@ function PostItComposer({ onCreated }: { onCreated: (item: PostIt) => void }) {
       <button
         type="submit"
         disabled={!text.trim() || busy}
-        style={{
-          padding: "6px 14px",
-          background: "#374151",
-          color: "#fff",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
-          opacity: !text.trim() ? 0.5 : 1,
-        }}
+        className="btn btn-primary text-sm font-semibold px-4 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Add
       </button>
@@ -825,15 +817,8 @@ export default function PostItsPage() {
         <h1 className="title">Post-its</h1>
         <button
           onClick={toggleArchived}
-          style={{
-            padding: "6px 14px",
-            borderRadius: 6,
-            border: "1px solid #d1d5db",
-            background: showArchived ? "#374151" : "#fff",
-            color: showArchived ? "#fff" : "#374151",
-            cursor: "pointer",
-            fontSize: 13,
-          }}
+          aria-pressed={showArchived}
+          className={`btn text-sm font-semibold px-4 py-1.5 ${showArchived ? 'btn-primary' : ''}`}
         >
           {showArchived ? "Hide archived" : "Show archived"}
         </button>

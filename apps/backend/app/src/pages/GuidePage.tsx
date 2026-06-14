@@ -1006,6 +1006,83 @@ const NAV: [string, string][] = [
   ['faq', 'FAQ'],
 ];
 
+// Editorial section header: mono kicker (step number + section name) +
+// a Fraunces serif title + an optional one-line subtitle. Restores a real
+// type scale on top of the old 9.5px eyebrow headings.
+function SectionHeader({ id, title, children }: { id: string; title: string; children?: ReactNode }) {
+  const idx = NAV.findIndex(([nid]) => nid === id);
+  const num = String(idx + 1).padStart(2, '0');
+  const label = (NAV[idx]?.[1] ?? '').toUpperCase();
+  return (
+    <header className="mb-6">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent mb-2">
+        Section {num} · {label}
+      </p>
+      <h2 className="font-serif text-[27px] sm:text-[31px] leading-[1.1] tracking-[-0.01em] text-ink">
+        {title}
+      </h2>
+      {children && (
+        <p className="mt-2.5 text-[15px] leading-relaxed text-ink-3 max-w-2xl">{children}</p>
+      )}
+    </header>
+  );
+}
+
+// Sub-section heading inside a section — a real sans heading, clearly above
+// body text but below the serif section title.
+function SubHeader({ children }: { children: ReactNode }) {
+  return (
+    <h3 className="text-base font-bold tracking-tight text-ink mb-2.5 mt-9 first:mt-0">
+      {children}
+    </h3>
+  );
+}
+
+// Prev / Next pager — turns the one-section-at-a-time docs view into a guided
+// path so "what's next" is always one click away.
+function SectionPager({ active, onNavigate }: { active: string; onNavigate: (id: string) => void }) {
+  const idx = NAV.findIndex(([id]) => id === active);
+  const prev = idx > 0 ? NAV[idx - 1] : null;
+  const next = idx < NAV.length - 1 ? NAV[idx + 1] : null;
+  return (
+    <nav
+      aria-label="Guide pagination"
+      className="mt-12 pt-6 border-t border-hairline flex items-center justify-between gap-3"
+    >
+      {prev ? (
+        <button
+          type="button"
+          onClick={() => onNavigate(prev[0])}
+          className="group flex items-center gap-3 text-left rounded-lg px-3 py-2 -ml-3 hover:bg-surface-2 transition-colors"
+        >
+          <span className="material-icons text-ink-4 group-hover:text-accent transition-colors">arrow_back</span>
+          <span className="min-w-0">
+            <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-4">Previous</span>
+            <span className="block text-sm font-semibold text-ink-2 group-hover:text-accent transition-colors truncate">{prev[1]}</span>
+          </span>
+        </button>
+      ) : (
+        <span />
+      )}
+      {next ? (
+        <button
+          type="button"
+          onClick={() => onNavigate(next[0])}
+          className="group flex items-center gap-3 text-right rounded-lg px-3 py-2 -mr-3 hover:bg-surface-2 transition-colors"
+        >
+          <span className="min-w-0">
+            <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-4">Next</span>
+            <span className="block text-sm font-semibold text-ink-2 group-hover:text-accent transition-colors truncate">{next[1]}</span>
+          </span>
+          <span className="material-icons text-ink-4 group-hover:text-accent transition-colors">arrow_forward</span>
+        </button>
+      ) : (
+        <span />
+      )}
+    </nav>
+  );
+}
+
 // Copy-pasteable command chip — monospace, click-to-select.
 function Cmd({ children }: { children: string }) {
   return (
@@ -1108,20 +1185,29 @@ export default function GuidePage() {
 
   return (
     <div className="max-w-5xl">
-      <h1 className="title mb-2">Guide</h1>
-      <p className="text-ink-3 mb-6 max-w-3xl">
-        Squirrel keeps your projects, tasks, and working context in a plain-Markdown
-        vault, and meets you on four surfaces: your coding agent (slash commands),
-        the native desktop app with its menu-bar icon, this Web UI, and the{' '}
-        <Cmd>squirrel</Cmd> CLI.
-      </p>
+      <header className="mb-8">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-accent mb-2.5">
+          Squirrel · Guide
+        </p>
+        <h1 className="font-serif text-[40px] sm:text-[46px] leading-[1.04] tracking-[-0.015em] text-ink mb-3.5">
+          Guide
+        </h1>
+        <p className="text-[15px] leading-relaxed text-ink-3 max-w-3xl">
+          Squirrel keeps your projects, tasks, and working context in a plain-Markdown
+          vault, and meets you on four surfaces: your coding agent (slash commands),
+          the native desktop app with its menu-bar icon, this Web UI, and the{' '}
+          <Cmd>squirrel</Cmd> CLI.
+        </p>
+      </header>
 
       <div className="flex flex-col md:flex-row md:items-start gap-6">
         {/* ── Sub-sidebar (horizontal chips on small screens) ── */}
-        <aside className="md:w-44 md:shrink-0 md:sticky md:top-0">
-          <h2 className="eyebrow text-ink-2 mb-2 px-2 hidden md:block">Sections</h2>
+        <aside className="md:w-52 md:shrink-0 md:sticky md:top-0">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3 mb-3 px-2 hidden md:block">
+            Guide · {Math.max(1, NAV.findIndex(([id]) => id === active) + 1)} / {NAV.length}
+          </p>
           <nav aria-label="Guide sections" className="flex flex-row flex-wrap md:flex-col gap-1">
-            {NAV.map(([id, label]) => {
+            {NAV.map(([id, label], i) => {
               const isActive = !searching && active === id;
               return (
                 <button
@@ -1129,13 +1215,27 @@ export default function GuidePage() {
                   type="button"
                   onClick={() => selectSection(id)}
                   aria-current={isActive ? 'true' : undefined}
-                  className={`text-left px-2 py-1.5 md:py-2 text-sm rounded-md transition-colors ${
+                  className={`group relative flex items-center gap-3 text-left rounded-md pl-3 pr-3 py-2 text-sm transition-colors ${
                     isActive
-                      ? 'text-accent bg-focus-tint font-medium'
+                      ? 'bg-focus-tint text-accent font-semibold'
                       : 'text-ink-2 hover:bg-surface-2'
                   }`}
                 >
-                  {label}
+                  {isActive && (
+                    <span
+                      className="hidden md:block absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent"
+                      aria-hidden
+                    />
+                  )}
+                  <span
+                    className={`font-mono text-[11px] tabular-nums ${
+                      isActive ? 'text-accent' : 'text-ink-4 group-hover:text-ink-3'
+                    }`}
+                    aria-hidden
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span>{label}</span>
                 </button>
               );
             })}
@@ -1145,10 +1245,10 @@ export default function GuidePage() {
         {/* ── Content column ── */}
         <div className="flex-1 min-w-0 max-w-3xl">
 
-      {/* ── Search (sticky) ── */}
-      <div className="sticky top-0 z-10 -mx-2 px-2 pt-1 pb-3 mb-7 bg-paper border-b border-hairline">
-        <div className="relative">
-          <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-4 pointer-events-none">
+      {/* ── Search the guide (pinned below the app header) ── */}
+      <div className="sticky top-0 z-10 -mx-3 px-3 pt-3 pb-5 mb-8 bg-bg border-b border-hairline shadow-[0_16px_28px_-10px_rgba(14,17,22,0.45)]">
+        <div className="relative group">
+          <span className="material-icons absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-ink-4 pointer-events-none group-focus-within:text-accent transition-colors">
             search
           </span>
           <input
@@ -1160,21 +1260,21 @@ export default function GuidePage() {
             }}
             placeholder="Search the guide — commands, concepts, FAQ…"
             aria-label="Search the guide"
-            className="w-full pl-10 pr-10 py-1.5 text-sm border border-hairline rounded-md bg-surface text-ink focus:border-accent focus:ring-0 outline-none transition-all placeholder-ink-4 [&::-webkit-search-cancel-button]:hidden"
+            className="w-full pl-11 pr-10 py-2.5 text-sm border border-hairline rounded-lg bg-surface text-ink shadow-[0_2px_4px_rgba(14,17,22,0.06),0_14px_30px_-8px_rgba(14,17,22,0.32)] focus:border-accent focus:ring-0 outline-none transition-all placeholder-ink-4 [&::-webkit-search-cancel-button]:hidden"
           />
           {searching && (
             <button
               type="button"
               onClick={() => setQuery('')}
               aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-ink-4 hover:text-ink hover:bg-surface-2"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-md text-ink-4 hover:text-ink hover:bg-surface-2"
             >
               <span className="material-icons text-base">close</span>
             </button>
           )}
         </div>
         {searching && (
-          <p className="mt-2 text-xs text-ink-4">
+          <p className="mt-2 px-1 text-xs text-ink-3">
             {matchCount === 0
               ? 'No matches'
               : `${matchCount} ${matchCount === 1 ? 'match' : 'matches'}`}{' '}
@@ -1199,9 +1299,12 @@ export default function GuidePage() {
       {/* ── Core concepts ── */}
       {show('concepts', concepts.length > 0 || showConceptMap || showLifecycles) && (
         <section id="guide-concepts" className="mb-10 scroll-mt-24">
+          <SectionHeader id="concepts" title="The pieces Squirrel is made of">
+            A handful of nouns — learn these and the rest of the guide reads itself.
+          </SectionHeader>
           {concepts.length > 0 && (
             <>
-              <h2 className="eyebrow text-ink-2 mb-3">Core concepts</h2>
+              <SubHeader>Core concepts</SubHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {concepts.map((c) => (
                   <div key={c.term} className="panel p-4">
@@ -1218,7 +1321,7 @@ export default function GuidePage() {
 
           {showConceptMap && (
             <>
-              <h2 className="eyebrow text-ink-2 mt-8 mb-1">How the pieces fit together</h2>
+              <SubHeader>How the pieces fit together</SubHeader>
               <p className="text-sm text-ink-3 mb-3">
                 Everything above is just files nested inside one folder — projects hold tasks,
                 captures land in the Inbox, quick tasks sit on the Scratch Pad, and the WIP cap
@@ -1230,7 +1333,7 @@ export default function GuidePage() {
 
           {showLifecycles && (
             <>
-              <h2 className="eyebrow text-ink-2 mt-8 mb-1">The life of each piece</h2>
+              <SubHeader>The life of each piece</SubHeader>
               <p className="text-sm text-ink-3 mb-3">
                 Each piece moves through a small, predictable loop — green marks where it comes
                 to rest.
@@ -1244,7 +1347,9 @@ export default function GuidePage() {
       {/* ── Configuration ── */}
       {show('configuration', showConfig) && (
         <section id="guide-configuration" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-3">Where the configuration lives</h2>
+          <SectionHeader id="configuration" title="Where the configuration lives">
+            One file describes your whole setup — and every surface reads it.
+          </SectionHeader>
           <div className="panel p-4 text-sm leading-relaxed text-ink-2 space-y-2">
             <p>
               Everything Squirrel knows about your setup is in one file:{' '}
@@ -1267,7 +1372,9 @@ export default function GuidePage() {
       {/* ── A typical day ── */}
       {show('typical-day', daySteps.length > 0) && (
         <section id="guide-typical-day" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-3">A typical day</h2>
+          <SectionHeader id="typical-day" title="A typical day">
+            The loop, end to end — from opening your work to shutting it down.
+          </SectionHeader>
           <ol className="space-y-3">
             {daySteps.map(([cmd, text]) => (
               <li key={cmd} className="panel p-4 flex items-start gap-3">
@@ -1287,11 +1394,10 @@ export default function GuidePage() {
       {/* ── Agent slash commands ── */}
       {show('agent', agentGroups.length > 0) && (
         <section id="guide-agent" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-1">In your coding agent</h2>
-          <p className="text-sm text-ink-3 mb-4">
+          <SectionHeader id="agent" title="In your coding agent">
             Type these in Claude Code, Codex, Cursor, or Copilot (after{' '}
             <Cmd>squirrel install</Cmd>). Tap a command to see what it does.
-          </p>
+          </SectionHeader>
           <div className="space-y-6">
             {agentGroups.map((g) => (
               <div key={g.title}>
@@ -1311,11 +1417,10 @@ export default function GuidePage() {
       {/* ── Native desktop app ── */}
       {show('popup', popupFeatures.length > 0) && (
         <section id="guide-popup" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the popup</h2>
-          <p className="text-sm text-ink-3 mb-4">
+          <SectionHeader id="popup" title="On your desktop — the popup">
             The native app is a compact popup designed for glancing, not dwelling:
             see your focus, check in, capture, and get back to work.
-          </p>
+          </SectionHeader>
           <FeatureList features={popupFeatures} />
         </section>
       )}
@@ -1323,11 +1428,10 @@ export default function GuidePage() {
       {/* ── Menu-bar icon ── */}
       {show('menu-bar', trayFeatures.length > 0) && (
         <section id="guide-menu-bar" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-1">On your desktop — the menu-bar icon</h2>
-          <p className="text-sm text-ink-3 mb-4">
+          <SectionHeader id="menu-bar" title="On your desktop — the menu-bar icon">
             The squirrel in your menu bar is more than a launcher: its dropdown
             updates with what needs attention right now.
-          </p>
+          </SectionHeader>
           <FeatureList features={trayFeatures} />
         </section>
       )}
@@ -1335,10 +1439,9 @@ export default function GuidePage() {
       {/* ── CLI ── */}
       {show('cli', cliCommands.length > 0) && (
         <section id="guide-cli" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-1">In the terminal</h2>
-          <p className="text-sm text-ink-3 mb-4">
+          <SectionHeader id="cli" title="In the terminal">
             The <Cmd>squirrel</Cmd> CLI reads the vault directly — no agent needed.
-          </p>
+          </SectionHeader>
           <div className="space-y-2">
             {cliCommands.map((e) => (
               <CommandRow key={e.cmd} entry={e} forceOpen={searching} />
@@ -1350,10 +1453,9 @@ export default function GuidePage() {
       {/* ── This Web UI ── */}
       {show('web-ui', webuiFeatures.length > 0) && (
         <section id="guide-web-ui" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-1">In this Web UI</h2>
-          <p className="text-sm text-ink-3 mb-4">
+          <SectionHeader id="web-ui" title="In this Web UI">
             Everything here reads and writes the same Markdown files your agent uses.
-          </p>
+          </SectionHeader>
           <FeatureList features={webuiFeatures} />
         </section>
       )}
@@ -1361,12 +1463,11 @@ export default function GuidePage() {
       {/* ── Dashboard: Board & List ── */}
       {show('dashboard', showDashboard) && (
         <section id="guide-dashboard" className="mb-10 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-1">The dashboard — Board & List</h2>
-          <p className="text-sm text-ink-3 mb-4">
+          <SectionHeader id="dashboard" title="The dashboard — Board & List">
             My projects has two views, switched with the <strong>List / Board</strong>{' '}
             toggle in the header. <strong>Board</strong> is a pipeline you can act on;{' '}
             <strong>List</strong> is a calm vertical scan of the same data.
-          </p>
+          </SectionHeader>
 
           <div className="panel p-4 mb-3">
             <h3 className="font-medium text-ink mb-1">How the columns work</h3>
@@ -1411,7 +1512,9 @@ export default function GuidePage() {
       {/* ── FAQ ── */}
       {show('faq', faqEntries.length > 0) && (
         <section id="guide-faq" className="mb-4 scroll-mt-24">
-          <h2 className="eyebrow text-ink-2 mb-3">FAQ</h2>
+          <SectionHeader id="faq" title="Frequently asked">
+            Short answers to the things people ask first.
+          </SectionHeader>
           <div className="space-y-2">
             {faqEntries.map((f) => (
               <details key={f.q} className="group panel" open={searching || undefined}>
@@ -1429,6 +1532,8 @@ export default function GuidePage() {
           </div>
         </section>
       )}
+
+      {!searching && <SectionPager active={active} onNavigate={selectSection} />}
         </div>
       </div>
     </div>

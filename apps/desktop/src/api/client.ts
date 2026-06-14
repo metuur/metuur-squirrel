@@ -374,6 +374,7 @@ export const api = {
   home: () => call<HomePayload>("/api/home"),
   parakeet: () => call<ParakeetPayload>("/api/parakeet"),
   journal: () => call<JournalPayload>("/api/journal"),
+  journalCreate: () => call<JournalPayload>("/api/journal", { method: "POST" }),
   journalEntry: (body: { mind: string; doing: string; mood: Mood }) =>
     call<{ success: true }>("/api/journal/entry", {
       method: "POST",

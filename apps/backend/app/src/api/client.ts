@@ -428,6 +428,7 @@ export const api = {
       body: JSON.stringify({ id }),
     }),
   journal: () => call<JournalPayload>('/journal'),
+  journalCreate: () => call<JournalPayload>('/journal', { method: 'POST' }),
   journalEntry: (body: { mind: string; doing: string; mood: Mood }) =>
     call<{ success: true }>('/journal/entry', {
       method: 'POST',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMe } from '@/hooks/useMe';
 import { useFetch } from '@/hooks/useFetch';
 import { api } from '@/api/client';
@@ -9,7 +9,22 @@ import { ProjectSelectorModal } from '@/components/ProjectSelectorModal';
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { data: me } = useMe();
+
+  // Route-aware nav styling: a filled focus-tint row + a left accent bar marks
+  // the section you're currently in. "/" matches exactly so it isn't always lit.
+  const isActive = (path: string) => (path === '/' ? pathname === '/' : pathname.startsWith(path));
+  const navCls = (path: string) =>
+    `relative flex items-center justify-between px-2 py-2 text-sm rounded-md transition-colors ${
+      isActive(path)
+        ? 'text-accent bg-focus-tint font-semibold'
+        : 'text-ink-2 font-medium hover:bg-surface-2'
+    }`;
+  const Bar = ({ path }: { path: string }) =>
+    isActive(path) ? (
+      <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent" aria-hidden />
+    ) : null;
   const { data: home, mutate: refreshHome } = useFetch('sidebar-home', () => api.home());
   const { data: history } = useFetch('sidebar-history', () => api.history());
   const [showNewProject, setShowNewProject] = useState(false);
@@ -43,31 +58,23 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="space-y-1">
-        <Link
-          to="/"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-accent bg-focus-tint rounded-md group"
-        >
+        <Link to="/" aria-current={isActive('/') ? 'page' : undefined} className={navCls('/')}>
+          <Bar path="/" />
           <span>My projects</span>
           <span className="chip chip-count">{total}</span>
         </Link>
-        <Link
-          to="/deadlines"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
-        >
+        <Link to="/deadlines" aria-current={isActive('/deadlines') ? 'page' : undefined} className={navCls('/deadlines')}>
+          <Bar path="/deadlines" />
           <span>Pressing</span>
           <span className={`font-bold ${pressing > 0 ? 'text-warning' : 'text-ink-4'}`}>{pressing}</span>
         </Link>
-        <Link
-          to="/post-its"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
-        >
+        <Link to="/post-its" aria-current={isActive('/post-its') ? 'page' : undefined} className={navCls('/post-its')}>
+          <Bar path="/post-its" />
           <span>Post-its</span>
           <span className="material-icons text-base text-ink-4">sticky_note_2</span>
         </Link>
-        <Link
-          to="/history"
-          className="flex items-center justify-between px-2 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 rounded-md transition-colors"
-        >
+        <Link to="/history" aria-current={isActive('/history') ? 'page' : undefined} className={navCls('/history')}>
+          <Bar path="/history" />
           <span>Recent activity</span>
           <span className="text-ink-4">{(history ?? []).length}</span>
         </Link>
@@ -103,21 +110,29 @@ export function Sidebar() {
       <div className="mt-auto pt-6 border-t border-hairline space-y-1">
         <button
           onClick={() => navigate('/guide')}
-          className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-surface-2 transition-colors"
+          aria-current={isActive('/guide') ? 'page' : undefined}
+          className={`relative w-full flex items-center gap-3 px-2 py-2 rounded-md transition-colors ${
+            isActive('/guide') ? 'bg-focus-tint' : 'hover:bg-surface-2'
+          }`}
         >
-          <div className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center">
-            <span className="material-icons text-ink-3 text-base">menu_book</span>
+          <Bar path="/guide" />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive('/guide') ? 'bg-surface' : 'bg-surface-2'}`}>
+            <span className={`material-icons text-base ${isActive('/guide') ? 'text-accent' : 'text-ink-3'}`}>menu_book</span>
           </div>
-          <div className="text-sm font-medium text-ink-2">Guide</div>
+          <div className={`text-sm ${isActive('/guide') ? 'text-accent font-semibold' : 'text-ink-2 font-medium'}`}>Guide</div>
         </button>
         <button
           onClick={() => navigate('/settings')}
-          className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-surface-2 transition-colors"
+          aria-current={isActive('/settings') ? 'page' : undefined}
+          className={`relative w-full flex items-center gap-3 px-2 py-2 rounded-md transition-colors ${
+            isActive('/settings') ? 'bg-focus-tint' : 'hover:bg-surface-2'
+          }`}
         >
-          <div className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center">
-            <span className="material-icons text-ink-3 text-base">settings</span>
+          <Bar path="/settings" />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive('/settings') ? 'bg-surface' : 'bg-surface-2'}`}>
+            <span className={`material-icons text-base ${isActive('/settings') ? 'text-accent' : 'text-ink-3'}`}>settings</span>
           </div>
-          <div className="text-sm font-medium text-ink-2">Settings</div>
+          <div className={`text-sm ${isActive('/settings') ? 'text-accent font-semibold' : 'text-ink-2 font-medium'}`}>Settings</div>
         </button>
         <div className="px-2 pt-2 text-[10px] leading-relaxed text-ink-3">
           <div>
