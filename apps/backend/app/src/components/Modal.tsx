@@ -22,6 +22,11 @@ const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), in
 export function Modal({ open, onClose, title, subtitle, icon = 'bolt', children, footer, size = 'md' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // Hold the latest onClose so the focus-management effect can depend only on
+  // `open` — otherwise a new onClose identity each render would re-run the
+  // effect and yank focus back into the dialog on every keystroke.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +39,7 @@ export function Modal({ open, onClose, title, subtitle, icon = 'bolt', children,
     (first ?? panel)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'Escape') { onCloseRef.current(); return; }
       if (e.key !== 'Tab' || !panel) return;
       // Minimal focus trap: wrap Tab/Shift+Tab at the dialog's edges.
       const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
@@ -52,7 +57,7 @@ export function Modal({ open, onClose, title, subtitle, icon = 'bolt', children,
       window.removeEventListener('keydown', onKey);
       previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

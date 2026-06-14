@@ -228,6 +228,7 @@ export interface NoteDetail {
   title: string;
   body: string;
   raw_body: string;
+  deadline: string | null;
   mtime: number;
   project_slug: string;
   kind: 'note' | 'project-task';

@@ -11,6 +11,27 @@ function splitFrontmatter(raw: string): { front: string; content: string } {
   return m ? { front: m[1], content: m[2] } : { front: '', content: raw };
 }
 
+// Set, replace, or remove the `deadline:` line inside a frontmatter block.
+// Empty deadline removes the line; a value updates the existing line or inserts
+// one before the closing `---`. If there's no frontmatter, only create one when
+// a deadline is actually set (free notes stay frontmatter-free otherwise).
+function applyDeadline(front: string, deadline: string): string {
+  if (!front) return deadline ? `---\ndeadline: ${deadline}\n---\n` : front;
+  const lines = front.split('\n');
+  const dlIdx = lines.findIndex((l) => l.trim().startsWith('deadline:'));
+  if (!deadline) {
+    if (dlIdx >= 0) lines.splice(dlIdx, 1);
+    return lines.join('\n');
+  }
+  if (dlIdx >= 0) {
+    lines[dlIdx] = `deadline: ${deadline}`;
+  } else {
+    const closeIdx = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
+    if (closeIdx >= 0) lines.splice(closeIdx, 0, `deadline: ${deadline}`);
+  }
+  return lines.join('\n');
+}
+
 export default function NoteEditPage() {
   const { id = '' } = useParams();
   const nav = useNavigate();
@@ -18,6 +39,8 @@ export default function NoteEditPage() {
   const { data: note } = useFetch(`note-edit:${id}`, () => api.note(id));
   const [front, setFront] = useState('');
   const [body, setBody] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [hasFrontmatter, setHasFrontmatter] = useState(false);
   const [mtime, setMtime] = useState(0);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<{ current_body: string; current_mtime: number } | null>(null);
@@ -27,6 +50,8 @@ export default function NoteEditPage() {
       const { front: f, content: c } = splitFrontmatter(note.raw_body);
       setFront(f);
       setBody(c);
+      setDeadline(note.deadline ?? '');
+      setHasFrontmatter(f !== '');
       setMtime(note.mtime);
     }
   }, [note]);
@@ -34,7 +59,7 @@ export default function NoteEditPage() {
   async function save() {
     setSaving(true);
     try {
-      const r = await api.noteSave(id, front + body, mtime);
+      const r = await api.noteSave(id, applyDeadline(front, deadline) + body, mtime);
       if (r.mtime) setMtime(r.mtime);
       toast.show('Saved.', 'success');
       nav(`/notes/${id}`);
@@ -58,7 +83,19 @@ export default function NoteEditPage() {
           <div className="text-[10px] font-mono text-ink-4 mb-1">{note.id}</div>
           <h1 className="title">Edit note</h1>
         </div>
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 space-y-4">
+          {hasFrontmatter && (
+            <label className="block">
+              <div className="text-xs font-semibold text-ink-2 mb-1">Deadline (optional)</div>
+              <input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                disabled={saving}
+                className="text-sm border border-hairline rounded-md px-3 py-2 bg-surface text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+              />
+            </label>
+          )}
           <MarkdownEditor
             key={id}
             value={body}
@@ -91,7 +128,11 @@ export default function NoteEditPage() {
         onTakeTheirs={() => {
           if (conflict) {
             const { front: f, content: c } = splitFrontmatter(conflict.current_body);
-            setFront(f); setBody(c); setMtime(conflict.current_mtime);
+            const dl = f.match(/^deadline:\s*(.+)$/m);
+            setFront(f); setBody(c);
+            setDeadline(dl ? dl[1].split('#')[0].trim() : '');
+            setHasFrontmatter(f !== '');
+            setMtime(conflict.current_mtime);
           }
           setConflict(null);
           toast.show('Loaded their version. Save again to keep it.', 'info');

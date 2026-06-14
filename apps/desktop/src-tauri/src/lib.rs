@@ -2,6 +2,7 @@ mod backend_supervisor;
 mod deep_link;
 mod logging;
 mod notif_identity;
+mod obsidian_registry;
 mod tray;
 mod tray_alerts;
 
@@ -51,6 +52,15 @@ fn drain_pending_deep_link(
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+/// Register the configured vault in Obsidian's vault registry (best-effort) so
+/// "Open Vault" deep-links into the correct folder instead of whatever vault
+/// Obsidian happened to have open last. Called by the webview just before it
+/// fires the `obsidian://open?path=…` URL.
+#[tauri::command]
+fn register_obsidian_vault(path: String) -> Result<(), String> {
+    obsidian_registry::ensure_registered(&path)
 }
 
 /// Expose the per-launch runtime token to the webview so the popup API client
@@ -292,7 +302,8 @@ pub fn run() {
             greet,
             drain_pending_deep_link,
             runtime_token,
-            handshake_state
+            handshake_state,
+            register_obsidian_vault
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

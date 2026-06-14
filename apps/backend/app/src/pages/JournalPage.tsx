@@ -33,6 +33,7 @@ export default function JournalPage() {
   const [saving, setSaving] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   if (isLoading && !data) {
     return <div className="h-64 animate-pulse rounded-lg bg-surface-2" />;
@@ -89,6 +90,7 @@ export default function JournalPage() {
       setMind('');
       setDoing('');
       setMood('neutral');
+      setShowForm(false);
       toast.show('Journal entry saved.', 'success');
       mutate(); // R-5.2 — refresh entries + due state
     } catch (err) {
@@ -137,7 +139,17 @@ export default function JournalPage() {
         />
       )}
 
-      {/* R-5.1 — check-in form */}
+      {/* R-5.1 — check-in form, collapsed behind an "Add entry" button */}
+      {!showForm ? (
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className={`btn inline-flex items-center gap-1 ${due ? 'btn-primary' : ''}`}
+        >
+          <span className="material-icons text-base">add</span>
+          Add entry
+        </button>
+      ) : (
       <form onSubmit={submit} className="panel p-4 space-y-4">
         <div>
           <label className="eyebrow text-ink-2 block mb-1.5">
@@ -182,14 +194,25 @@ export default function JournalPage() {
             ))}
           </div>
         </div>
-        <button
-          type="submit"
-          className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={saving || !canSave}
-        >
-          {saving ? 'Saving…' : 'Log this moment'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={saving || !canSave}
+          >
+            {saving ? 'Saving…' : 'Log this moment'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm(false)}
+            disabled={saving}
+            className="btn btn-ghost disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
+      )}
 
       {/* R-5.3 — chronological entries with mood indicator */}
       <section>

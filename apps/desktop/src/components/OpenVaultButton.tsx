@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "@tauri-apps/api/core";
 import { api } from "../api/client";
 
 // R-4.1/R-4.3/R-4.4: open the *configured* vault in Obsidian. The vault info
@@ -25,8 +26,16 @@ export function OpenVaultButton() {
     };
   }, []);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (!vault) return;
+    // Best-effort: register the vault in Obsidian first so the deep-link opens
+    // THIS folder rather than whatever vault Obsidian last had open. Never block
+    // the open on a registry failure.
+    try {
+      await invoke("register_obsidian_vault", { path: vault.path });
+    } catch (e) {
+      console.warn("register_obsidian_vault failed", e);
+    }
     // Open by *path*, not vault name: Obsidian registers vaults under their
     // folder name, which can differ from squirrel's configured vault name.
     void openUrl(`obsidian://open?path=${encodeURIComponent(vault.path)}`);

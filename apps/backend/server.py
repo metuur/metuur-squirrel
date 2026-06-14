@@ -1542,7 +1542,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             template_text
             .replace("<TAG>", tag)
             .replace("<PROJECT>", project_slug)
-            .replace("<YYYY-MM-DD>", today)
             # English placeholder (current template) and Spanish one (older
             # vault-local copies of agent-pack/templates/intent.md).
             .replace("<short title>", title or tag)
@@ -1554,6 +1553,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "> What you want to achieve and why it matters",
                 "\n".join(f"> {ln}" if ln else ">" for ln in description.splitlines()),
             )
+        # Apply the deadline BEFORE the generic <YYYY-MM-DD>→today replace below:
+        # the template reuses <YYYY-MM-DD> for both `created:` and `deadline:`, so
+        # doing the date replace first would clobber the deadline placeholder and
+        # silently drop the user's chosen date.
         if not deadline:
             rendered = "\n".join(
                 line for line in rendered.splitlines()
@@ -1564,6 +1567,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "deadline: <YYYY-MM-DD>   # ISO date; omit if no hard deadline",
                 f"deadline: {deadline}",
             )
+        rendered = rendered.replace("<YYYY-MM-DD>", today)
         atomic_write_text(intent_path, rendered)
         if reminder_date:
             try:
@@ -1586,11 +1590,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if note_path is None:
             raise _UserError(404, "We could not find that note.")
         text = note_path.read_text(encoding="utf-8", errors="replace")
+        # Strip any trailing inline comment (e.g. legacy template lines like
+        # "deadline: 2026-06-13   # ISO date; omit if no hard deadline").
+        deadline = str(_parse_frontmatter_simple(text).get("deadline", "") or "").split("#", 1)[0].strip()
         self._send_json({
             "id": note_id,
             "title": _first_title(text) or note_id,
             "body": _strip_frontmatter(text),
             "raw_body": text,
+            "deadline": deadline or None,
             "mtime": note_path.stat().st_mtime,
             "project_slug": note_path.parent.name,
             "kind": _classify_kind(ctx.active.path, note_path),

@@ -6,12 +6,15 @@ import { OpenVaultButton } from "./OpenVaultButton";
 // Story in-app-vault-onboarding 5.1 — R-4.1, R-4.3, R-4.4.
 
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("../api/client", () => ({ api: { me: vi.fn() } }));
 
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "@tauri-apps/api/core";
 import { api } from "../api/client";
 
 const mockOpenUrl = vi.mocked(openUrl);
+const mockInvoke = vi.mocked(invoke);
 const mockMe = vi.mocked(api.me);
 
 function meWith(name: string, path = "/x") {
@@ -27,6 +30,8 @@ function meWith(name: string, path = "/x") {
 describe("OpenVaultButton", () => {
   beforeEach(() => {
     mockOpenUrl.mockReset();
+    mockInvoke.mockReset();
+    mockInvoke.mockResolvedValue(undefined);
     mockMe.mockReset();
   });
 
@@ -36,6 +41,11 @@ describe("OpenVaultButton", () => {
     const btn = await screen.findByRole("button", { name: /Open Vault/ });
     await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(false));
     await userEvent.click(btn);
+    // Registers the configured vault in Obsidian first so the deep-link opens
+    // THIS folder, not a stale last-opened vault.
+    expect(mockInvoke).toHaveBeenCalledWith("register_obsidian_vault", {
+      path: "/Users/me/my vault",
+    });
     // path, not vault name: Obsidian registers vaults under their folder name,
     // which can differ from squirrel's configured name.
     expect(mockOpenUrl).toHaveBeenCalledWith(

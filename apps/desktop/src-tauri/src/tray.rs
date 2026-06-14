@@ -456,6 +456,12 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
                     // from squirrel's configured vault name. R-4.3: do nothing if
                     // none is configured (the item is also disabled in that state).
                     if let Some(path) = default_vault_path() {
+                        // Best-effort: register the vault so Obsidian opens THIS
+                        // folder rather than falling back to a previously-opened
+                        // vault it already knows about.
+                        if let Err(e) = crate::obsidian_registry::ensure_registered(&path) {
+                            tracing::warn!(error = %e, "tray: failed to register vault in Obsidian");
+                        }
                         let url = format!("obsidian://open?path={}", percent_encode(&path));
                         open_url(app, &url);
                     }

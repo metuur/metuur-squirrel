@@ -61,6 +61,12 @@ export default function NotePage() {
           <div className="min-w-0">
             <div className="text-[10px] font-mono text-ink-4 mb-1">{note.id}</div>
             <h1 className="text-sm font-semibold text-ink-2 leading-snug">{note.title}</h1>
+            {note.deadline && (
+              <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink-3">
+                <span className="material-icons text-sm">event</span>
+                Deadline {note.deadline}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button

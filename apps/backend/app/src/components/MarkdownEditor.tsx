@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import {
   MDXEditor,
+  type MDXEditorMethods,
   headingsPlugin,
   listsPlugin,
   quotePlugin,
@@ -25,6 +27,20 @@ interface Props {
 }
 
 export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeight = '8rem', showSourceToggle = false }: Props) {
+  const editorRef = useRef<MDXEditorMethods>(null);
+
+  // Sync EXTERNAL value changes (async load, programmatic reset) into the
+  // editor via its imperative API — without remounting. Typing never triggers
+  // this branch because `value` then equals what the editor just emitted, so
+  // the comparison short-circuits. (Previously a `key` toggled on the empty→
+  // non-empty transition, remounting the editor on the first keystroke and
+  // stealing focus.)
+  useEffect(() => {
+    if (editorRef.current && value !== editorRef.current.getMarkdown()) {
+      editorRef.current.setMarkdown(value);
+    }
+  }, [value]);
+
   const basePlugins = [
     headingsPlugin(),
     listsPlugin(),
@@ -39,7 +55,7 @@ export function MarkdownEditor({ value, onChange, disabled, placeholder, minHeig
       style={{ '--mdxeditor-min-height': minHeight } as React.CSSProperties}
     >
       <MDXEditor
-        key={value === '' ? 'empty' : undefined}
+        ref={editorRef}
         markdown={value}
         onChange={onChange}
         readOnly={disabled}
