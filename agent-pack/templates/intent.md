@@ -29,8 +29,8 @@ stakeholders: []          # list of @handles or names
 
 ## 🔗 Related
 - **Parent**: [[<PROJECT>]]
-- **Blocks**: [[<OTHER-TAG>]]
-- **Blocked by**: [[<OTHER-TAG>]]
+- **Blocks**: [[OTHER-TAG]]
+- **Blocked by**: [[OTHER-TAG]]
 - **Communication**: notify @stakeholder when resolved
 
 ## 🔄 Shutdown notes (most recent on top)

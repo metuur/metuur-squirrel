@@ -6,60 +6,134 @@ import { ConflictDialog } from '@/components/ConflictDialog';
 import { useToast } from '@/components/Toast';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 
-function splitFrontmatter(raw: string): { front: string; content: string } {
-  const m = raw.match(/^(---\n[\s\S]*?\n---\n?)([\s\S]*)$/);
-  return m ? { front: m[1], content: m[2] } : { front: '', content: raw };
+interface Prop {
+  key: string;
+  value: string;
+  isNew?: boolean; // newly-added row → key is editable; existing keys are locked
 }
 
-// Set, replace, or remove the `deadline:` line inside a frontmatter block.
-// Empty deadline removes the line; a value updates the existing line or inserts
-// one before the closing `---`. If there's no frontmatter, only create one when
-// a deadline is actually set (free notes stay frontmatter-free otherwise).
-function applyDeadline(front: string, deadline: string): string {
-  if (!front) return deadline ? `---\ndeadline: ${deadline}\n---\n` : front;
-  const lines = front.split('\n');
-  const dlIdx = lines.findIndex((l) => l.trim().startsWith('deadline:'));
-  if (!deadline) {
-    if (dlIdx >= 0) lines.splice(dlIdx, 1);
-    return lines.join('\n');
-  }
-  if (dlIdx >= 0) {
-    lines[dlIdx] = `deadline: ${deadline}`;
-  } else {
-    const closeIdx = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-    if (closeIdx >= 0) lines.splice(closeIdx, 0, `deadline: ${deadline}`);
-  }
-  return lines.join('\n');
+// A value is a list when it's the `tags` key or looks like `[a, b, c]`.
+function isListProp(p: Prop): boolean {
+  return p.key.trim().toLowerCase() === 'tags' || /^\[[\s\S]*\]$/.test(p.value.trim());
 }
+function toTags(value: string): string[] {
+  return value.trim().replace(/^\[|\]$/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+function fromTags(tags: string[]): string {
+  return `[${tags.join(', ')}]`;
+}
+
+const STATUS_OPTIONS = ['pending', 'wip', 'done', 'blocked', 'paused'];
+
+// Structural frontmatter fields (VAULT-002 required) — cannot be deleted.
+const MANDATORY_KEYS = new Set(['id', 'type', 'project', 'status', 'created', 'tags']);
+
+// Comma-separated chip editor (Enter or comma commits; × removes).
+function TagsField({ tags, onChange, disabled }: { tags: string[]; onChange: (t: string[]) => void; disabled?: boolean }) {
+  const [draft, setDraft] = useState('');
+  function commit() {
+    const parts = draft.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length) onChange([...tags, ...parts.filter((p) => !tags.includes(p))]);
+    setDraft('');
+  }
+  return (
+    <div className="flex-1 flex flex-wrap items-center gap-1 border border-hairline rounded-md px-2 py-1 bg-surface min-h-[2.25rem]">
+      {tags.map((t, i) => (
+        <span key={i} className="inline-flex items-center gap-0.5 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-2">
+          {t}
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(tags.filter((_, j) => j !== i))}
+            aria-label={`Remove ${t}`}
+            className="text-ink-4 hover:text-critical"
+          >
+            <span className="material-icons text-[14px] leading-none">close</span>
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); }
+          else if (e.key === 'Backspace' && draft === '' && tags.length) onChange(tags.slice(0, -1));
+        }}
+        onBlur={commit}
+        disabled={disabled}
+        placeholder={tags.length ? '' : 'add tag…'}
+        className="flex-1 min-w-[6rem] text-sm bg-transparent outline-none text-ink"
+      />
+    </div>
+  );
+}
+
+// Split YAML frontmatter into ordered key/value pairs (flat `key: value` lines
+// only — squirrel vault frontmatter is flat) and the markdown body that follows.
+function parseFrontmatter(raw: string): { props: Prop[]; content: string } {
+  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) return { props: [], content: raw };
+  const props: Prop[] = [];
+  for (const line of m[1].split('\n')) {
+    if (!line.trim() || line.startsWith(' ') || line.trimStart().startsWith('#')) continue;
+    const i = line.indexOf(':');
+    if (i < 0) continue;
+    // Strip a YAML inline comment (whitespace + `#…`); `#` without a leading
+    // space is part of the value (e.g. a hex colour), so it's kept.
+    const value = line.slice(i + 1).replace(/\s+#.*$/, '').trim();
+    props.push({ key: line.slice(0, i).trim(), value });
+  }
+  return { props, content: m[2] };
+}
+
+// Rebuild the frontmatter block from edited props. Drops rows with a blank key;
+// emits nothing when there are no props (free notes stay frontmatter-free).
+function serializeFrontmatter(props: Prop[]): string {
+  const rows = props.filter((p) => p.key.trim() !== '');
+  if (rows.length === 0) return '';
+  return '---\n' + rows.map((p) => `${p.key.trim()}: ${p.value}`).join('\n') + '\n---\n';
+}
+
+// Keys we render with a native date picker. Anything else is a text field.
+const DATE_KEYS = new Set(['deadline', 'created', 'reminder']);
 
 export default function NoteEditPage() {
   const { id = '' } = useParams();
   const nav = useNavigate();
   const toast = useToast();
   const { data: note } = useFetch(`note-edit:${id}`, () => api.note(id));
-  const [front, setFront] = useState('');
+  const [props, setProps] = useState<Prop[]>([]);
   const [body, setBody] = useState('');
-  const [deadline, setDeadline] = useState('');
-  const [hasFrontmatter, setHasFrontmatter] = useState(false);
   const [mtime, setMtime] = useState(0);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<{ current_body: string; current_mtime: number } | null>(null);
 
   useEffect(() => {
     if (note) {
-      const { front: f, content: c } = splitFrontmatter(note.raw_body);
-      setFront(f);
-      setBody(c);
-      setDeadline(note.deadline ?? '');
-      setHasFrontmatter(f !== '');
+      const { props: p, content } = parseFrontmatter(note.raw_body);
+      setProps(p);
+      setBody(content);
       setMtime(note.mtime);
     }
   }, [note]);
 
+  function updateKey(idx: number, key: string) {
+    setProps((prev) => prev.map((p, i) => (i === idx ? { ...p, key } : p)));
+  }
+  function updateValue(idx: number, value: string) {
+    setProps((prev) => prev.map((p, i) => (i === idx ? { ...p, value } : p)));
+  }
+  function removeRow(idx: number) {
+    setProps((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function addRow() {
+    setProps((prev) => [...prev, { key: '', value: '', isNew: true }]);
+  }
+
   async function save() {
     setSaving(true);
     try {
-      const r = await api.noteSave(id, applyDeadline(front, deadline) + body, mtime);
+      const r = await api.noteSave(id, serializeFrontmatter(props) + body, mtime);
       if (r.mtime) setMtime(r.mtime);
       toast.show('Saved.', 'success');
       nav(`/notes/${id}`);
@@ -84,18 +158,89 @@ export default function NoteEditPage() {
           <h1 className="title">Edit note</h1>
         </div>
         <div className="px-6 py-5 space-y-4">
-          {hasFrontmatter && (
-            <label className="block">
-              <div className="text-xs font-semibold text-ink-2 mb-1">Deadline (optional)</div>
-              <input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
+          <section>
+            <div className="text-xs font-semibold text-ink-2 mb-2">Properties</div>
+            <div className="space-y-2">
+              {props.map((p, idx) => {
+                const keyLc = p.key.trim().toLowerCase();
+                const dateClean = p.value.trim();
+                const asDate = DATE_KEYS.has(keyLc) && (dateClean === '' || /^\d{4}-\d{2}-\d{2}$/.test(dateClean));
+                const valueClass =
+                  'flex-1 text-sm border border-hairline rounded-md px-2 py-1.5 bg-surface text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none';
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    {p.isNew ? (
+                      <input
+                        value={p.key}
+                        onChange={(e) => updateKey(idx, e.target.value)}
+                        placeholder="property"
+                        disabled={saving}
+                        className="w-40 shrink-0 font-mono text-xs border border-hairline rounded-md px-2 py-1.5 bg-surface text-ink-2 focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+                      />
+                    ) : (
+                      <span className="w-40 shrink-0 font-mono text-xs text-ink-4 truncate self-center" title={p.key}>{p.key}</span>
+                    )}
+                    {asDate ? (
+                      <input
+                        type="date"
+                        value={dateClean}
+                        onChange={(e) => updateValue(idx, e.target.value)}
+                        disabled={saving}
+                        className={valueClass}
+                      />
+                    ) : isListProp(p) ? (
+                      <TagsField
+                        tags={toTags(p.value)}
+                        onChange={(t) => updateValue(idx, fromTags(t))}
+                        disabled={saving}
+                      />
+                    ) : keyLc === 'status' ? (
+                      <select
+                        value={p.value}
+                        onChange={(e) => updateValue(idx, e.target.value)}
+                        disabled={saving}
+                        className={valueClass}
+                      >
+                        {!STATUS_OPTIONS.includes(p.value.trim()) && p.value.trim() !== '' && (
+                          <option value={p.value.trim()}>{p.value.trim()}</option>
+                        )}
+                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        value={p.value}
+                        onChange={(e) => updateValue(idx, e.target.value)}
+                        disabled={saving}
+                        className={valueClass}
+                      />
+                    )}
+                    {MANDATORY_KEYS.has(keyLc) ? (
+                      <span className="w-10 shrink-0" aria-hidden />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(idx)}
+                        disabled={saving}
+                        title="Remove property"
+                        aria-label="Remove property"
+                        className="btn btn-ghost shrink-0 px-2 py-1.5 text-ink-4 hover:text-critical"
+                      >
+                        <span className="material-icons text-base">close</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={addRow}
                 disabled={saving}
-                className="text-sm border border-hairline rounded-md px-3 py-2 bg-surface text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none"
-              />
-            </label>
-          )}
+                className="btn btn-ghost px-2 py-1 text-xs font-semibold text-ink-3 flex items-center gap-1"
+              >
+                <span className="material-icons text-base">add</span> Add property
+              </button>
+            </div>
+          </section>
           <MarkdownEditor
             key={id}
             value={body}
@@ -127,11 +272,9 @@ export default function NoteEditPage() {
         payload={conflict}
         onTakeTheirs={() => {
           if (conflict) {
-            const { front: f, content: c } = splitFrontmatter(conflict.current_body);
-            const dl = f.match(/^deadline:\s*(.+)$/m);
-            setFront(f); setBody(c);
-            setDeadline(dl ? dl[1].split('#')[0].trim() : '');
-            setHasFrontmatter(f !== '');
+            const { props: p, content } = parseFrontmatter(conflict.current_body);
+            setProps(p);
+            setBody(content);
             setMtime(conflict.current_mtime);
           }
           setConflict(null);

@@ -8,6 +8,23 @@ import { PromptPanel } from '@/components/PromptPanel';
 import { NewTaskModal } from '@/components/NewTaskModal';
 import { Markdown } from '@/components/Markdown';
 
+// Read the flat `key: value` frontmatter into ordered pairs for display.
+function readFrontmatter(raw: string): { key: string; value: string }[] {
+  const m = raw.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return [];
+  const props: { key: string; value: string }[] = [];
+  for (const line of m[1].split('\n')) {
+    if (!line.trim() || line.startsWith(' ') || line.trimStart().startsWith('#')) continue;
+    const i = line.indexOf(':');
+    if (i < 0) continue;
+    // Strip a YAML inline comment (whitespace + `#…`); `#` without a leading
+    // space stays (e.g. a hex colour).
+    const value = line.slice(i + 1).replace(/\s+#.*$/, '').trim();
+    props.push({ key: line.slice(0, i).trim(), value });
+  }
+  return props;
+}
+
 export default function ProjectPage() {
   const { slug = '' } = useParams();
   const { data: project, error, isLoading, mutate: refreshProject } = useFetch(`project:${slug}`, () => api.project(slug));
@@ -51,6 +68,12 @@ export default function ProjectPage() {
   }
 
   const briefCommand = slashCommands.brief(slug, stakeholder);
+  const props = readFrontmatter(project.raw_body);
+  const tagList = (() => {
+    const t = props.find((p) => p.key.trim().toLowerCase() === 'tags');
+    if (!t) return [];
+    return t.value.trim().replace(/^\[|\]$/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+  })();
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -66,7 +89,12 @@ export default function ProjectPage() {
       <header className="panel overflow-hidden">
         <div className="px-6 py-5 border-b border-hairline-2 bg-focus-tint/40">
           <div className="text-[10px] font-mono text-ink-4 mb-1">{project.slug}</div>
-          <h1 className="text-sm font-semibold text-ink-2 leading-snug">{project.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h1 className="text-sm font-semibold text-ink-2 leading-snug">{project.title}</h1>
+            {tagList.map((t) => (
+              <span key={t} className="inline-flex items-center rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-3">{t}</span>
+            ))}
+          </div>
         </div>
         <div className="px-6 py-3 flex flex-wrap items-center gap-2">
           <Link
@@ -109,6 +137,37 @@ export default function ProjectPage() {
             Get brief command
           </button>
         </div>
+        {props.length > 0 && (
+          <div className="px-6 py-4 border-t border-hairline-2">
+            <div className="text-xs font-semibold text-ink-2 mb-2">Properties</div>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+              {props.map((p) => {
+                const isList = p.key.trim().toLowerCase() === 'tags' || /^\[[\s\S]*\]$/.test(p.value.trim());
+                const tags = isList
+                  ? p.value.trim().replace(/^\[|\]$/g, '').split(',').map((s) => s.trim()).filter(Boolean)
+                  : [];
+                return (
+                  <div key={p.key} className={`flex gap-3 ${isList ? 'sm:col-span-2' : ''}`}>
+                    <dt className="font-mono text-xs text-ink-4 w-28 shrink-0 self-center">{p.key}</dt>
+                    <dd className="text-ink-2 break-words flex-1 min-w-0">
+                      {isList ? (
+                        tags.length ? (
+                          <span className="flex flex-wrap gap-1">
+                            {tags.map((t) => (
+                              <span key={t} className="inline-flex items-center rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-2">{t}</span>
+                            ))}
+                          </span>
+                        ) : <span className="text-ink-4 italic">empty</span>
+                      ) : (
+                        p.value || <span className="text-ink-4 italic">empty</span>
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </div>
+        )}
         <div className="px-6 py-5 border-t border-hairline-2">
           {project.body ? (
             <div className="prose prose-slate max-w-none text-sm leading-relaxed prose-h1:text-2xl prose-h1:mt-0 prose-h2:text-lg prose-h3:text-base">

@@ -6,9 +6,88 @@ import { ConflictDialog } from '@/components/ConflictDialog';
 import { useToast } from '@/components/Toast';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 
-function splitFrontmatter(raw: string): { front: string; content: string } {
-  const m = raw.match(/^(---\n[\s\S]*?\n---\n?)([\s\S]*)$/);
-  return m ? { front: m[1], content: m[2] } : { front: '', content: raw };
+interface Prop {
+  key: string;
+  value: string;
+  isNew?: boolean; // newly-added row → key is editable; existing keys are locked
+}
+
+// Split YAML frontmatter into ordered key/value pairs (flat `key: value` lines
+// only — squirrel vault frontmatter is flat) and the markdown body that follows.
+function parseFrontmatter(raw: string): { props: Prop[]; content: string } {
+  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) return { props: [], content: raw };
+  const props: Prop[] = [];
+  for (const line of m[1].split('\n')) {
+    if (!line.trim() || line.startsWith(' ') || line.trimStart().startsWith('#')) continue;
+    const i = line.indexOf(':');
+    if (i < 0) continue;
+    // Strip a YAML inline comment (whitespace + `#…`); `#` without a leading
+    // space is part of the value (e.g. a hex colour), so it's kept.
+    const value = line.slice(i + 1).replace(/\s+#.*$/, '').trim();
+    props.push({ key: line.slice(0, i).trim(), value });
+  }
+  return { props, content: m[2] };
+}
+
+function serializeFrontmatter(props: Prop[]): string {
+  const rows = props.filter((p) => p.key.trim() !== '');
+  if (rows.length === 0) return '';
+  return '---\n' + rows.map((p) => `${p.key.trim()}: ${p.value}`).join('\n') + '\n---\n';
+}
+
+function isListProp(p: Prop): boolean {
+  return p.key.trim().toLowerCase() === 'tags' || /^\[[\s\S]*\]$/.test(p.value.trim());
+}
+function toTags(value: string): string[] {
+  return value.trim().replace(/^\[|\]$/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+function fromTags(tags: string[]): string {
+  return `[${tags.join(', ')}]`;
+}
+
+const DATE_KEYS = new Set(['deadline', 'created', 'reminder']);
+const STATUS_OPTIONS = ['pending', 'wip', 'done', 'blocked', 'paused'];
+const MANDATORY_KEYS = new Set(['id', 'type', 'project', 'status', 'created', 'tags']);
+
+// Comma-separated chip editor (Enter or comma commits; × removes).
+function TagsField({ tags, onChange, disabled }: { tags: string[]; onChange: (t: string[]) => void; disabled?: boolean }) {
+  const [draft, setDraft] = useState('');
+  function commit() {
+    const parts = draft.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length) onChange([...tags, ...parts.filter((p) => !tags.includes(p))]);
+    setDraft('');
+  }
+  return (
+    <div className="flex-1 flex flex-wrap items-center gap-1 border border-hairline rounded-md px-2 py-1 bg-surface min-h-[2.25rem]">
+      {tags.map((t, i) => (
+        <span key={i} className="inline-flex items-center gap-0.5 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-2">
+          {t}
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(tags.filter((_, j) => j !== i))}
+            aria-label={`Remove ${t}`}
+            className="text-ink-4 hover:text-critical"
+          >
+            <span className="material-icons text-[14px] leading-none">close</span>
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); }
+          else if (e.key === 'Backspace' && draft === '' && tags.length) onChange(tags.slice(0, -1));
+        }}
+        onBlur={commit}
+        disabled={disabled}
+        placeholder={tags.length ? '' : 'add tag…'}
+        className="flex-1 min-w-[6rem] text-sm bg-transparent outline-none text-ink"
+      />
+    </div>
+  );
 }
 
 export default function ProjectEditPage() {
@@ -16,7 +95,7 @@ export default function ProjectEditPage() {
   const nav = useNavigate();
   const toast = useToast();
   const { data: project } = useFetch(`project-edit:${slug}`, () => api.project(slug));
-  const [front, setFront] = useState('');
+  const [props, setProps] = useState<Prop[]>([]);
   const [body, setBody] = useState('');
   const [mtime, setMtime] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -24,17 +103,30 @@ export default function ProjectEditPage() {
 
   useEffect(() => {
     if (project) {
-      const { front: f, content: c } = splitFrontmatter(project.raw_body);
-      setFront(f);
-      setBody(c);
+      const { props: p, content } = parseFrontmatter(project.raw_body);
+      setProps(p);
+      setBody(content);
       setMtime(project.mtime);
     }
   }, [project]);
 
+  function updateKey(idx: number, key: string) {
+    setProps((prev) => prev.map((p, i) => (i === idx ? { ...p, key } : p)));
+  }
+  function updateValue(idx: number, value: string) {
+    setProps((prev) => prev.map((p, i) => (i === idx ? { ...p, value } : p)));
+  }
+  function removeRow(idx: number) {
+    setProps((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function addRow() {
+    setProps((prev) => [...prev, { key: '', value: '', isNew: true }]);
+  }
+
   async function save() {
     setSaving(true);
     try {
-      const r = await api.projectSave(slug, front + body, mtime);
+      const r = await api.projectSave(slug, serializeFrontmatter(props) + body, mtime);
       if (r.mtime) setMtime(r.mtime);
       toast.show('Saved.', 'success');
       nav(`/projects/${slug}`);
@@ -58,7 +150,90 @@ export default function ProjectEditPage() {
           <div className="text-[10px] font-mono text-ink-4 mb-1">{project.slug}</div>
           <h1 className="title">Edit {project.title}</h1>
         </div>
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 space-y-4">
+          <section>
+            <div className="text-xs font-semibold text-ink-2 mb-2">Properties</div>
+            <div className="space-y-2">
+              {props.map((p, idx) => {
+                const keyLc = p.key.trim().toLowerCase();
+                const dateClean = p.value.trim();
+                const asDate = DATE_KEYS.has(keyLc) && (dateClean === '' || /^\d{4}-\d{2}-\d{2}$/.test(dateClean));
+                const valueClass =
+                  'flex-1 text-sm border border-hairline rounded-md px-2 py-1.5 bg-surface text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none';
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    {p.isNew ? (
+                      <input
+                        value={p.key}
+                        onChange={(e) => updateKey(idx, e.target.value)}
+                        placeholder="property"
+                        disabled={saving}
+                        className="w-40 shrink-0 font-mono text-xs border border-hairline rounded-md px-2 py-1.5 bg-surface text-ink-2 focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+                      />
+                    ) : (
+                      <span className="w-40 shrink-0 font-mono text-xs text-ink-4 truncate self-center" title={p.key}>{p.key}</span>
+                    )}
+                    {asDate ? (
+                      <input
+                        type="date"
+                        value={dateClean}
+                        onChange={(e) => updateValue(idx, e.target.value)}
+                        disabled={saving}
+                        className={valueClass}
+                      />
+                    ) : isListProp(p) ? (
+                      <TagsField
+                        tags={toTags(p.value)}
+                        onChange={(t) => updateValue(idx, fromTags(t))}
+                        disabled={saving}
+                      />
+                    ) : keyLc === 'status' ? (
+                      <select
+                        value={p.value}
+                        onChange={(e) => updateValue(idx, e.target.value)}
+                        disabled={saving}
+                        className={valueClass}
+                      >
+                        {p.value.trim() !== '' && !STATUS_OPTIONS.includes(p.value.trim()) && (
+                          <option value={p.value.trim()}>{p.value.trim()}</option>
+                        )}
+                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        value={p.value}
+                        onChange={(e) => updateValue(idx, e.target.value)}
+                        disabled={saving}
+                        className={valueClass}
+                      />
+                    )}
+                    {MANDATORY_KEYS.has(keyLc) ? (
+                      <span className="w-10 shrink-0" aria-hidden />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(idx)}
+                        disabled={saving}
+                        title="Remove property"
+                        aria-label="Remove property"
+                        className="btn btn-ghost shrink-0 px-2 py-1.5 text-ink-4 hover:text-critical"
+                      >
+                        <span className="material-icons text-base">close</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={addRow}
+                disabled={saving}
+                className="btn btn-ghost px-2 py-1 text-xs font-semibold text-ink-3 flex items-center gap-1"
+              >
+                <span className="material-icons text-base">add</span> Add property
+              </button>
+            </div>
+          </section>
           <MarkdownEditor
             key={slug}
             value={body}
@@ -90,8 +265,10 @@ export default function ProjectEditPage() {
         payload={conflict}
         onTakeTheirs={() => {
           if (conflict) {
-            const { front: f, content: c } = splitFrontmatter(conflict.current_body);
-            setFront(f); setBody(c); setMtime(conflict.current_mtime);
+            const { props: p, content } = parseFrontmatter(conflict.current_body);
+            setProps(p);
+            setBody(content);
+            setMtime(conflict.current_mtime);
           }
           setConflict(null);
           toast.show('Loaded their version. Save again to keep it.', 'info');
