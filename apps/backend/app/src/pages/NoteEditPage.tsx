@@ -107,6 +107,7 @@ export default function NoteEditPage() {
   const [mtime, setMtime] = useState(0);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<{ current_body: string; current_mtime: number } | null>(null);
+  const [propsOpen, setPropsOpen] = useState(false);
 
   useEffect(() => {
     if (note) {
@@ -159,7 +160,16 @@ export default function NoteEditPage() {
         </div>
         <div className="px-6 py-5 space-y-4">
           <section>
-            <div className="text-xs font-semibold text-ink-2 mb-2">Properties</div>
+            <button
+              type="button"
+              onClick={() => setPropsOpen((o) => !o)}
+              aria-expanded={propsOpen}
+              className="flex items-center gap-1 text-xs font-semibold text-ink-2 mb-2 hover:text-accent"
+            >
+              <span className="material-icons text-base">{propsOpen ? 'expand_less' : 'expand_more'}</span>
+              Properties
+            </button>
+            {propsOpen && (
             <div className="space-y-2">
               {props.map((p, idx) => {
                 const keyLc = p.key.trim().toLowerCase();
@@ -240,6 +250,7 @@ export default function NoteEditPage() {
                 <span className="material-icons text-base">add</span> Add property
               </button>
             </div>
+            )}
           </section>
           <MarkdownEditor
             key={id}
